@@ -26,6 +26,28 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
 
+# https://crates.io/crates/did-ion
+did-ion="0.1.0"
+
+# ssi = { version = "0.4", path = "../", default-features = false, features = ["http-did", "secp256k1"] }
+lazy_static="1.4.0"
+ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_jcs = "0.1"
+anyhow = "1.0"
+thiserror = "1.0"
+base64 = "0.13"
+sha2 = "0.10"
+json-patch = "0.2.6"
+reqwest = { version = "0.11", features = ["json"] }
+
+[target.'cfg(target_os = "android")'.dependencies.reqwest]
+version = "0.11"
+features = ["json", "native-tls-vendored"]
+
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
 
