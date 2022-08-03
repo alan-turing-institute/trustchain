@@ -14,6 +14,7 @@ import IonServiceModel from './models/IonServiceModel';
 import JwkEd25519 from './models/JwkEd25519';
 import JwkEs256k from './models/JwkEs256k';
 import LocalSigner from './LocalSigner';
+import MultiHash from './Multihash';
 
 export {
   ISigner,
@@ -28,5 +29,6 @@ export {
   IonServiceModel,
   JwkEd25519,
   JwkEs256k,
-  LocalSigner
+  LocalSigner,
+  MultiHash
 };
