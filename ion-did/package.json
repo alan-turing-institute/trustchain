@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@decentralized-identity/ion-sdk": "file:./ion-sdk/",
     "@decentralized-identity/ion-tools": "^0.1.1"
   }
 }
