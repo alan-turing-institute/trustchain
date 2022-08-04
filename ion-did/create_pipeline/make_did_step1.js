@@ -21,17 +21,16 @@ const main = async () => {
     console.log("Wrote private key to privateKey.json")
     
 
-    // Step 6
     // Create a DID
     const did = new ION.DID({
         content: {
         // Register the public key for authentication
         publicKeys: [
             {
-            id: 'auth-key',
-            type: 'EcdsaSecp256k1VerificationKey2019',
-            publicKeyJwk: authnKeys.publicJwk,
-            purposes: [ 'authentication' ]
+                id: 'auth-key',
+                type: 'EcdsaSecp256k1VerificationKey2019',
+                publicKeyJwk: authnKeys.publicJwk,
+                purposes: ['authentication']
             }
         ],
         // Register an IdentityHub as a service
@@ -43,47 +42,37 @@ const main = async () => {
                 "@context": "schema.identity.foundation/hub",
                 "@type": "UserServiceEndpoint",
                 instance: [
-                "did:test:hub.id",
+                    "did:test:hub.id",
                 ]
             }
             }
         ]
         }
     })
-    const didUri = await did.getURI('short');
-    console.log("Generated DID:", didUri)
-    // End Step 6
+    
+    // Print initial DID document
+    console.log(did.content)
 
-    // Step 7
+    // Print initial DID. Note this changes when the delta changes
+    const didUri = await did.getURI('short');
+    const didUriLong = await did.getURI('short');
+    console.log("Generated initial short DID:", didUri)
+    console.log("Generated initial long DID:", didUriLong)
+
+    // Generate request body from did
     const anchorRequestBody = await did.generateRequest()
     console.log(anchorRequestBody)
     console.log("****")
     const anchorRequest = new ION.AnchorRequest(anchorRequestBody)
     console.log(anchorRequest)
     console.log("****")
-    // const anchorRequest = new ION.AnchorRequest(anchorRequestBody,
-    //     options = {challengeEndpoint: "http://localhost:3000/proof-of-work-challenge",
-    //                solutionEndpoint: "http://localhost:3000/operations"})
 
-    // const anchorResponse = await anchorRequest.submit()
-    // const response = await fetch("http://localhost:3000/operations", {
-    //     method: 'POST',
-    //     mode: 'cors',
-    //     body: anchorRequestBody.body,
-    //     headers: {
-    //         'Content-Type': 'application/json'
-    //     }
-    // });
-
+    // Write request body
     await fs.writeFile(
-        'anchorRequestBody_030822.json', 
+        'anchorRequestBody.json', 
         JSON.stringify(anchorRequestBody)
     )
 
-
-
-    // console.log(JSON.stringify(anchorResponse))
-    // End of Step 7
 }
 
 main()
