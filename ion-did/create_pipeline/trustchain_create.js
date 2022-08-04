@@ -163,6 +163,7 @@ async function attachProof(
 
 // Main
 async function main() {
+    // TODO: consider whether better to return the raw DID doc not the request
     // Generate intial request body
     const anchorRequestBody = await generateDID(new_keys=true);
     
@@ -176,6 +177,7 @@ async function main() {
     );
 
     // TODO: compute the DID given the update to the content
+    // See: https://github.com/decentralized-identity/ion-tools/blob/9c6572daf91cc59f4bd489eb51da261d2483c0be/ion.js/lib.js#L126-L134
     // Get the DID from the request
     // const longDID = IONSDK.IonDid.createLongFormDid({
         // recoveryKey: create.recovery.publicJwk,
