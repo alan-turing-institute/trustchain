@@ -1,6 +1,7 @@
 const ION = require('@decentralized-identity/ion-tools')
 const IONSDK = require('@decentralized-identity/ion-sdk');
 const jwt_decode = require('jwt-decode');
+const fsSync = require('fs')
 const fs = require('fs').promises
 const fetch = require('cross-fetch');
 const { AnchorRequest } = require('@decentralized-identity/ion-tools');
@@ -103,7 +104,7 @@ async function main() {
             }
             }
         ]
-        }
+    }
 
     // Generate blank new did
     const did = new ION.DID();
@@ -122,22 +123,61 @@ async function main() {
 
     console.log(JSON.stringify(did.content, null, 2))
 
+    // Get timstamp path
+    let dt = new Date().toISOString().split('.')[0].replace(/[^\d]/gi,'');
+    dt = dt.substring(2, 8) + "-" + dt.substring(8)
+    let dir = "./" + dt;
+    let mostRecent = "./most_recent"
+    
+    //  Make path if doesn't exist
+    if (!fsSync.existsSync(dir)){
+        fsSync.mkdirSync(dir);
+    }
+    if (!fsSync.existsSync(mostRecent)){
+        fsSync.mkdirSync(mostRecent);
+    }
+
+    // Write signing key
+    await fs.writeFile(
+        dir + '/signingKey.json',
+        JSON.stringify(authnKeys)
+    );
+    await fs.writeFile(
+        mostRecent + '/signingKey.json',
+        JSON.stringify(authnKeys)
+    );
+
     // Write update key
     await fs.writeFile(
-        'updateKey.json',
+        dir + '/updateKey.json',
         JSON.stringify(createOperation.update)
     );
     await fs.writeFile(
-        'recoveryKey.json', 
+        mostRecent + '/updateKey.json',
+        JSON.stringify(createOperation.update)
+    );
+
+    // Write recovery key
+    await fs.writeFile(
+        dir + '/recoveryKey.json', 
+        JSON.stringify(createOperation.recovery)
+    );
+    await fs.writeFile(
+        mostRecent + '/recoveryKey.json', 
         JSON.stringify(createOperation.recovery)
     );
 
+    // Make request body
     const anchorRequestBody = await did.generateRequest(createOperation);
     console.log(anchorRequestBody);
 
     // Write request body
     await fs.writeFile(
-        'anchorRequestBodyWithProofStreamline.json', 
+        dir + '/createRequest.json', 
+         JSON.stringify(anchorRequestBody)
+    );
+    await fs.writeFile(
+        mostRecent + '/createRequest.json', 
          JSON.stringify(anchorRequestBody)
     );
 }
