@@ -29,6 +29,8 @@ async function main() {
         console.log("Load keys...")
         const privateKey = JSON.parse(await fs.readFile('privateKey.json'));
         const publicKey = JSON.parse(await fs.readFile('publicKey.json'));
+        const controlleruDID = "did:ion:test:upstream_DID_that_is_the_controller";
+    
 
         //  Make object to store the keys
         authnKeys = {
@@ -73,9 +75,7 @@ async function main() {
     console.log("Decoded same as signed:", decodedJWKHash == requestJWKHash);
 
 
-    // Create a DID
-    const did = new ION.DID({
-        content: {
+    content =  {
         // Register the public key for authentication
         publicKeys: [
             {
@@ -104,17 +104,35 @@ async function main() {
             }
         ]
         }
-    })
 
+    // Generate blank new did
+    const did = new ION.DID();
 
-    // Print initial DID. Note this changes when the delta changes
+    // Perform create operation from content object
+    let createOperation = await did.generateOperation("create", content);
+
+    // Log createOperation
+    console.log(JSON.stringify(createOperation, null, 2));
+    
+    // Get DID
     const didUri = await did.getURI('short');
     const didUriLong = await did.getURI('short');
     console.log("Generated initial short DID:", didUri)
     console.log("Generated initial long DID:", didUriLong)
 
-    // Generate request body from did
-    const anchorRequestBody = await did.generateRequest();
+    console.log(JSON.stringify(did.content, null, 2))
+
+    // Write update key
+    await fs.writeFile(
+        'updateKey.json',
+        JSON.stringify(createOperation.update)
+    );
+    await fs.writeFile(
+        'recoveryKey.json', 
+        JSON.stringify(createOperation.recovery)
+    );
+
+    const anchorRequestBody = await did.generateRequest(createOperation);
     console.log(anchorRequestBody);
 
     // Write request body
