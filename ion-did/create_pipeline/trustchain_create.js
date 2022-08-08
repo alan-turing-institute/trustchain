@@ -8,7 +8,7 @@ const { AnchorRequest } = require('@decentralized-identity/ion-tools');
 
 async function main() {
     var authnKeys;
-    load = true;
+    load = false;
     if(load == false) {
         // Create private/public key pair
         authnKeys = await ION.generateKeyPair('secp256k1')
