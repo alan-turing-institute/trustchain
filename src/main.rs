@@ -105,8 +105,8 @@ fn main() {
     let mut patches = vec![];
     let patch = DIDStatePatch::AddServices {
         services: vec![ServiceEndpointEntry {
-            id: make_did_ion(&did_short),
-            r#type: "proof".to_string(),
+            id: "controller-proof".to_string(),
+            r#type: "signature".to_string(),
             service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj)),
         }],
     };
