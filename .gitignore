@@ -16,3 +16,6 @@ Cargo.lock
 
 # npm install path
 **/node_modules/
+
+# Ignore ion-did JS path here for now
+**/ion-did/
