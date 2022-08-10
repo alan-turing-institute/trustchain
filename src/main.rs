@@ -5,7 +5,9 @@ use did_ion::sidetree::{
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::ION;
 use ssi::did::ServiceEndpoint;
+use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
+use std::fs::{read, write};
 // use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 // use failure::Fail;
 use serde_json::{to_string_pretty as to_json, Map, Value};
@@ -13,6 +15,28 @@ use serde_json::{to_string_pretty as to_json, Map, Value};
 
 fn make_did_ion(suffix: &String) -> String {
     "did:ion:test:".to_string() + suffix
+}
+
+fn load_key(file_name: &str) -> JWK {
+    // Load previous data
+    let ec_read = std::fs::read(file_name).unwrap();
+    let ec_read = std::str::from_utf8(&ec_read).unwrap();
+    let ec_json: Map<String, Value> = serde_json::from_str(ec_read).unwrap();
+    let ec_params = ECParams {
+        curve: Some(ec_json["crv"].to_string().replace("\"", "")),
+        // kty: Some(ec_json["kty"].to_string()),
+        x_coordinate: Some(Base64urlUInt(ec_json["x"].to_string().as_bytes().to_vec())),
+        y_coordinate: Some(Base64urlUInt(ec_json["y"].to_string().as_bytes().to_vec())),
+        ecc_private_key: Some(Base64urlUInt(ec_json["d"].to_string().as_bytes().to_vec())),
+    };
+
+    // };
+    let ec_params = Params::EC(ec_params);
+
+    // println!("{:?}", ec_params);
+    let update_key = JWK::from(ec_params);
+    ION::validate_key(&update_key);
+    update_key
 }
 
 fn main() {
@@ -92,6 +116,8 @@ fn main() {
     std::fs::write("update_key.json", to_json(&update_key).unwrap()).unwrap();
     std::fs::write("signing_key.json", to_json(&verification_key).unwrap()).unwrap();
     std::fs::write("recovery_key.json", to_json(&recovery_key).unwrap()).unwrap();
+    std::fs::write("signed_data.json", to_json(&signed_data).unwrap()).unwrap();
+    std::fs::write("did_short.json", to_json(&did_short).unwrap()).unwrap();
 
     // Create an update request with the signed proof added as a service
     let new_update_key = ION::generate_key().unwrap();
@@ -107,7 +133,7 @@ fn main() {
         services: vec![ServiceEndpointEntry {
             id: "controller-proof".to_string(),
             r#type: "signature".to_string(),
-            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj)),
+            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
         }],
     };
     patches.push(patch.clone());
@@ -123,6 +149,47 @@ fn main() {
     println!("{}", to_json(&update_operation).unwrap());
     let operation = Operation::Update(update_operation.clone());
     std::fs::write("update_operation.json", to_json(&operation).unwrap()).unwrap();
+    std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
+
+    // Load update key
+    let update_key = load_key("update_key.json");
+
+    // Load previous signed data
+    let signed_data = std::str::from_utf8(&std::fs::read("signed_data.json").unwrap())
+        .unwrap()
+        .to_string()
+        .replace("\"", "");
+    let did_short = std::str::from_utf8(&std::fs::read("did_short.json").unwrap())
+        .unwrap()
+        .to_string()
+        .replace("\"", "");
+    println!("{:?}", signed_data);
+
+    // Make update again but only using loaded data
+    let mut patches = vec![];
+    let patch = DIDStatePatch::AddServices {
+        services: vec![ServiceEndpointEntry {
+            id: "controller-proof".to_string(),
+            r#type: "signature".to_string(),
+            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
+        }],
+    };
+    patches.push(patch.clone());
+    println!("{}", to_json(&patch.clone()).unwrap());
+
+    println!("{}", to_json(&update_key).unwrap());
+
+    let update_operation =
+        ION::update(DIDSuffix(did_short), &update_key, &new_update_pk, patches).unwrap();
+
+    // Verify the enum
+    let partially_verified_update_operation = operation.clone().partial_verify::<ION>().unwrap();
+    println!("Vefification: {:?}", partially_verified_update_operation);
+
+    // Print JSON operation
+    println!("{}", to_json(&update_operation).unwrap());
+    let operation = Operation::Update(update_operation.clone());
+    std::fs::write("update_operation_loaded.json", to_json(&operation).unwrap()).unwrap();
     // std::fs::write("update_operation_2.json", to_json(&update_operation).unwrap()).unwrap();
     std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
 }
