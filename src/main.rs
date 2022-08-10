@@ -68,7 +68,7 @@ fn main() {
     let update_pk = PublicKeyJwk::try_from(update_key.to_public()).unwrap();
 
     let recovery_key = recovery_key.unwrap();
-    ION::validate_key(&recovery_key);
+    ION::validate_key(&recovery_key).unwrap();
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
     // --------------------------
@@ -81,18 +81,22 @@ fn main() {
         public_keys: Some(vec![public_key_entry.unwrap()]),
         services: None,
     };
+    let document_data_to_be_signed = ION::json_canonicalization_scheme(&document).unwrap();
+
+    // Make patch from document
     let patch = DIDStatePatch::Replace { document };
     patches.push(patch.clone());
-    println!("{}", to_json(&patch.clone()).unwrap());
 
-    // Make the create opertion
+    // Make the create operation from pathces
     let operation = ION::create_existing(&update_pk, &recovery_pk, patches).unwrap();
     // println!("Create operation:");
-    // println!("{:?}", operation);
 
     // Verify the enum
-    let partially_verified_create_operation = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Verification: {:?}", partially_verified_create_operation);
+    let partially_verified_create_operation = operation.clone().partial_verify::<ION>();
+    println!(
+        "Verification is ok: {}",
+        partially_verified_create_operation.is_ok()
+    );
 
     // Get the data of the operation enum
     let create_operation = match operation.clone() {
@@ -101,22 +105,23 @@ fn main() {
     };
 
     // Print JSON operation
+    println!("Create operation:");
     println!("{}", to_json(&create_operation).unwrap());
 
     // let did_suffix = ION::serialize_suffix_data(&operation);
     let did_short = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
         .unwrap()
         .to_string();
-    let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
-        .unwrap()
-        .to_string();
-    println!("Short: {:?}", did_short);
-    println!("Long: {:?}", did_long);
+    // let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
+    // .unwrap()
+    // .to_string();
+    println!("DID suffix: {:?}", did_short);
+    // println!("Long: {:?}", did_long);
 
-    // Sign the DID + JSON patch with the verification key
+    // Sign the DID + canonicalized document with the verification key
     let algorithm = ION::SIGNATURE_ALGORITHM;
-    let proof = (make_did_ion(&did_short), patch);
-    let proof_json = to_json(&proof).unwrap();
+    let proof = (did_short.clone(), document_data_to_be_signed);
+    let proof_json = ION::json_canonicalization_scheme(&proof).unwrap();
     let proof_json_bytes = ION::hash(proof_json.as_bytes());
     let signed_data =
         ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &verification_key).unwrap();
@@ -144,7 +149,6 @@ fn main() {
         to_json(&recovery_key).unwrap(),
     )
     .unwrap();
-    // TODO: write the signed data and DID short as single file instead
     std::fs::write(
         format!("signed_data_{}.json", did_short),
         to_json(&signed_data).unwrap(),
@@ -183,7 +187,7 @@ fn main() {
             .to_string()
             .replace("\"", "");
 
-    println!("Checking loaded data...");
+    println!("Printing loaded data...");
     println!("{:?}", signed_data);
     println!("{:?}", did_short);
 
