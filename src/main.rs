@@ -48,7 +48,9 @@ fn main() {
     //   key,
     // }
 
+    // --------------------------
     // Make some keys
+    // --------------------------
     let update_key = ION::generate_key();
     let recovery_key = ION::generate_key();
     let verification_key = ION::generate_key().unwrap();
@@ -62,6 +64,9 @@ fn main() {
     ION::validate_key(&recovery_key);
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
+    // --------------------------
+    // Create operation
+    // --------------------------
     // Make the create patch
     let mut patches = vec![];
     let public_key_entry = PublicKeyEntry::try_from(verification_key.clone());
@@ -119,6 +124,10 @@ fn main() {
     std::fs::write("signed_data.json", to_json(&signed_data).unwrap()).unwrap();
     std::fs::write("did_short.json", to_json(&did_short).unwrap()).unwrap();
 
+    // --------------------------
+    // Update operation
+    // --------------------------
+
     // Create an update request with the signed proof added as a service
     let new_update_key = ION::generate_key().unwrap();
     ION::validate_key(&new_update_key).unwrap();
@@ -151,6 +160,9 @@ fn main() {
     std::fs::write("update_operation.json", to_json(&operation).unwrap()).unwrap();
     std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
 
+    // --------------------------
+    // Load keys and data instead for update
+    // --------------------------
     // Load update key
     let update_key = load_key("update_key.json");
 
@@ -164,6 +176,7 @@ fn main() {
         .to_string()
         .replace("\"", "");
     println!("{:?}", signed_data);
+    println!("{:?}", did_short);
 
     // Make update again but only using loaded data
     let mut patches = vec![];
