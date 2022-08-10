@@ -1,12 +1,19 @@
 use did_ion::sidetree::DIDStatePatch;
-use did_ion::sidetree::{CreateOperation, Operation, Sidetree, SidetreeDID, SidetreeOperation};
+use did_ion::sidetree::{
+    DIDSuffix, Operation, ServiceEndpointEntry, Sidetree, SidetreeDID, SidetreeOperation,
+};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
-use did_ion::{DIDION, ION};
+use did_ion::ION;
+use ssi::did::ServiceEndpoint;
 use std::convert::TryFrom;
 // use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 // use failure::Fail;
-use serde_json::to_string_pretty as to_json;
+use serde_json::{to_string_pretty as to_json, Map, Value};
 // use failure::result_ext::ResultExt;
+
+fn make_did_ion(suffix: &String) -> String {
+    "did:ion:test:".to_string() + suffix
+}
 
 fn main() {
     // Public key entries can look like this
@@ -47,8 +54,8 @@ fn main() {
     println!("{:?}", operation.clone());
 
     // Verify the enum
-    let pcop = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Vefification: {:?}", pcop);
+    let partially_verified_create_operation = operation.clone().partial_verify::<ION>().unwrap();
+    println!("Vefification: {:?}", partially_verified_create_operation);
 
     // Get the data of the operation enum
     let create_operation = match operation.clone() {
@@ -71,7 +78,7 @@ fn main() {
 
     // Sign the DID + JSON patch with the verification key
     let algorithm = ION::SIGNATURE_ALGORITHM;
-    let proof = (did_short, patch);
+    let proof = (make_did_ion(&did_short), patch);
     let proof_json = to_json(&proof).unwrap();
     let proof_json_bytes = ION::hash(proof_json.as_bytes());
     let signed_data =
@@ -80,11 +87,39 @@ fn main() {
     println!("Signed short DID and patch: {}", signed_data);
 
     // Writing to file
-    std::fs::write("create_operation.json", to_json(&create_operation).unwrap());
-    std::fs::write("update_key.json", to_json(&update_key).unwrap());
-    std::fs::write("signing_key.json", to_json(&verification_key).unwrap());
-    std::fs::write("recovery_key.json", to_json(&recovery_key).unwrap());
+    std::fs::write("create_operation.json", to_json(&create_operation).unwrap()).unwrap();
+    std::fs::write("update_key.json", to_json(&update_key).unwrap()).unwrap();
+    std::fs::write("signing_key.json", to_json(&verification_key).unwrap()).unwrap();
+    std::fs::write("recovery_key.json", to_json(&recovery_key).unwrap()).unwrap();
 
     // Create an update request with the signed proof added as a service
-    // TODO
+    let new_update_key = ION::generate_key().unwrap();
+    ION::validate_key(&new_update_key).unwrap();
+    let new_update_pk = PublicKeyJwk::try_from(new_update_key.to_public()).unwrap();
+
+    let mut obj: Map<String, Value> = Map::new();
+    obj.insert("proof".to_string(), Value::from(signed_data.clone()));
+
+    // Update patches
+    let mut patches = vec![];
+    let patch = DIDStatePatch::AddServices {
+        services: vec![ServiceEndpointEntry {
+            id: make_did_ion(&did_short),
+            r#type: "proof".to_string(),
+            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj)),
+        }],
+    };
+    patches.push(patch.clone());
+    println!("{}", to_json(&patch.clone()).unwrap());
+    let update_operation =
+        ION::update(DIDSuffix(did_short), &update_key, &new_update_pk, patches).unwrap();
+
+    // Verify the enum
+    let partially_verified_update_operation = operation.clone().partial_verify::<ION>().unwrap();
+    println!("Vefification: {:?}", partially_verified_update_operation);
+
+    // Print JSON operation
+    println!("{}", to_json(&update_operation).unwrap());
+    std::fs::write("update_operation.json", to_json(&update_operation).unwrap()).unwrap();
+    std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
 }
