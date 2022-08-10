@@ -18,6 +18,23 @@ fn make_did_ion(suffix: &String) -> String {
     "did:ion:test:".to_string() + suffix
 }
 
+fn generate_proof_data(did_suffix: &String, document: &String) -> String {
+    // Convert document into proof data
+    todo!()
+}
+
+fn get_proof_data(did_suffix: &String) -> String {
+    // Resolve DID
+
+    // Reconstruct into document
+    todo!()
+}
+
+fn verify_proof_data(key: PublicKeyJwk, data: &String) -> bool {
+    // Verify the signature data
+    todo!()
+}
+
 fn load_key(file_name: &str, verbose: bool) -> JWK {
     // Load previous data
     let ec_read = std::fs::read(file_name).unwrap();
