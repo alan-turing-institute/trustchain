@@ -87,7 +87,8 @@ fn main() {
     println!("Signed short DID and patch: {}", signed_data);
 
     // Writing to file
-    std::fs::write("create_operation.json", to_json(&create_operation).unwrap()).unwrap();
+    std::fs::write("create_operation.json", to_json(&operation).unwrap()).unwrap();
+    // std::fs::write("create_operation_2.json", to_json(&create_operation).unwrap()).unwrap();
     std::fs::write("update_key.json", to_json(&update_key).unwrap()).unwrap();
     std::fs::write("signing_key.json", to_json(&verification_key).unwrap()).unwrap();
     std::fs::write("recovery_key.json", to_json(&recovery_key).unwrap()).unwrap();
@@ -120,6 +121,8 @@ fn main() {
 
     // Print JSON operation
     println!("{}", to_json(&update_operation).unwrap());
-    std::fs::write("update_operation.json", to_json(&update_operation).unwrap()).unwrap();
+    let operation = Operation::Update(update_operation.clone());
+    std::fs::write("update_operation.json", to_json(&operation).unwrap()).unwrap();
+    // std::fs::write("update_operation_2.json", to_json(&update_operation).unwrap()).unwrap();
     std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
 }
