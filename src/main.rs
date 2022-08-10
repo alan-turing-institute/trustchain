@@ -7,6 +7,7 @@ use did_ion::ION;
 use ssi::did::ServiceEndpoint;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
+use std::fmt::format;
 use std::fs::{read, write};
 // use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 // use failure::Fail;
@@ -46,6 +47,7 @@ fn load_key(file_name: &str) -> JWK {
 
 fn main() {
     // Public key entries can look like this
+    // TODO: can we add custom controller using this struct?
     // let public_key: PublicKeyEntry = PublicKeyEntry {
     //   "ID",
     //   "Type",
@@ -85,11 +87,12 @@ fn main() {
 
     // Make the create opertion
     let operation = ION::create_existing(&update_pk, &recovery_pk, patches).unwrap();
-    println!("{:?}", operation.clone());
+    // println!("Create operation:");
+    // println!("{:?}", operation);
 
     // Verify the enum
     let partially_verified_create_operation = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Vefification: {:?}", partially_verified_create_operation);
+    println!("Verification: {:?}", partially_verified_create_operation);
 
     // Get the data of the operation enum
     let create_operation = match operation.clone() {
@@ -118,71 +121,76 @@ fn main() {
     let signed_data =
         ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &verification_key).unwrap();
     println!("Proof json (data to be signed): {}", proof_json);
-    println!("Signed short DID and patch: {}", signed_data);
+    println!("Signed hash of DID and patch: {}", signed_data);
 
     // Writing to file
-    std::fs::write("create_operation.json", to_json(&operation).unwrap()).unwrap();
-    // std::fs::write("create_operation_2.json", to_json(&create_operation).unwrap()).unwrap();
-    std::fs::write("update_key.json", to_json(&update_key).unwrap()).unwrap();
-    std::fs::write("signing_key.json", to_json(&verification_key).unwrap()).unwrap();
-    std::fs::write("recovery_key.json", to_json(&recovery_key).unwrap()).unwrap();
-    std::fs::write("signed_data.json", to_json(&signed_data).unwrap()).unwrap();
-    std::fs::write("did_short.json", to_json(&did_short).unwrap()).unwrap();
+    std::fs::write(
+        format!("create_operation_{}.json", did_short),
+        to_json(&operation).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("update_key_{}.json", did_short),
+        to_json(&update_key).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("signing_key_{}.json", did_short),
+        to_json(&verification_key).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("recovery_key_{}.json", did_short),
+        to_json(&recovery_key).unwrap(),
+    )
+    .unwrap();
+    // TODO: write the signed data and DID short as single file instead
+    std::fs::write(
+        format!("signed_data_{}.json", did_short),
+        to_json(&signed_data).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("did_short_{}.json", did_short),
+        to_json(&did_short).unwrap(),
+    )
+    .unwrap();
 
-    // --------------------------
-    // Update operation
-    // --------------------------
+    // ---------------------------------------
+    // Update operation: loading keys and data
+    // ---------------------------------------
 
     // Create an update request with the signed proof added as a service
+
+    // Generate new update key for next update commitment
     let new_update_key = ION::generate_key().unwrap();
     ION::validate_key(&new_update_key).unwrap();
     let new_update_pk = PublicKeyJwk::try_from(new_update_key.to_public()).unwrap();
 
-    let mut obj: Map<String, Value> = Map::new();
-    obj.insert("proof".to_string(), Value::from(signed_data.clone()));
-
-    // Update patches
-    let mut patches = vec![];
-    let patch = DIDStatePatch::AddServices {
-        services: vec![ServiceEndpointEntry {
-            id: "controller-proof".to_string(),
-            r#type: "signature".to_string(),
-            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
-        }],
-    };
-    patches.push(patch.clone());
-    println!("{}", to_json(&patch.clone()).unwrap());
-    let update_key_backup = update_key.clone();
-    let update_operation =
-        ION::update(DIDSuffix(did_short), &update_key, &new_update_pk, patches).unwrap();
-
-    // Verify the enum
-    let partially_verified_update_operation = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Vefification: {:?}", partially_verified_update_operation);
-
-    // Print JSON operation
-    println!("{}", to_json(&update_operation).unwrap());
-    let operation = Operation::Update(update_operation.clone());
-    std::fs::write("update_operation.json", to_json(&operation).unwrap()).unwrap();
-    std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
-
-    // --------------------------
-    // Load keys and data instead for update
-    // --------------------------
     // Load update key
-    let update_key = load_key("update_key.json");
+    let update_key = load_key(&format!("update_key_{}.json", did_short)[..]);
 
-    // Load previous signed data
-    let signed_data = std::str::from_utf8(&std::fs::read("signed_data.json").unwrap())
-        .unwrap()
-        .to_string()
-        .replace("\"", "");
-    let did_short = std::str::from_utf8(&std::fs::read("did_short.json").unwrap())
-        .unwrap()
-        .to_string()
-        .replace("\"", "");
+    // Load previous signed data and DID
+    // TODO: fix parsing to come from single file output during create
+    let signed_data =
+        std::str::from_utf8(&std::fs::read(format!("signed_data_{}.json", did_short)).unwrap())
+            .unwrap()
+            .to_string()
+            .replace("\"", "");
+    let did_short =
+        std::str::from_utf8(&std::fs::read(format!("did_short_{}.json", did_short)).unwrap())
+            .unwrap()
+            .to_string()
+            .replace("\"", "");
+
+    println!("Checking loaded data...");
     println!("{:?}", signed_data);
     println!("{:?}", did_short);
+
+    // Make object for services endpoint
+    let mut obj: Map<String, Value> = Map::new();
+    obj.insert("signer_did".to_string(), Value::from(did_short.clone()));
+    obj.insert("proof".to_string(), Value::from(signed_data.clone()));
 
     // Make update again but only using loaded data
     let mut patches = vec![];
@@ -194,24 +202,37 @@ fn main() {
         }],
     };
     patches.push(patch.clone());
-    println!("{}", to_json(&patch.clone()).unwrap());
+    // println!("{}", to_json(&patch.clone()).unwrap());
 
-    // Check keys
-    println!("UPDATE:");
-    println!("{}", to_json(&update_key_backup).unwrap());
-    println!("{}", to_json(&update_key).unwrap());
+    // Make update operation
+    let update_operation = ION::update(
+        DIDSuffix(did_short.clone()),
+        &update_key,
+        &new_update_pk,
+        patches,
+    )
+    .unwrap();
 
-    let update_operation =
-        ION::update(DIDSuffix(did_short), &update_key, &new_update_pk, patches).unwrap();
-
-    // Verify the enum
+    // Verify the operation enum
     let partially_verified_update_operation = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Vefification: {:?}", partially_verified_update_operation);
+    println!("Verification: {:?}", partially_verified_update_operation);
 
     // Print JSON operation
+    println!("Update operation:");
     println!("{}", to_json(&update_operation).unwrap());
+
+    // Convert to operation with all data needed for server
     let operation = Operation::Update(update_operation.clone());
-    std::fs::write("update_operation_loaded.json", to_json(&operation).unwrap()).unwrap();
-    // std::fs::write("update_operation_2.json", to_json(&update_operation).unwrap()).unwrap();
-    std::fs::write("new_update_key.json", to_json(&new_update_key).unwrap()).unwrap();
+
+    // Write update operation json and new update key
+    std::fs::write(
+        format!("update_operation_{}.json", did_short),
+        to_json(&operation).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        format!("new_update_key_{}.json", did_short),
+        to_json(&new_update_key).unwrap(),
+    )
+    .unwrap();
 }
