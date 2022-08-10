@@ -24,10 +24,15 @@ fn load_key(file_name: &str) -> JWK {
     let ec_json: Map<String, Value> = serde_json::from_str(ec_read).unwrap();
     let ec_params = ECParams {
         curve: Some(ec_json["crv"].to_string().replace("\"", "")),
-        // kty: Some(ec_json["kty"].to_string()),
-        x_coordinate: Some(Base64urlUInt(ec_json["x"].to_string().as_bytes().to_vec())),
-        y_coordinate: Some(Base64urlUInt(ec_json["y"].to_string().as_bytes().to_vec())),
-        ecc_private_key: Some(Base64urlUInt(ec_json["d"].to_string().as_bytes().to_vec())),
+        x_coordinate: Some(
+            Base64urlUInt::try_from(ec_json["x"].to_string().replace("\"", "")).unwrap(),
+        ),
+        y_coordinate: Some(
+            Base64urlUInt::try_from(ec_json["y"].to_string().replace("\"", "")).unwrap(),
+        ),
+        ecc_private_key: Some(
+            Base64urlUInt::try_from(ec_json["d"].to_string().replace("\"", "")).unwrap(),
+        ),
     };
 
     // };
@@ -147,6 +152,7 @@ fn main() {
     };
     patches.push(patch.clone());
     println!("{}", to_json(&patch.clone()).unwrap());
+    let update_key_backup = update_key.clone();
     let update_operation =
         ION::update(DIDSuffix(did_short), &update_key, &new_update_pk, patches).unwrap();
 
@@ -190,6 +196,9 @@ fn main() {
     patches.push(patch.clone());
     println!("{}", to_json(&patch.clone()).unwrap());
 
+    // Check keys
+    println!("UPDATE:");
+    println!("{}", to_json(&update_key_backup).unwrap());
     println!("{}", to_json(&update_key).unwrap());
 
     let update_operation =
