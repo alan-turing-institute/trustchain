@@ -18,7 +18,7 @@ fn make_did_ion(suffix: &String) -> String {
     "did:ion:test:".to_string() + suffix
 }
 
-fn load_key(file_name: &str) -> JWK {
+fn load_key(file_name: &str, verbose: bool) -> JWK {
     // Load previous data
     let ec_read = std::fs::read(file_name).unwrap();
     let ec_read = std::str::from_utf8(&ec_read).unwrap();
@@ -36,12 +36,11 @@ fn load_key(file_name: &str) -> JWK {
         ),
     };
 
-    // };
     let ec_params = Params::EC(ec_params);
-
-    // println!("{:?}", ec_params);
     let update_key = JWK::from(ec_params);
-    ION::validate_key(&update_key);
+    if verbose {
+        println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
+    }
     update_key
 }
 
@@ -94,7 +93,7 @@ fn main() {
     // Verify the enum
     let partially_verified_create_operation = operation.clone().partial_verify::<ION>();
     println!(
-        "Verification is ok: {}",
+        "Partially verified create: {}",
         partially_verified_create_operation.is_ok()
     );
 
@@ -172,7 +171,7 @@ fn main() {
     let new_update_pk = PublicKeyJwk::try_from(new_update_key.to_public()).unwrap();
 
     // Load update key
-    let update_key = load_key(&format!("update_key_{}.json", did_short)[..]);
+    let update_key = load_key(&format!("update_key_{}.json", did_short)[..], true);
 
     // Load previous signed data and DID
     // TODO: fix parsing to come from single file output during create
@@ -218,8 +217,11 @@ fn main() {
     .unwrap();
 
     // Verify the operation enum
-    let partially_verified_update_operation = operation.clone().partial_verify::<ION>().unwrap();
-    println!("Verification: {:?}", partially_verified_update_operation);
+    let partially_verified_update_operation = operation.clone().partial_verify::<ION>();
+    println!(
+        "Partially verified update: {:?}",
+        partially_verified_update_operation.is_ok()
+    );
 
     // Print JSON operation
     println!("Update operation:");
