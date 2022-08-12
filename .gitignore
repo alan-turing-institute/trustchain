@@ -19,3 +19,6 @@ Cargo.lock
 
 # Ignore ion-did JS path here for now
 **/ion-did/
+
+# Test outputs from running scripts
+outputs/
