@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "create_and_update"
-path = "src/main.rs"
+path = "src/create_and_update.rs"
 
 [[bin]]
 name = "resolve"
