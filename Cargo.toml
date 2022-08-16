@@ -36,6 +36,8 @@ wee_alloc = { version = "0.4.5", optional = true }
 
 # https://crates.io/crates/did-ion
 did-ion="0.1.0"
+tokio = {version = "1.20.1", features = ["full"]}
+futures = "0.3.21"
 
 # ssi = { version = "0.4", path = "../", default-features = false, features = ["http-did", "secp256k1"] }
 ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
