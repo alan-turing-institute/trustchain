@@ -46,7 +46,7 @@ impl Resolver {
             .resolve(&did_short[..], &ResolutionInputMetadata::default())
             .await;
 
-        return (res_meta, doc, doc_meta);
+        (res_meta, doc, doc_meta)
     }
     pub fn resolve(
         &self,
@@ -67,7 +67,7 @@ impl Resolver {
                 println!("Trying again...");
             };
 
-            return (res_meta, doc, doc_meta);
+            (res_meta, doc, doc_meta)
         })
     }
 }
