@@ -13,3 +13,12 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+# npm install path
+**/node_modules/
+
+# Ignore ion-did JS path here for now
+**/ion-did/
+
+# Test outputs from running scripts
+outputs/
