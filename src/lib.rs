@@ -1,3 +1,4 @@
+pub mod resolver;
 mod utils;
 
 use wasm_bindgen::prelude::*;
