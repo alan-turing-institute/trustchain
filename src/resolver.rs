@@ -71,7 +71,7 @@ impl Resolver {
         })
     }
 
-    fn add_controller(self, did_doc: &str, controller_did: &str) -> String {
+    fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
 
         // let did_doc_json : Map<String, Value> = from_str(did_doc).unwrap();
     
@@ -92,7 +92,7 @@ impl Resolver {
         // let doc_clone = did_doc.clone();
         // doc_clone.add("controller : {controller_did}");s
         // doc_clone
-        String::from("abc")
+        Document::new("")
     }
 }
     
@@ -103,30 +103,31 @@ mod tests {
     #[test]
     fn test_add_controller() {
 
-        let did_doc = String::from("{
-            \"@context\" : [
-                \"https://www.w3.org/ns/did/v1\",
-                {
-                    \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-                }
-            ],
-            \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-            }");
-            let controller_did = String::from("did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP");
-            
-            let resolver = Resolver::new();
-            let result = resolver.add_controller(&did_doc, &controller_did);
+        // let did_doc = String::from("{
+        //     \"@context\" : [
+        //         \"https://www.w3.org/ns/did/v1\",
+        //         {
+        //             \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
+        //         }
+        //     ],
+        //     \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
+        //     }");
 
-            let expected = String::from("{
-            \"@context\" : [
-                \"https://www.w3.org/ns/did/v1\",
-                {
-                    \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-                }
-            ],
-            \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\",
-            \"controller\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP\",
-            }");
-            assert_eq!(result, expected);
+        let controller_did = String::from("did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP");
+        
+        let resolver = Resolver::new();
+        let result = resolver.add_controller(&did_doc, &controller_did);
+
+        let expected = String::from("{
+        \"@context\" : [
+            \"https://www.w3.org/ns/did/v1\",
+            {
+                \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
+            }
+        ],
+        \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\",
+        \"controller\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP\",
+        }");
+        assert_eq!(result, expected);
     }
 }
