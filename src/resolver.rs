@@ -72,13 +72,12 @@ impl Resolver {
     }
 
     fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
-
         // let did_doc_json : Map<String, Value> = from_str(did_doc).unwrap();
-    
+
         // // If the controller field already exists, check the DID is correct.
         // // IMP: make sure we're checking the controller field in the root
         // // level of the DID document (i.e. at the same level as the id field).
-    
+
         // if did_doc_json.contains_key("controller") {
         //     if did_doc.get("controller") == controller_did {
         //         // Nothing to do.
@@ -88,46 +87,32 @@ impl Resolver {
         //         panic // Controller DID conflict
         //     }
         // }
-    
+
         // let doc_clone = did_doc.clone();
         // doc_clone.add("controller : {controller_did}");s
         // doc_clone
         Document::new("")
     }
 }
-    
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::data::{TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_WITH_CONTROLLER};
 
     #[test]
     fn test_add_controller() {
+        let controller_did =
+            String::from("did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP");
 
-        // let did_doc = String::from("{
-        //     \"@context\" : [
-        //         \"https://www.w3.org/ns/did/v1\",
-        //         {
-        //             \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-        //         }
-        //     ],
-        //     \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-        //     }");
+        let did_doc =
+            Document::from_json(TEST_ION_DOCUMENT).expect("Document to load from JSON &str");
 
-        let controller_did = String::from("did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP");
-        
         let resolver = Resolver::new();
         let result = resolver.add_controller(&did_doc, &controller_did);
 
-        let expected = String::from("{
-        \"@context\" : [
-            \"https://www.w3.org/ns/did/v1\",
-            {
-                \"@base\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\"
-            }
-        ],
-        \"id\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ\",
-        \"controller\" : \"did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP\",
-        }");
+        let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
+            .expect("Document to load from JSON &str");
         assert_eq!(result, expected);
     }
 }
