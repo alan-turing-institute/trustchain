@@ -78,9 +78,8 @@ fn main() {
             println!("Trying again...");
         };
 
+        // Print results
         println!("Document (canonicalized):");
-        // println!("{:?}", doc.unwrap());
-        // let doc_json = to_json(&doc.unwrap()).expect("Doc JSON");
         let doc_json =
             ION::json_canonicalization_scheme(&doc.unwrap()).expect("Canonicalized Doc JSON");
         println!("{}", doc_json);
