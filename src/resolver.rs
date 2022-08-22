@@ -1,7 +1,7 @@
 use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
-use serde_json::{to_string_pretty as to_json, Map, Value};
+// use serde_json::{to_string_pretty as to_json, Map, Value};
 use ssi::did::Document;
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
