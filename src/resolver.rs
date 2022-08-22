@@ -74,11 +74,23 @@ impl Resolver {
 
     fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
         
+        /// Adding the controller to the document. Controller is the upstream DID of the downstream DID's document.
+
+        // Making a clone of the did document (Note: this is expensive)
         let mut doc_clone = did_doc.clone();
+
+        // if doc_clone.controller.is_some() {
+        //     // if &doc_clone.controller.unwrap().unwrap()[..] == controller_did
+        //     if doc_clone.controller.unwrap().unwrap().as_str() == controller_did{
+        //         return doc_clone;
+        //     } 
+        // }
+        
+        // Adding the passed controller did to the document
         doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
         
-        
 
+        // Return new document with controller
         doc_clone
     }
 
