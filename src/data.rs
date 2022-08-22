@@ -24,12 +24,12 @@ pub const TEST_ION_DOCUMENT: &'static str = r##"
    ],
    "service" : [
       {
-         "id" : "#controller-proof",
+         "id" : "#trustchain-controller-proof",
+         "type" : "TrustchainProofService",
          "serviceEndpoint" : {
-            "proof" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA",
-            "signer_did" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
-         },
-         "type" : "signature"
+            "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
+            "controller" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
+         }
       }
    ],
    "verificationMethod" : [
@@ -45,7 +45,34 @@ pub const TEST_ION_DOCUMENT: &'static str = r##"
          "type" : "JsonWebSignature2020"
       }
    ]
- }
+}
+"##;
+
+pub const TEST_ION_DOCUMENT_METADATA: &'static str = r##"
+{
+   "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+   "method" : {
+      "published" : true,
+      "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
+      "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+   }
+}
+"##;
+
+pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &'static str = r##"
+{
+   "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+   "method" : {
+      "published" : true,
+      "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
+      "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+   },
+   "proof" : {
+      "id" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+      "type" : "JsonWebSignature2020",
+      "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
+  }
+}
 "##;
 
 pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
@@ -75,12 +102,12 @@ pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
    ],
    "service" : [
       {
-         "id" : "#controller-proof",
+         "id" : "#trustchain-controller-proof",
+         "type" : "TrustchainProofService",
          "serviceEndpoint" : {
-            "proof" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA",
-            "signer_did" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
-         },
-         "type" : "signature"
+            "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
+            "controller" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
+         }
       }
    ],
    "verificationMethod" : [

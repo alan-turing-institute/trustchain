@@ -73,9 +73,7 @@ impl Resolver {
     }
 
     fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
-        
         /// Adding the controller to the document. Controller is the upstream DID of the downstream DID's document.
-
         // Making a clone of the did document (Note: this is expensive)
         let mut doc_clone = did_doc.clone();
 
@@ -83,17 +81,15 @@ impl Resolver {
         //     // if &doc_clone.controller.unwrap().unwrap()[..] == controller_did
         //     if doc_clone.controller.unwrap().unwrap().as_str() == controller_did{
         //         return doc_clone;
-        //     } 
+        //     }
         // }
-        
+
         // Adding the passed controller did to the document
         doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
-        
 
         // Return new document with controller
         doc_clone
     }
-
 }
 
 #[cfg(test)]
@@ -103,11 +99,9 @@ mod tests {
 
     #[test]
     fn test_add_controller() {
-        let controller_did =
-            "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+        let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
-        let did_doc =
-            Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+        let did_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
 
         let resolver = Resolver::new();
         let result = resolver.add_controller(&did_doc, &controller_did);
