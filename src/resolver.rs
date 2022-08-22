@@ -95,6 +95,7 @@ impl Resolver {
         // Return new document with controller
         Ok(doc_clone)
     }
+
 }
 
 #[cfg(test)]
@@ -103,7 +104,7 @@ mod tests {
     use crate::data::{TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_WITH_CONTROLLER};
 
     #[test]
-    fn test_add_controller() {
+    fn add_controller() {
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         let did_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
@@ -119,7 +120,7 @@ mod tests {
     }
     #[test]
     #[should_panic]
-    fn test_add_controller_fail() {
+    fn add_controller_fail() {
         // TODO Check correct error is returned, but for now just assert panic
 
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
@@ -135,5 +136,17 @@ mod tests {
         let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
             .expect("Document failed to load.");
         assert_ne!(result, expected);
+    }
+
+    #[test]
+    fn remove_proof_service() {
+        // Write a test for removing the proof service from an ION-resolved did doc
+        todo!()
+    }
+
+    #[test]
+    fn get_proof_service() {
+        // Write a test to get proof service from an ION-resolved did doc
+        todo!()
     }
 }
