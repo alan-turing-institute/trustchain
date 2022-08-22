@@ -6,6 +6,8 @@ use ssi::did::{Document, Service};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
+use ssi::error::Error;
+use ssi::one_or_many::OneOrMany;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -120,5 +122,81 @@ impl Resolver {
         // let doc = self.add_controller(doc, controller);
 
         doc
+    }
+
+    fn add_controller(
+        self,
+        ion_did_doc: &Document,
+        controller_did: &str,
+    ) -> Result<Document, Error> {
+        /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
+        // TODO check the did_doc fits the ion resolved format
+
+        // Making a clone of the did document (Note: this is expensive)
+        let mut doc_clone = ion_did_doc.clone();
+
+        // Check controller is empty and if not throw error.
+        if doc_clone.controller.is_some() {
+            return Err(Error::ControllerLimit);
+        }
+
+        // Adding the passed controller did to the document
+        doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
+
+        // Return new document with controller
+        Ok(doc_clone)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::{TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_WITH_CONTROLLER};
+
+    #[test]
+    fn add_controller() {
+        let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+
+        let did_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+
+        let resolver = Resolver::new();
+        let result = resolver
+            .add_controller(&did_doc, &controller_did)
+            .expect("Different Controller already present.");
+
+        let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
+            .expect("Document failed to load.");
+        assert_eq!(result, expected);
+    }
+    #[test]
+    #[should_panic]
+    fn add_controller_fail() {
+        // TODO Check correct error is returned, but for now just assert panic
+
+        let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+
+        let did_doc = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
+            .expect("Document failed to load.");
+
+        let resolver = Resolver::new();
+        let result = resolver
+            .add_controller(&did_doc, &controller_did)
+            .expect("Different Controller already present.");
+
+        let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
+            .expect("Document failed to load.");
+        assert_ne!(result, expected);
+    }
+
+    #[test]
+    fn remove_proof_service() {
+        // Write a test for removing the proof service from an ION-resolved did doc
+        todo!()
+    }
+
+    #[test]
+    fn get_proof_service() {
+        // Write a test to get proof service from an ION-resolved did doc
+        todo!()
     }
 }
