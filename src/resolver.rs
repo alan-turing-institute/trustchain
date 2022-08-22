@@ -6,6 +6,7 @@ use ssi::did::Document;
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
+use ssi::one_or_many::OneOrMany;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -72,27 +73,15 @@ impl Resolver {
     }
 
     fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
-        // let did_doc_json : Map<String, Value> = from_str(did_doc).unwrap();
+        
+        let mut doc_clone = did_doc.clone();
+        doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
+        
+        
 
-        // // If the controller field already exists, check the DID is correct.
-        // // IMP: make sure we're checking the controller field in the root
-        // // level of the DID document (i.e. at the same level as the id field).
-
-        // if did_doc_json.contains_key("controller") {
-        //     if did_doc.get("controller") == controller_did {
-        //         // Nothing to do.
-        //         return did_doc
-        //     }
-        //     else {
-        //         panic // Controller DID conflict
-        //     }
-        // }
-
-        // let doc_clone = did_doc.clone();
-        // doc_clone.add("controller : {controller_did}");s
-        // doc_clone
-        Document::new("")
+        doc_clone
     }
+
 }
 
 #[cfg(test)]
@@ -103,16 +92,16 @@ mod tests {
     #[test]
     fn test_add_controller() {
         let controller_did =
-            String::from("did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP");
+            "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         let did_doc =
-            Document::from_json(TEST_ION_DOCUMENT).expect("Document to load from JSON &str");
+            Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
 
         let resolver = Resolver::new();
         let result = resolver.add_controller(&did_doc, &controller_did);
 
         let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
-            .expect("Document to load from JSON &str");
+            .expect("Document failed to load.");
         assert_eq!(result, expected);
     }
 }
