@@ -218,4 +218,17 @@ mod tests {
         // Write a test to get proof service from an ION-resolved did doc
         todo!()
     }
+
+    #[test]
+    fn convert_ion_to_trustchain_doc() {
+        // Write a test to convert an ION-resolved did document to the trustchain resolved format
+        todo!()
+    }
+
+    #[test]
+    fn convert_ion_to_trustchain_doc_metadata() {
+        // Write a test to convert ION-resolved did document metadata to trustchain format
+        // See https://github.com/alan-turing-institute/trustchain/issues/11
+        todo!()
+    }
 }
