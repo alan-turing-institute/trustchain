@@ -7,6 +7,7 @@ use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::one_or_many::OneOrMany;
+use ssi::error::Error;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -72,26 +73,28 @@ impl Resolver {
         })
     }
 
-    fn add_controller(self, did_doc: &Document, controller_did: &str) -> Document {
+    fn add_controller(self, did_doc: &Document, controller_did: &str) -> Result<Document,Error> {
         
         /// Adding the controller to the document. Controller is the upstream DID of the downstream DID's document.
 
         // Making a clone of the did document (Note: this is expensive)
         let mut doc_clone = did_doc.clone();
 
-        // if doc_clone.controller.is_some() {
-        //     // if &doc_clone.controller.unwrap().unwrap()[..] == controller_did
-        //     if doc_clone.controller.unwrap().unwrap().as_str() == controller_did{
-        //         return doc_clone;
-        //     } 
-        // }
+        if doc_clone.controller.is_some() {
+            // Check whether the controller in the DID document matches the controller
+            if doc_clone.controller.as_ref().unwrap().contains(&controller_did.to_string()) {
+                return Ok(doc_clone);
+            } else {
+                return Err(Error::ControllerLimit);
+            }
+        }
         
         // Adding the passed controller did to the document
         doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
         
 
         // Return new document with controller
-        doc_clone
+        Ok(doc_clone)
     }
 
 }
@@ -110,7 +113,7 @@ mod tests {
             Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
 
         let resolver = Resolver::new();
-        let result = resolver.add_controller(&did_doc, &controller_did);
+        let result = resolver.add_controller(&did_doc, &controller_did).expect("Different Controller already present.");
 
         let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
             .expect("Document failed to load.");
