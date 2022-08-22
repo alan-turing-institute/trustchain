@@ -70,4 +70,36 @@ impl Resolver {
             (res_meta, doc, doc_meta)
         })
     }
+
+    fn get_proof_idx(&self, doc: &Document) -> Option<usize> {
+        // Get index of proof
+        let fragment = "controller-proof";
+        for (idx, service) in doc.service.iter().flatten().enumerate() {
+            if let [service_fragment, _] =
+                service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
+            {
+                if service_fragment == &fragment {
+                    return Some(idx);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn convert_to_trustchain(&self, mut doc: Document) -> Document {
+        // Check if the Trustchain proof service exists in document
+        // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
+        // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
+
+        if doc.service.is_some() {
+            if let Some(idx) = self.get_proof_idx(&doc) {
+                let services = doc.service.as_mut().unwrap();
+                services.remove(idx);
+                if services.len() == 0 {
+                    doc.service = None;
+                }
+            }
+        }
+        doc
+    }
 }
