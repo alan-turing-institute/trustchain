@@ -189,12 +189,14 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn remove_proof_service() {
         // Write a test for removing the proof service from an ION-resolved did doc
         todo!()
     }
 
     #[test]
+    #[should_panic]
     fn get_proof_service() {
         // Write a test to get proof service from an ION-resolved did doc
         todo!()
