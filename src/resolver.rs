@@ -97,11 +97,11 @@ impl Resolver {
         }
     }
 
-    fn remove_proof_service(&self, mut doc: Document) -> Document {
+    fn remove_proof_service(&self, doc_with_proof: &Document) -> Document {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
-
+        let mut doc = doc_with_proof.clone();
         if doc.service.is_some() {
             if let Some(idx) = self.get_proof_idx(&doc) {
                 let services = doc.service.as_mut().unwrap();
@@ -114,18 +114,38 @@ impl Resolver {
         doc
     }
 
-    pub fn convert_to_trustchain(&self, doc: Document) -> Document {
+    pub fn ion_to_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
         // Check if the Trustchain proof service exists in document
         let doc = self.remove_proof_service(doc);
 
         // Add controller
-        // let doc = self.add_controller(doc, controller);
+        let doc = self
+            .add_controller(&doc, controller_did)
+            .expect("Controller already present in document.");
 
         doc
     }
 
+    fn add_proof(&self, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
+        // Check if the Trustchain proof service exists in document
+        // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
+        // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
+
+        todo!();
+        doc_meta
+    }
+    pub fn ion_to_trustchain_document_metadata(
+        &self,
+        doc_meta: DocumentMetadata,
+    ) -> DocumentMetadata {
+        // Check if the Trustchain proof service exists in document
+        let doc_meta = self.add_proof(doc_meta);
+
+        doc_meta
+    }
+
     fn add_controller(
-        self,
+        &self,
         ion_did_doc: &Document,
         controller_did: &str,
     ) -> Result<Document, Error> {

@@ -22,7 +22,7 @@ fn main() {
     println!("{}", doc_json);
     println!("---");
     println!("Document (Trustchain canonicalized):");
-    let trustchain_doc = resolver.convert_to_trustchain(doc.clone().unwrap());
+    let trustchain_doc = resolver.ion_to_trustchain_doc(&doc.clone().unwrap(), example_did);
     let trustchain_doc_json =
         ION::json_canonicalization_scheme(&trustchain_doc).expect("Canonicalized Doc JSON");
     println!("{}", trustchain_doc_json);
