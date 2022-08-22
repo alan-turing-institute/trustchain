@@ -144,12 +144,12 @@ impl Resolver {
         doc_meta
     }
 
+    /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
     fn add_controller(
         &self,
         ion_did_doc: &Document,
         controller_did: &str,
     ) -> Result<Document, Error> {
-        /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
         // TODO check the did_doc fits the ion resolved format
 
         // Making a clone of the did document (Note: this is expensive)
