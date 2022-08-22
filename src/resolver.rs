@@ -126,18 +126,15 @@ impl Resolver {
         doc
     }
 
-    fn add_proof(&self, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
+    fn add_proof(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
 
         todo!();
-        doc_meta
+        doc_meta.clone()
     }
-    pub fn ion_to_trustchain_document_metadata(
-        &self,
-        doc_meta: DocumentMetadata,
-    ) -> DocumentMetadata {
+    pub fn ion_to_trustchain_doc_metadata(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
         let doc_meta = self.add_proof(doc_meta);
 
