@@ -73,20 +73,18 @@ impl Resolver {
         })
     }
 
-    fn add_controller(self, did_doc: &Document, controller_did: &str) -> Result<Document,Error> {
+    fn add_controller(self, ion_did_doc: &Document, controller_did: &str) -> Result<Document,Error> {
         
-        /// Adding the controller to the document. Controller is the upstream DID of the downstream DID's document.
+        /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
+        
+        // TODO check the did_doc fits the ion resolved format
 
         // Making a clone of the did document (Note: this is expensive)
-        let mut doc_clone = did_doc.clone();
+        let mut doc_clone = ion_did_doc.clone();
 
+        // Check controller is empty and if not throw error. 
         if doc_clone.controller.is_some() {
-            // Check whether the controller in the DID document matches the controller
-            if doc_clone.controller.as_ref().unwrap().contains(&controller_did.to_string()) {
-                return Ok(doc_clone);
-            } else {
-                return Err(Error::ControllerLimit);
-            }
+            return Err(Error::ControllerLimit);
         }
         
         // Adding the passed controller did to the document
