@@ -8,6 +8,10 @@ edition = "2018"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
+name = "create"
+path = "src/create.rs"
+
+[[bin]]
 name = "create_and_update"
 path = "src/create_and_update.rs"
 
