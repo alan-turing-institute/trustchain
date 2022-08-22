@@ -86,7 +86,7 @@ impl Resolver {
         None
     }
 
-    pub fn convert_to_trustchain(&self, mut doc: Document) -> Document {
+    fn remove_proof_service(&self, mut doc: Document) -> Document {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
@@ -100,6 +100,16 @@ impl Resolver {
                 }
             }
         }
+        doc
+    }
+
+    pub fn convert_to_trustchain(&self, doc: Document) -> Document {
+        // Check if the Trustchain proof service exists in document
+        let doc = self.remove_proof_service(doc);
+
+        // Add controller
+        // let doc = self.add_controller(doc, controller);
+
         doc
     }
 }
