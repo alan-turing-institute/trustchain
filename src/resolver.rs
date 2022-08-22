@@ -2,7 +2,7 @@ use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
 // use serde_json::{to_string_pretty as to_json, Map, Value};
-use ssi::did::Document;
+use ssi::did::{Document, Service};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
@@ -84,6 +84,15 @@ impl Resolver {
             }
         }
         None
+    }
+
+    fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Option<&'a Service> {
+        //
+        let idx = self.get_proof_idx(doc);
+        match idx {
+            Some(x) => Some(&doc.service.as_ref().unwrap()[x]),
+            _ => None,
+        }
     }
 
     fn remove_proof_service(&self, mut doc: Document) -> Document {
