@@ -1,4 +1,4 @@
-pub const TEST_ION_DOCUMENT: &'static str = r#"
+pub const TEST_ION_DOCUMENT: &'static str = r##"
 {
     "@context" : "https://w3id.org/did-resolution/v1",
     "didDocument" : {
@@ -9,24 +9,24 @@ pub const TEST_ION_DOCUMENT: &'static str = r#"
           }
        ],
        "assertionMethod" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "authentication" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "capabilityDelegation" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "capabilityInvocation" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "id" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
        "keyAgreement" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "service" : [
           {
-             "id" : "\#controller-proof",
+             "id" : "#controller-proof",
              "serviceEndpoint" : {
                 "proof" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA",
                 "signer_did" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
@@ -37,7 +37,7 @@ pub const TEST_ION_DOCUMENT: &'static str = r#"
        "verificationMethod" : [
           {
              "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-             "id" : "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+             "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
              "publicKeyJwk" : {
                 "crv" : "secp256k1",
                 "kty" : "EC",
@@ -57,9 +57,9 @@ pub const TEST_ION_DOCUMENT: &'static str = r#"
        }
     }
  }
-"#;
+"##;
 
-pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r#"
+pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
 {
     "@context" : "https://w3id.org/did-resolution/v1",
     "didDocument" : {
@@ -70,25 +70,25 @@ pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r#"
           }
        ],
        "assertionMethod" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "authentication" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "capabilityDelegation" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "capabilityInvocation" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "id" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
        "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP",
        "keyAgreement" : [
-          "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
+          "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84"
        ],
        "service" : [
           {
-             "id" : "\#controller-proof",
+             "id" : "#controller-proof",
              "serviceEndpoint" : {
                 "proof" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA",
                 "signer_did" : "EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
@@ -99,7 +99,7 @@ pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r#"
        "verificationMethod" : [
           {
              "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-             "id" : "\#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+             "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
              "publicKeyJwk" : {
                 "crv" : "secp256k1",
                 "kty" : "EC",
@@ -119,4 +119,4 @@ pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r#"
        }
     }
  }
-"#;
+"##;
