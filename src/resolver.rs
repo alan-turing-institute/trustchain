@@ -141,9 +141,22 @@ impl Resolver {
     ) {
         // Get controller DID
         let service = self.get_proof_service(&ion_doc.as_ref().unwrap());
-        let service_endpoint = service.unwrap().service_endpoint.unwrap();
-        let controller_did: Option<String> = match service_endpoint {
-            OneOrMany::One(x) => match x {
+        let controller_did = self.extract_controller_from_service(&service.unwrap());
+
+        // Convert doc
+        self.ion_to_trustchain_doc(&ion_doc.as_ref().unwrap(), controller_did.unwrap().as_str());
+
+        // Convert metadata
+
+        // Convert resolution metadata
+        todo!();
+    }
+
+    fn extract_controller_from_service(&self, service: &Service) -> Option<String> {
+        let service_endpoints = service.service_endpoint.as_ref().unwrap();
+
+        let controller_did: Option<String> = match service_endpoints {
+            OneOrMany::One(service_endpoint) => match service_endpoint {
                 ServiceEndpoint::Map(value) => match value {
                     serde_json::Value::Object(v) => match &v["controller"] {
                         serde_json::Value::String(s) => Some(s.to_string()),
@@ -156,13 +169,7 @@ impl Resolver {
             _ => None,
         };
 
-        // Convert doc
-        self.ion_to_trustchain_doc(&ion_doc.as_ref().unwrap(), controller_did.unwrap().as_str());
-
-        // Convert metadata
-
-        // Convert resolution metadata
-        todo!();
+        controller_did
     }
 
     fn add_proof(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
@@ -270,6 +277,13 @@ mod tests {
     fn ion_to_trustchain_doc_metadata() {
         // Write a test to convert ION-resolved did document metadata to trustchain format
         // See https://github.com/alan-turing-institute/trustchain/issues/11
+        todo!()
+    }
+
+    #[test]
+    #[should_panic]
+    fn extract_controller_from_service() {
+        // Write a test to extract the controller did from the service field in an IOn-resolved DID document
         todo!()
     }
 }
