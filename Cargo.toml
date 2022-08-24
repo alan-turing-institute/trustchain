@@ -16,6 +16,10 @@ name = "create_and_update"
 path = "src/create_and_update.rs"
 
 [[bin]]
+name = "create_and_update_and_deactivate"
+path = "src/create_and_update_and_deactivate.rs"
+
+[[bin]]
 name = "did_resolve"
 path = "src/did_resolve.rs"
 
