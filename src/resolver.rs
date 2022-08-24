@@ -126,6 +126,29 @@ impl Resolver {
         doc
     }
 
+    /// Performing conversion of the ion resolved objects to trustchain objects
+    pub fn ion_to_trustchain(
+        &self,
+        ion_doc: Option<Document>,
+        ion_doc_meta: Option<DocumentMetadata>,
+        ion_res_meta: ResolutionMetadata,
+    ) -> (
+        Option<Document>,
+        Option<DocumentMetadata>,
+        ResolutionMetadata,
+    ) {
+        // Get controller DID
+        // let service = self.get_proof_service(ion_doc);
+
+        // Covert doc
+        // self.ion_to_trustchain_doc(doc, controller_did);
+
+        // Convert metadata
+
+        // Convert resolution metadata
+        todo!();
+    }
+
     fn add_proof(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
