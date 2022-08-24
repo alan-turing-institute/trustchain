@@ -77,7 +77,7 @@ impl Resolver {
 
     fn get_proof_idx(&self, doc: &Document) -> Option<usize> {
         // Get index of proof
-        let fragment = "controller-proof";
+        let fragment = "trustchain-controller-proof";
         for (idx, service) in doc.service.iter().flatten().enumerate() {
             if let [service_fragment, _] =
                 service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
@@ -281,9 +281,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn extract_controller_from_service() {
         // Write a test to extract the controller did from the service field in an IOn-resolved DID document
-        todo!()
+        let did_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+
+        let resolver = Resolver::new();
+        let service = resolver.get_proof_service(&did_doc).unwrap();
+
+        let controller = resolver.extract_controller_from_service(&service).unwrap();
+
+        assert_eq!(
+            controller,
+            "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ".to_string()
+        )
     }
 }
