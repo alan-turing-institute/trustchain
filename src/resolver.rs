@@ -2,12 +2,14 @@ use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
 // use serde_json::{to_string_pretty as to_json, Map, Value};
-use ssi::did::{Document, Service};
+use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::error::Error;
 use ssi::one_or_many::OneOrMany;
+use ssi::rdf::Object;
+use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -88,11 +90,11 @@ impl Resolver {
         None
     }
 
-    fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Option<&'a Service> {
+    fn get_proof_service(&self, doc: &Document) -> Option<Service> {
         //
         let idx = self.get_proof_idx(doc);
         match idx {
-            Some(x) => Some(&doc.service.as_ref().unwrap()[x]),
+            Some(x) => Some(doc.service.as_ref().unwrap()[x].clone()),
             _ => None,
         }
     }
@@ -138,10 +140,24 @@ impl Resolver {
         ResolutionMetadata,
     ) {
         // Get controller DID
-        // let service = self.get_proof_service(ion_doc);
+        let service = self.get_proof_service(&ion_doc.as_ref().unwrap());
+        let service_endpoint = service.unwrap().service_endpoint.unwrap();
+        let controller_did: Option<String> = match service_endpoint {
+            OneOrMany::One(x) => match x {
+                ServiceEndpoint::Map(value) => match value {
+                    serde_json::Value::Object(v) => match &v["controller"] {
+                        serde_json::Value::String(s) => Some(s.to_string()),
+                        _ => None,
+                    },
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        };
 
-        // Covert doc
-        // self.ion_to_trustchain_doc(doc, controller_did);
+        // Convert doc
+        self.ion_to_trustchain_doc(&ion_doc.as_ref().unwrap(), controller_did.unwrap().as_str());
 
         // Convert metadata
 
