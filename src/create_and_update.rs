@@ -216,7 +216,7 @@ fn main() {
     let mut patches = vec![];
     let patch = DIDStatePatch::AddServices {
         services: vec![ServiceEndpointEntry {
-            id: "#trustchain-controller-proof".to_string(),
+            id: "trustchain-controller-proof".to_string(),
             r#type: "TrustchainProofService".to_string(),
             service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
         }],
