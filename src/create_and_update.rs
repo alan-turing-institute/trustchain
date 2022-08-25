@@ -209,15 +209,15 @@ fn main() {
 
     // Make object for services endpoint
     let mut obj: Map<String, Value> = Map::new();
-    obj.insert("signer_did".to_string(), Value::from(did_short.clone()));
-    obj.insert("proof".to_string(), Value::from(signed_data.clone()));
+    obj.insert("controller".to_string(), Value::from(did_short.clone()));
+    obj.insert("proofValue".to_string(), Value::from(signed_data.clone()));
 
     // Make update again but only using loaded data
     let mut patches = vec![];
     let patch = DIDStatePatch::AddServices {
         services: vec![ServiceEndpointEntry {
-            id: "controller-proof".to_string(),
-            r#type: "signature".to_string(),
+            id: "#trustchain-controller-proof".to_string(),
+            r#type: "TrustchainProofService".to_string(),
             service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
         }],
     };
@@ -256,6 +256,40 @@ fn main() {
     std::fs::write(
         format!("new_update_key_{}.json", did_short),
         to_json(&new_update_key).unwrap(),
+    )
+    .unwrap();
+
+    // ---------------------------------------
+    // Deactivate operation
+    // ---------------------------------------
+
+    // Create a deactivate request
+
+    // Load recovery key
+    let recovery_key = load_key(&format!("recovery_key_{}.json", did_short)[..], true);
+
+    // Make deactivate operation
+    let deactivate_operation = ION::deactivate(DIDSuffix(did_short.clone()), recovery_key).unwrap();
+
+    // Verify the operation enum
+    let partially_verified_deactivate_operation =
+        deactivate_operation.clone().partial_verify::<ION>();
+    println!(
+        "Partially verified update: {:?}",
+        partially_verified_deactivate_operation.is_ok()
+    );
+
+    // Print JSON operation
+    println!("Deactivate operation:");
+    println!("{}", to_json(&deactivate_operation).unwrap());
+
+    // Convert to operation with all data needed for server
+    let operation = Operation::Deactivate(deactivate_operation.clone());
+
+    // Write update operation json and new update key
+    std::fs::write(
+        format!("deactivate_operation_{}.json", did_short),
+        to_json(&operation).unwrap(),
     )
     .unwrap();
 }
