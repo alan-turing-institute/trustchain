@@ -100,11 +100,11 @@ impl Resolver {
         None
     }
 
-    fn get_proof_service(&self, doc: &Document) -> Option<Service> {
+    fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Option<&Service> {
         // Extract proof service as an owned service
         let idx = self.get_proof_idx(doc);
         match idx {
-            Some(x) => Some(doc.service.as_ref().unwrap()[x].clone()),
+            Some(x) => Some(&doc.service.as_ref().unwrap()[x]),
             _ => None,
         }
     }
