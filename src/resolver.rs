@@ -152,7 +152,7 @@ impl Resolver {
     }
 
     fn extract_controller_from_service(&self, proof_service: &Service) -> Option<String> {
-        // Destrucure nested enums and extract controller from a proof service
+        // Destructure nested enums and extract controller from a proof service
         let controller_did: Option<String> = match proof_service.service_endpoint.as_ref() {
             Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => {
                 match &v["controller"] {
