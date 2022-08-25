@@ -286,7 +286,7 @@ fn main() {
     // Convert to operation with all data needed for server
     let operation = Operation::Deactivate(deactivate_operation.clone());
 
-    // Write update operation json and new update key
+    // Write deactivate operation json and new update key
     std::fs::write(
         format!("deactivate_operation_{}.json", did_short),
         to_json(&operation).unwrap(),
