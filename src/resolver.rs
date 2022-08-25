@@ -51,6 +51,8 @@ impl Resolver {
 
         (res_meta, doc, doc_meta)
     }
+
+    /// Trustchain resolve function returning resolution metadata, DID document and DID document metadata from a passed DID.
     pub fn resolve(
         &self,
         did_short: &str,
@@ -60,7 +62,8 @@ impl Resolver {
         Option<DocumentMetadata>,
     ) {
         self.runtime.block_on(async {
-            let (res_meta, doc, doc_meta) = loop {
+            // ION resolved resolution metadata, document and document metadata
+            let (ion_res_meta, ion_doc, ion_doc_meta) = loop {
                 // Do resolve and extract data from future
                 let tup = block_on(self.http_resolve(&did_short.to_string()));
                 if tup.1.is_some() {
@@ -70,7 +73,15 @@ impl Resolver {
                 println!("Trying again...");
             };
 
-            (res_meta, doc, doc_meta)
+            if let (Some(ion_doc), Some(ion_doc_meta)) = (ion_doc, ion_doc_meta) {
+                // Convert to trustchain versions
+                let (tc_res_meta, tc_doc, tc_doc_meta) =
+                    self.ion_to_trustchain(ion_res_meta, ion_doc, ion_doc_meta);
+                (tc_res_meta, Some(tc_doc), Some(tc_doc_meta))
+            } else {
+                // If doc or doc_meta None, return only res_meta_data
+                (ion_res_meta, None, None)
+            }
         })
     }
 
@@ -130,25 +141,24 @@ impl Resolver {
     /// Performing conversion of the ion resolved objects to trustchain objects
     pub fn ion_to_trustchain(
         &self,
-        ion_doc: Option<Document>,
-        ion_doc_meta: Option<DocumentMetadata>,
         ion_res_meta: ResolutionMetadata,
-    ) -> (
-        Option<Document>,
-        Option<DocumentMetadata>,
-        ResolutionMetadata,
-    ) {
+        ion_doc: Document,
+        ion_doc_meta: DocumentMetadata,
+    ) -> (ResolutionMetadata, Document, DocumentMetadata) {
         // Get controller DID
-        let service = self.get_proof_service(&ion_doc.as_ref().unwrap());
+        let service = self.get_proof_service(&ion_doc);
         let controller_did = self.extract_controller_from_service(&service.unwrap());
 
         // Convert doc
-        self.ion_to_trustchain_doc(&ion_doc.as_ref().unwrap(), controller_did.unwrap().as_str());
+        let doc = self.ion_to_trustchain_doc(&ion_doc, controller_did.unwrap().as_str());
 
         // Convert metadata
+        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc_meta);
 
-        // Convert resolution metadata
-        todo!();
+        // TODO: Convert resolution metadata
+        let res_meta = ion_res_meta;
+        // Return tuple
+        (res_meta, doc, doc_meta)
     }
 
     fn extract_controller_from_service(&self, proof_service: &Service) -> Option<String> {
