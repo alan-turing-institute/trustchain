@@ -209,15 +209,15 @@ fn main() {
 
     // Make object for services endpoint
     let mut obj: Map<String, Value> = Map::new();
-    obj.insert("signer_did".to_string(), Value::from(did_short.clone()));
-    obj.insert("proof".to_string(), Value::from(signed_data.clone()));
+    obj.insert("controller".to_string(), Value::from(did_short.clone()));
+    obj.insert("proofValue".to_string(), Value::from(signed_data.clone()));
 
     // Make update again but only using loaded data
     let mut patches = vec![];
     let patch = DIDStatePatch::AddServices {
         services: vec![ServiceEndpointEntry {
-            id: "controller-proof".to_string(),
-            r#type: "signature".to_string(),
+            id: "#trustchain-controller-proof".to_string(),
+            r#type: "TrustchainProofService".to_string(),
             service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
         }],
     };
