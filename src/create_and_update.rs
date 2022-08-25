@@ -258,4 +258,38 @@ fn main() {
         to_json(&new_update_key).unwrap(),
     )
     .unwrap();
+
+    // ---------------------------------------
+    // Deactivate operation
+    // ---------------------------------------
+
+    // Create a deactivate request
+
+    // Load recovery key
+    let recovery_key = load_key(&format!("recovery_key_{}.json", did_short)[..], true);
+
+    // Make deactivate operation
+    let deactivate_operation = ION::deactivate(DIDSuffix(did_short.clone()), recovery_key).unwrap();
+
+    // Verify the operation enum
+    let partially_verified_deactivate_operation =
+        deactivate_operation.clone().partial_verify::<ION>();
+    println!(
+        "Partially verified update: {:?}",
+        partially_verified_deactivate_operation.is_ok()
+    );
+
+    // Print JSON operation
+    println!("Deactivate operation:");
+    println!("{}", to_json(&deactivate_operation).unwrap());
+
+    // Convert to operation with all data needed for server
+    let operation = Operation::Deactivate(deactivate_operation.clone());
+
+    // Write deactivate operation json and new update key
+    std::fs::write(
+        format!("deactivate_operation_{}.json", did_short),
+        to_json(&operation).unwrap(),
+    )
+    .unwrap();
 }
