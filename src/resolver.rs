@@ -1,7 +1,7 @@
 use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
-// use serde_json::to_string_pretty as to_json;
+use serde_json::to_string_pretty as to_json;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
@@ -135,11 +135,14 @@ impl Resolver {
         let doc_clone = self.remove_proof_service(doc_clone);
 
         // Add controller
-        let doc = self
+        let doc_clone = self
             .add_controller(doc_clone, controller_did)
             .expect("Controller already present in document.");
 
-        doc
+        // Remove proof service
+        let doc_clone = self.remove_proof_service(doc_clone);
+
+        doc_clone
     }
 
     /// Performing conversion of the ion resolved objects to trustchain objects
@@ -241,7 +244,7 @@ mod tests {
     use super::*;
     use crate::data::{
         TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_METADATA, TEST_ION_DOCUMENT_WITH_CONTROLLER,
-        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
     #[test]
     fn add_controller() {
@@ -300,18 +303,53 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn ion_to_trustchain_doc() {
         // Write a test to convert an ION-resolved did document to the trustchain resolved format
-        todo!()
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+        let tc_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+
+        let resolver = Resolver::new();
+        let proof_service = resolver.get_proof_service(&ion_doc).unwrap();
+        let controller = resolver
+            .get_from_proof_service(&proof_service, "controller")
+            .unwrap();
+        let actual = resolver.ion_to_trustchain_doc(&ion_doc, controller.as_str());
+        // println!("{}", to_json(&tc_doc).unwrap());
+        println!("{}", to_json(&actual).unwrap());
+        assert_eq!(
+            ION::json_canonicalization_scheme(&tc_doc).expect("Failed to canonicalize."),
+            ION::json_canonicalization_scheme(&actual).expect("Failed to canonicalize.")
+        );
     }
 
     #[test]
-    #[should_panic]
     fn ion_to_trustchain_doc_metadata() {
         // Write a test to convert ION-resolved did document metadata to trustchain format
         // See https://github.com/alan-turing-institute/trustchain/issues/11
-        todo!()
+        // Load test ION doc
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load doc.");
+
+        // Load test ION metadata
+        let ion_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ION_DOCUMENT_METADATA).expect("Failed to load metadata");
+
+        // Load and canoncalize the Trustchain document metadata
+        let expected_tc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
+                .expect("Failed to load metadata");
+        let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
+            .expect("Cannot add proof and canonicalize.");
+
+        // Make new resolver
+        let resolver = Resolver::new();
+
+        // Actual Trustchain metadata
+        let actual_tc_meta = ION::json_canonicalization_scheme(
+            &resolver.ion_to_trustchain_doc_metadata(&ion_doc, ion_meta),
+        )
+        .expect("Cannot add proof and canonicalize.");
+        assert_eq!(expected_tc_meta, actual_tc_meta);
     }
 
     #[test]
