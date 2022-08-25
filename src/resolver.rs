@@ -150,13 +150,13 @@ impl Resolver {
     ) -> (ResolutionMetadata, Document, DocumentMetadata) {
         // Get controller DID
         let service = self.get_proof_service(&ion_doc);
-        let controller_did = self.extract_controller_from_service(&service.unwrap());
+        let controller_did = self.get_from_proof_service(&service.unwrap(), "controller");
 
         // Convert doc
         let doc = self.ion_to_trustchain_doc(&ion_doc, controller_did.unwrap().as_str());
 
         // Convert metadata
-        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc_meta);
+        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, &ion_doc_meta);
 
         // TODO: Convert resolution metadata
         let res_meta = ion_res_meta;
@@ -164,31 +164,34 @@ impl Resolver {
         (res_meta, doc, doc_meta)
     }
 
-    fn extract_controller_from_service(&self, proof_service: &Service) -> Option<String> {
+    fn get_from_proof_service(&self, proof_service: &Service, key: &str) -> Option<String> {
         // Destructure nested enums and extract controller from a proof service
         let controller_did: Option<String> = match proof_service.service_endpoint.as_ref() {
-            Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => {
-                match &v["controller"] {
-                    Value::String(s) => Some(s.to_string()),
-                    _ => None,
-                }
-            }
+            Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => match &v[key] {
+                Value::String(s) => Some(s.to_string()),
+                _ => None,
+            },
             _ => None,
         };
         controller_did
     }
 
-    fn add_proof(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
+    fn add_proof(&self, doc: &Document, doc_meta: &DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
 
+        let proof_service = self.get_proof_service(doc);
+        // doc_meta.clone()
         todo!();
-        doc_meta.clone()
     }
-    pub fn ion_to_trustchain_doc_metadata(&self, doc_meta: &DocumentMetadata) -> DocumentMetadata {
+    pub fn ion_to_trustchain_doc_metadata(
+        &self,
+        doc: &Document,
+        doc_meta: &DocumentMetadata,
+    ) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
-        let doc_meta = self.add_proof(doc_meta);
+        let doc_meta = self.add_proof(doc, doc_meta);
 
         doc_meta
     }
@@ -212,6 +215,8 @@ impl Resolver {
 
 #[cfg(test)]
 mod tests {
+    use did_ion::sidetree::Sidetree;
+
     use super::*;
     use crate::data::{TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_WITH_CONTROLLER};
 
@@ -287,14 +292,16 @@ mod tests {
     }
 
     #[test]
-    fn extract_controller_from_service() {
+    fn get_from_proof_service() {
         // Write a test to extract the controller did from the service field in an IOn-resolved DID document
         let did_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
 
         let resolver = Resolver::new();
         let service = resolver.get_proof_service(&did_doc).unwrap();
 
-        let controller = resolver.extract_controller_from_service(&service).unwrap();
+        let controller = resolver
+            .get_from_proof_service(&service, "controller")
+            .unwrap();
 
         assert_eq!(
             controller,
