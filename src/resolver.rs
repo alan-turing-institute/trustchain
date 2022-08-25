@@ -109,11 +109,11 @@ impl Resolver {
         }
     }
 
-    fn remove_proof_service(&self, doc_with_proof: &Document) -> Document {
+    fn remove_proof_service(&self, mut doc: Document) -> Document {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
-        let mut doc = doc_with_proof.clone();
+        // let mut doc = doc_with_proof.clone();
         if doc.service.is_some() {
             if let Some(idx) = self.get_proof_idx(&doc) {
                 let services = doc.service.as_mut().unwrap();
@@ -127,12 +127,15 @@ impl Resolver {
     }
 
     pub fn ion_to_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
+        // Make a clone of the document so passed document remains the same
+        let doc_clone = doc.clone();
+
         // Check if the Trustchain proof service exists in document
-        let doc = self.remove_proof_service(doc);
+        let doc_clone = self.remove_proof_service(doc_clone);
 
         // Add controller
         let doc = self
-            .add_controller(&doc, controller_did)
+            .add_controller(doc_clone, controller_did)
             .expect("Controller already present in document.");
 
         doc
@@ -191,26 +194,19 @@ impl Resolver {
     }
 
     /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
-    fn add_controller(
-        &self,
-        ion_did_doc: &Document,
-        controller_did: &str,
-    ) -> Result<Document, Error> {
-        // TODO check the did_doc fits the ion resolved format
-
-        // Making a clone of the did document (Note: this is expensive)
-        let mut doc_clone = ion_did_doc.clone();
+    fn add_controller(&self, mut doc: Document, controller_did: &str) -> Result<Document, Error> {
+        // TODO check the doc fits the ion resolved format
 
         // Check controller is empty and if not throw error.
-        if doc_clone.controller.is_some() {
+        if doc.controller.is_some() {
             return Err(Error::ControllerLimit);
         }
 
         // Adding the passed controller did to the document
-        doc_clone.controller = Some(OneOrMany::One(controller_did.to_string()));
+        doc.controller = Some(OneOrMany::One(controller_did.to_string()));
 
         // Return new document with controller
-        Ok(doc_clone)
+        Ok(doc)
     }
 }
 
@@ -227,7 +223,7 @@ mod tests {
 
         let resolver = Resolver::new();
         let result = resolver
-            .add_controller(&did_doc, &controller_did)
+            .add_controller(did_doc, &controller_did)
             .expect("Different Controller already present.");
 
         let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
@@ -246,7 +242,7 @@ mod tests {
 
         let resolver = Resolver::new();
         let result = resolver
-            .add_controller(&did_doc, &controller_did)
+            .add_controller(did_doc, &controller_did)
             .expect("Different Controller already present.");
 
         let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
