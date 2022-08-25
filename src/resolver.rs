@@ -1,15 +1,14 @@
 use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
-// use serde_json::{to_string_pretty as to_json, Map, Value};
+// use serde_json::to_string_pretty as to_json;
+use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::error::Error;
 use ssi::one_or_many::OneOrMany;
-use ssi::rdf::Object;
-use std::str::FromStr;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -152,23 +151,17 @@ impl Resolver {
         todo!();
     }
 
-    fn extract_controller_from_service(&self, service: &Service) -> Option<String> {
-        let service_endpoints = service.service_endpoint.as_ref().unwrap();
-
-        let controller_did: Option<String> = match service_endpoints {
-            OneOrMany::One(service_endpoint) => match service_endpoint {
-                ServiceEndpoint::Map(value) => match value {
-                    serde_json::Value::Object(v) => match &v["controller"] {
-                        serde_json::Value::String(s) => Some(s.to_string()),
-                        _ => None,
-                    },
+    fn extract_controller_from_service(&self, proof_service: &Service) -> Option<String> {
+        // Destrucure nested enums and extract controller from a proof service
+        let controller_did: Option<String> = match proof_service.service_endpoint.as_ref() {
+            Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => {
+                match &v["controller"] {
+                    Value::String(s) => Some(s.to_string()),
                     _ => None,
-                },
-                _ => None,
-            },
+                }
+            }
             _ => None,
         };
-
         controller_did
     }
 
