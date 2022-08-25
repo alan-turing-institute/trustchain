@@ -266,6 +266,13 @@ mod tests {
 
     #[test]
     #[should_panic]
+    fn get_proof_service_with_many_proof_services() {
+        // Write a test to get proof service from an ION-resolved did doc
+        todo!()
+    }
+
+    #[test]
+    #[should_panic]
     fn ion_to_trustchain_doc() {
         // Write a test to convert an ION-resolved did document to the trustchain resolved format
         todo!()
