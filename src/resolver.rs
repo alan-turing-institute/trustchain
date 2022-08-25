@@ -282,17 +282,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn remove_proof_service() {
         // Write a test for removing the proof service from an ION-resolved did doc
-        todo!()
+        // Test to get proof service from an ION-resolved did doc
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+        let resolver = Resolver::new();
+        let ion_doc_no_proof_service = resolver.remove_proof_service(ion_doc);
+        assert!(ion_doc_no_proof_service.service.is_none());
     }
 
     #[test]
-    #[should_panic]
     fn get_proof_service() {
-        // Write a test to get proof service from an ION-resolved did doc
-        todo!()
+        // Test to get proof service from an ION-resolved did doc
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+        let resolver = Resolver::new();
+        let proof_service = resolver.get_proof_service(&ion_doc).unwrap();
+        assert_eq!(proof_service.id, "#trustchain-controller-proof");
     }
 
     #[test]
