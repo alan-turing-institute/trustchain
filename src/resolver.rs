@@ -5,10 +5,11 @@ use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
-    DIDResolver, DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
+    DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::error::Error;
 use ssi::one_or_many::OneOrMany;
+use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
@@ -156,7 +157,7 @@ impl Resolver {
         let doc = self.ion_to_trustchain_doc(&ion_doc, controller_did.unwrap().as_str());
 
         // Convert metadata
-        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, &ion_doc_meta);
+        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, ion_doc_meta);
 
         // TODO: Convert resolution metadata
         let res_meta = ion_res_meta;
@@ -176,21 +177,41 @@ impl Resolver {
         controller_did
     }
 
-    fn add_proof(&self, doc: &Document, doc_meta: &DocumentMetadata) -> DocumentMetadata {
+    fn add_proof(&self, doc: &Document, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
-        // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
-        // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
-
+        // Get proof service
         let proof_service = self.get_proof_service(doc);
-        // doc_meta.clone()
-        todo!();
+        // If not None
+        if let Some(proof_service) = proof_service {
+            // Get proof value and controller (uDID)
+            let proof_value = self.get_from_proof_service(proof_service, "proofValue");
+            let controller = self.get_from_proof_service(proof_service, "controller");
+            // If not None, add to new HashMap
+            if let (Some(property_set), Some(proof_value), Some(controller)) =
+                (doc_meta.property_set.as_mut(), proof_value, controller)
+            {
+                // Make new HashMap; add keys and values
+                let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
+                proof_hash_map.insert(String::from("id"), Metadata::String(controller));
+                proof_hash_map.insert(
+                    String::from("type"),
+                    Metadata::String("JsonWebSignature2020".to_string()),
+                );
+                proof_hash_map.insert(String::from("proofValue"), Metadata::String(proof_value));
+
+                // Insert new HashMap of Metadata::Map()
+                property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
+                return doc_meta;
+            }
+        }
+        doc_meta
     }
     pub fn ion_to_trustchain_doc_metadata(
         &self,
         doc: &Document,
-        doc_meta: &DocumentMetadata,
+        doc_meta: DocumentMetadata,
     ) -> DocumentMetadata {
-        // Check if the Trustchain proof service exists in document
+        // Add proof to ION document metadata if it exists
         let doc_meta = self.add_proof(doc, doc_meta);
 
         doc_meta
@@ -218,8 +239,10 @@ mod tests {
     use did_ion::sidetree::Sidetree;
 
     use super::*;
-    use crate::data::{TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_WITH_CONTROLLER};
-
+    use crate::data::{
+        TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_METADATA, TEST_ION_DOCUMENT_WITH_CONTROLLER,
+        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+    };
     #[test]
     fn add_controller() {
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
@@ -307,5 +330,30 @@ mod tests {
             controller,
             "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ".to_string()
         )
+    }
+    #[test]
+    fn add_proof() {
+        // Load test ION doc
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load doc.");
+
+        // Load test ION metadata
+        let ion_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ION_DOCUMENT_METADATA).expect("Failed to load metadata");
+
+        // Load and canoncalize the Trustchain document metadata
+        let expected_tc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
+                .expect("Failed to load metadata");
+        let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
+            .expect("Cannot add proof and canonicalize.");
+
+        // Make new resolver
+        let resolver = Resolver::new();
+
+        // Canonicalize
+        let actual_tc_meta =
+            ION::json_canonicalization_scheme(&resolver.add_proof(&ion_doc, ion_meta))
+                .expect("Cannot add proof and canonicalize.");
+        assert_eq!(expected_tc_meta, actual_tc_meta);
     }
 }
