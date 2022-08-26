@@ -1,7 +1,7 @@
+use clap::{arg, command, value_parser, Arg, ArgAction};
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
-// use serde_json::{to_string_pretty as to_json, Map, Value};
-use clap::{arg, command, value_parser, Arg, ArgAction};
+use serde_json::to_string_pretty as to_json;
 use trustchain::resolver::Resolver;
 
 fn main() {
@@ -32,24 +32,27 @@ fn main() {
 
     // Print results
     println!("---");
-    println!("Document (canonicalized):");
-    let doc_json =
-        ION::json_canonicalization_scheme(&doc.as_ref().unwrap()).expect("Canonicalized Doc JSON");
-    println!("{}", doc_json);
+    println!("Trustchain resolved document, document metadata and resolution metadata");
     println!("---");
-    println!("Document (Trustchain canonicalized):");
-    let trustchain_doc = resolver.ion_to_trustchain_doc(&doc.clone().unwrap(), did_to_resolve);
-    let trustchain_doc_json =
-        ION::json_canonicalization_scheme(&trustchain_doc).expect("Canonicalized Doc JSON");
-    println!("{}", trustchain_doc_json);
+    println!("Document:");
+    // let doc_json = json!(&ION::json_canonicalization_scheme(&doc.as_ref().unwrap()).expect("Canonicalized Doc JSON"));
+    let doc_json = &doc.as_ref().unwrap();
+    println!("{}", to_json(&doc_json).expect("Cannot convert to JSON."));
     println!("---");
-    println!("Document metadata (canonicalized):");
-    let doc_meta_json = ION::json_canonicalization_scheme(&doc_meta.unwrap())
-        .expect("Canonicalized Doc Metadata JSON");
-    println!("{}", doc_meta_json);
+    println!("Document metadata:");
+    // let doc_meta_json = ION::json_canonicalization_scheme(&doc_meta.unwrap())
+    let doc_meta_json = &doc_meta.unwrap();
+    println!(
+        "{}",
+        to_json(&doc_meta_json).expect("Cannot convert to JSON.")
+    );
     println!("---");
     println!("Result metadata (canonicalized):");
-    let result_meta_json =
-        ION::json_canonicalization_scheme(&res_meta).expect("Canonicalized Result Metadata JSON");
-    println!("{}", result_meta_json);
+    // let result_meta_json =
+    // ION::json_canonicalization_scheme(&res_meta).expect("Canonicalized Result Metadata JSON");
+    let result_meta_json = &res_meta;
+    println!(
+        "{}",
+        to_json(&result_meta_json).expect("Cannot convert to JSON.")
+    );
 }
