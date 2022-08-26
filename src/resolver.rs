@@ -154,18 +154,24 @@ impl Resolver {
     ) -> (ResolutionMetadata, Document, DocumentMetadata) {
         // Get controller DID
         let service = self.get_proof_service(&ion_doc);
-        let controller_did = self.get_from_proof_service(&service.unwrap(), "controller");
 
-        // Convert doc
-        let doc = self.ion_to_trustchain_doc(&ion_doc, controller_did.unwrap().as_str());
+        if let Some(service) = service {
+            let controller_did = self.get_from_proof_service(&service, "controller");
 
-        // Convert metadata
-        let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, ion_doc_meta);
+            // Convert doc
+            let doc = self.ion_to_trustchain_doc(&ion_doc, controller_did.unwrap().as_str());
 
-        // TODO: Convert resolution metadata
-        let res_meta = ion_res_meta;
-        // Return tuple
-        (res_meta, doc, doc_meta)
+            // Convert metadata
+            let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, ion_doc_meta);
+
+            // TODO: Convert resolution metadata
+            let res_meta = ion_res_meta;
+
+            // Return tuple
+            (res_meta, doc, doc_meta)
+        } else {
+            (ion_res_meta, ion_doc, ion_doc_meta)
+        }
     }
 
     fn get_from_proof_service(&self, proof_service: &Service, key: &str) -> Option<String> {
