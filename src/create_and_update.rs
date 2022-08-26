@@ -209,7 +209,10 @@ fn main() {
 
     // Make object for services endpoint
     let mut obj: Map<String, Value> = Map::new();
-    obj.insert("controller".to_string(), Value::from(did_short.clone()));
+    obj.insert(
+        "controller".to_string(),
+        Value::from(make_did_ion(&did_short)),
+    );
     obj.insert("proofValue".to_string(), Value::from(signed_data.clone()));
 
     // Make update again but only using loaded data
