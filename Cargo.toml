@@ -16,8 +16,8 @@ name = "create_and_update"
 path = "src/create_and_update.rs"
 
 [[bin]]
-name = "did_resolve"
-path = "src/did_resolve.rs"
+name = "resolve"
+path = "src/resolve.rs"
 
 [features]
 default = ["console_error_panic_hook"]
