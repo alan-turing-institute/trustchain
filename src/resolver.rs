@@ -1,21 +1,17 @@
 use did_ion::sidetree::SidetreeClient;
 use did_ion::ION;
 use futures::executor::block_on;
-use serde_json::to_string_pretty as to_json;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
-use ssi::error::Error;
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
-use std::thread::sleep;
-use std::time::Duration;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
-/// An error having to do with Trustchain resolution.
+/// An error relating to Trustchain resolution.
 #[derive(Error, Debug)]
 pub enum ResolverError {
     #[error("Controller is already present in DID document.")]
@@ -300,6 +296,7 @@ impl Resolver {
 #[cfg(test)]
 mod tests {
     use did_ion::sidetree::Sidetree;
+    use serde_json::to_string_pretty as to_json;
 
     use super::*;
     use crate::data::{
