@@ -18,10 +18,10 @@ use tokio::runtime::Runtime;
 /// An error having to do with Trustchain resolution.
 #[derive(Error, Debug)]
 pub enum ResolverError {
-    #[error("Not implemented for DID method: {0}")]
-    NotImplemented(&'static str),
     #[error("Controller is already present in DID document.")]
     ControllerAlreadyPresent,
+    #[error("Failed to convert to Truschain document and metadata.")]
+    FailedToConvertToTrustchain,
     #[error("Multiple 'TrustchainProofService' entries are present.")]
     MultipleTrustchainProofService,
     #[error("No 'TrustchainProofService' is present.")]
@@ -75,11 +75,14 @@ impl Resolver {
     pub fn resolve(
         &self,
         did_short: &str,
-    ) -> (
-        ResolutionMetadata,
-        Option<Document>,
-        Option<DocumentMetadata>,
-    ) {
+    ) -> Result<
+        (
+            ResolutionMetadata,
+            Option<Document>,
+            Option<DocumentMetadata>,
+        ),
+        ResolverError,
+    > {
         self.runtime.block_on(async {
             // ION resolved resolution metadata, document and document metadata
             let (ion_res_meta, ion_doc, ion_doc_meta) = loop {
@@ -91,40 +94,52 @@ impl Resolver {
                 sleep(Duration::new(1, 0));
                 println!("Trying again...");
             };
-
+            // If a document and document metadata are returned, try to convert
             if let (Some(ion_doc), Some(ion_doc_meta)) = (ion_doc, ion_doc_meta) {
                 // Convert to trustchain versions
-                let (tc_res_meta, tc_doc, tc_doc_meta) =
-                    self.ion_to_trustchain(ion_res_meta, ion_doc, ion_doc_meta);
-                (tc_res_meta, Some(tc_doc), Some(tc_doc_meta))
+                let tc_result = self.ion_to_trustchain(ion_res_meta, ion_doc, ion_doc_meta);
+                match tc_result {
+                    Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
+                        Ok((tc_res_meta, Some(tc_doc), Some(tc_doc_meta)))
+                    }
+                    Err(ResolverError::FailedToConvertToTrustchain) => {
+                        Err(ResolverError::FailedToConvertToTrustchain)
+                    }
+                    _ => panic!(),
+                }
             } else {
-                // If doc or doc_meta None, return only res_meta_data
-                (ion_res_meta, None, None)
+                // If doc or doc_meta None, return ION resolution as is
+                Ok((ion_res_meta, None, None))
             }
         })
     }
 
-    fn get_proof_idx(&self, doc: &Document) -> Option<usize> {
+    fn get_proof_idx(&self, doc: &Document) -> Result<usize, ResolverError> {
         // Get index of proof
+        let mut idxs: Vec<usize> = Vec::new();
         let fragment = "trustchain-controller-proof";
         for (idx, service) in doc.service.iter().flatten().enumerate() {
             if let [service_fragment, _] =
                 service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
             {
                 if service_fragment == &fragment {
-                    return Some(idx);
+                    idxs.push(idx);
                 }
             }
         }
-        None
+        match idxs.len() {
+            0 => Err(ResolverError::NoTrustchainProofService),
+            1 => Ok(idxs[0]),
+            _ => Err(ResolverError::MultipleTrustchainProofService),
+        }
     }
 
-    fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Option<&Service> {
+    fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Result<&Service, ResolverError> {
         // Extract proof service as an owned service
-        let idx = self.get_proof_idx(doc);
-        match idx {
-            Some(x) => Some(&doc.service.as_ref().unwrap()[x]),
-            _ => None,
+        let idxs = self.get_proof_idx(doc);
+        match idxs {
+            Ok(idx) => Ok(&doc.service.as_ref().unwrap()[idx]),
+            Err(e) => Err(e),
         }
     }
 
@@ -134,12 +149,18 @@ impl Resolver {
         // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
         // let mut doc = doc_with_proof.clone();
         if doc.service.is_some() {
-            if let Some(idx) = self.get_proof_idx(&doc) {
-                let services = doc.service.as_mut().unwrap();
-                services.remove(idx);
-                if services.len() == 0 {
-                    doc.service = None;
+            let idx_result = self.get_proof_idx(&doc);
+            match idx_result {
+                Ok(idx) => {
+                    let services = doc.service.as_mut().unwrap();
+                    services.remove(idx);
+                    if services.len() == 0 {
+                        doc.service = None;
+                    }
                 }
+                // Currently just return doc as it is if there is either zero or multiple
+                // proof services
+                Err(_) => (),
             }
         }
         doc
@@ -169,11 +190,11 @@ impl Resolver {
         ion_res_meta: ResolutionMetadata,
         ion_doc: Document,
         ion_doc_meta: DocumentMetadata,
-    ) -> (ResolutionMetadata, Document, DocumentMetadata) {
+    ) -> Result<(ResolutionMetadata, Document, DocumentMetadata), ResolverError> {
         // Get controller DID
         let service = self.get_proof_service(&ion_doc);
 
-        if let Some(service) = service {
+        if let Ok(service) = service {
             let controller_did = self.get_from_proof_service(&service, "controller");
 
             // Convert doc
@@ -186,9 +207,10 @@ impl Resolver {
             let res_meta = ion_res_meta;
 
             // Return tuple
-            (res_meta, doc, doc_meta)
+            Ok((res_meta, doc, doc_meta))
         } else {
-            (ion_res_meta, ion_doc, ion_doc_meta)
+            // TODO: If proof service is not present or multiple, just return Ok for now.
+            Ok((ion_res_meta, ion_doc, ion_doc_meta))
         }
     }
 
@@ -209,7 +231,7 @@ impl Resolver {
         // Get proof service
         let proof_service = self.get_proof_service(doc);
         // If not None
-        if let Some(proof_service) = proof_service {
+        if let Ok(proof_service) = proof_service {
             // Get proof value and controller (uDID)
             let proof_value = self.get_from_proof_service(proof_service, "proofValue");
             let controller = self.get_from_proof_service(proof_service, "controller");
