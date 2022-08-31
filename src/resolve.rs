@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use clap::{arg, command, value_parser, Arg, ArgAction};
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
@@ -28,7 +30,14 @@ fn main() {
     // let did_to_resolve = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
     // Result metadata, Document, Document metadata
-    let (res_meta, doc, doc_meta) = resolver.resolve(did_to_resolve).unwrap();
+    let result = resolver.resolve(did_to_resolve);
+    let (res_meta, doc, doc_meta) = match result {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("{e}");
+            return;
+        }
+    };
 
     // Print results
     println!("---");

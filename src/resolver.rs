@@ -74,7 +74,7 @@ impl Resolver {
     /// Trustchain resolve function returning resolution metadata, DID document and DID document metadata from a passed DID.
     pub fn resolve(
         &self,
-        did_short: &str,
+        did: &str,
     ) -> Result<
         (
             ResolutionMetadata,
@@ -85,15 +85,18 @@ impl Resolver {
     > {
         self.runtime.block_on(async {
             // ION resolved resolution metadata, document and document metadata
-            let (ion_res_meta, ion_doc, ion_doc_meta) = loop {
-                // Do resolve and extract data from future
-                let tup = block_on(self.http_resolve(&did_short.to_string()));
-                if tup.1.is_some() {
-                    break tup;
+            let (ion_res_meta, ion_doc, ion_doc_meta) =
+                block_on(self.http_resolve(&did.to_string()));
+
+            // Handle case when cannot connect to server
+            if let Some(ion_res_meta_error) = &ion_res_meta.error {
+                if ion_res_meta_error
+                    .starts_with("Error sending HTTP request: error sending request for url")
+                {
+                    return Err(ResolverError::ConnectionFailure);
                 }
-                sleep(Duration::new(1, 0));
-                println!("Trying again...");
-            };
+            }
+
             // If a document and document metadata are returned, try to convert
             if let (Some(ion_doc), Some(ion_doc_meta)) = (ion_doc, ion_doc_meta) {
                 // Convert to trustchain versions
