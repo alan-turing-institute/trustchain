@@ -22,13 +22,14 @@ pub enum ResolverError {
     NotImplemented(&'static str),
     #[error("Controller is already present in DID document.")]
     ControllerAlreadyPresent,
-    // #[error("Option '{option}' not supported for DID operation '{operation}'")]
-    // OptionNotSupported {
-    // operation: &'static str,
-    // option: String,
-    // },
-    // #[error(transparent)]
-    // Other(#[from] anyhow::Error),
+    #[error("Multiple 'TrustchainProofService' entries are present.")]
+    MultipleTrustchainProofService,
+    #[error("No 'TrustchainProofService' is present.")]
+    NoTrustchainProofService,
+    #[error("Cannot connect to ION server.")]
+    ConnectionFailure,
+    #[error("DID: {0} does not exist.")]
+    NonExistentDID(&'static str),
 }
 
 pub struct Resolver {
