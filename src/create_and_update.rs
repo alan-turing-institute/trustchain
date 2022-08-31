@@ -128,11 +128,11 @@ fn main() {
     let did_short = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
         .unwrap()
         .to_string();
-    // let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
-    // .unwrap()
-    // .to_string();
+    let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
+        .unwrap()
+        .to_string();
     println!("DID suffix: {:?}", did_short);
-    // println!("Long: {:?}", did_long);
+    println!("Long: {:?}", did_long);
 
     // Sign the DID + canonicalized document with the verification key
     let algorithm = ION::SIGNATURE_ALGORITHM;
