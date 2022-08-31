@@ -29,7 +29,7 @@ pub enum ResolverError {
     #[error("Cannot connect to ION server.")]
     ConnectionFailure,
     #[error("DID: {0} does not exist.")]
-    NonExistentDID(&'static str),
+    NonExistentDID(String),
 }
 
 pub struct Resolver {
@@ -88,12 +88,17 @@ impl Resolver {
             let (ion_res_meta, ion_doc, ion_doc_meta) =
                 block_on(self.http_resolve(&did.to_string()));
 
-            // Handle case when cannot connect to server
+            // Handle cases when: 1. cannot connect to server; 2. Did not find DID.
             if let Some(ion_res_meta_error) = &ion_res_meta.error {
                 if ion_res_meta_error
                     .starts_with("Error sending HTTP request: error sending request for url")
                 {
                     return Err(ResolverError::ConnectionFailure);
+                } else if ion_res_meta_error == "invalidDid" {
+                    return Err(ResolverError::NonExistentDID(did.to_string()));
+                } else {
+                    eprintln!("Unhandled error message: {}", ion_res_meta_error);
+                    panic!();
                 }
             }
 
@@ -105,9 +110,11 @@ impl Resolver {
                     Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
                         Ok((tc_res_meta, Some(tc_doc), Some(tc_doc_meta)))
                     }
+                    // If cannot convert, return the relevant error
                     Err(ResolverError::FailedToConvertToTrustchain) => {
                         Err(ResolverError::FailedToConvertToTrustchain)
                     }
+                    // If
                     _ => panic!(),
                 }
             } else {
