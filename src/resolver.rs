@@ -12,7 +12,7 @@ use thiserror::Error;
 use tokio::runtime::Runtime;
 
 /// An error relating to Trustchain resolution.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ResolverError {
     #[error("Controller is already present in DID document.")]
     ControllerAlreadyPresent,
@@ -27,6 +27,15 @@ pub enum ResolverError {
     #[error("DID: {0} does not exist.")]
     NonExistentDID(String),
 }
+
+// TODO: consider a distinct enum for resolution errors
+// #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+// pub enum ResolverResolutionError {
+//     #[error("Cannot connect to ION server.")]
+//     ConnectionFailure,
+//     #[error("DID: {0} does not exist.")]
+//     NonExistentDID(String),
+// }
 
 pub struct Resolver {
     runtime: Runtime,
@@ -232,6 +241,7 @@ impl Resolver {
         controller_did
     }
 
+    /// Adds proof to a passed DocumentMetadata from Document
     fn add_proof(&self, doc: &Document, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
         // Get proof service
@@ -319,7 +329,6 @@ mod tests {
         assert_eq!(result, expected);
     }
     #[test]
-    #[should_panic]
     fn add_controller_fail() {
         // TODO Check correct error is returned, but for now just assert panic
 
@@ -329,13 +338,11 @@ mod tests {
             .expect("Document failed to load.");
 
         let resolver = Resolver::new();
-        let result = resolver
-            .add_controller(did_doc, &controller_did)
-            .expect("Different Controller already present.");
+        let result = resolver.add_controller(did_doc, &controller_did);
+        let expected: Result<Document, ResolverError> =
+            Err(ResolverError::ControllerAlreadyPresent);
 
-        let expected = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
-            .expect("Document failed to load.");
-        assert_ne!(result, expected);
+        assert_eq!(result, expected);
     }
 
     #[test]
