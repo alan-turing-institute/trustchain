@@ -12,7 +12,25 @@ use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
+use thiserror::Error;
 use tokio::runtime::Runtime;
+
+/// An error having to do with Trustchain resolution.
+#[derive(Error, Debug)]
+pub enum ResolverError {
+    #[error("Not implemented for DID method: {0}")]
+    NotImplemented(&'static str),
+    #[error("Controller is already present in DID document.")]
+    ControllerAlreadyPresent,
+    #[error("Multiple 'TrustchainProofService' entries are present.")]
+    MultipleTrustchainProofService,
+    #[error("No 'TrustchainProofService' is present.")]
+    NoTrustchainProofService,
+    #[error("Cannot connect to ION server.")]
+    ConnectionFailure,
+    #[error("DID: {0} does not exist.")]
+    NonExistentDID(&'static str),
+}
 
 pub struct Resolver {
     runtime: Runtime,
@@ -227,12 +245,16 @@ impl Resolver {
     }
 
     /// Adding the controller to an ion resolved document. Controller is the upstream DID of the downstream DID's document.
-    fn add_controller(&self, mut doc: Document, controller_did: &str) -> Result<Document, Error> {
+    fn add_controller(
+        &self,
+        mut doc: Document,
+        controller_did: &str,
+    ) -> Result<Document, ResolverError> {
         // TODO check the doc fits the ion resolved format
 
         // Check controller is empty and if not throw error.
         if doc.controller.is_some() {
-            return Err(Error::ControllerLimit);
+            return Err(ResolverError::ControllerAlreadyPresent);
         }
 
         // Adding the passed controller did to the document
