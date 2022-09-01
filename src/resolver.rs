@@ -28,21 +28,16 @@ pub enum ResolverError {
     NonExistentDID(String),
 }
 
-// TODO: consider a distinct enum for resolution errors
-// #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
-// pub enum ResolverResolutionError {
-//     #[error("Cannot connect to ION server.")]
-//     ConnectionFailure,
-//     #[error("DID: {0} does not exist.")]
-//     NonExistentDID(String),
-// }
-
+/// Struct for performing resolution from a sidetree server to generate Trustchain DID document and DID document metadata.
 pub struct Resolver {
+    /// Runtime for calling async functions.
     runtime: Runtime,
+    /// Client for performing server resolutions.
     ion_client: SidetreeClient<ION>,
 }
 
 impl Resolver {
+    /// Produces a new resolver.
     pub fn new() -> Self {
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -60,6 +55,7 @@ impl Resolver {
         }
     }
 
+    /// Async function wrapping sidetree client resolution.
     async fn http_resolve(
         &self,
         did_short: &String,
@@ -131,8 +127,8 @@ impl Resolver {
         })
     }
 
+    /// Get a result of index of a single Trustchain proof service, otherwise relevant error.
     fn get_proof_idx(&self, doc: &Document) -> Result<usize, ResolverError> {
-        // Get index of proof
         let mut idxs: Vec<usize> = Vec::new();
         let fragment = "trustchain-controller-proof";
         for (idx, service) in doc.service.iter().flatten().enumerate() {
@@ -151,6 +147,7 @@ impl Resolver {
         }
     }
 
+    /// Get a result of reference to a single Trustchain proof service, otherwise relevant error.
     fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Result<&Service, ResolverError> {
         // Extract proof service as an owned service
         let idxs = self.get_proof_idx(doc);
@@ -316,12 +313,13 @@ impl Resolver {
 #[cfg(test)]
 mod tests {
     use did_ion::sidetree::Sidetree;
-    use serde_json::to_string_pretty as to_json;
+    // use serde_json::to_string_pretty as to_json;
 
     use super::*;
     use crate::data::{
-        TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_METADATA, TEST_ION_DOCUMENT_WITH_CONTROLLER,
-        TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_ION_DOCUMENT, TEST_ION_DOCUMENT_METADATA, TEST_ION_DOCUMENT_MULTIPLE_PROOF,
+        TEST_ION_DOCUMENT_WITH_CONTROLLER, TEST_TRUSTCHAIN_DOCUMENT,
+        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
     #[test]
     fn add_controller() {
@@ -340,8 +338,7 @@ mod tests {
     }
     #[test]
     fn add_controller_fail() {
-        // TODO Check correct error is returned, but for now just assert panic
-
+        // Ad
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         let did_doc = Document::from_json(TEST_ION_DOCUMENT_WITH_CONTROLLER)
@@ -360,8 +357,13 @@ mod tests {
         // Write a test for removing the proof service from an ION-resolved did doc
         // Test to get proof service from an ION-resolved did doc
         let ion_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+
+        // Make resolver
         let resolver = Resolver::new();
+
+        // Remove proof service
         let ion_doc_no_proof_service = resolver.remove_proof_service(ion_doc);
+
         assert!(ion_doc_no_proof_service.service.is_none());
     }
 
@@ -375,11 +377,31 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn get_proof_service_with_multiple_proof_services() {
+    fn get_proof_service_when_multiple_proof_services() {
         // Write a test to get proof service from an ION-resolved did doc
-        todo!()
-        // let ion_doc = Document::from_json(TEST_ION_DOCUMENT)
+        // todo!()
+        let ion_doc = Document::from_json(TEST_ION_DOCUMENT_MULTIPLE_PROOF)
+            .expect("Document failed to load.");
+        let resolver = Resolver::new();
+        let result = resolver.get_proof_service(&ion_doc);
+        let expected: Result<&Service, ResolverError> =
+            Err(ResolverError::MultipleTrustchainProofService);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn get_proof_service_when_no_proof_services() {
+        // Write a test to get proof service from an ION-resolved did doc
+        let ion_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        let resolver = Resolver::new();
+        let result = resolver.get_proof_service(&ion_doc);
+
+        let expected: Result<&Service, ResolverError> =
+            Err(ResolverError::NoTrustchainProofService);
+
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -395,8 +417,7 @@ mod tests {
             .get_from_proof_service(&proof_service, "controller")
             .unwrap();
         let actual = resolver.ion_to_trustchain_doc(&ion_doc, controller.as_str());
-        // println!("{}", to_json(&tc_doc).unwrap());
-        println!("{}", to_json(&actual).unwrap());
+
         assert_eq!(
             ION::json_canonicalization_scheme(&tc_doc).expect("Failed to canonicalize."),
             ION::json_canonicalization_scheme(&actual).expect("Failed to canonicalize.")
@@ -430,6 +451,58 @@ mod tests {
         )
         .expect("Cannot add proof and canonicalize.");
         assert_eq!(expected_tc_meta, actual_tc_meta);
+    }
+
+    #[test]
+    fn ion_to_trustchain() {
+        // Test objects
+        let input_doc = Document::from_json(TEST_ION_DOCUMENT).expect("Document failed to load.");
+        let expected_output_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        let input_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ION_DOCUMENT_METADATA).expect("Document failed to load.");
+        let expected_output_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
+                .expect("Document failed to load.");
+        let input_res_meta = ResolutionMetadata {
+            error: None,
+            content_type: None,
+            property_set: None,
+        };
+        let expected_output_res_meta = ResolutionMetadata {
+            error: None,
+            content_type: None,
+            property_set: None,
+        };
+
+        // Make new resolver
+        let resolver = Resolver::new();
+
+        // Call function and get output result type
+        let output = resolver.ion_to_trustchain(
+            input_res_meta.clone(),
+            input_doc.clone(),
+            input_doc_meta.clone(),
+        );
+
+        // Result should be Ok variant with returned data
+        if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
+            // Check resolution metadata is equal
+            assert_eq!(
+                ION::json_canonicalization_scheme(&expected_output_res_meta).unwrap(),
+                ION::json_canonicalization_scheme(&actual_output_res_meta).unwrap()
+            );
+            // Check documents are equal
+            assert_eq!(expected_output_doc, actual_output_doc);
+            // Check document metadata is equal
+            assert_eq!(
+                ION::json_canonicalization_scheme(&expected_output_doc_meta).unwrap(),
+                ION::json_canonicalization_scheme(&actual_output_doc_meta).unwrap()
+            );
+        } else {
+            // If error variant, panic
+            panic!()
+        }
     }
 
     #[test]
