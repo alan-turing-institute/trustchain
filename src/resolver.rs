@@ -14,16 +14,22 @@ use tokio::runtime::Runtime;
 /// An error relating to Trustchain resolution.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ResolverError {
+    /// Controller is already present in DID document.
     #[error("Controller is already present in DID document.")]
     ControllerAlreadyPresent,
+    /// Failed to convert to Truschain document and metadata.
     #[error("Failed to convert to Truschain document and metadata.")]
     FailedToConvertToTrustchain,
+    /// Multiple 'TrustchainProofService' entries are present.
     #[error("Multiple 'TrustchainProofService' entries are present.")]
     MultipleTrustchainProofService,
+    /// No 'TrustchainProofService' is present.
     #[error("No 'TrustchainProofService' is present.")]
     NoTrustchainProofService,
+    /// Cannot connect to sidetree server.
     #[error("Cannot connect to sidetree server.")]
     ConnectionFailure,
+    /// DID does not exist.
     #[error("DID: {0} does not exist.")]
     NonExistentDID(String),
 }
@@ -159,6 +165,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
     }
 
+    /// Remove Trustchain proof service from passed document.
     fn remove_proof_service(&self, mut doc: Document) -> Document {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
@@ -182,6 +189,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         doc
     }
 
+    /// Convert a document from a sidetree resolved to a Trustchain resolved format.
     pub fn sidetree_to_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
         // Make a clone of the document so passed document remains the same
         let doc_clone = doc.clone();
@@ -232,6 +240,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
     }
 
+    /// Get the value of a key in a Trustchain proof service.
     fn get_from_proof_service(&self, proof_service: &Service, key: &str) -> Option<String> {
         // Destructure nested enums and extract controller from a proof service
         let controller_did: Option<String> = match proof_service.service_endpoint.as_ref() {
@@ -282,6 +291,8 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
         doc_meta
     }
+
+    /// Convert document metadata from a sidetree resolved to a Trustchain resolved format.
     pub fn sidetree_to_trustchain_doc_metadata(
         &self,
         doc: &Document,
