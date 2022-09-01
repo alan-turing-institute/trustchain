@@ -119,7 +119,7 @@ impl Resolver {
                     Err(ResolverError::FailedToConvertToTrustchain) => {
                         Err(ResolverError::FailedToConvertToTrustchain)
                     }
-                    // If
+                    // If not defined error, panic!()
                     _ => panic!(),
                 }
             } else {
@@ -244,30 +244,38 @@ impl Resolver {
     /// Adds proof to a passed DocumentMetadata from Document
     fn add_proof(&self, doc: &Document, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
+
         // Get proof service
         let proof_service = self.get_proof_service(doc);
-        // If not None
-        if let Ok(proof_service) = proof_service {
-            // Get proof value and controller (uDID)
-            let proof_value = self.get_from_proof_service(proof_service, "proofValue");
-            let controller = self.get_from_proof_service(proof_service, "controller");
-            // If not None, add to new HashMap
-            if let (Some(property_set), Some(proof_value), Some(controller)) =
-                (doc_meta.property_set.as_mut(), proof_value, controller)
-            {
-                // Make new HashMap; add keys and values
-                let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
-                proof_hash_map.insert(String::from("id"), Metadata::String(controller));
-                proof_hash_map.insert(
-                    String::from("type"),
-                    Metadata::String("JsonWebSignature2020".to_string()),
-                );
-                proof_hash_map.insert(String::from("proofValue"), Metadata::String(proof_value));
 
-                // Insert new HashMap of Metadata::Map()
-                property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
-                return doc_meta;
+        // Handle result
+        match proof_service {
+            // If there is exactly one proof service, add it to metadata
+            Ok(proof_service) => {
+                // Get proof value and controller (uDID)
+                let proof_value = self.get_from_proof_service(proof_service, "proofValue");
+                let controller = self.get_from_proof_service(proof_service, "controller");
+                // If not None, add to new HashMap
+                if let (Some(property_set), Some(proof_value), Some(controller)) =
+                    (doc_meta.property_set.as_mut(), proof_value, controller)
+                {
+                    // Make new HashMap; add keys and values
+                    let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
+                    proof_hash_map.insert(String::from("id"), Metadata::String(controller));
+                    proof_hash_map.insert(
+                        String::from("type"),
+                        Metadata::String("JsonWebSignature2020".to_string()),
+                    );
+                    proof_hash_map
+                        .insert(String::from("proofValue"), Metadata::String(proof_value));
+
+                    // Insert new HashMap of Metadata::Map()
+                    property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
+                    return doc_meta;
+                }
             }
+            // If there are zero or multiple proof services, do nothing
+            Err(_) => (),
         }
         doc_meta
     }
