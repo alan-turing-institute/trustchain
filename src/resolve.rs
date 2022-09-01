@@ -1,8 +1,4 @@
-use std::process::exit;
-
-use clap::{arg, command, value_parser, Arg, ArgAction};
-use did_ion::sidetree::Sidetree;
-use did_ion::ION;
+use clap::{arg, command, Arg, ArgAction};
 use serde_json::to_string_pretty as to_json;
 use trustchain::resolver::Resolver;
 

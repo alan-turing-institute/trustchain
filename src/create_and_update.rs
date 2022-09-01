@@ -7,8 +7,8 @@ use did_ion::ION;
 use ssi::did::ServiceEndpoint;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
-use std::fmt::format;
-use std::fs::{read, write};
+// use std::fmt::format;
+// use std::fs::{read, write};
 // use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 // use failure::Fail;
 use serde_json::{to_string_pretty as to_json, Map, Value};
@@ -18,22 +18,22 @@ fn make_did_ion(suffix: &String) -> String {
     "did:ion:test:".to_string() + suffix
 }
 
-fn generate_proof_data(did_suffix: &String, document: &String) -> String {
-    // Convert document into proof data
-    todo!()
-}
+// fn generate_proof_data(did_suffix: &String, document: &String) -> String {
+//     // Convert document into proof data
+//     todo!()
+// }
 
-fn get_proof_data(did_suffix: &String) -> String {
-    // Resolve DID
+// fn get_proof_data(did_suffix: &String) -> String {
+//     // Resolve DID
 
-    // Reconstruct into document
-    todo!()
-}
+//     // Reconstruct into document
+//     todo!()
+// }
 
-fn verify_proof_data(key: PublicKeyJwk, data: &String) -> bool {
-    // Verify the signature data
-    todo!()
-}
+// fn verify_proof_data(key: PublicKeyJwk, data: &String) -> bool {
+//     // Verify the signature data
+//     todo!()
+// }
 
 fn load_key(file_name: &str, verbose: bool) -> JWK {
     // Load previous data
