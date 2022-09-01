@@ -241,16 +241,20 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
     }
 
     /// Get the value of a key in a Trustchain proof service.
-    fn get_from_proof_service(&self, proof_service: &Service, key: &str) -> Option<String> {
+    fn get_from_proof_service<'a>(
+        &self,
+        proof_service: &'a Service,
+        key: &str,
+    ) -> Option<&'a String> {
         // Destructure nested enums and extract controller from a proof service
-        let controller_did: Option<String> = match proof_service.service_endpoint.as_ref() {
+        let value: Option<&String> = match proof_service.service_endpoint.as_ref() {
             Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => match &v[key] {
-                Value::String(s) => Some(s.to_string()),
+                Value::String(s) => Some(s),
                 _ => None,
             },
             _ => None,
         };
-        controller_did
+        value
     }
 
     /// Adds proof to a passed DocumentMetadata from Document
@@ -273,13 +277,16 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
                 {
                     // Make new HashMap; add keys and values
                     let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
-                    proof_hash_map.insert(String::from("id"), Metadata::String(controller));
+                    proof_hash_map
+                        .insert(String::from("id"), Metadata::String(controller.to_owned()));
                     proof_hash_map.insert(
                         String::from("type"),
                         Metadata::String("JsonWebSignature2020".to_string()),
                     );
-                    proof_hash_map
-                        .insert(String::from("proofValue"), Metadata::String(proof_value));
+                    proof_hash_map.insert(
+                        String::from("proofValue"),
+                        Metadata::String(proof_value.to_owned()),
+                    );
 
                     // Insert new HashMap of Metadata::Map()
                     property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
@@ -541,7 +548,7 @@ mod tests {
 
         assert_eq!(
             controller,
-            "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ".to_string()
+            "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ"
         )
     }
     #[test]
