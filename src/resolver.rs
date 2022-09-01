@@ -1,5 +1,4 @@
-use did_ion::sidetree::SidetreeClient;
-use did_ion::ION;
+use did_ion::sidetree::{Sidetree, SidetreeClient};
 use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
@@ -8,6 +7,7 @@ use ssi::did_resolve::{
 };
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
+use std::marker::Send;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
@@ -29,14 +29,14 @@ pub enum ResolverError {
 }
 
 /// Struct for performing resolution from a sidetree server to generate Trustchain DID document and DID document metadata.
-pub struct Resolver {
+pub struct Resolver<T: Sidetree + Sync + Send> {
     /// Runtime for calling async functions.
     runtime: Runtime,
     /// Client for performing server resolutions.
-    sidetree_client: SidetreeClient<ION>,
+    sidetree_client: SidetreeClient<T>,
 }
 
-impl Resolver {
+impl<T: Sidetree + Sync + Send> Resolver<T> {
     /// Produces a new resolver.
     pub fn new() -> Self {
         // Make runtime
@@ -47,7 +47,7 @@ impl Resolver {
 
         // Make client
         let sidetree_server_uri: &str = "http://localhost:3000/";
-        let sidetree_client = SidetreeClient::<ION>::new(Some(sidetree_server_uri.to_string()));
+        let sidetree_client = SidetreeClient::<T>::new(Some(sidetree_server_uri.to_string()));
 
         Self {
             runtime,
@@ -316,15 +316,14 @@ impl Resolver {
 
 #[cfg(test)]
 mod tests {
-    use did_ion::sidetree::Sidetree;
-    // use serde_json::to_string_pretty as to_json;
-
     use super::*;
     use crate::data::{
         TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA,
         TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
         TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
+    use did_ion::sidetree::Sidetree;
+    use did_ion::ION;
     #[test]
     fn add_controller() {
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
@@ -332,7 +331,7 @@ mod tests {
         let did_doc =
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let result = resolver
             .add_controller(did_doc, &controller_did)
             .expect("Different Controller already present.");
@@ -349,7 +348,7 @@ mod tests {
         let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
             .expect("Document failed to load.");
 
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let result = resolver.add_controller(did_doc, &controller_did);
         let expected: Result<Document, ResolverError> =
             Err(ResolverError::ControllerAlreadyPresent);
@@ -365,7 +364,7 @@ mod tests {
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Make resolver
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
 
         // Remove proof service
         let sidetree_doc_no_proof_service = resolver.remove_proof_service(sidetree_doc);
@@ -378,7 +377,7 @@ mod tests {
         // Test to get proof service from an sidetree-resolved did doc
         let sidetree_doc =
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
         assert_eq!(proof_service.id, "#trustchain-controller-proof");
     }
@@ -389,7 +388,7 @@ mod tests {
         // todo!()
         let sidetree_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF)
             .expect("Document failed to load.");
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let result = resolver.get_proof_service(&sidetree_doc);
         let expected: Result<&Service, ResolverError> =
             Err(ResolverError::MultipleTrustchainProofService);
@@ -402,7 +401,7 @@ mod tests {
         // Write a test to get proof service from an sidetree-resolved did doc
         let sidetree_doc =
             Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let result = resolver.get_proof_service(&sidetree_doc);
 
         let expected: Result<&Service, ResolverError> =
@@ -419,7 +418,7 @@ mod tests {
         let tc_doc =
             Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
 
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
         let controller = resolver
             .get_from_proof_service(&proof_service, "controller")
@@ -452,7 +451,7 @@ mod tests {
             .expect("Cannot add proof and canonicalize.");
 
         // Make new resolver
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
 
         // Actual Trustchain metadata
         let actual_tc_meta = ION::json_canonicalization_scheme(
@@ -487,7 +486,7 @@ mod tests {
         };
 
         // Make new resolver
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
 
         // Call function and get output result type
         let output = resolver.sidetree_to_trustchain(
@@ -522,7 +521,7 @@ mod tests {
         let did_doc =
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
         let service = resolver.get_proof_service(&did_doc).unwrap();
 
         let controller = resolver
@@ -552,7 +551,7 @@ mod tests {
             .expect("Cannot add proof and canonicalize.");
 
         // Make new resolver
-        let resolver = Resolver::new();
+        let resolver = Resolver::<ION>::new();
 
         // Canonicalize
         let actual_tc_meta =

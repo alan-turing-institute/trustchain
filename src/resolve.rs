@@ -1,4 +1,5 @@
 use clap::{arg, command, Arg, ArgAction};
+use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use trustchain::resolver::Resolver;
 
@@ -18,7 +19,7 @@ fn main() {
         .get_matches();
 
     // Make Trsutchain resolver
-    let resolver: Resolver = Resolver::new();
+    let resolver: Resolver<ION> = Resolver::<ION>::new();
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();
