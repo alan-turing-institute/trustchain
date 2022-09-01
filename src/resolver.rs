@@ -112,6 +112,8 @@ impl Resolver {
                 // Convert to trustchain versions
                 let tc_result = self.ion_to_trustchain(ion_res_meta, ion_doc, ion_doc_meta);
                 match tc_result {
+                    // Map the tuple of non-option types to have tuple with optional document
+                    // document metadata
                     Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
                         Ok((tc_res_meta, Some(tc_doc), Some(tc_doc_meta)))
                     }
@@ -218,7 +220,7 @@ impl Resolver {
             // Convert metadata
             let doc_meta = self.ion_to_trustchain_doc_metadata(&ion_doc, ion_doc_meta);
 
-            // TODO: Convert resolution metadata
+            // Convert resolution metadata
             let res_meta = ion_res_meta;
 
             // Return tuple
@@ -374,9 +376,10 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn get_proof_service_with_many_proof_services() {
+    fn get_proof_service_with_multiple_proof_services() {
         // Write a test to get proof service from an ION-resolved did doc
         todo!()
+        // let ion_doc = Document::from_json(TEST_ION_DOCUMENT)
     }
 
     #[test]
