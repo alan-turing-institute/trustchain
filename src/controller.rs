@@ -22,6 +22,7 @@ trait Controller {
 
 /// Struct for common TrustchainController.
 pub struct TrustchainController {
+    did: Option<String>,
     signing_key: JWK,
     update_key: JWK,
     recovery_key: JWK,
@@ -35,6 +36,7 @@ impl TrustchainController {
         let recovery_key = ION::generate_key().expect("Could not generate key.");
 
         Self {
+            did: None,
             signing_key,
             update_key,
             recovery_key,
