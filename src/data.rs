@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-pub const TEST_ION_DOCUMENT: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT: &'static str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -49,7 +49,7 @@ pub const TEST_ION_DOCUMENT: &'static str = r##"
 }
 "##;
 
-pub const TEST_ION_DOCUMENT_MULTIPLE_PROOF: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF: &'static str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -107,7 +107,7 @@ pub const TEST_ION_DOCUMENT_MULTIPLE_PROOF: &'static str = r##"
 }
 "##;
 
-pub const TEST_ION_DOCUMENT_METADATA: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_METADATA: &'static str = r##"
 {
    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
    "method" : {
@@ -134,7 +134,7 @@ pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &'static str = r##"
 }
 "##;
 
-pub const TEST_ION_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
