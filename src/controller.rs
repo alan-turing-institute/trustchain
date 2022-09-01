@@ -60,8 +60,19 @@ impl Controller for TrustchainController {
         todo!();
     }
     fn load_key(&self) {
-        todo!();
+        // Load previous data
+        let file_name = format!("update_{}", self.did.as_ref().unwrap());
+        let ec_read = std::fs::read(file_name).unwrap();
+        let ec_read = std::str::from_utf8(&ec_read).unwrap();
+        let ec_params: ECParams = serde_json::from_str(ec_read).unwrap();
+
+        // let ec_params = Params::EC(ec_params);
+        let update_key = JWK::from(Params::EC(ec_params));
+        println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
+        // update_key
+        todo!()
     }
+
     fn save_keys(&self) {
         todo!();
     }
