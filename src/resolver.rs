@@ -218,6 +218,11 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         // Get controller DID
         let service = self.get_proof_service(&sidetree_doc);
 
+        // Return immediately multiple proof services present
+        if let Err(ResolverError::MultipleTrustchainProofService) = service {
+            return Err(ResolverError::MultipleTrustchainProofService);
+        };
+
         if let Ok(service) = service {
             let controller_did = self.get_from_proof_service(&service, "controller");
 
@@ -360,7 +365,7 @@ mod tests {
     }
     #[test]
     fn add_controller_fail() {
-        // Ad
+        // Add controller with failure as controller already present
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
@@ -530,6 +535,39 @@ mod tests {
         } else {
             // If error variant, panic
             panic!()
+        }
+    }
+    #[test]
+    fn sidetree_to_trustchain_with_multiple_proof_services() {
+        // TODO: resolve fn needs to be updated to return ResolverError::MultipleTrustchainProofService
+        // if there are multiple proof services present in the document as this is invalid.
+
+        // Test objects
+        let input_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF)
+            .expect("Document failed to load.");
+        let input_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
+                .expect("Document failed to load.");
+        let input_res_meta = ResolutionMetadata {
+            error: None,
+            content_type: None,
+            property_set: None,
+        };
+
+        // Make new resolver
+        let resolver = Resolver::<ION>::new();
+
+        // Call function and get output result type
+        let output = resolver.sidetree_to_trustchain(
+            input_res_meta.clone(),
+            input_doc.clone(),
+            input_doc_meta.clone(),
+        );
+
+        // Check correct error
+        match output {
+            Err(e) => assert_eq!(e, ResolverError::MultipleTrustchainProofService),
+            _ => panic!(),
         }
     }
 
