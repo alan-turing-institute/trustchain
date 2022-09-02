@@ -135,7 +135,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         })
     }
 
-    /// Get a result of index of a single Trustchain proof service, otherwise relevant error.
+    /// Gets a result of an index of a single Trustchain proof service, otherwise relevant error.
     fn get_proof_idx(&self, doc: &Document) -> Result<usize, ResolverError> {
         let mut idxs: Vec<usize> = Vec::new();
         let fragment = "trustchain-controller-proof";
@@ -155,7 +155,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Get a result of reference to a single Trustchain proof service, otherwise relevant error.
+    /// Gets a result of a reference to a single Trustchain proof service, otherwise relevant error.
     fn get_proof_service<'a>(&'a self, doc: &'a Document) -> Result<&Service, ResolverError> {
         // Extract proof service as an owned service
         let idxs = self.get_proof_idx(doc);
@@ -165,7 +165,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Remove Trustchain proof service from passed document.
+    /// Removes Trustchain proof service from passed document.
     fn remove_proof_service(&self, mut doc: Document) -> Document {
         // Check if the Trustchain proof service exists in document
         // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
@@ -189,7 +189,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         doc
     }
 
-    /// Convert a document from a sidetree resolved to a Trustchain resolved format.
+    /// Converts a document from a sidetree resolved to a Trustchain resolved format.
     pub fn sidetree_to_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
         // Make a clone of the document so passed document remains the same
         let doc_clone = doc.clone();
@@ -208,7 +208,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         doc_clone
     }
 
-    /// Performing conversion of the sidetree resolved objects to trustchain objects
+    /// Performs conversion of sidetree resolved objects to Trustchain objects.
     pub fn sidetree_to_trustchain(
         &self,
         sidetree_res_meta: ResolutionMetadata,
@@ -245,7 +245,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Get the value of a key in a Trustchain proof service.
+    /// Gets the value of a key in a Trustchain proof service.
     fn get_from_proof_service<'a>(
         &self,
         proof_service: &'a Service,
@@ -304,7 +304,7 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         doc_meta
     }
 
-    /// Convert document metadata from a sidetree resolved to a Trustchain resolved format.
+    /// Converts document metadata from a sidetree resolved to a Trustchain resolved format.
     pub fn sidetree_to_trustchain_doc_metadata(
         &self,
         doc: &Document,
@@ -316,14 +316,12 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
         doc_meta
     }
 
-    /// Adding the controller to an sidetree resolved document. Controller is the upstream DID of the downstream DID's document.
+    /// Adds the controller to a sidetree resolved document. Controller is the upstream DID of the downstream DID's document.
     fn add_controller(
         &self,
         mut doc: Document,
         controller_did: &str,
     ) -> Result<Document, ResolverError> {
-        // TODO check the doc fits the sidetree resolved format
-
         // Check controller is empty and if not throw error.
         if doc.controller.is_some() {
             return Err(ResolverError::ControllerAlreadyPresent);
