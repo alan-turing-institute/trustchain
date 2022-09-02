@@ -61,6 +61,7 @@ fn load_key(file_name: &str, verbose: bool) -> JWK {
     update_key
 }
 
+// Binary to make new DID and create, update (with a prototype Tructchain Proof Service) and deactivate operations.
 fn main() {
     // Public key entries can look like this
     // TODO: can we add custom controller using this struct?

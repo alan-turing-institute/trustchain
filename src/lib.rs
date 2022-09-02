@@ -1,3 +1,4 @@
+//! Trustchain library.
 mod controller;
 mod data;
 pub mod resolver;

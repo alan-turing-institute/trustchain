@@ -3,6 +3,7 @@ use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use trustchain::resolver::Resolver;
 
+// Binary to resolve a passed DID from the command line.
 fn main() {
     let matches = command!()
         .arg(
