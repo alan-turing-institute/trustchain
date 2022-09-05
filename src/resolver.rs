@@ -125,6 +125,9 @@ impl<T: Sidetree + Sync + Send> Resolver<T> {
                     Err(ResolverError::FailedToConvertToTrustchain) => {
                         Err(ResolverError::FailedToConvertToTrustchain)
                     }
+                    Err(ResolverError::MultipleTrustchainProofService) => {
+                        Err(ResolverError::MultipleTrustchainProofService)
+                    }
                     // If not defined error, panic!()
                     _ => panic!(),
                 }
