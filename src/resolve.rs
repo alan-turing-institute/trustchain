@@ -1,5 +1,7 @@
 use clap::{arg, command, Arg, ArgAction};
+use ssi::did::DIDMethod;
 use did_ion::ION;
+use did_ion::sidetree::{SidetreeClient};
 use serde_json::to_string_pretty as to_json;
 use trustchain::resolver::Resolver;
 
@@ -19,8 +21,10 @@ fn main() {
         )
         .get_matches();
 
-    // Make Trsutchain resolver
-    let resolver: Resolver<ION> = Resolver::<ION>::new();
+    // Construct a Trustchain resolver using the SidetreeClient struct to get a DIDResolver.
+    let sidetree_server_uri: &str = "http://localhost:3000/";
+    let sidetree_client = SidetreeClient::<ION>::new(Some(sidetree_server_uri.to_string()));
+    let resolver: Resolver = Resolver::new(sidetree_client.to_resolver());
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();
