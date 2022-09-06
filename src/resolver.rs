@@ -316,21 +316,24 @@ impl<'w> Resolver<'w> {
         doc_meta
     }
 
-    /// Adds the controller to a sidetree resolved document. Controller is the upstream DID of the downstream DID's document.
+    /// Adds the controller property to a resolved DID document, using the 
+    /// value passed in the controller_did argument. This must be the DID of
+    /// the subject (id property) found in the upstream DID document.
     fn add_controller(
         &self,
         mut doc: Document,
         controller_did: &str,
     ) -> Result<Document, ResolverError> {
+
         // Check controller is empty and if not throw error.
         if doc.controller.is_some() {
             return Err(ResolverError::ControllerAlreadyPresent);
         }
 
-        // Adding the passed controller did to the document
+        // Add the controller property to the DID document.
         doc.controller = Some(OneOrMany::One(controller_did.to_string()));
 
-        // Return new document with controller
+        // Return updated DID document.
         Ok(doc)
     }
 }
@@ -370,6 +373,8 @@ mod tests {
 
     #[test]
     fn add_controller() {
+        // Test add_controller method with successful result.
+
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         // Construct a DID Document from a test fixture.
@@ -401,42 +406,55 @@ mod tests {
         assert_eq!(result, expected);
     }
 
+    #[test]
+    fn add_controller_fail() {
+        // Test add_controller method with failure as controller already present.
+        
+        let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+
+        // Construct a DID Document that contains a controller property.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
+            .expect("Document failed to load.");
+
+        // Check the controller property is present.
+        assert!(did_doc.controller.is_some());
+
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
+
+        // Attempt to add the controller.
+        let result = resolver.add_controller(did_doc, &controller_did);
+        let expected: Result<Document, ResolverError> =
+            Err(ResolverError::ControllerAlreadyPresent);
+
+        // Confirm error.
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn remove_proof_service() {
+        // Test remove_proof_service method with successful result.
+
+        // Construct a DID Document from a test fixture.
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+
+        // Check the proof service is present.
+        assert!(did_doc.service.is_some());
+
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
+
+        // Remove the proof service in the DID document.
+        let did_doc_no_proof_service = resolver.remove_proof_service(did_doc);
+
+        // Check the proof service has been removed.
+        assert!(did_doc_no_proof_service.service.is_none());
+    }
+
     // TODO FROM HERE:
-
-    // #[test]
-    // fn add_controller_fail() {
-    //     // Add controller with failure as controller already present
-    //     let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-
-    //     let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
-    //         .expect("Document failed to load.");
-
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
-
-    //     let result = resolver.add_controller(did_doc, &controller_did);
-    //     let expected: Result<Document, ResolverError> =
-    //         Err(ResolverError::ControllerAlreadyPresent);
-
-    //     assert_eq!(result, expected);
-    // }
-
-    // #[test]
-    // fn remove_proof_service() {
-    //     // Write a test for removing the proof service from an sidetree-resolved did doc
-    //     // Test to get proof service from an sidetree-resolved did doc
-    //     let sidetree_doc =
-    //         Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
-
-    //     // Make resolver
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
-
-    //     // Remove proof service
-    //     let sidetree_doc_no_proof_service = resolver.remove_proof_service(sidetree_doc);
-
-    //     assert!(sidetree_doc_no_proof_service.service.is_none());
-    // }
 
     // #[test]
     // fn get_proof_service() {
