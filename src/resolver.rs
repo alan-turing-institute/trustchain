@@ -262,7 +262,7 @@ impl<'w> Resolver<'w> {
         value
     }
 
-    /// Adds proof to a passed DocumentMetadata from Document
+    /// Adds a proof from a DID Document to DocumentMetadata.
     fn add_proof(&self, doc: &Document, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
         // Check if the Trustchain proof service exists in document
 
@@ -377,9 +377,9 @@ mod tests {
 
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
-        // Construct a DID Document from a test fixture.
-        let did_doc =
-            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+        // Construct a Sidetree-resolved DID Document.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+            .expect("Document failed to load.");
 
         // Check there is no controller in the DID document.
         assert!(did_doc.controller.is_none());
@@ -412,7 +412,7 @@ mod tests {
         
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
-        // Construct a DID Document that contains a controller property.
+        // Construct a DID Document that already contains a controller property.
         let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
             .expect("Document failed to load.");
 
@@ -436,9 +436,9 @@ mod tests {
     fn remove_proof_service() {
         // Test remove_proof_service method with successful result.
 
-        // Construct a DID Document from a test fixture.
-        let did_doc =
-            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+        // Construct a Sidetree-resolved DID Document.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+            .expect("Document failed to load.");
 
         // Check the proof service is present.
         assert!(did_doc.service.is_some());
@@ -454,20 +454,25 @@ mod tests {
         assert!(did_doc_no_proof_service.service.is_none());
     }
 
-    // TODO FROM HERE:
+    #[test]
+    fn get_proof_service() {
+        // Test get_proof_service method on a sidetree-resolved DID document.
 
-    // #[test]
-    // fn get_proof_service() {
-    //     // Test to get proof service from an sidetree-resolved did doc
-    //     let sidetree_doc =
-    //         Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+        // Construct a Sidetree-resolved DID Document.
+        let sidetree_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+            .expect("Document failed to load.");
 
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
 
-    //     let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
-    //     assert_eq!(proof_service.id, "#trustchain-controller-proof");
-    // }
+        // Get the service property containing the Trustchain proof. 
+        let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
+
+        // Check the contents of the proof service property.
+        assert_eq!(proof_service.id, "#trustchain-controller-proof");
+        assert_eq!(proof_service.type_, OneOrMany::One(String::from("TrustchainProofService")));
+    }
 
     // #[test]
     // fn get_proof_service_when_multiple_proof_services() {
