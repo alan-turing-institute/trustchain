@@ -342,9 +342,14 @@ impl<'w> Resolver<'w> {
 mod tests {
     use super::*;
     use crate::data::{
-        TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA,
-        TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
-        TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_SIDETREE_DOCUMENT, 
+        TEST_SIDETREE_DOCUMENT_METADATA,
+        TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
+        TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF,
+        TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
+        TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
+        TEST_TRUSTCHAIN_DOCUMENT,
+        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
     use did_ion::sidetree::SidetreeClient;
     use ssi::did::DIDMethod;
@@ -459,54 +464,118 @@ mod tests {
         // Test get_proof_service method on a sidetree-resolved DID document.
 
         // Construct a Sidetree-resolved DID Document.
-        let sidetree_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
             .expect("Document failed to load.");
+
+        // Check that precisely one service is present in the DID document.
+        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 1 as usize);
 
         // Construct a Resolver instance.
         let sidetree_client = get_sidetree_client();
         let resolver = Resolver::new(sidetree_client.to_resolver());
 
         // Get the service property containing the Trustchain proof. 
-        let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
+        let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
         assert_eq!(proof_service.id, "#trustchain-controller-proof");
         assert_eq!(proof_service.type_, OneOrMany::One(String::from("TrustchainProofService")));
     }
 
-    // #[test]
-    // fn get_proof_service_when_multiple_proof_services() {
-    //     // Write a test to get proof service from an sidetree-resolved did doc
-    //     // todo!()
-    //     let sidetree_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF)
-    //         .expect("Document failed to load.");
+    #[test]
+    fn get_proof_service_only() {
+        // Test get_proof_service method when non-proof service is present.
 
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
+        // Construct a Sidetree-resolved DID Document.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF)
+            .expect("Document failed to load.");
 
-    //     let result = resolver.get_proof_service(&sidetree_doc);
-    //     let expected: Result<&Service, ResolverError> =
-    //         Err(ResolverError::MultipleTrustchainProofService);
+        // Check that two services are present in the DID document.
+        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
 
-    //     assert_eq!(result, expected);
-    // }
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
 
-    // #[test]
-    // fn get_proof_service_when_no_proof_services() {
-    //     // Write a test to get proof service from an sidetree-resolved did doc
-    //     let sidetree_doc =
-    //         Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        // Get the service property containing the Trustchain proof. 
+        let proof_service = resolver.get_proof_service(&did_doc).unwrap();
+
+        // Check the contents of the proof service property.
+        assert_eq!(proof_service.id, "#trustchain-controller-proof");
+        assert_eq!(proof_service.type_, OneOrMany::One(String::from("TrustchainProofService")));
+    }
+
+    #[test]
+    fn get_proof_service_fail_multiple_proof_services() {
+        // Test get_proof_service method with failure as multiple proof services present.
+
+        // Construct a DID Document with muliple proof services.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF)
+            .expect("Document failed to load.");
+
+        // Check that two services are present in the DID document.
+        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
+
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
+
+        let result = resolver.get_proof_service(&did_doc);
+
+        // Expect an error due to the presence of multiple proof services.
+        let expected: Result<&Service, ResolverError> =
+            Err(ResolverError::MultipleTrustchainProofService);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn get_proof_service_fail_no_proof_services() {
+        // Test get_proof_service method with failure as no proof services present.
         
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
+        // Construct a DID Document with a service but no proof services.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF)
+            .expect("Document failed to load.");
+        
+        // Check that a service is present in the DID document.
+        assert!(did_doc.service.is_some());
 
-    //     let result = resolver.get_proof_service(&sidetree_doc);
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
 
-    //     let expected: Result<&Service, ResolverError> =
-    //         Err(ResolverError::NoTrustchainProofService);
+        let result = resolver.get_proof_service(&did_doc);
 
-    //     assert_eq!(result, expected);
-    // }
+        // Expect an error due to the absence of any proof services.
+        let expected: Result<&Service, ResolverError> =
+            Err(ResolverError::NoTrustchainProofService);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn get_proof_service_fail_no_services() {
+        // Test get_proof_service method with failure as no services present.
+        
+        // Construct a DID Document with no proof services.
+        let did_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        
+        // Check that no services are present in the DID document.
+        assert!(did_doc.service.is_none());
+
+        // Construct a Resolver instance.
+        let sidetree_client = get_sidetree_client();
+        let resolver = Resolver::new(sidetree_client.to_resolver());
+
+        let result = resolver.get_proof_service(&did_doc);
+
+        // Expect an error due to the absence of any proof services.
+        let expected: Result<&Service, ResolverError> =
+            Err(ResolverError::NoTrustchainProofService);
+
+        assert_eq!(result, expected);
+    }
 
     // #[test]
     // fn sidetree_to_trustchain_doc() {
