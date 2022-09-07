@@ -3,6 +3,7 @@ use ssi::did::DIDMethod;
 use did_ion::ION;
 use did_ion::sidetree::{SidetreeClient};
 use serde_json::to_string_pretty as to_json;
+use ssi::did_resolve::HTTPDIDResolver;
 use trustchain::resolver::Resolver;
 
 // Binary to resolve a passed DID from the command line.
@@ -21,10 +22,15 @@ fn main() {
         )
         .get_matches();
 
-    // Construct a Trustchain resolver using the SidetreeClient struct to get a DIDResolver.
-    let sidetree_server_uri: &str = "http://localhost:3000/";
-    let sidetree_client = SidetreeClient::<ION>::new(Some(sidetree_server_uri.to_string()));
-    let resolver: Resolver = Resolver::new(sidetree_client.to_resolver());
+    // Construct a DID resolver that resolves DIDs via an HTTP endpoint.
+    let http_resolver = HTTPDIDResolver::new("http://localhost:3000/");
+
+    // Construct a Trustchain resolver, wrapping the HTTP DID Resolver.
+    // APPROACH 1.
+    let resolver = Resolver::new(Box::new(http_resolver));
+    
+    // // APPROACH 2.
+    // let resolver = Resolver::new(http_resolver);
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();

@@ -2,7 +2,7 @@ use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
-    DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
+    DIDResolver, HTTPDIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
@@ -32,20 +32,45 @@ pub enum ResolverError {
     NonExistentDID(String),
 }
 
+// NOTE: Two alternative approaches to the Resolver struct are implemented.
+
+// To switch between the alternatives, comment out the line(s) immediately following 
+// one of the markers, either "APPROACH 1" or "APPROACH 2", throughout this module
+// (four occurrences) and also inside the `resolve.rs` module (one occurrence).
+
+// // APPROACH 1. (Trait object)
 /// Struct for performing resolution from a sidetree server to generate 
 /// Trustchain DID document and DID document metadata.
-/// The parameter 'w refers to the lifetime of the wrapped DIDResolver.
-pub struct Resolver<'w> {
+pub struct Resolver {
     /// Runtime for calling async functions.
     runtime: Runtime,
-
-    wrapped_resolver: &'w dyn DIDResolver
+    /// Resolver for performing DID Method resolutions.
+    wrapped_resolver: Box<dyn DIDResolver>
 }
 
-impl<'w> Resolver<'w> {
+// APPROACH 2. (Generic type parameter)
+// /// Struct for performing resolution from a sidetree server to generate 
+// /// Trustchain DID document and DID document metadata.
+// pub struct GenericResolver<T: DIDResolver + Sync + Send> {
+//     /// Runtime for calling async functions.
+//     runtime: Runtime,
+//     /// Resolver for performing DID Method resolutions.
+//     wrapped_resolver: T
+// }
+// pub type Resolver = GenericResolver<HTTPDIDResolver>;
+
+// APPROACH 1.
+impl Resolver {
+// APPROACH 2.
+// impl<T: DIDResolver + Sync + Send> GenericResolver<T> {
 
     /// Produces a new resolver.
-    pub fn new(resolver: &'w (dyn DIDResolver)) -> Self {
+    // APPROACH 1.
+    pub fn new(resolver: Box<dyn DIDResolver>) -> Self {
+
+    // // APPROACH 2.
+    // pub fn new(resolver: T) -> Self {
+
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -190,7 +215,7 @@ impl<'w> Resolver<'w> {
     }
 
     /// Converts a document from a sidetree resolved to a Trustchain resolved format.
-    pub fn sidetree_to_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
+    pub fn resolve_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
         // Make a clone of the document so passed document remains the same
         let doc_clone = doc.clone();
 
@@ -228,7 +253,7 @@ impl<'w> Resolver<'w> {
 
             // Convert doc
             let doc =
-                self.sidetree_to_trustchain_doc(&sidetree_doc, controller_did.unwrap().as_str());
+                self.resolve_trustchain_doc(&sidetree_doc, controller_did.unwrap().as_str());
 
             // Convert metadata
             let doc_meta =
@@ -351,31 +376,20 @@ mod tests {
         TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
-    use did_ion::sidetree::SidetreeClient;
+    use did_ion::sidetree::{Sidetree, SidetreeClient};
     use ssi::did::DIDMethod;
     use did_ion::ION;
 
-    // For testing, use SidetreeClient to get a DIDResolver.
-    fn get_sidetree_client() -> SidetreeClient<ION> {
-        let sidetree_server_uri: &str = "http://localhost:3000/";
-        SidetreeClient::<ION>::new(Some(sidetree_server_uri.to_string()))
+    // For testing, use an HTTPDIDResolver.
+    // APPROACH 1.
+    fn get_http_resolver() -> Box<HTTPDIDResolver> {
+        Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
     }
-        
-    // #[test]
-    // fn resolve_did() {
-        
-    //     // TODO: CAN WE EASILY TEST THE wrapped_resolve ASYNC METHOD?
-    //     let _did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-
-    //     // Construct a Resolver.
-    //     let sidetree_client = get_sidetree_client();
-    //     let _resolver = Resolver::new(sidetree_client.to_resolver());
-
-    //     // let result = resolver
-    //     //         .wrapped_resolve(&did);
-
+    // // APPROACH 2.
+    // fn get_http_resolver() -> HTTPDIDResolver {
+    //     HTTPDIDResolver::new("http://localhost:3000/")
     // }
-
+        
     #[test]
     fn add_controller() {
         // Test add_controller method with successful result.
@@ -390,8 +404,7 @@ mod tests {
         assert!(did_doc.controller.is_none());
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
         
         // Call add_controller on the Resolver to get the result.
         let result = resolver
@@ -425,8 +438,7 @@ mod tests {
         assert!(did_doc.controller.is_some());
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         // Attempt to add the controller.
         let result = resolver.add_controller(did_doc, &controller_did);
@@ -449,8 +461,7 @@ mod tests {
         assert!(did_doc.service.is_some());
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         // Remove the proof service in the DID document.
         let did_doc_no_proof_service = resolver.remove_proof_service(did_doc);
@@ -471,8 +482,7 @@ mod tests {
         assert_eq!((&did_doc).service.as_ref().unwrap().len(), 1 as usize);
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         // Get the service property containing the Trustchain proof. 
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
@@ -494,8 +504,7 @@ mod tests {
         assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         // Get the service property containing the Trustchain proof. 
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
@@ -517,8 +526,7 @@ mod tests {
         assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         let result = resolver.get_proof_service(&did_doc);
 
@@ -541,8 +549,7 @@ mod tests {
         assert!(did_doc.service.is_some());
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         let result = resolver.get_proof_service(&did_doc);
 
@@ -565,8 +572,7 @@ mod tests {
         assert!(did_doc.service.is_none());
 
         // Construct a Resolver instance.
-        let sidetree_client = get_sidetree_client();
-        let resolver = Resolver::new(sidetree_client.to_resolver());
+        let resolver = Resolver::new(get_http_resolver());
 
         let result = resolver.get_proof_service(&did_doc);
 
@@ -577,28 +583,36 @@ mod tests {
         assert_eq!(result, expected);
     }
 
-    // #[test]
-    // fn sidetree_to_trustchain_doc() {
-    //     // Write a test to convert an sidetree-resolved did document to the trustchain resolved format
-    //     let sidetree_doc =
-    //         Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
-    //     let tc_doc =
-    //         Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+    #[test]
+    fn resolve_trustchain_doc() {
+        // Test resolve_trustchain_doc method to convert an Sidetree-resolved 
+        // DID Document to the Trustchain-resolved format.
 
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
+        // Construct Sidetree-resolved and Trustchain-resolved DID Documents.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+            .expect("Document failed to load.");
+        let tc_doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT)
+            .expect("Document failed to load.");
 
-    //     let proof_service = resolver.get_proof_service(&sidetree_doc).unwrap();
-    //     let controller = resolver
-    //         .get_from_proof_service(&proof_service, "controller")
-    //         .unwrap();
-    //     let actual = resolver.sidetree_to_trustchain_doc(&sidetree_doc, controller.as_str());
+        // Construct a Resolver instance.
+        let resolver = Resolver::new(get_http_resolver());
 
-    //     assert_eq!(
-    //         ION::json_canonicalization_scheme(&tc_doc).expect("Failed to canonicalize."),
-    //         ION::json_canonicalization_scheme(&actual).expect("Failed to canonicalize.")
-    //     );
-    // }
+        // Get the controller from the proof service in the Sidetree-resolved DID document.
+        let proof_service = resolver.get_proof_service(&did_doc).unwrap();
+        let controller = resolver
+            .get_from_proof_service(&proof_service, "controller")
+            .unwrap();
+
+        let actual = resolver.resolve_trustchain_doc(&did_doc, controller.as_str());
+
+        // Canonicalise the 
+        let canon_tc_doc = ION::json_canonicalization_scheme(&tc_doc)
+            .expect("Failed to canonicalize.");
+        let canon_actual_doc = ION::json_canonicalization_scheme(&actual)
+            .expect("Failed to canonicalize.");
+        
+        assert_eq!(canon_tc_doc, canon_actual_doc);
+    }
 
     // #[test]
     // fn sidetree_to_trustchain_doc_metadata() {
