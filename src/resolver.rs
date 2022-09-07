@@ -2,7 +2,7 @@ use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
-    DIDResolver, HTTPDIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
+    DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
@@ -39,37 +39,37 @@ pub enum ResolverError {
 // (four occurrences) and also inside the `resolve.rs` module (one occurrence).
 
 // // APPROACH 1. (Trait object)
-/// Struct for performing resolution from a sidetree server to generate 
-/// Trustchain DID document and DID document metadata.
-pub struct Resolver {
-    /// Runtime for calling async functions.
-    runtime: Runtime,
-    /// Resolver for performing DID Method resolutions.
-    wrapped_resolver: Box<dyn DIDResolver>
-}
-
-// APPROACH 2. (Generic type parameter)
 // /// Struct for performing resolution from a sidetree server to generate 
 // /// Trustchain DID document and DID document metadata.
-// pub struct GenericResolver<T: DIDResolver + Sync + Send> {
+// pub struct Resolver {
 //     /// Runtime for calling async functions.
 //     runtime: Runtime,
 //     /// Resolver for performing DID Method resolutions.
-//     wrapped_resolver: T
+//     wrapped_resolver: Box<dyn DIDResolver>
 // }
-// pub type Resolver = GenericResolver<HTTPDIDResolver>;
 
-// APPROACH 1.
-impl Resolver {
-// APPROACH 2.
-// impl<T: DIDResolver + Sync + Send> GenericResolver<T> {
+// APPROACH 2. (Generic type parameter)
+/// Struct for performing resolution from a sidetree server to generate 
+/// Trustchain DID document and DID document metadata.
+pub struct Resolver<T: DIDResolver + Sync + Send> {
+    /// Runtime for calling async functions.
+    runtime: Runtime,
+    /// Resolver for performing DID Method resolutions.
+    wrapped_resolver: T
+}
+
+// // APPROACH 1.
+// impl Resolver {
+
+    // APPROACH 2.
+impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Produces a new resolver.
-    // APPROACH 1.
-    pub fn new(resolver: Box<dyn DIDResolver>) -> Self {
+    // // APPROACH 1.
+    // pub fn new(resolver: Box<dyn DIDResolver>) -> Self {
 
-    // // APPROACH 2.
-    // pub fn new(resolver: T) -> Self {
+    // APPROACH 2.
+    pub fn new(resolver: T) -> Self {
 
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -376,19 +376,20 @@ mod tests {
         TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
-    use did_ion::sidetree::{Sidetree, SidetreeClient};
-    use ssi::did::DIDMethod;
+    use ssi::did_resolve::HTTPDIDResolver;
+    use did_ion::sidetree::{Sidetree};
     use did_ion::ION;
 
     // For testing, use an HTTPDIDResolver.
-    // APPROACH 1.
-    fn get_http_resolver() -> Box<HTTPDIDResolver> {
-        Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
-    }
-    // // APPROACH 2.
-    // fn get_http_resolver() -> HTTPDIDResolver {
-    //     HTTPDIDResolver::new("http://localhost:3000/")
+    // // APPROACH 1.
+    // fn get_http_resolver() -> Box<HTTPDIDResolver> {
+    //     Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
     // }
+
+    // APPROACH 2.
+    fn get_http_resolver() -> HTTPDIDResolver {
+        HTTPDIDResolver::new("http://localhost:3000/")
+    }
         
     #[test]
     fn add_controller() {

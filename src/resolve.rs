@@ -1,7 +1,4 @@
 use clap::{arg, command, Arg, ArgAction};
-use ssi::did::DIDMethod;
-use did_ion::ION;
-use did_ion::sidetree::{SidetreeClient};
 use serde_json::to_string_pretty as to_json;
 use ssi::did_resolve::HTTPDIDResolver;
 use trustchain::resolver::Resolver;
@@ -26,11 +23,11 @@ fn main() {
     let http_resolver = HTTPDIDResolver::new("http://localhost:3000/");
 
     // Construct a Trustchain resolver, wrapping the HTTP DID Resolver.
-    // APPROACH 1.
-    let resolver = Resolver::new(Box::new(http_resolver));
-    
-    // // APPROACH 2.
-    // let resolver = Resolver::new(http_resolver);
+    // // APPROACH 1.
+    // let resolver = Resolver::new(Box::new(http_resolver));
+
+    // APPROACH 2.
+    let resolver = Resolver::new(http_resolver);
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();
