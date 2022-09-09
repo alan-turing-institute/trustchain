@@ -1,6 +1,6 @@
 use futures::executor::block_on;
 use serde_json::Value;
-use ssi::did::{Document, Service, ServiceEndpoint};
+use ssi::did::{Document, Service, ServiceEndpoint, DIDMethod};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
@@ -32,6 +32,16 @@ pub enum ResolverError {
     NonExistentDID(String),
 }
 
+// Newtype pattern (workaround for lack of trait upcasting coercion).
+// See https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types.
+pub struct DIDMethodWrapper<T: DIDMethod>(pub T);
+
+impl<T: DIDMethod> DIDResolver for DIDMethodWrapper<T> {
+    fn resolve< 'life0, 'life1, 'life2, 'async_trait>(& 'life0 self,did: & 'life1 str,input_metadata: & 'life2 ResolutionInputMetadata,) ->  core::pin::Pin<Box<dyn core::future::Future<Output = (ResolutionMetadata,Option<Document> ,Option<DocumentMetadata> ,)> + core::marker::Send+ 'async_trait> >where 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait,Self: 'async_trait {
+        self.0.to_resolver().resolve(did, input_metadata)
+    }
+}
+
 // NOTE: Two alternative approaches to the Resolver struct are implemented.
 
 // To switch between the alternatives, comment out the line(s) immediately following 
@@ -61,7 +71,7 @@ pub struct Resolver<T: DIDResolver + Sync + Send> {
 // // APPROACH 1.
 // impl Resolver {
 
-    // APPROACH 2.
+// APPROACH 2.
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Produces a new resolver.
@@ -114,29 +124,29 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     > {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
-            let (sidetree_res_meta, sidetree_doc, sidetree_doc_meta) =
+            let (did_res_meta, did_doc, did_doc_meta) =
                 block_on(self.wrapped_resolve(&did.to_string()));
 
             // Handle cases when: 1. cannot connect to server; 2. Did not find DID.
-            if let Some(sidetree_res_meta_error) = &sidetree_res_meta.error {
-                if sidetree_res_meta_error
+            if let Some(did_res_meta_error) = &did_res_meta.error {
+                if did_res_meta_error
                     .starts_with("Error sending HTTP request: error sending request for url")
                 {
                     return Err(ResolverError::ConnectionFailure);
-                } else if sidetree_res_meta_error == "invalidDid" {
+                } else if did_res_meta_error == "invalidDid" {
                     return Err(ResolverError::NonExistentDID(did.to_string()));
                 } else {
-                    eprintln!("Unhandled error message: {}", sidetree_res_meta_error);
+                    eprintln!("Unhandled error message: {}", did_res_meta_error);
                     panic!();
                 }
             }
 
             // If a document and document metadata are returned, try to convert
-            if let (Some(sidetree_doc), Some(sidetree_doc_meta)) = (sidetree_doc, sidetree_doc_meta)
+            if let (Some(did_doc), Some(did_doc_meta)) = (did_doc, did_doc_meta)
             {
                 // Convert to trustchain versions
                 let tc_result =
-                    self.sidetree_to_trustchain(sidetree_res_meta, sidetree_doc, sidetree_doc_meta);
+                    self.sidetree_to_trustchain(did_res_meta, did_doc, did_doc_meta);
                 match tc_result {
                     // Map the tuple of non-option types to have tuple with optional document
                     // document metadata
@@ -155,7 +165,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 }
             } else {
                 // If doc or doc_meta None, return sidetree resolution as is
-                Ok((sidetree_res_meta, None, None))
+                Ok((did_res_meta, None, None))
             }
         })
     }
@@ -380,7 +390,7 @@ mod tests {
     use did_ion::sidetree::{Sidetree};
     use did_ion::ION;
 
-    // For testing, use an HTTPDIDResolver.
+    // For testing, use a (dummy) HTTPDIDResolver.
     // // APPROACH 1.
     // fn get_http_resolver() -> Box<HTTPDIDResolver> {
     //     Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
@@ -615,36 +625,35 @@ mod tests {
         assert_eq!(canon_tc_doc, canon_actual_doc);
     }
 
-    // #[test]
-    // fn sidetree_to_trustchain_doc_metadata() {
-    //     // Write a test to convert sidetree-resolved did document metadata to trustchain format
-    //     // See https://github.com/alan-turing-institute/trustchain/issues/11
-    //     // Load test sidetree doc
-    //     let sidetree_doc =
-    //         Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load doc.");
+    #[test]
+    fn sidetree_to_trustchain_doc_metadata() {
+        // Write a test to convert sidetree-resolved did document metadata to trustchain format
+        // See https://github.com/alan-turing-institute/trustchain/issues/11
+        // Load test sidetree doc
+        let sidetree_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load doc.");
 
-    //     // Load test sidetree metadata
-    //     let sidetree_meta: DocumentMetadata =
-    //         serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA).expect("Failed to load metadata");
+        // Load test sidetree metadata
+        let sidetree_meta: DocumentMetadata =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA).expect("Failed to load metadata");
 
-    //     // Load and canoncalize the Trustchain document metadata
-    //     let expected_tc_meta: DocumentMetadata =
-    //         serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
-    //             .expect("Failed to load metadata");
-    //     let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
-    //         .expect("Cannot add proof and canonicalize.");
+        // Load and canoncalize the Trustchain document metadata
+        let expected_tc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
+                .expect("Failed to load metadata");
+        let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
+            .expect("Cannot add proof and canonicalize.");
 
-    //     // Make new resolver
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
+        // Construct a Resolver instance.
+        let resolver = Resolver::new(get_http_resolver());
 
-    //     // Actual Trustchain metadata
-    //     let actual_tc_meta = ION::json_canonicalization_scheme(
-    //         &resolver.sidetree_to_trustchain_doc_metadata(&sidetree_doc, sidetree_meta),
-    //     )
-    //     .expect("Cannot add proof and canonicalize.");
-    //     assert_eq!(expected_tc_meta, actual_tc_meta);
-    // }
+        // Actual Trustchain metadata
+        let actual_tc_meta = ION::json_canonicalization_scheme(
+            &resolver.sidetree_to_trustchain_doc_metadata(&sidetree_doc, sidetree_meta),
+        )
+        .expect("Cannot add proof and canonicalize.");
+        assert_eq!(expected_tc_meta, actual_tc_meta);
+    }
 
     // #[test]
     // fn sidetree_to_trustchain() {
