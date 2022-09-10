@@ -33,6 +33,8 @@ pub enum ResolverError {
 }
 
 // Newtype pattern (workaround for lack of trait upcasting coercion).
+// Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
+// The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
 // See https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types.
 pub struct DIDMethodWrapper<T: DIDMethod>(pub T);
 
@@ -146,7 +148,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             {
                 // Convert to trustchain versions
                 let tc_result =
-                    self.sidetree_to_trustchain(did_res_meta, did_doc, did_doc_meta);
+                    self.trustchain_resolve(did_res_meta, did_doc, did_doc_meta);
                 match tc_result {
                     // Map the tuple of non-option types to have tuple with optional document
                     // document metadata
@@ -224,62 +226,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         doc
     }
 
-    /// Converts a document from a sidetree resolved to a Trustchain resolved format.
-    pub fn resolve_trustchain_doc(&self, doc: &Document, controller_did: &str) -> Document {
-        // Make a clone of the document so passed document remains the same
-        let doc_clone = doc.clone();
-
-        // Check if the Trustchain proof service exists in document
-        let doc_clone = self.remove_proof_service(doc_clone);
-
-        // Add controller
-        let doc_clone = self
-            .add_controller(doc_clone, controller_did)
-            .expect("Controller already present in document.");
-
-        // Remove proof service
-        let doc_clone = self.remove_proof_service(doc_clone);
-
-        doc_clone
-    }
-
-    /// Performs conversion of sidetree resolved objects to Trustchain objects.
-    pub fn sidetree_to_trustchain(
-        &self,
-        sidetree_res_meta: ResolutionMetadata,
-        sidetree_doc: Document,
-        sidetree_doc_meta: DocumentMetadata,
-    ) -> Result<(ResolutionMetadata, Document, DocumentMetadata), ResolverError> {
-        // Get controller DID
-        let service = self.get_proof_service(&sidetree_doc);
-
-        // Return immediately multiple proof services present
-        if let Err(ResolverError::MultipleTrustchainProofService) = service {
-            return Err(ResolverError::MultipleTrustchainProofService);
-        };
-
-        if let Ok(service) = service {
-            let controller_did = self.get_from_proof_service(&service, "controller");
-
-            // Convert doc
-            let doc =
-                self.resolve_trustchain_doc(&sidetree_doc, controller_did.unwrap().as_str());
-
-            // Convert metadata
-            let doc_meta =
-                self.sidetree_to_trustchain_doc_metadata(&sidetree_doc, sidetree_doc_meta);
-
-            // Convert resolution metadata
-            let res_meta = sidetree_res_meta;
-
-            // Return tuple
-            Ok((res_meta, doc, doc_meta))
-        } else {
-            // TODO: If proof service is not present or multiple, just return Ok for now.
-            Ok((sidetree_res_meta, sidetree_doc, sidetree_doc_meta))
-        }
-    }
-
     /// Gets the value of a key in a Trustchain proof service.
     fn get_from_proof_service<'a>(
         &self,
@@ -339,18 +285,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         doc_meta
     }
 
-    /// Converts document metadata from a sidetree resolved to a Trustchain resolved format.
-    pub fn sidetree_to_trustchain_doc_metadata(
-        &self,
-        doc: &Document,
-        doc_meta: DocumentMetadata,
-    ) -> DocumentMetadata {
-        // Add proof to sidetree document metadata if it exists
-        let doc_meta = self.add_proof(doc, doc_meta);
-
-        doc_meta
-    }
-
     /// Adds the controller property to a resolved DID document, using the 
     /// value passed in the controller_did argument. This must be the DID of
     /// the subject (id property) found in the upstream DID document.
@@ -370,6 +304,75 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
         // Return updated DID document.
         Ok(doc)
+    }
+
+    /// Converts DID Document Metadata from a resolved DID to the Trustchain resolved format.
+    pub fn trustchain_resolve_doc_metadata(
+        &self,
+        doc: &Document,
+        doc_meta: DocumentMetadata,
+    ) -> DocumentMetadata {
+        // Add proof property to the DID Document Metadata (if it exists).
+        let doc_meta = self.add_proof(doc, doc_meta);
+        doc_meta
+    }
+
+    /// Converts a DID Document from a resolved DID to the Trustchain resolved format.
+    pub fn trustchain_resolve_doc(&self, doc: &Document, controller_did: &str) -> Document {
+        
+        // Clone the passed DID document.
+        let doc_clone = doc.clone();
+
+        // Duplication?
+        // // Check if the Trustchain proof service alreday exists in the document.
+        // let doc_clone = self.remove_proof_service(doc_clone);
+
+        // Add controller
+        let doc_clone = self
+            .add_controller(doc_clone, controller_did)
+            .expect("Controller already present in document.");
+
+        // Remove the proof service from the document.
+        let doc_clone = self.remove_proof_service(doc_clone);
+
+        doc_clone
+    }
+
+    /// Converts DID Document + Metadata to the Trustchain resolved format.
+    pub fn trustchain_resolve(
+        &self,
+        sidetree_res_meta: ResolutionMetadata,
+        sidetree_doc: Document,
+        sidetree_doc_meta: DocumentMetadata,
+    ) -> Result<(ResolutionMetadata, Document, DocumentMetadata), ResolverError> {
+        // Get controller DID
+        let service = self.get_proof_service(&sidetree_doc);
+
+        // Return immediately multiple proof services present
+        if let Err(ResolverError::MultipleTrustchainProofService) = service {
+            return Err(ResolverError::MultipleTrustchainProofService);
+        };
+
+        if let Ok(service) = service {
+            let controller_did = self.get_from_proof_service(&service, "controller");
+
+            // Convert doc
+            let doc =
+                self.trustchain_resolve_doc(&sidetree_doc, controller_did.unwrap().as_str());
+
+            // Convert metadata
+            let doc_meta =
+                self.trustchain_resolve_doc_metadata(&sidetree_doc, sidetree_doc_meta);
+
+            // Convert resolution metadata
+            let res_meta = sidetree_res_meta;
+
+            // Return tuple
+            Ok((res_meta, doc, doc_meta))
+        } else {
+            // TODO: If proof service is not present or multiple, just return Ok for now.
+            Ok((sidetree_res_meta, sidetree_doc, sidetree_doc_meta))
+        }
     }
 }
 
@@ -595,120 +598,125 @@ mod tests {
     }
 
     #[test]
-    fn resolve_trustchain_doc() {
-        // Test resolve_trustchain_doc method to convert an Sidetree-resolved 
-        // DID Document to the Trustchain-resolved format.
+    fn trustchain_resolve_doc_metadata() {
+        // Test transformation of Sidetree-resolved DID Document Metadata to Trustchain format.
 
-        // Construct Sidetree-resolved and Trustchain-resolved DID Documents.
+        // See https://github.com/alan-turing-institute/trustchain/issues/11
+
+        // Construct a Sidetree-resolved DID Document.
         let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
-        let tc_doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT)
-            .expect("Document failed to load.");
+            .expect("Document failed to load doc.");
 
+        // Construct Sidetree-resolved DID Document Metadata.
+        let sidetree_meta: DocumentMetadata = serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
+            .expect("Failed to load metadata");
+            
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
-        // Get the controller from the proof service in the Sidetree-resolved DID document.
+        // Transform the DID Document Metadata by resolving into Trustchain format.
+        let actual = resolver.trustchain_resolve_doc_metadata(&did_doc, sidetree_meta);
+
+        // Canonicalise the result and compare with the expected Trustchain format.
+        let canon_actual_meta = ION::json_canonicalization_scheme(&actual)
+            .expect("Cannot add proof and canonicalize.");
+
+        let tc_meta: DocumentMetadata = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
+            .expect("Failed to load metadata");
+        let canon_tc_meta = ION::json_canonicalization_scheme(&tc_meta)
+            .expect("Cannot add proof and canonicalize.");
+
+        assert_eq!(canon_tc_meta, canon_actual_meta);
+    }
+
+    #[test]
+    fn trustchain_resolve_doc() {
+        // Test transformation of a Sidetree-resolved DID Document into Trustchain format.
+
+        // Construct a Sidetree-resolved DID Document.
+        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
+            .expect("Document failed to load.");
+            
+        // Construct a Resolver instance.
+        let resolver = Resolver::new(get_http_resolver());
+        
+        // Get the controller from the proof service property in the Sidetree-resolved DID document.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
         let controller = resolver
             .get_from_proof_service(&proof_service, "controller")
             .unwrap();
-
-        let actual = resolver.resolve_trustchain_doc(&did_doc, controller.as_str());
-
-        // Canonicalise the 
-        let canon_tc_doc = ION::json_canonicalization_scheme(&tc_doc)
-            .expect("Failed to canonicalize.");
+        
+        // Transform the DID document by resolving into Trustchain format.
+        let actual = resolver.trustchain_resolve_doc(&did_doc, controller.as_str());
+            
+        // Canonicalise the result and compare with the expected Trustchain format.
         let canon_actual_doc = ION::json_canonicalization_scheme(&actual)
+            .expect("Failed to canonicalize.");
+
+        let tc_doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT)
+            .expect("Document failed to load.");
+        let canon_tc_doc = ION::json_canonicalization_scheme(&tc_doc)
             .expect("Failed to canonicalize.");
         
         assert_eq!(canon_tc_doc, canon_actual_doc);
     }
 
     #[test]
-    fn sidetree_to_trustchain_doc_metadata() {
-        // Write a test to convert sidetree-resolved did document metadata to trustchain format
-        // See https://github.com/alan-turing-institute/trustchain/issues/11
-        // Load test sidetree doc
-        let sidetree_doc =
-            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load doc.");
+    fn trustchain_resolve() {
+        // Test transformation of Sidetree-resolved DID Document + Metadata into Trustchain format.
 
-        // Load test sidetree metadata
-        let sidetree_meta: DocumentMetadata =
-            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA).expect("Failed to load metadata");
-
-        // Load and canoncalize the Trustchain document metadata
-        let expected_tc_meta: DocumentMetadata =
+        // Test objects
+        let input_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+        let expected_output_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        let input_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
+                .expect("Document failed to load.");
+        let expected_output_doc_meta: DocumentMetadata =
             serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
-                .expect("Failed to load metadata");
-        let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
-            .expect("Cannot add proof and canonicalize.");
+                .expect("Document failed to load.");
+        let input_res_meta = ResolutionMetadata {
+            error: None,
+            content_type: None,
+            property_set: None,
+        };
+        let expected_output_res_meta = ResolutionMetadata {
+            error: None,
+            content_type: None,
+            property_set: None,
+        };
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
-        // Actual Trustchain metadata
-        let actual_tc_meta = ION::json_canonicalization_scheme(
-            &resolver.sidetree_to_trustchain_doc_metadata(&sidetree_doc, sidetree_meta),
-        )
-        .expect("Cannot add proof and canonicalize.");
-        assert_eq!(expected_tc_meta, actual_tc_meta);
+        // Call function and get output result type
+        let output = resolver.trustchain_resolve(
+            input_res_meta.clone(),
+            input_doc.clone(),
+            input_doc_meta.clone(),
+        );
+
+        // Result should be Ok variant with returned data
+        if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
+            // Check resolution metadata is equal
+            assert_eq!(
+                ION::json_canonicalization_scheme(&expected_output_res_meta).unwrap(),
+                ION::json_canonicalization_scheme(&actual_output_res_meta).unwrap()
+            );
+            // Check documents are equal
+            assert_eq!(expected_output_doc, actual_output_doc);
+            // Check document metadata is equal
+            assert_eq!(
+                ION::json_canonicalization_scheme(&expected_output_doc_meta).unwrap(),
+                ION::json_canonicalization_scheme(&actual_output_doc_meta).unwrap()
+            );
+        } else {
+            // If error variant, panic
+            panic!()
+        }
     }
 
-    // #[test]
-    // fn sidetree_to_trustchain() {
-    //     // Test objects
-    //     let input_doc =
-    //         Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
-    //     let expected_output_doc =
-    //         Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
-    //     let input_doc_meta: DocumentMetadata =
-    //         serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
-    //             .expect("Document failed to load.");
-    //     let expected_output_doc_meta: DocumentMetadata =
-    //         serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
-    //             .expect("Document failed to load.");
-    //     let input_res_meta = ResolutionMetadata {
-    //         error: None,
-    //         content_type: None,
-    //         property_set: None,
-    //     };
-    //     let expected_output_res_meta = ResolutionMetadata {
-    //         error: None,
-    //         content_type: None,
-    //         property_set: None,
-    //     };
-
-    //     // Make new resolver
-    //     // let resolver = Resolver::<ION>::new();
-    //     let resolver = Resolver::new(get_ion_resolver());
-
-    //     // Call function and get output result type
-    //     let output = resolver.sidetree_to_trustchain(
-    //         input_res_meta.clone(),
-    //         input_doc.clone(),
-    //         input_doc_meta.clone(),
-    //     );
-
-    //     // Result should be Ok variant with returned data
-    //     if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
-    //         // Check resolution metadata is equal
-    //         assert_eq!(
-    //             ION::json_canonicalization_scheme(&expected_output_res_meta).unwrap(),
-    //             ION::json_canonicalization_scheme(&actual_output_res_meta).unwrap()
-    //         );
-    //         // Check documents are equal
-    //         assert_eq!(expected_output_doc, actual_output_doc);
-    //         // Check document metadata is equal
-    //         assert_eq!(
-    //             ION::json_canonicalization_scheme(&expected_output_doc_meta).unwrap(),
-    //             ION::json_canonicalization_scheme(&actual_output_doc_meta).unwrap()
-    //         );
-    //     } else {
-    //         // If error variant, panic
-    //         panic!()
-    //     }
-    // }
     // #[test]
     // fn sidetree_to_trustchain_with_multiple_proof_services() {
     //     // TODO: resolve fn needs to be updated to return ResolverError::MultipleTrustchainProofService

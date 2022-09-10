@@ -1,7 +1,6 @@
 use clap::{arg, command, Arg, ArgAction};
 use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
-use ssi::{did_resolve::HTTPDIDResolver, did::DIDMethod};
 use trustchain::resolver::{Resolver, DIDMethodWrapper};
 
 // Binary to resolve a passed DID from the command line.
