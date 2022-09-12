@@ -36,13 +36,16 @@ pub enum ResolverError {
 // Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
 // The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
 // See https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types.
-pub struct DIDMethodWrapper<T: DIDMethod>(pub T);
+pub struct DIDMethodWrapper<S: DIDMethod>(pub S);
 
-impl<T: DIDMethod> DIDResolver for DIDMethodWrapper<T> {
+impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
     fn resolve< 'life0, 'life1, 'life2, 'async_trait>(& 'life0 self,did: & 'life1 str,input_metadata: & 'life2 ResolutionInputMetadata,) ->  core::pin::Pin<Box<dyn core::future::Future<Output = (ResolutionMetadata,Option<Document> ,Option<DocumentMetadata> ,)> + core::marker::Send+ 'async_trait> >where 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait,Self: 'async_trait {
         self.0.to_resolver().resolve(did, input_metadata)
     }
 }
+
+unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
+unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 
 // NOTE: Two alternative approaches to the Resolver struct are implemented.
 
@@ -93,6 +96,12 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             runtime,
             wrapped_resolver: resolver,
         }
+    }
+
+    pub fn from<S: DIDMethod>(method: S) -> Resolver<DIDMethodWrapper<S>> {
+
+        // Wrap the DIDMethod.
+        Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
 
     /// Async function wrapping sidetree client resolution.
