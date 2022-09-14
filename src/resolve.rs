@@ -1,10 +1,6 @@
 use clap::{arg, command, Arg, ArgAction};
-use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
-use trustchain::resolver::{Resolver, DIDMethodWrapper};
-
-type IONClient = SidetreeClient::<ION>;
-type IONResolver = Resolver::<DIDMethodWrapper<IONClient>>;
+use trustchain::test_resolver;
 
 // Binary to resolve a passed DID from the command line.
 fn main() {
@@ -22,9 +18,8 @@ fn main() {
         )
         .get_matches();
 
-    // Construct a Trustchain Resolver from a Sidetree DIDMethod.
-    let sidetree_client = IONClient::new(Some(String::from("http://localhost:3000/")));
-    let resolver = IONResolver::from(sidetree_client);
+    // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
+    let resolver = test_resolver("http://localhost:3000/");
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();

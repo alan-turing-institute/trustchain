@@ -44,6 +44,9 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
     }
 }
 
+// DIDMethodWrapper is used only to upcast a DIDMethod to a DIDResolver,
+// and resolvers do not change shared state, so we can guarantee safety 
+// on Sync & Send. Both are empty implementations.
 unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
 unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 
@@ -400,7 +403,7 @@ mod tests {
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
     use ssi::did_resolve::HTTPDIDResolver;
-    use did_ion::sidetree::{Sidetree};
+    use did_ion::sidetree::Sidetree; // For JSON canonicalisation.
     use did_ion::ION;
 
     // For testing, use a (dummy) HTTPDIDResolver.
