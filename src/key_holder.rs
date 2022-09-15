@@ -1,108 +1,83 @@
-use std::iter::Map;
+use std::collections::HashMap;
 
-use did_ion::sidetree::{Sidetree, SidetreeClient};
+use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::one_or_many::OneOrMany;
-use serde_json::Value;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
 /// An error relating to Trustchain key management.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum KeyHolderError {
+pub enum KeyManagerError {
     #[error("Key does not exist.")]
     FailToLoadKey,
 }
 
 /// KeyType enum.
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum KeyType {
     UpdateKey,
     RecoveryKey,
     SigningKey,
 }
 
-/// Trait for common KeyHolder functionality.
-trait KeyHolder {
-    fn generate_key(&self) -> JWK;
-    fn load_update_key(&self, did: &str) -> Result<JWK, KeyHolderError>;
-    fn load_recovery_key(&self, did: &str) -> Result<JWK, KeyHolderError>;
-    fn load_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyHolderError>;
-    fn save_key(&self, did: &str, key_type: KeyType, key: &JWK) -> ();
-    fn load_keys(&self, did: &str) -> Result<Map<KeyType, OneOrMany<JWK>>, KeyHolderError>;
-    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyHolderError>;
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    ION::generate_key().expect("Could not generate key.")
 }
 
-/// Struct for common TrustchainKeyHolder.
-pub struct TrustchainKeyHolder {
-    signing_keys: OneOrMany<JWK>,
-    update_key: JWK,
-    recovery_key: JWK,
+/// Generates a set of update, recovery and signing keys.
+pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
+
+    let update_key = generate_key();
+    let recovery_key = generate_key();
+    let signing_key = generate_key();
+
+    let mut map = HashMap::new();
+    map.insert(KeyType::UpdateKey, OneOrMany::One(update_key));
+    map.insert(KeyType::RecoveryKey, OneOrMany::One(recovery_key));
+    map.insert(KeyType::SigningKey, OneOrMany::One(signing_key));
+    map
 }
 
-impl TrustchainKeyHolder {
-
-    /// Generate a new TrustchainKeyHolder with keys (including a single signing key).
-    pub fn new() -> Self {
-        let signing_key = ION::generate_key().expect("Could not generate key.");
-        let update_key = ION::generate_key().expect("Could not generate key.");
-        let recovery_key = ION::generate_key().expect("Could not generate key.");
-
-        Self {
-            signing_keys: OneOrMany::One(signing_key),
-            update_key,
-            recovery_key,
-        }
-    }
-
-    fn load_keys(&self, did: &str) -> Result<Map<KeyType, OneOrMany<JWK>>, KeyHolderError> {
-        todo!()
-    }
+/// Reads a set of update, recovery and signing keys from disk.
+pub fn read_keys(did: &str) -> Result<HashMap<KeyType, OneOrMany<JWK>>, KeyManagerError> {
+    todo!()
 }
 
-impl KeyHolder for TrustchainKeyHolder {
-    fn generate_key(&self) -> JWK {
-        todo!()
-    }
-
-    fn load_update_key(&self, did: &str) -> Result<JWK, KeyHolderError> {
-        todo!()
-    }
-
-    fn load_recovery_key(&self, did: &str) -> Result<JWK, KeyHolderError> {
-        todo!()
-    }
-
-    fn load_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyHolderError> {
-        todo!()
-    }
-
-    fn save_key(&self, did: &str, key_type: KeyType, key: &JWK) -> () {
-        todo!()
-    }
-
-    fn load_keys(&self, did: &str) -> Result<Map<KeyType, OneOrMany<JWK>>, KeyHolderError> {
-        todo!()
-    }
-
-    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyHolderError> {
-        todo!()
-    }
-
-    // fn load_key(&self) {
-    //     // Load previous data
-    //     let file_name = format!("update_{}", self.did.as_ref().unwrap());
-    //     let ec_read = std::fs::read(file_name).unwrap();
-    //     let ec_read = std::str::from_utf8(&ec_read).unwrap();
-    //     let ec_params: ECParams = serde_json::from_str(ec_read).unwrap();
-
-    //     // let ec_params = Params::EC(ec_params);
-    //     let update_key = JWK::from(Params::EC(ec_params));
-    //     println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
-    //     // update_key
-    //     todo!()
-    // }
-
+/// Reads an update key from disk.
+fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
+    todo!()
 }
+
+/// Reads a recovery key from disk.
+fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
+    todo!()
+}
+
+/// Reads one or more signing keys from disk.
+fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
+    todo!()
+}
+
+/// Saves a key to disk.
+pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> () {
+    todo!()
+}
+
+// fn load_key(did: &str) {
+//     // Load previous data
+//     let file_name = format!("update_{}", did);
+//     let ec_read = std::fs::read(file_name).unwrap();
+//     let ec_read = std::str::from_utf8(&ec_read).unwrap();
+//     let ec_params: ECParams = serde_json::from_str(ec_read).unwrap();
+
+//     // let ec_params = Params::EC(ec_params);
+//     let update_key = JWK::from(Params::EC(ec_params));
+//     println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
+//     // update_key
+//     todo!()
+// }
 
 #[cfg(test)]
 mod tests {
@@ -135,9 +110,27 @@ mod tests {
         "d": "YobJpI7p7T5dfU0cDRE4SQwp0eOFR6LOGrsqZE1GG1A"
     }"##;
 
-    /// Test for loading keys into controller
+    /// Test for generating keys
     #[test]
-    fn load_keys() {
-        todo!()
+    fn test_generate_key() {
+        
+        let result = generate_key();
+        // println!("{:?}", result);
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match result.params {
+            Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
+            _ => panic!()
+        }
+    }
+
+    #[test]
+    fn test_generate_keys() {
+        
+        let result = generate_keys();
+        assert_eq!(result.len(), 3);
+        assert!(result.contains_key(&KeyType::UpdateKey));
+        assert!(result.contains_key(&KeyType::RecoveryKey));
+        assert!(result.contains_key(&KeyType::SigningKey));
     }
 }
