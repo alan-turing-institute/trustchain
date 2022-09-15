@@ -4,7 +4,7 @@ use serde_json::Value;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
-use crate::key_holder;
+use crate::key_manager;
 
 /// Trait for common DID Controller functionality.
 trait Controller {

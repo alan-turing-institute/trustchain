@@ -1,5 +1,6 @@
 //! Trustchain library.
-mod key_holder;
+mod key_manager;
+mod subject;
 mod controller;
 mod data;
 pub mod resolver;
