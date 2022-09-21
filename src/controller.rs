@@ -5,9 +5,11 @@ use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
 use crate::key_manager;
+use crate::subject::{TrustchainSubject, Subject};
 
 /// Trait for common DID Controller functionality.
 trait Controller {
+    fn to_subject(&self) -> Box<dyn Subject>;
     fn load(&self, controlled_did: &str);
     fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
     fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
@@ -17,21 +19,27 @@ trait Controller {
 
 /// Struct for common TrustchainController.
 pub struct TrustchainController {
+    did: String,
     controlled_did: String
 }
 
 impl TrustchainController {
 
     /// Construct a new TrustchainController instance.
-    pub fn new(controlled_did: &str) -> Self {
+    pub fn new(did: &str, controlled_did: &str) -> Self {
 
         Self {
+            did: did.to_owned(),
             controlled_did: controlled_did.to_owned()
         }
     }
 }
 
 impl Controller for TrustchainController {
+
+    fn to_subject(&self) -> Box<dyn Subject> {
+        Box::new(TrustchainSubject::new(&self.did))
+    }
 
     fn load(&self, controlled_did: &str) {
         todo!()

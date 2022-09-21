@@ -1,32 +1,89 @@
 use ssi::one_or_many::OneOrMany;
 use ssi::jwk::JWK;
 
-use crate::key_manager::KeyManagerError;
+use crate::key_manager::{KeyManagerError, KeyType, read_keys};
 
 /// Trait for common DID Subject functionality.
 pub trait Subject {
     fn did(&self) -> &str;
     fn signing_keys(&self) -> OneOrMany<JWK>;
     fn generate_signing_keys(&self) -> OneOrMany<JWK>;
-    fn get_public_key(key_id: Option<String>) -> Result<JWK, KeyManagerError>;
+    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError>;
 }
 
-struct TrustchainSubject {
-    did: String
+pub struct TrustchainSubject {
+    did: String,
+    keys: Option<OneOrMany<JWK>>,
 }
 
 impl TrustchainSubject {
 
-    /// Construct a new TrustchainController instance.
+    /// Construct a new TrustchainSubject instance.
     pub fn new(did: &str) -> Self {
 
+        let keys = TrustchainSubject::load_keys(did);
         Self {
-            did: did.to_owned()
+            did: did.to_owned(),
+            keys
         }
     }
 
+    /// Loads signing keys for the given DID.
+    fn load_keys(did: &str) -> Option<OneOrMany<JWK>> {
+
+        // Read keys from disk.
+        let keys = read_keys(did);
+        // If the attempt to read keys failed, return None.
+        let mut keys = match keys {
+            Ok(map) => map,
+            Err(e) => return None
+        };
+        // If keys were read successfully, return the signing keys.
+        keys.remove(&KeyType::SigningKey)
+    }
+
+}
+
+impl Subject for TrustchainSubject {
+
+    fn did(&self) -> &str {
+        &self.did
+    }
+
     /// Gets the public part of a signing key.
-    pub fn get_public_key(key_id: Option<String>) -> Result<JWK, KeyManagerError> {
+    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError> {
+
+        // let keys = read_keys(&self.did);
+        // let keys = match keys {
+        //     Ok(map) => map,
+        //     Err(e) => return Err(e)
+        // };
+        // let signing = keys.get(&KeyType::SigningKey);
+        todo!();
+    }
+
+    fn signing_keys(&self) -> OneOrMany<JWK> {
         todo!()
     }
+
+    fn generate_signing_keys(&self) -> OneOrMany<JWK> {
+        todo!()
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_constructor() {
+        
+    }
+
+    #[test]
+    fn test_load_keys() {
+
+    }
+
+
 }
