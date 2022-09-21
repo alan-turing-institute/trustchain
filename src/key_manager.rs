@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-
+use std::io::Read;
+use serde_json::from_str;
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::one_or_many::OneOrMany;
@@ -10,7 +11,11 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyManagerError {
     #[error("Key does not exist.")]
-    FailToLoadKey,
+    FailedToLoadKey,
+    #[error("Failed to read UTF-8 data.")]
+    FailedToReadUTF8,
+    #[error("Failed to parse JSON string to JWK.")]
+    FailedToParseJWK,
 }
 
 /// KeyType enum.
@@ -40,28 +45,55 @@ pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
     map
 }
 
-/// Reads a set of update, recovery and signing keys from disk.
-pub fn read_keys(did: &str) -> Result<HashMap<KeyType, OneOrMany<JWK>>, KeyManagerError> {
+/// Reads an update key.
+pub fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
     todo!()
 }
 
-/// Reads an update key from disk.
-fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
+/// Reads a recovery key.
+pub fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
     todo!()
 }
 
-/// Reads a recovery key from disk.
-fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
+/// Reads one or more signing keys.
+pub fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
     todo!()
 }
 
-/// Reads one or more signing keys from disk.
-fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
+/// Reads one key from a Reader.
+fn read_key_from(mut reader: Box<dyn Read>) -> Result<JWK, KeyManagerError> {
+
+    // Read a UTF-8 string from the reader.
+    let buf: &mut String = &mut String::new();
+    let read_result = reader.read_to_string(buf);
+    
+    // Read the string as a serialised JWK instance.
+    let jwk_result = match read_result {
+        Ok(_) => from_str::<JWK>(buf),
+        Err(_) => return Err(KeyManagerError::FailedToReadUTF8)
+    };
+
+    // Return the JWK.
+    match jwk_result {
+        Ok(x) => return Ok(x),
+        Err(_) => return Err(KeyManagerError::FailedToParseJWK)
+    };
+}
+
+/// Reads one or more keys from a Reader.
+fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManagerError> {
+    // TODO: Use the Deserialize trait on OneOrMany<JWK>
+    // see: https://demo.didkit.dev/2021/11/29/ssi-aleo-rustdoc/ssi/one_or_many/enum.OneOrMany.html#trait-implementations
     todo!()
 }
 
 /// Saves a key to disk.
 pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> () {
+    todo!()
+}
+
+/// Saves one or more keys to disk.
+pub fn save_keys(did: &str, key_type: KeyType, keys: &OneOrMany<JWK>) -> () {
     todo!()
 }
 
@@ -81,6 +113,9 @@ pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> () {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Read};
+
+    use mockall::mock;
     // use did_ion::sidetree::Sidetree;
     // use serde_json::to_string_pretty as to_json;
 
@@ -132,5 +167,43 @@ mod tests {
         assert!(result.contains_key(&KeyType::UpdateKey));
         assert!(result.contains_key(&KeyType::RecoveryKey));
         assert!(result.contains_key(&KeyType::SigningKey));
+    }
+
+    // Mock the std::io::Read trait.
+    mock! {
+        Reader {}     // Name of the mock struct, less the "Mock" prefix
+        impl Read for Reader {   // specification of the trait to mock
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
+            fn read_to_string(&mut self, buf: &mut String) -> std::io::Result<usize>;
+        }
+    }
+
+    #[test]
+    fn test_read_key_from() {
+        
+        // Construct a mock Reader.
+        let mut mock_reader = MockReader::new();
+        mock_reader.expect_read_to_string()
+            .return_once(move | buf | {
+                // Implement the side effect of filling the buffer.
+                buf.push_str(TEST_UPDATE_KEY);
+                // Dummy return value
+                std::io::Result::Ok(0)
+            });
+
+        // Construct an empty buffer.
+        let buf: &mut String = &mut String::new();
+        // mock_reader.read_to_string(buf);
+        // println!("{}", buf);
+        let result = read_key_from(Box::new(mock_reader));
+        assert!(result.is_ok());
+        let key = result.unwrap();
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match &key.params {
+            Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
+            _ => panic!()
+        }
+        
     }
 }

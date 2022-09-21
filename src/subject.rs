@@ -1,11 +1,12 @@
 use ssi::one_or_many::OneOrMany;
 use ssi::jwk::JWK;
 
-use crate::key_manager::{KeyManagerError, KeyType, read_keys};
+use crate::key_manager::{KeyManagerError, KeyType, read_signing_keys};
 
 /// Trait for common DID Subject functionality.
 pub trait Subject {
     fn did(&self) -> &str;
+    fn load(&self);
     fn signing_keys(&self) -> OneOrMany<JWK>;
     fn generate_signing_keys(&self) -> OneOrMany<JWK>;
     fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError>;
@@ -13,7 +14,7 @@ pub trait Subject {
 
 pub struct TrustchainSubject {
     did: String,
-    keys: Option<OneOrMany<JWK>>,
+    signing_keys: Option<OneOrMany<JWK>>,
 }
 
 impl TrustchainSubject {
@@ -21,10 +22,10 @@ impl TrustchainSubject {
     /// Construct a new TrustchainSubject instance.
     pub fn new(did: &str) -> Self {
 
-        let keys = TrustchainSubject::load_keys(did);
+        let signing_keys = TrustchainSubject::load_keys(did);
         Self {
             did: did.to_owned(),
-            keys
+            signing_keys
         }
     }
 
@@ -32,14 +33,14 @@ impl TrustchainSubject {
     fn load_keys(did: &str) -> Option<OneOrMany<JWK>> {
 
         // Read keys from disk.
-        let keys = read_keys(did);
+        let read_result = read_signing_keys(did);
         // If the attempt to read keys failed, return None.
-        let mut keys = match keys {
-            Ok(map) => map,
+        let mut keys = match read_result {
+            Ok(x) => x,
             Err(e) => return None
         };
         // If keys were read successfully, return the signing keys.
-        keys.remove(&KeyType::SigningKey)
+        Some(keys)
     }
 
 }
@@ -70,6 +71,10 @@ impl Subject for TrustchainSubject {
         todo!()
     }
 
+    fn load(&self) {
+        todo!()
+    }
+
 }
 
 #[cfg(test)]
@@ -77,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_constructor() {
-        
+
     }
 
     #[test]
