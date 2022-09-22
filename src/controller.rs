@@ -6,8 +6,8 @@ use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
 use crate::key_manager;
-use crate::key_manager::{read_update_key, read_recovery_key};
-use crate::subject::{TrustchainSubject, Subject};
+use crate::key_manager::{read_recovery_key, read_update_key};
+use crate::subject::{Subject, TrustchainSubject};
 
 /// Trait for common DID Controller functionality.
 trait Controller {
@@ -15,9 +15,9 @@ trait Controller {
     fn load(&self, controlled_did: &str);
     fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
     fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
+
     // fn generate_recovery_key(&self);
     // fn set_new_update_key();
-    
     // fn update_subject(&self);
     // fn recover_subject(&self);
 }
@@ -30,10 +30,8 @@ pub struct TrustchainController {
     recovery_key: Option<JWK>,
 }
 
-
 impl TrustchainController {
-
-    /// Construct a new TrustchainController instance 
+    /// Construct a new TrustchainController instance
     /// from existing Subject and Controller DIDs.
     pub fn new(did: &str, controlled_did: &str) -> Self {
         let subject = TrustchainSubject::new(did);
@@ -47,12 +45,12 @@ impl TrustchainController {
             Ok(x) => Some(x),
             Err(e) => None,
         };
-        
+
         Self {
             subject,
             controlled_did: controlled_did.to_owned(),
             update_key,
-            recovery_key
+            recovery_key,
         }
     }
 
@@ -66,7 +64,6 @@ impl TrustchainController {
 }
 
 impl Controller for TrustchainController {
-
     fn load(&self, controlled_did: &str) {
         todo!()
     }

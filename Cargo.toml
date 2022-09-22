@@ -19,6 +19,12 @@ path = "src/create_and_update.rs"
 name = "resolve"
 path = "src/resolve.rs"
 
+# We  can potentially set environment variables here
+# TODO: check this is implemented correctly
+# https://doc.rust-lang.org/nightly/cargo/reference/config.html#env
+[env]
+TRUSTCHAIN_DATA = { value = "~/.trustchain/", relative = false, force = true}
+
 [features]
 default = ["console_error_panic_hook"]
 

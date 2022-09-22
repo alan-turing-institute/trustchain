@@ -1,11 +1,15 @@
-use std::collections::HashMap;
-use std::io::Read;
-use serde_json::from_str;
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
-use ssi::one_or_many::OneOrMany;
+use serde_json::from_str;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::one_or_many::OneOrMany;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 use thiserror::Error;
+
+use crate::TRUSTCHAIN_DATA;
 
 /// An error relating to Trustchain key management.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -16,6 +20,8 @@ pub enum KeyManagerError {
     FailedToReadUTF8,
     #[error("Failed to parse JSON string to JWK.")]
     FailedToParseJWK,
+    #[error("No Trustchain data environment variable.")]
+    TrustchainDataNotPresent,
 }
 
 /// KeyType enum.
@@ -33,7 +39,6 @@ pub fn generate_key() -> JWK {
 
 /// Generates a set of update, recovery and signing keys.
 pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
-
     let update_key = generate_key();
     let recovery_key = generate_key();
     let signing_key = generate_key();
@@ -45,14 +50,46 @@ pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
     map
 }
 
+/// Reads a key of a given type.
+pub fn read_key(did: &str, key_type: KeyType) -> Result<JWK, KeyManagerError> {
+    // Get the stem for the corresponding key type
+    let stem_name = match key_type {
+        KeyType::UpdateKey => "update_key.json",
+        KeyType::RecoveryKey => "recovery_key.json",
+        // TODO: this probably will need a glob for all signing keys
+        KeyType::SigningKey => "siging_key.json",
+    };
+
+    // Get environment for TRUSTCHAIN_DATA
+    let path: String = match std::env::var(TRUSTCHAIN_DATA) {
+        Ok(val) => val,
+        Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
+    };
+
+    // Open the file
+    let file = File::open(
+        Path::new(path.as_str())
+            .join("key_manager")
+            .join(did)
+            .join(stem_name),
+    );
+
+    // Read from the file and return
+    if let Ok(file) = file {
+        read_key_from(Box::new(file))
+    } else {
+        Err(KeyManagerError::FailedToLoadKey)
+    }
+}
+
 /// Reads an update key.
 pub fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
-    todo!()
+    read_key(did, KeyType::UpdateKey)
 }
 
 /// Reads a recovery key.
 pub fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
-    todo!()
+    read_key(did, KeyType::RecoveryKey)
 }
 
 /// Reads one or more signing keys.
@@ -62,21 +99,20 @@ pub fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
 
 /// Reads one key from a Reader.
 fn read_key_from(mut reader: Box<dyn Read>) -> Result<JWK, KeyManagerError> {
-
     // Read a UTF-8 string from the reader.
     let buf: &mut String = &mut String::new();
     let read_result = reader.read_to_string(buf);
-    
+
     // Read the string as a serialised JWK instance.
     let jwk_result = match read_result {
         Ok(_) => from_str::<JWK>(buf),
-        Err(_) => return Err(KeyManagerError::FailedToReadUTF8)
+        Err(_) => return Err(KeyManagerError::FailedToReadUTF8),
     };
 
     // Return the JWK.
     match jwk_result {
         Ok(x) => return Ok(x),
-        Err(_) => return Err(KeyManagerError::FailedToParseJWK)
+        Err(_) => return Err(KeyManagerError::FailedToParseJWK),
     };
 }
 
@@ -113,13 +149,21 @@ pub fn save_keys(did: &str, key_type: KeyType, keys: &OneOrMany<JWK>) -> () {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Read};
-
     use mockall::mock;
+    use std::io::Read;
     // use did_ion::sidetree::Sidetree;
     // use serde_json::to_string_pretty as to_json;
 
     use super::*;
+
+    fn init() {
+        std::env::set_var(
+            TRUSTCHAIN_DATA,
+            Path::new(std::env::var("CARGO_MANIFEST_DIR").unwrap().as_str())
+                .join("resources/test/"),
+        );
+        println!("{:?}", std::env::var(TRUSTCHAIN_DATA));
+    }
 
     const TEST_SIGNING_KEY: &str = r##"{
         "kty": "EC",
@@ -148,20 +192,18 @@ mod tests {
     /// Test for generating keys
     #[test]
     fn test_generate_key() {
-        
         let result = generate_key();
         // println!("{:?}", result);
 
         // Check for the expected elliptic curve (used by ION to generate keys).
         match result.params {
             Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
-            _ => panic!()
+            _ => panic!(),
         }
     }
 
     #[test]
     fn test_generate_keys() {
-        
         let result = generate_keys();
         assert_eq!(result.len(), 3);
         assert!(result.contains_key(&KeyType::UpdateKey));
@@ -179,17 +221,45 @@ mod tests {
     }
 
     #[test]
+    fn test_read_update_key() {
+        // Init env variables
+        init();
+
+        // Read key from file
+        let res = read_update_key("test_did");
+        assert!(res.is_ok());
+
+        // Check is the same key as here
+        let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
+        let actual_key = res.unwrap();
+        assert_eq!(expected_key, actual_key);
+    }
+
+    #[test]
+    fn test_read_recovery_key() {
+        // Init env variables
+        init();
+
+        // Read key from file
+        let res = read_recovery_key("test_did");
+        assert!(res.is_ok());
+
+        // Check is the same key as here
+        let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY).unwrap();
+        let actual_key = res.unwrap();
+        assert_eq!(expected_key, actual_key);
+    }
+
+    #[test]
     fn test_read_key_from() {
-        
         // Construct a mock Reader.
         let mut mock_reader = MockReader::new();
-        mock_reader.expect_read_to_string()
-            .return_once(move | buf | {
-                // Implement the side effect of filling the buffer.
-                buf.push_str(TEST_UPDATE_KEY);
-                // Dummy return value
-                std::io::Result::Ok(0)
-            });
+        mock_reader.expect_read_to_string().return_once(move |buf| {
+            // Implement the side effect of filling the buffer.
+            buf.push_str(TEST_UPDATE_KEY);
+            // Dummy return value
+            std::io::Result::Ok(0)
+        });
 
         // Construct an empty buffer.
         let buf: &mut String = &mut String::new();
@@ -202,8 +272,7 @@ mod tests {
         // Check for the expected elliptic curve (used by ION to generate keys).
         match &key.params {
             Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
-            _ => panic!()
+            _ => panic!(),
         }
-        
     }
 }

@@ -1,12 +1,15 @@
 //! Trustchain library.
-mod key_manager;
-mod subject;
 mod controller;
 mod data;
+mod key_manager;
 pub mod resolver;
+mod subject;
 mod utils;
 
 use wasm_bindgen::prelude::*;
+
+/// Rust variable for Trustchain data environment variable
+pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
