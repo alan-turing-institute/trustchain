@@ -71,23 +71,6 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
 unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
 unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 
-// NOTE: Two alternative approaches to the Resolver struct are implemented.
-
-// To switch between the alternatives, comment out the line(s) immediately following
-// one of the markers, either "APPROACH 1" or "APPROACH 2", throughout this module
-// (four occurrences) and also inside the `resolve.rs` module (one occurrence).
-
-// // APPROACH 1. (Trait object)
-// /// Struct for performing resolution from a sidetree server to generate
-// /// Trustchain DID document and DID document metadata.
-// pub struct Resolver {
-//     /// Runtime for calling async functions.
-//     runtime: Runtime,
-//     /// Resolver for performing DID Method resolutions.
-//     wrapped_resolver: Box<dyn DIDResolver>
-// }
-
-// APPROACH 2. (Generic type parameter)
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
@@ -97,16 +80,8 @@ pub struct Resolver<T: DIDResolver + Sync + Send> {
     wrapped_resolver: T,
 }
 
-// // APPROACH 1.
-// impl Resolver {
-
-// APPROACH 2.
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
     /// Constructs a Trustchain resolver.
-    // // APPROACH 1.
-    // pub fn new(resolver: Box<dyn DIDResolver>) -> Self {
-
-    // APPROACH 2.
     pub fn new(resolver: T) -> Self {
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -414,14 +389,6 @@ mod tests {
 
     use crate::utils::canonicalize;
     use ssi::did_resolve::HTTPDIDResolver;
-    // use did_ion::sidetree::Sidetree; // For JSON canonicalisation.
-    // use did_ion::ION;
-
-    // For testing, use a (dummy) HTTPDIDResolver.
-    // // APPROACH 1.
-    // fn get_http_resolver() -> Box<HTTPDIDResolver> {
-    //     Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
-    // }
 
     // General function for generating a HTTP resolver for tests only
     fn get_http_resolver() -> HTTPDIDResolver {
