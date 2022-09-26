@@ -1,5 +1,6 @@
 use clap::{arg, command, Arg, ArgAction};
 use serde_json::to_string_pretty as to_json;
+use ssi::did_resolve::DIDResolver;
 use trustchain::test_resolver;
 
 // Binary to resolve a passed DID from the command line.

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
@@ -80,6 +81,23 @@ pub struct Resolver<T: DIDResolver + Sync + Send> {
     wrapped_resolver: T,
 }
 
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
+    async fn resolve(
+        &self,
+        did: &str,
+        input_metadata: &ResolutionInputMetadata,
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+            .await
+    }
+}
+
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
@@ -117,10 +135,24 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
         (res_meta, doc, doc_meta)
     }
-
+    async fn transform(
+        &self,
+        tup: (
+            ResolutionMetadata,
+            Option<Document>,
+            Option<DocumentMetadata>,
+        ),
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        // Transform
+        tup
+    }
     /// Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID.
-    pub fn resolve(
+    pub fn resolve_and_transform(
         &self,
         did: &str,
     ) -> Result<
@@ -134,7 +166,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
             let (did_res_meta, did_doc, did_doc_meta) =
-                block_on(self.wrapped_resolve(&did.to_string()));
+                block_on(self.resolve(&did.to_string(), &ResolutionInputMetadata::default()));
 
             // Handle cases when: 1. cannot connect to server; 2. Did not find DID.
             if let Some(did_res_meta_error) = &did_res_meta.error {
