@@ -119,25 +119,10 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
 
-    /// Async function wrapping sidetree client resolution.
-    async fn wrapped_resolve(
-        &self,
-        did_short: &str,
-    ) -> (
-        ResolutionMetadata,
-        Option<Document>,
-        Option<DocumentMetadata>,
-    ) {
-        let (res_meta, doc, doc_meta) = self
-            .wrapped_resolver
-            .resolve(&did_short[..], &ResolutionInputMetadata::default())
-            .await;
-
-        (res_meta, doc, doc_meta)
-    }
+    /// Async function performing transform to Trustchain resolution inside DIDResolve trait
     async fn transform(
         &self,
-        tup: (
+        (res_meta, doc, doc_meta): (
             ResolutionMetadata,
             Option<Document>,
             Option<DocumentMetadata>,
@@ -148,7 +133,34 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Option<DocumentMetadata>,
     ) {
         // Transform
-        tup
+        // If a document and document metadata are returned, try to convert
+        if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
+            // Convert to trustchain versions
+            let tc_result = self.trustchain_resolve(res_meta.clone(), did_doc, did_doc_meta);
+            match tc_result {
+                // Map the tuple of non-option types to have tuple with optional document
+                // document metadata
+                Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
+                    (tc_res_meta, Some(tc_doc), Some(tc_doc_meta))
+                }
+                // If cannot convert, return the relevant error
+                Err(ResolverError::FailedToConvertToTrustchain) => {
+                    // Err(ResolverError::FailedToConvertToTrustchain)
+                    // TODO: encode ResolverError::FailedToConvertToTrustchain in res_meta
+                    (res_meta, None, None)
+                }
+                Err(ResolverError::MultipleTrustchainProofService) => {
+                    // Err(ResolverError::MultipleTrustchainProofService)
+                    // TODO: encode ResolverError::MultipleProofService in res_meta
+                    (res_meta, None, None)
+                }
+                // If not defined error, panic!()
+                _ => panic!(),
+            }
+        } else {
+            // If doc or doc_meta None, return sidetree resolution as is
+            (res_meta, None, None)
+        }
     }
     /// Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID.
@@ -180,31 +192,8 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
                     panic!();
                 }
-            }
-
-            // If a document and document metadata are returned, try to convert
-            if let (Some(did_doc), Some(did_doc_meta)) = (did_doc, did_doc_meta) {
-                // Convert to trustchain versions
-                let tc_result = self.trustchain_resolve(did_res_meta, did_doc, did_doc_meta);
-                match tc_result {
-                    // Map the tuple of non-option types to have tuple with optional document
-                    // document metadata
-                    Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
-                        Ok((tc_res_meta, Some(tc_doc), Some(tc_doc_meta)))
-                    }
-                    // If cannot convert, return the relevant error
-                    Err(ResolverError::FailedToConvertToTrustchain) => {
-                        Err(ResolverError::FailedToConvertToTrustchain)
-                    }
-                    Err(ResolverError::MultipleTrustchainProofService) => {
-                        Err(ResolverError::MultipleTrustchainProofService)
-                    }
-                    // If not defined error, panic!()
-                    _ => panic!(),
-                }
             } else {
-                // If doc or doc_meta None, return sidetree resolution as is
-                Ok((did_res_meta, None, None))
+                return Ok((did_res_meta, did_doc, did_doc_meta));
             }
         })
     }

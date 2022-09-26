@@ -16,7 +16,7 @@ fn trustchain_resolution() {
     let resolver = test_resolver("http://localhost:3000/");
 
     // Resolve DID Document & Metadata.
-    let result = resolver.resolve(did);
+    let result = resolver.resolve_and_transform(did);
 
     // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.
