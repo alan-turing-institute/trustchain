@@ -1,6 +1,6 @@
 use futures::executor::block_on;
 use serde_json::Value;
-use ssi::did::{Document, Service, ServiceEndpoint, DIDMethod};
+use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
@@ -39,25 +39,46 @@ pub enum ResolverError {
 pub struct DIDMethodWrapper<S: DIDMethod>(pub S);
 
 impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
-    fn resolve< 'life0, 'life1, 'life2, 'async_trait>(& 'life0 self,did: & 'life1 str,input_metadata: & 'life2 ResolutionInputMetadata,) ->  core::pin::Pin<Box<dyn core::future::Future<Output = (ResolutionMetadata,Option<Document> ,Option<DocumentMetadata> ,)> + core::marker::Send+ 'async_trait> >where 'life0: 'async_trait, 'life1: 'async_trait, 'life2: 'async_trait,Self: 'async_trait {
+    fn resolve<'life0, 'life1, 'life2, 'async_trait>(
+        &'life0 self,
+        did: &'life1 str,
+        input_metadata: &'life2 ResolutionInputMetadata,
+    ) -> core::pin::Pin<
+        Box<
+            dyn core::future::Future<
+                    Output = (
+                        ResolutionMetadata,
+                        Option<Document>,
+                        Option<DocumentMetadata>,
+                    ),
+                > + core::marker::Send
+                + 'async_trait,
+        >,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        Self: 'async_trait,
+    {
         self.0.to_resolver().resolve(did, input_metadata)
     }
 }
 
 // DIDMethodWrapper is used only to upcast a DIDMethod to a DIDResolver,
-// and resolvers do not change shared state, so we can guarantee safety 
+// and resolvers do not change shared state, so we can guarantee safety
 // on Sync & Send. Both are empty implementations.
 unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
 unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 
 // NOTE: Two alternative approaches to the Resolver struct are implemented.
 
-// To switch between the alternatives, comment out the line(s) immediately following 
+// To switch between the alternatives, comment out the line(s) immediately following
 // one of the markers, either "APPROACH 1" or "APPROACH 2", throughout this module
 // (four occurrences) and also inside the `resolve.rs` module (one occurrence).
 
 // // APPROACH 1. (Trait object)
-// /// Struct for performing resolution from a sidetree server to generate 
+// /// Struct for performing resolution from a sidetree server to generate
 // /// Trustchain DID document and DID document metadata.
 // pub struct Resolver {
 //     /// Runtime for calling async functions.
@@ -67,13 +88,13 @@ unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 // }
 
 // APPROACH 2. (Generic type parameter)
-/// Struct for performing resolution from a sidetree server to generate 
+/// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
     /// Runtime for calling async functions.
     runtime: Runtime,
     /// Resolver for performing DID Method resolutions.
-    wrapped_resolver: T
+    wrapped_resolver: T,
 }
 
 // // APPROACH 1.
@@ -81,14 +102,12 @@ pub struct Resolver<T: DIDResolver + Sync + Send> {
 
 // APPROACH 2.
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
-
     /// Constructs a Trustchain resolver.
     // // APPROACH 1.
     // pub fn new(resolver: Box<dyn DIDResolver>) -> Self {
 
     // APPROACH 2.
     pub fn new(resolver: T) -> Self {
-
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -103,7 +122,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Constructs a Trustchain resolver from a DIDMethod.
     pub fn from<S: DIDMethod>(method: S) -> Resolver<DIDMethodWrapper<S>> {
-
         // Wrap the DIDMethod.
         Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
@@ -117,14 +135,15 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        let (res_meta, doc, doc_meta) = self.wrapped_resolver
+        let (res_meta, doc, doc_meta) = self
+            .wrapped_resolver
             .resolve(&did_short[..], &ResolutionInputMetadata::default())
             .await;
 
         (res_meta, doc, doc_meta)
     }
 
-    /// Trustchain resolve function returning resolution metadata, 
+    /// Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID.
     pub fn resolve(
         &self,
@@ -157,11 +176,9 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             }
 
             // If a document and document metadata are returned, try to convert
-            if let (Some(did_doc), Some(did_doc_meta)) = (did_doc, did_doc_meta)
-            {
+            if let (Some(did_doc), Some(did_doc_meta)) = (did_doc, did_doc_meta) {
                 // Convert to trustchain versions
-                let tc_result =
-                    self.trustchain_resolve(did_res_meta, did_doc, did_doc_meta);
+                let tc_result = self.trustchain_resolve(did_res_meta, did_doc, did_doc_meta);
                 match tc_result {
                     // Map the tuple of non-option types to have tuple with optional document
                     // document metadata
@@ -298,7 +315,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         doc_meta
     }
 
-    /// Adds the controller property to a resolved DID document, using the 
+    /// Adds the controller property to a resolved DID document, using the
     /// value passed in the controller_did argument. This must be the DID of
     /// the subject (id property) found in the upstream DID document.
     fn add_controller(
@@ -306,7 +323,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         mut doc: Document,
         controller_did: &str,
     ) -> Result<Document, ResolverError> {
-
         // Check controller is empty and if not throw error.
         if doc.controller.is_some() {
             return Err(ResolverError::ControllerAlreadyPresent);
@@ -332,7 +348,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Converts a DID Document from a resolved DID to the Trustchain resolved format.
     pub fn trustchain_resolve_doc(&self, doc: &Document, controller_did: &str) -> Document {
-        
         // Clone the passed DID document.
         let doc_clone = doc.clone();
 
@@ -370,12 +385,10 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             let controller_did = self.get_from_proof_service(&service, "controller");
 
             // Convert doc
-            let doc =
-                self.trustchain_resolve_doc(&sidetree_doc, controller_did.unwrap().as_str());
+            let doc = self.trustchain_resolve_doc(&sidetree_doc, controller_did.unwrap().as_str());
 
             // Convert metadata
-            let doc_meta =
-                self.trustchain_resolve_doc_metadata(&sidetree_doc, sidetree_doc_meta);
+            let doc_meta = self.trustchain_resolve_doc_metadata(&sidetree_doc, sidetree_doc_meta);
 
             // Convert resolution metadata
             let res_meta = sidetree_res_meta;
@@ -393,18 +406,16 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 mod tests {
     use super::*;
     use crate::data::{
-        TEST_SIDETREE_DOCUMENT, 
-        TEST_SIDETREE_DOCUMENT_METADATA,
-        TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
-        TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF,
-        TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
-        TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
-        TEST_TRUSTCHAIN_DOCUMENT,
-        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA,
+        TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
+        TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
+        TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
+
+    use crate::utils::canonicalize;
     use ssi::did_resolve::HTTPDIDResolver;
-    use did_ion::sidetree::Sidetree; // For JSON canonicalisation.
-    use did_ion::ION;
+    // use did_ion::sidetree::Sidetree; // For JSON canonicalisation.
+    // use did_ion::ION;
 
     // For testing, use a (dummy) HTTPDIDResolver.
     // // APPROACH 1.
@@ -412,11 +423,11 @@ mod tests {
     //     Box::new(HTTPDIDResolver::new("http://localhost:3000/"))
     // }
 
-    // APPROACH 2.
+    // General function for generating a HTTP resolver for tests only
     fn get_http_resolver() -> HTTPDIDResolver {
         HTTPDIDResolver::new("http://localhost:3000/")
     }
-        
+
     #[test]
     fn add_controller() {
         // Test add_controller method with successful result.
@@ -424,15 +435,15 @@ mod tests {
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Check there is no controller in the DID document.
         assert!(did_doc.controller.is_none());
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
-        
+
         // Call add_controller on the Resolver to get the result.
         let result = resolver
             .add_controller(did_doc, &controller_did)
@@ -441,7 +452,10 @@ mod tests {
         // Check there *is* a controller field in the resulting DID document.
         assert!(result.controller.is_some());
         // Check the controller DID is correct.
-        assert_eq!(result.controller, Some(OneOrMany::One(String::from(controller_did))));
+        assert_eq!(
+            result.controller,
+            Some(OneOrMany::One(String::from(controller_did)))
+        );
 
         // Construct the expected result (a DID Document) from a test fixture.
         let expected = Document::from_json(TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER)
@@ -454,7 +468,7 @@ mod tests {
     #[test]
     fn add_controller_fail() {
         // Test add_controller method with failure as controller already present.
-        
+
         let controller_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
         // Construct a DID Document that already contains a controller property.
@@ -481,8 +495,8 @@ mod tests {
         // Test remove_proof_service method with successful result.
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Check the proof service is present.
         assert!(did_doc.service.is_some());
@@ -502,8 +516,8 @@ mod tests {
         // Test get_proof_service method on a sidetree-resolved DID document.
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Check that precisely one service is present in the DID document.
         assert_eq!((&did_doc).service.as_ref().unwrap().len(), 1 as usize);
@@ -511,12 +525,15 @@ mod tests {
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
-        // Get the service property containing the Trustchain proof. 
+        // Get the service property containing the Trustchain proof.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
         assert_eq!(proof_service.id, "#trustchain-controller-proof");
-        assert_eq!(proof_service.type_, OneOrMany::One(String::from("TrustchainProofService")));
+        assert_eq!(
+            proof_service.type_,
+            OneOrMany::One(String::from("TrustchainProofService"))
+        );
     }
 
     #[test]
@@ -533,12 +550,15 @@ mod tests {
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
-        // Get the service property containing the Trustchain proof. 
+        // Get the service property containing the Trustchain proof.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
         assert_eq!(proof_service.id, "#trustchain-controller-proof");
-        assert_eq!(proof_service.type_, OneOrMany::One(String::from("TrustchainProofService")));
+        assert_eq!(
+            proof_service.type_,
+            OneOrMany::One(String::from("TrustchainProofService"))
+        );
     }
 
     #[test]
@@ -567,11 +587,11 @@ mod tests {
     #[test]
     fn get_proof_service_fail_no_proof_services() {
         // Test get_proof_service method with failure as no proof services present.
-        
+
         // Construct a DID Document with a service but no proof services.
         let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF)
             .expect("Document failed to load.");
-        
+
         // Check that a service is present in the DID document.
         assert!(did_doc.service.is_some());
 
@@ -590,11 +610,11 @@ mod tests {
     #[test]
     fn get_proof_service_fail_no_services() {
         // Test get_proof_service method with failure as no services present.
-        
+
         // Construct a DID Document with no proof services.
         let did_doc =
             Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
-        
+
         // Check that no services are present in the DID document.
         assert!(did_doc.service.is_none());
 
@@ -615,8 +635,8 @@ mod tests {
         // Test to extract the controller DID from the service field in a sidetree-resolved DID document.
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -641,8 +661,8 @@ mod tests {
         // Test adding a proof to DID Document Metadata.
 
         // Load a Sidetree-resolved DID Document.
-        let sidetree_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load doc.");
+        let sidetree_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load doc.");
 
         // Load Sidetree-resolved DID Document Metadata.
         let sidetree_meta: DocumentMetadata =
@@ -652,20 +672,19 @@ mod tests {
         let expected_tc_meta: DocumentMetadata =
             serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
                 .expect("Failed to load metadata");
-        let expected_tc_meta = ION::json_canonicalization_scheme(&expected_tc_meta)
-            .expect("Cannot add proof and canonicalize.");
+        let expected_tc_meta =
+            canonicalize(&expected_tc_meta).expect("Cannot add proof and canonicalize.");
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
         // Add proof to the DID Document Metadata and canonicalize the result.
-        let actual_tc_meta =
-            ION::json_canonicalization_scheme(&resolver.add_proof(&sidetree_doc, sidetree_meta))
-                .expect("Cannot add proof and canonicalize.");
+        let actual_tc_meta = canonicalize(&resolver.add_proof(&sidetree_doc, sidetree_meta))
+            .expect("Cannot add proof and canonicalize.");
 
         // Check that the result matches the expected metadata.
         assert_eq!(expected_tc_meta, actual_tc_meta);
-    }   
+    }
 
     #[test]
     fn trustchain_resolve_doc_metadata() {
@@ -674,13 +693,13 @@ mod tests {
         // See https://github.com/alan-turing-institute/trustchain/issues/11
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load doc.");
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load doc.");
 
         // Construct Sidetree-resolved DID Document Metadata.
-        let sidetree_meta: DocumentMetadata = serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
-            .expect("Failed to load metadata");
-            
+        let sidetree_meta: DocumentMetadata =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA).expect("Failed to load metadata");
+
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
 
@@ -688,13 +707,11 @@ mod tests {
         let actual = resolver.trustchain_resolve_doc_metadata(&did_doc, sidetree_meta);
 
         // Canonicalise the result and compare with the expected Trustchain format.
-        let canon_actual_meta = ION::json_canonicalization_scheme(&actual)
-            .expect("Cannot add proof and canonicalize.");
+        let canon_actual_meta = canonicalize(&actual).expect("Cannot add proof and canonicalize.");
 
         let tc_meta: DocumentMetadata = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)
             .expect("Failed to load metadata");
-        let canon_tc_meta = ION::json_canonicalization_scheme(&tc_meta)
-            .expect("Cannot add proof and canonicalize.");
+        let canon_tc_meta = canonicalize(&tc_meta).expect("Cannot add proof and canonicalize.");
 
         assert_eq!(canon_tc_meta, canon_actual_meta);
     }
@@ -704,30 +721,28 @@ mod tests {
         // Test transformation of a Sidetree-resolved DID Document into Trustchain format.
 
         // Load a Sidetree-resolved DID Document.
-        let did_doc = Document::from_json(TEST_SIDETREE_DOCUMENT)
-            .expect("Document failed to load.");
-            
+        let did_doc =
+            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
+
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
-        
+
         // Get the controller from the proof service property in the Sidetree-resolved DID document.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
         let controller = resolver
             .get_from_proof_service(&proof_service, "controller")
             .unwrap();
-        
+
         // Transform the DID document by resolving into Trustchain format.
         let actual = resolver.trustchain_resolve_doc(&did_doc, controller.as_str());
-            
-        // Canonicalise the result and compare with the expected Trustchain format.
-        let canon_actual_doc = ION::json_canonicalization_scheme(&actual)
-            .expect("Failed to canonicalize.");
 
-        let tc_doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT)
-            .expect("Document failed to load.");
-        let canon_tc_doc = ION::json_canonicalization_scheme(&tc_doc)
-            .expect("Failed to canonicalize.");
-        
+        // Canonicalise the result and compare with the expected Trustchain format.
+        let canon_actual_doc = canonicalize(&actual).expect("Failed to canonicalize.");
+
+        let tc_doc =
+            Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+        let canon_tc_doc = canonicalize(&tc_doc).expect("Failed to canonicalize.");
+
         assert_eq!(canon_tc_doc, canon_actual_doc);
     }
 
@@ -771,15 +786,15 @@ mod tests {
         if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
             // Check resolution metadata is equal
             assert_eq!(
-                ION::json_canonicalization_scheme(&expected_output_res_meta).unwrap(),
-                ION::json_canonicalization_scheme(&actual_output_res_meta).unwrap()
+                canonicalize(&expected_output_res_meta).unwrap(),
+                canonicalize(&actual_output_res_meta).unwrap()
             );
             // Check documents are equal
             assert_eq!(expected_output_doc, actual_output_doc);
             // Check document metadata is equal
             assert_eq!(
-                ION::json_canonicalization_scheme(&expected_output_doc_meta).unwrap(),
-                ION::json_canonicalization_scheme(&actual_output_doc_meta).unwrap()
+                canonicalize(&expected_output_doc_meta).unwrap(),
+                canonicalize(&actual_output_doc_meta).unwrap()
             );
         } else {
             // If error variant, panic
@@ -789,7 +804,7 @@ mod tests {
 
     #[test]
     fn trustchain_resolve_with_multiple_proof_services() {
-        // Test that Trustchain resolution fails in the presence of multiple proof services 
+        // Test that Trustchain resolution fails in the presence of multiple proof services
         // (indicating an invalid DID Document).
 
         // Construct sample DID document & metadata from test fixtures.

@@ -1,11 +1,12 @@
 use core::panic;
 
-use ssi::one_or_many::OneOrMany;
 use ssi::did_resolve::Metadata;
+use ssi::one_or_many::OneOrMany;
 
-use trustchain::{test_resolver};
+use trustchain::test_resolver;
 
-#[test] #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+#[test]
+#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
 fn trustchain_resolution() {
     // Integration test of the Trustchain resolution pipeline.
 
@@ -13,11 +14,11 @@ fn trustchain_resolution() {
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = test_resolver("http://localhost:3000/");
-    
+
     // Resolve DID Document & Metadata.
     let result = resolver.resolve(did);
 
-    // Check the result is not an error. 
+    // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.
     assert!(result.is_ok());
 
@@ -35,7 +36,10 @@ fn trustchain_resolution() {
     // Check the controller's DID is in the DID Document (controller property).
     // TODO: update the DID Document used for this test to contain distinct DIDs for subject & controller.
     // TODO: update the controller property value in the DID document to contain the whole DID including prefix "did:ion:test:"
-    assert_eq!(doc.controller, Some(OneOrMany::One(String::from(&did[13..]))));
+    assert_eq!(
+        doc.controller,
+        Some(OneOrMany::One(String::from(&did[13..])))
+    );
     // Check the proof service is *not* found in the DID Document.
     assert!(doc.service.is_none());
 
@@ -47,7 +51,7 @@ fn trustchain_resolution() {
     // Get the properties inside the proof.
     let proof_properties = match doc_meta_properties.get("proof").unwrap() {
         Metadata::Map(m) => m,
-        _ => panic!()
+        _ => panic!(),
     };
 
     // Check the proof property contains id, type and proofValue properties.
@@ -58,17 +62,16 @@ fn trustchain_resolution() {
     // Check the value of the type property.
     let actual_type = match proof_properties.get("type").unwrap() {
         Metadata::String(s) => s,
-        _ => panic!()
+        _ => panic!(),
     };
     assert_eq!(actual_type, &String::from("JsonWebSignature2020"));
 
     // Check the value of the id property (inside the proof) matches the controller's DID.
     let actual_proof_id = match proof_properties.get("id").unwrap() {
         Metadata::String(s) => s,
-        _ => panic!()
+        _ => panic!(),
     };
     // TODO: update the DID Document used for this test to contain distinct DIDs for subject & controller.
     // TODO: update the controller property value in the DID document to contain the whole DID including prefix "did:ion:test:"
     assert_eq!(actual_proof_id, &did[13..]);
-
 }
