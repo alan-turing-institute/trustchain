@@ -96,8 +96,8 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
+        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
-            .await
     }
 }
 
@@ -122,8 +122,8 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
 
-    /// Async function performing transform to Trustchain resolution inside DIDResolve trait.
-    async fn transform(
+    /// Transforms the result of a DID resolution into the Trustchain format.
+    fn transform(
         &self,
         (res_meta, doc, doc_meta): (
             ResolutionMetadata,
@@ -175,6 +175,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             (res_meta, None, None)
         }
     }
+
     /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID returning specific error type.
     pub fn resolve_with_error(
