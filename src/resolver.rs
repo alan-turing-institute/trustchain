@@ -31,6 +31,9 @@ pub enum ResolverError {
     /// DID does not exist.
     #[error("DID: {0} does not exist.")]
     NonExistentDID(String),
+    /// DID is not found.
+    #[error("DID: {0} is not found.")]
+    DIDNotFound(String),
 }
 
 // Newtype pattern (workaround for lack of trait upcasting coercion).
@@ -119,7 +122,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
 
-    /// Async function performing transform to Trustchain resolution inside DIDResolve trait
+    /// Async function performing transform to Trustchain resolution inside DIDResolve trait.
     async fn transform(
         &self,
         (res_meta, doc, doc_meta): (
@@ -136,7 +139,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         // If a document and document metadata are returned, try to convert
         if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
             // Convert to trustchain versions
-            let tc_result = self.trustchain_resolve(res_meta.clone(), did_doc, did_doc_meta);
+            let tc_result = self.trustchain_resolve(res_meta, did_doc, did_doc_meta);
             match tc_result {
                 // Map the tuple of non-option types to have tuple with optional document
                 // document metadata
@@ -145,13 +148,23 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 }
                 // If cannot convert, return the relevant error
                 Err(ResolverError::FailedToConvertToTrustchain) => {
-                    // Err(ResolverError::FailedToConvertToTrustchain)
-                    // TODO: encode ResolverError::FailedToConvertToTrustchain in res_meta
+                    let res_meta = ResolutionMetadata {
+                        error: Some(
+                            "Failed to convert to Truschain document and metadata.".to_string(),
+                        ),
+                        content_type: None,
+                        property_set: None,
+                    };
                     (res_meta, None, None)
                 }
                 Err(ResolverError::MultipleTrustchainProofService) => {
-                    // Err(ResolverError::MultipleTrustchainProofService)
-                    // TODO: encode ResolverError::MultipleProofService in res_meta
+                    let res_meta = ResolutionMetadata {
+                        error: Some(
+                            "Multiple 'TrustchainProofService' entries are present.".to_string(),
+                        ),
+                        content_type: None,
+                        property_set: None,
+                    };
                     (res_meta, None, None)
                 }
                 // If not defined error, panic!()
@@ -163,8 +176,8 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         }
     }
     /// Trustchain resolve function returning resolution metadata,
-    /// DID document and DID document metadata from a passed DID.
-    pub fn resolve_and_transform(
+    /// DID document and DID document metadata from a passed DID returning specific error type.
+    pub fn resolve_with_error(
         &self,
         did: &str,
     ) -> Result<
@@ -188,6 +201,16 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     return Err(ResolverError::ConnectionFailure);
                 } else if did_res_meta_error == "invalidDid" {
                     return Err(ResolverError::NonExistentDID(did.to_string()));
+                } else if did_res_meta_error == "notFound" {
+                    return Err(ResolverError::DIDNotFound(did.to_string()));
+                } else if did_res_meta_error
+                    == "Failed to convert to Truschain document and metadata."
+                {
+                    return Err(ResolverError::FailedToConvertToTrustchain);
+                } else if did_res_meta_error
+                    == "Multiple 'TrustchainProofService' entries are present."
+                {
+                    return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
                     panic!();

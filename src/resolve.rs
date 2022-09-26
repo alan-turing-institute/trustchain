@@ -27,7 +27,7 @@ fn main() {
     // let did_to_resolve = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
     // Result metadata, Document, Document metadata
-    let result = resolver.resolve_and_transform(did_to_resolve);
+    let result = resolver.resolve_with_error(did_to_resolve);
     let (res_meta, doc, doc_meta) = match result {
         Ok(x) => x,
         Err(e) => {
