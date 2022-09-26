@@ -175,7 +175,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             (res_meta, None, None)
         }
     }
-    /// Trustchain resolve function returning resolution metadata,
+    /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID returning specific error type.
     pub fn resolve_with_error(
         &self,
@@ -193,7 +193,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             let (did_res_meta, did_doc, did_doc_meta) =
                 block_on(self.resolve(&did.to_string(), &ResolutionInputMetadata::default()));
 
-            // Handle cases when: 1. cannot connect to server; 2. Did not find DID.
+            // Handle error cases based on string content of the resolution metadata
             if let Some(did_res_meta_error) = &did_res_meta.error {
                 if did_res_meta_error
                     .starts_with("Error sending HTTP request: error sending request for url")
