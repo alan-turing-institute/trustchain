@@ -177,8 +177,8 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     }
 
     /// Sync Trustchain resolve function returning resolution metadata,
-    /// DID document and DID document metadata from a passed DID returning specific error type.
-    pub fn resolve_with_error(
+    /// DID document and DID document metadata from a passed DID as a `Result` type.
+    pub fn resolve_as_result(
         &self,
         did: &str,
     ) -> Result<
