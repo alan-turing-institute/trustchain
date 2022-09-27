@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
@@ -30,6 +31,9 @@ pub enum ResolverError {
     /// DID does not exist.
     #[error("DID: {0} does not exist.")]
     NonExistentDID(String),
+    /// DID is not found.
+    #[error("DID: {0} is not found.")]
+    DIDNotFound(String),
 }
 
 // Newtype pattern (workaround for lack of trait upcasting coercion).
@@ -80,6 +84,23 @@ pub struct Resolver<T: DIDResolver + Sync + Send> {
     wrapped_resolver: T,
 }
 
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
+    async fn resolve(
+        &self,
+        did: &str,
+        input_metadata: &ResolutionInputMetadata,
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
+        self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+    }
+}
+
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
@@ -101,26 +122,63 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
     }
 
-    /// Async function wrapping sidetree client resolution.
-    async fn wrapped_resolve(
+    /// Transforms the result of a DID resolution into the Trustchain format.
+    fn transform(
         &self,
-        did_short: &str,
+        (res_meta, doc, doc_meta): (
+            ResolutionMetadata,
+            Option<Document>,
+            Option<DocumentMetadata>,
+        ),
     ) -> (
         ResolutionMetadata,
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        let (res_meta, doc, doc_meta) = self
-            .wrapped_resolver
-            .resolve(&did_short[..], &ResolutionInputMetadata::default())
-            .await;
-
-        (res_meta, doc, doc_meta)
+        // Transform
+        // If a document and document metadata are returned, try to convert
+        if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
+            // Convert to trustchain versions
+            let tc_result = self.trustchain_resolve(res_meta, did_doc, did_doc_meta);
+            match tc_result {
+                // Map the tuple of non-option types to have tuple with optional document
+                // document metadata
+                Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
+                    (tc_res_meta, Some(tc_doc), Some(tc_doc_meta))
+                }
+                // If cannot convert, return the relevant error
+                Err(ResolverError::FailedToConvertToTrustchain) => {
+                    let res_meta = ResolutionMetadata {
+                        error: Some(
+                            "Failed to convert to Truschain document and metadata.".to_string(),
+                        ),
+                        content_type: None,
+                        property_set: None,
+                    };
+                    (res_meta, None, None)
+                }
+                Err(ResolverError::MultipleTrustchainProofService) => {
+                    let res_meta = ResolutionMetadata {
+                        error: Some(
+                            "Multiple 'TrustchainProofService' entries are present.".to_string(),
+                        ),
+                        content_type: None,
+                        property_set: None,
+                    };
+                    (res_meta, None, None)
+                }
+                // If not defined error, panic!()
+                _ => panic!(),
+            }
+        } else {
+            // If doc or doc_meta None, return sidetree resolution as is
+            (res_meta, None, None)
+        }
     }
 
-    /// Trustchain resolve function returning resolution metadata,
-    /// DID document and DID document metadata from a passed DID.
-    pub fn resolve(
+    /// Sync Trustchain resolve function returning resolution metadata,
+    /// DID document and DID document metadata from a passed DID as a `Result` type.
+    pub fn resolve_as_result(
         &self,
         did: &str,
     ) -> Result<
@@ -134,9 +192,9 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
             let (did_res_meta, did_doc, did_doc_meta) =
-                block_on(self.wrapped_resolve(&did.to_string()));
+                block_on(self.resolve(&did.to_string(), &ResolutionInputMetadata::default()));
 
-            // Handle cases when: 1. cannot connect to server; 2. Did not find DID.
+            // Handle error cases based on string content of the resolution metadata
             if let Some(did_res_meta_error) = &did_res_meta.error {
                 if did_res_meta_error
                     .starts_with("Error sending HTTP request: error sending request for url")
@@ -144,35 +202,22 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     return Err(ResolverError::ConnectionFailure);
                 } else if did_res_meta_error == "invalidDid" {
                     return Err(ResolverError::NonExistentDID(did.to_string()));
+                } else if did_res_meta_error == "notFound" {
+                    return Err(ResolverError::DIDNotFound(did.to_string()));
+                } else if did_res_meta_error
+                    == "Failed to convert to Truschain document and metadata."
+                {
+                    return Err(ResolverError::FailedToConvertToTrustchain);
+                } else if did_res_meta_error
+                    == "Multiple 'TrustchainProofService' entries are present."
+                {
+                    return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
                     panic!();
                 }
-            }
-
-            // If a document and document metadata are returned, try to convert
-            if let (Some(did_doc), Some(did_doc_meta)) = (did_doc, did_doc_meta) {
-                // Convert to trustchain versions
-                let tc_result = self.trustchain_resolve(did_res_meta, did_doc, did_doc_meta);
-                match tc_result {
-                    // Map the tuple of non-option types to have tuple with optional document
-                    // document metadata
-                    Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
-                        Ok((tc_res_meta, Some(tc_doc), Some(tc_doc_meta)))
-                    }
-                    // If cannot convert, return the relevant error
-                    Err(ResolverError::FailedToConvertToTrustchain) => {
-                        Err(ResolverError::FailedToConvertToTrustchain)
-                    }
-                    Err(ResolverError::MultipleTrustchainProofService) => {
-                        Err(ResolverError::MultipleTrustchainProofService)
-                    }
-                    // If not defined error, panic!()
-                    _ => panic!(),
-                }
             } else {
-                // If doc or doc_meta None, return sidetree resolution as is
-                Ok((did_res_meta, None, None))
+                return Ok((did_res_meta, did_doc, did_doc_meta));
             }
         })
     }
