@@ -139,7 +139,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         // If a document and document metadata are returned, try to convert
         if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
             // Convert to trustchain versions
-            let tc_result = self.trustchain_resolve(res_meta, did_doc, did_doc_meta);
+            let tc_result = self.transform_as_result(res_meta, did_doc, did_doc_meta);
             match tc_result {
                 // Map the tuple of non-option types to have tuple with optional document
                 // document metadata
@@ -356,7 +356,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     }
 
     /// Converts DID Document Metadata from a resolved DID to the Trustchain resolved format.
-    pub fn trustchain_resolve_doc_metadata(
+    pub fn transform_doc_metadata(
         &self,
         doc: &Document,
         doc_meta: DocumentMetadata,
@@ -367,7 +367,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     }
 
     /// Converts a DID Document from a resolved DID to the Trustchain resolved format.
-    pub fn trustchain_resolve_doc(&self, doc: &Document, controller_did: &str) -> Document {
+    pub fn transform_doc(&self, doc: &Document, controller_did: &str) -> Document {
         // Clone the passed DID document.
         let doc_clone = doc.clone();
 
@@ -387,7 +387,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     }
 
     /// Converts DID Document + Metadata to the Trustchain resolved format.
-    pub fn trustchain_resolve(
+    pub fn transform_as_result(
         &self,
         sidetree_res_meta: ResolutionMetadata,
         sidetree_doc: Document,
@@ -405,10 +405,10 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             let controller_did = self.get_from_proof_service(&service, "controller");
 
             // Convert doc
-            let doc = self.trustchain_resolve_doc(&sidetree_doc, controller_did.unwrap().as_str());
+            let doc = self.transform_doc(&sidetree_doc, controller_did.unwrap().as_str());
 
             // Convert metadata
-            let doc_meta = self.trustchain_resolve_doc_metadata(&sidetree_doc, sidetree_doc_meta);
+            let doc_meta = self.transform_doc_metadata(&sidetree_doc, sidetree_doc_meta);
 
             // Convert resolution metadata
             let res_meta = sidetree_res_meta;
@@ -699,7 +699,7 @@ mod tests {
     }
 
     #[test]
-    fn trustchain_resolve_doc_metadata() {
+    fn transform_doc_metadata() {
         // Test transformation of Sidetree-resolved DID Document Metadata to Trustchain format.
 
         // See https://github.com/alan-turing-institute/trustchain/issues/11
@@ -716,7 +716,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Transform the DID Document Metadata by resolving into Trustchain format.
-        let actual = resolver.trustchain_resolve_doc_metadata(&did_doc, sidetree_meta);
+        let actual = resolver.transform_doc_metadata(&did_doc, sidetree_meta);
 
         // Canonicalise the result and compare with the expected Trustchain format.
         let canon_actual_meta = canonicalize(&actual).expect("Cannot add proof and canonicalize.");
@@ -729,7 +729,7 @@ mod tests {
     }
 
     #[test]
-    fn trustchain_resolve_doc() {
+    fn transform_doc() {
         // Test transformation of a Sidetree-resolved DID Document into Trustchain format.
 
         // Load a Sidetree-resolved DID Document.
@@ -746,7 +746,7 @@ mod tests {
             .unwrap();
 
         // Transform the DID document by resolving into Trustchain format.
-        let actual = resolver.trustchain_resolve_doc(&did_doc, controller.as_str());
+        let actual = resolver.transform_doc(&did_doc, controller.as_str());
 
         // Canonicalise the result and compare with the expected Trustchain format.
         let canon_actual_doc = canonicalize(&actual).expect("Failed to canonicalize.");
@@ -759,7 +759,7 @@ mod tests {
     }
 
     #[test]
-    fn trustchain_resolve() {
+    fn transform_as_result() {
         // Test transformation of Sidetree-resolved DID Document + Metadata into Trustchain format.
 
         // Construct sample DID documents & metadata from test fixtures.
@@ -788,7 +788,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call function and get output result type
-        let output = resolver.trustchain_resolve(
+        let output = resolver.transform_as_result(
             input_res_meta.clone(),
             input_doc.clone(),
             input_doc_meta.clone(),
@@ -815,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn trustchain_resolve_with_multiple_proof_services() {
+    fn transform_as_result_with_multiple_proof_services() {
         // Test that Trustchain resolution fails in the presence of multiple proof services
         // (indicating an invalid DID Document).
 
@@ -835,7 +835,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call the resolve function and get output Result type.
-        let output = resolver.trustchain_resolve(
+        let output = resolver.transform_as_result(
             input_res_meta.clone(),
             input_doc.clone(),
             input_doc_meta.clone(),
