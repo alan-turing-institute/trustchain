@@ -19,6 +19,10 @@ path = "src/create_and_update.rs"
 name = "resolve"
 path = "src/resolve.rs"
 
+[[bin]]
+name = "deactivate"
+path = "src/deactivate.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
@@ -37,6 +41,8 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 #
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
+
+clap = { version = "~3.2", features=["derive", "cargo"] }
 
 # https://crates.io/crates/did-ion
 did-ion="0.1.0"
