@@ -2,15 +2,6 @@
 mod data;
 pub mod resolver;
 mod utils;
-use did_ion::{sidetree::SidetreeClient, ION};
-use resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
 
 // WASM
 use wasm_bindgen::prelude::*;

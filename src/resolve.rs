@@ -1,6 +1,10 @@
 use clap::{arg, command, Arg, ArgAction};
+use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
-use trustchain::test_resolver;
+use trustchain::resolver::{DIDMethodWrapper, Resolver};
+
+// Type aliases
+pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 // Binary to resolve a passed DID from the command line.
 fn main() {
@@ -19,12 +23,12 @@ fn main() {
         .get_matches();
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
+        "http://localhost:3000/",
+    ))));
 
     // Get DID from clap
     let did_to_resolve = matches.get_one::<String>("input").unwrap();
-    // Previous
-    // let did_to_resolve = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
     // Result metadata, Document, Document metadata
     let result = resolver.resolve_as_result(did_to_resolve);
@@ -41,12 +45,10 @@ fn main() {
     println!("Trustchain resolved document, document metadata and resolution metadata");
     println!("---");
     println!("Document:");
-    // let doc_json = json!(&ION::json_canonicalization_scheme(&doc.as_ref().unwrap()).expect("Canonicalized Doc JSON"));
     let doc_json = &doc.as_ref().unwrap();
     println!("{}", to_json(&doc_json).expect("Cannot convert to JSON."));
     println!("---");
     println!("Document metadata:");
-    // let doc_meta_json = ION::json_canonicalization_scheme(&doc_meta.unwrap())
     let doc_meta_json = &doc_meta.unwrap();
     println!(
         "{}",
@@ -54,8 +56,6 @@ fn main() {
     );
     println!("---");
     println!("Result metadata (canonicalized):");
-    // let result_meta_json =
-    // ION::json_canonicalization_scheme(&res_meta).expect("Canonicalized Result Metadata JSON");
     let result_meta_json = &res_meta;
     println!(
         "{}",
