@@ -1,16 +1,9 @@
 use clap::{arg, command, Arg, ArgAction};
-use did_ion::sidetree::DIDStatePatch;
-use did_ion::sidetree::{
-    DIDSuffix, Operation, ServiceEndpointEntry, Sidetree, SidetreeDID, SidetreeOperation,
-};
-use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
+use did_ion::sidetree::{DIDSuffix, Operation, Sidetree, SidetreeOperation};
 use did_ion::ION;
 use serde_json::{to_string_pretty as to_json, Map, Value};
-use ssi::did::ServiceEndpoint;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
-use std::fmt::format;
-use std::fs::{read, write};
 
 fn load_key(file_name: &str, verbose: bool) -> JWK {
     // Load previous data
