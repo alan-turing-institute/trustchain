@@ -19,6 +19,7 @@ pub struct TrustchainSubject {
 
 impl TrustchainSubject {
     /// Construct a new TrustchainSubject instance.
+    // TODO: consider returning as a result type if no keys can be loaded (i.e. None)
     pub fn new(did: &str) -> Self {
         let signing_keys = TrustchainSubject::load_keys(did);
         Self {
