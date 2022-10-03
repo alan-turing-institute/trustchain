@@ -20,6 +20,7 @@ pub struct Publisher {
 }
 
 impl Publisher {
+    /// Creates a new Publisher struct.
     pub fn new() -> Self {
         // Make an async runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -33,6 +34,7 @@ impl Publisher {
         Self { runtime, client }
     }
 
+    /// Performs an HTTP get request from passed header_key and header_value.
     pub async fn get(
         &self,
         header_key: &str,
@@ -55,12 +57,13 @@ impl Publisher {
         }
     }
 
-    pub async fn post(&self, request: &str) -> Result<String, PublisherError> {
+    /// Performs an HTTP POST request from passed body.
+    pub async fn post(&self, body: &str) -> Result<String, PublisherError> {
         // TODO: rewrite error handling
         match self
             .client
             .post("http://httpbin.org/post")
-            .body(request.to_string())
+            .body(body.to_string())
             .send()
             .await
             .expect("Failed")
@@ -100,8 +103,7 @@ mod tests {
             "didSuffix": "EiCWPckEQHqdvdMtVCBLgmsHnEWhPnhmvNDB9PLqjj165A",
             "revealValue": "EiDsNzgHxKBxRg_xnhYBLUavgNu-ZzZcww0mnFZ0d3Hsuw"
         }"##;
-        let body = example_body;
-        let response = publisher.runtime.block_on(publisher.post(body));
+        let response = publisher.runtime.block_on(publisher.post(example_body));
         assert!(response.is_ok());
         println!("res = \n{}", response.unwrap());
     }
