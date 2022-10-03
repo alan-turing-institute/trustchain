@@ -1,9 +1,9 @@
 //! Trustchain library.
-mod controller;
+pub mod controller;
 mod data;
 mod key_manager;
 pub mod resolver;
-mod subject;
+pub mod subject;
 mod utils;
 
 use wasm_bindgen::prelude::*;
