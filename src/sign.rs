@@ -12,7 +12,8 @@ fn main() {
 
     // 2. Resolve controlled_did document with Trustchain resolver
 
-    // 3. If Trustchain proof already present, add RemoveService patch
+    // 3. If Trustchain proof already present, add RemoveService patch, and remove
+    //    this service from Doc to be signed
 
     // 4. Controller performs attestation to Document to generate proof data
 
