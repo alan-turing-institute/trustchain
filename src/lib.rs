@@ -1,5 +1,6 @@
 //! Trustchain library.
 mod data;
+pub mod publisher;
 pub mod resolver;
 mod utils;
 
