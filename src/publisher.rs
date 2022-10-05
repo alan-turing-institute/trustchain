@@ -19,6 +19,14 @@ pub struct Publisher {
     pub client: Client,
 }
 
+/// Converts from reqwest error type into Trustchain PublisherError.
+impl From<reqwest::Error> for PublisherError {
+    // TODO: consider how to map different reqwest error variants.
+    fn from(_error: reqwest::Error) -> Self {
+        PublisherError::ConnectionFailure
+    }
+}
+
 impl Publisher {
     /// Creates a new Publisher struct.
     pub fn new() -> Self {
@@ -41,41 +49,30 @@ impl Publisher {
         header_value: &str,
     ) -> Result<String, PublisherError> {
         // TODO: rewrite header handling
-        // TODO: rewrite error handling
-        match self
-            .client
+        self.client
             .get("https://httpbin.org/get?id=123")
             .header(header_key, header_value)
             .send()
-            .await
-            .expect("msg")
+            .await?
             .text()
             .await
-        {
-            Ok(x) => Ok(x),
-            Err(_) => Err(PublisherError::ConnectionFailure),
-        }
+            .map_err(|e| e.into())
     }
 
     /// Performs an HTTP POST request from passed body.
     pub async fn post(&self, body: &str) -> Result<String, PublisherError> {
-        // TODO: rewrite error handling
-        match self
-            .client
+        self.client
             .post("http://httpbin.org/post")
             .body(body.to_string())
             .send()
-            .await
-            .expect("Failed")
+            .await?
             .text()
             .await
-        {
-            Ok(x) => Ok(x),
-            Err(_) => Err(PublisherError::ConnectionFailure),
-        }
+            .map_err(|e| e.into())
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -106,5 +103,17 @@ mod tests {
         let response = publisher.runtime.block_on(publisher.post(example_body));
         assert!(response.is_ok());
         println!("res = \n{}", response.unwrap());
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_fail() {
+        todo!()
+    }
+
+    #[test]
+    #[should_panic]
+    fn post_fail() {
+        todo!()
     }
 }
