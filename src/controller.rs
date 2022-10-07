@@ -28,6 +28,7 @@ trait Controller {
     fn load(&self, controlled_did: &str);
     fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
     fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
+                                   // E.g JWT https://jwt.io/
     fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError>;
     // fn generate_recovery_key(&self);
     // fn set_new_update_key();

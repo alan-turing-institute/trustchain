@@ -56,7 +56,8 @@ pub fn read_key(did: &str, key_type: KeyType) -> Result<JWK, KeyManagerError> {
     let stem_name = match key_type {
         KeyType::UpdateKey => "update_key.json",
         KeyType::RecoveryKey => "recovery_key.json",
-        // TODO: this probably will need a glob for all signing keys
+        // TODO: this probably read OneOrMany keys from a single file
+        //       see `fn read_keys_from()`
         KeyType::SigningKey => "siging_key.json",
     };
 
