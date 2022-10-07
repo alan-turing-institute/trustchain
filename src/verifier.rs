@@ -1,6 +1,7 @@
-use crate::resolver::Resolver;
+use crate::resolver::{Resolver, ResolverError};
 use crate::utils::canonicalize;
 use crate::ROOT_EVENT_TIME;
+use ssi::did_resolve::ResolutionMetadata;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use ssi::{
     did::Document,
@@ -13,9 +14,6 @@ use thiserror::Error;
 /// An error relating to Trustchain verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VerifierError {
-    /// DID subject does not exist.
-    #[error("DID: {0} as Trustchain subject does not exist.")]
-    NoTrustchainSubject(String),
     /// Invalid payload in proof compared to resolved document.
     #[error("Invalid payload provided in proof for dDID: {0}.")]
     InvalidPayload(String),
@@ -26,14 +24,24 @@ pub enum VerifierError {
     #[error("Invalid root DID: {0}.")]
     InvalidRoot(String),
     /// DID not resolvable.
-    #[error("Invalid root DID: {0}.")]
+    #[error("DID: {0} is not resolvable.")]
     UnresolvableDID(String),
 }
 
 /// Trait for common DID Controller functionality.
 trait Verifier {
-    fn resolve(&self, did: &str) -> Result<(), VerifierError>;
+    fn verify(&mut self, did: &str) -> Result<(), VerifierError>;
 }
+
+/// Type for resolver result.
+type ResolverResult = Result<
+    (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ),
+    ResolverError,
+>;
 
 /// Struct for TrustchainVerifier
 pub struct TrustchainVerifier<T>
@@ -41,7 +49,7 @@ where
     T: Sync + Send + DIDResolver,
 {
     resolver: Resolver<T>,
-    visited: HashMap<String, (Document, DocumentMetadata)>,
+    visited: HashMap<String, ResolverResult>,
 }
 
 impl<T> TrustchainVerifier<T>
@@ -50,7 +58,7 @@ where
 {
     /// Construct a new TrustchainVerifier.
     pub fn new(resolver: Resolver<T>) -> Result<Self, VerifierError> {
-        let visited = HashMap::<String, (Document, DocumentMetadata)>::new();
+        let visited = HashMap::<String, ResolverResult>::new();
         Ok(Self { resolver, visited })
     }
 }
@@ -64,7 +72,7 @@ fn get_controller(doc: &Document) -> &str {
     todo!()
 }
 /// Consider using resolver functions (these are currently private)
-fn get_proof(doc: &DocumentMetadata) -> &JsonWebSignature2020 {
+fn get_proof(doc: &DocumentMetadata) -> JsonWebSignature2020 {
     todo!()
 }
 
@@ -98,29 +106,33 @@ where
     T: Send + Sync + DIDResolver,
 {
     /// Performs search from did upwards to root node.
-    fn resolve(&self, did: &str) -> Result<(), VerifierError> {
+    fn verify(&mut self, did: &str) -> Result<(), VerifierError> {
+        // Clear visited hashmap
+        self.visited.clear();
+
         // Set downstream DID as passed did
         let mut ddid: String = did.to_string();
 
         // Begin loop up tree until root is reached or an error occurs
         loop {
-            // Resolve current dDID
-            let ddid_resolution = self.resolver.resolve_as_result(&ddid);
+            // Resolve current dDID (either get hashmap entry or resolve)
+            let ddid_resolution = self
+                .visited
+                .entry(ddid.clone())
+                .or_insert(self.resolver.resolve_as_result(&ddid));
 
             if let Ok((_, Some(ddoc), Some(ddoc_meta))) = ddid_resolution {
                 // TODO: Main loop, use functionality from resolver type where possible
-                // 0.1 Cache the doc and doc_meta in the HashMap
-                // TODO
 
-                // 0.2 Extract controller from doc
+                // 0.1 Extract controller from doc
                 let udid = get_controller(&ddoc).to_string();
 
-                // 0.3 Extract proof from document metadata
+                // 0.2 Extract proof from document metadata
                 let proof = get_proof(&ddoc_meta);
 
                 // 1. Verify the payload of the JWS proofvalue is equal to the doc
                 // 1.1 Get proof payload
-                let proof_payload = decode(proof);
+                let proof_payload = decode(&proof);
 
                 // 1.2 Reconstruct payload
                 let actual_payload = hash(&canonicalize(&ddoc).unwrap());
@@ -131,27 +143,28 @@ where
                 }
 
                 // 2. Check the signature itself is valid
-                // Resolve the uDID
-                let udid_resolution = self.resolver.resolve_as_result(did);
-                if let Ok((_, Some(udoc), Some(udoc_meta))) = udid_resolution {
-                    // 2.1 Cache the doc and doc_meta in the HashMap
-                    // TODO
+                // Resolve the uDID (either get hashmap entry or resolve)
+                let udid_resolution = self
+                    .visited
+                    .entry(udid.clone())
+                    .or_insert(self.resolver.resolve_as_result(&udid));
 
-                    // 2.2 Extract keys from the uDID document
+                if let Ok((_, Some(udoc), Some(udoc_meta))) = udid_resolution {
+                    // 2.1 Extract keys from the uDID document
                     let udid_pks: Vec<JWK> = extract_keys(&udoc);
 
-                    // // 2.3 Loop over the keys until signature is valid
-                    let one_valid_key: bool = verify_jws(proof, &udid_pks);
+                    // // 2.2 Loop over the keys until signature is valid
+                    let one_valid_key: bool = verify_jws(&proof, &udid_pks);
 
-                    // // 2.4 If one_valid_key is false, return error
+                    // // 2.3 If one_valid_key is false, return error
                     if !one_valid_key {
                         return Err(VerifierError::InvalidSignature(ddid.to_string()));
                     }
 
-                    // 2.5 Get uDID controller (uuDID)
+                    // 2.4 Get uDID controller (uuDID)
                     let uudid: &str = get_controller(&udoc);
 
-                    // 2.6 If uuDID is the same as uDID, this is a root,
+                    // 2.5 If uuDID is the same as uDID, this is a root,
                     // check "created_at" property matches hard coded ROOT_EVENT_TIME
                     if uudid == udid {
                         let created_at = get_created_at(&udoc_meta);
@@ -161,7 +174,7 @@ where
                             return Err(VerifierError::InvalidRoot(uudid.to_string()));
                         }
                     } else {
-                        // 2.7 If not a root, set ddid as udid, and return to start of loop
+                        // 2.6 If not a root, set ddid as udid, and return to start of loop
                         ddid = udid;
                     }
                 } else {
