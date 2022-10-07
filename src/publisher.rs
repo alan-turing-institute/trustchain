@@ -45,12 +45,13 @@ impl Publisher {
     /// Performs an HTTP get request from passed header_key and header_value.
     pub async fn get(
         &self,
+        url: &str,
         header_key: &str,
         header_value: &str,
     ) -> Result<String, PublisherError> {
         // TODO: rewrite header handling
         self.client
-            .get("https://httpbin.org/get?id=123")
+            .get(url)
             .header(header_key, header_value)
             .send()
             .await?
@@ -60,9 +61,9 @@ impl Publisher {
     }
 
     /// Performs an HTTP POST request from passed body.
-    pub async fn post(&self, body: &str) -> Result<String, PublisherError> {
+    pub async fn post(&self, url: &str, body: &str) -> Result<String, PublisherError> {
         self.client
-            .post("http://httpbin.org/post")
+            .post(url)
             .body(body.to_string())
             .send()
             .await?
@@ -81,10 +82,13 @@ mod tests {
         // Make publisher
         let publisher = Publisher::new();
 
+        // Test url
+        let url = "https://httpbin.org/get?id=123";
+
         // GET request
         let response = publisher
             .runtime
-            .block_on(publisher.get("key", "application/json"));
+            .block_on(publisher.get(url, "key", "application/json"));
         assert!(response.is_ok());
         println!("body = \n{}", response.unwrap());
     }
@@ -94,13 +98,18 @@ mod tests {
         // Make publisher
         let publisher = Publisher::new();
 
+        // Test url
+        let url = "http://httpbin.org/post";
+
         // POST request
         let example_body = r##"{
             "type": "update",
             "didSuffix": "EiCWPckEQHqdvdMtVCBLgmsHnEWhPnhmvNDB9PLqjj165A",
             "revealValue": "EiDsNzgHxKBxRg_xnhYBLUavgNu-ZzZcww0mnFZ0d3Hsuw"
         }"##;
-        let response = publisher.runtime.block_on(publisher.post(example_body));
+        let response = publisher
+            .runtime
+            .block_on(publisher.post(url, example_body));
         assert!(response.is_ok());
         println!("res = \n{}", response.unwrap());
     }

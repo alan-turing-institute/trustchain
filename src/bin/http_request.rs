@@ -6,9 +6,11 @@ fn main() {
     let publisher = Publisher::new();
 
     // 1. Try to perform a get request
-    let response = publisher
-        .runtime
-        .block_on(publisher.get("key", "application/json"));
+    let response = publisher.runtime.block_on(publisher.get(
+        "https://httpbin.org/get?id=123",
+        "key",
+        "application/json",
+    ));
     println!("body = \n{}", response.unwrap());
 
     // 2. Try a POST request
@@ -18,6 +20,8 @@ fn main() {
         "revealValue": "EiDsNzgHxKBxRg_xnhYBLUavgNu-ZzZcww0mnFZ0d3Hsuw"
     }"##;
     let body = example_body;
-    let response = publisher.runtime.block_on(publisher.post(body));
+    let response = publisher
+        .runtime
+        .block_on(publisher.post("http://httpbin.org/post", body));
     println!("res = \n{}", response.unwrap());
 }
