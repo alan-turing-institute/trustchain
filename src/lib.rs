@@ -6,6 +6,7 @@ pub mod resolver;
 mod subject;
 mod utils;
 
+// WASM
 use wasm_bindgen::prelude::*;
 
 /// Rust variable for Trustchain data environment variable
