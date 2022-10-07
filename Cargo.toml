@@ -21,7 +21,7 @@ path = "src/bin/resolve.rs"
 
 [[bin]]
 name = "http_request"
-path = "src/http_request.rs"
+path = "src/bin/http_request.rs"
 
 [features]
 default = ["console_error_panic_hook"]
