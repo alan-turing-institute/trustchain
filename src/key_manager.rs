@@ -1,11 +1,11 @@
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
-use serde_json::from_str;
+use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 use thiserror::Error;
 
@@ -16,6 +16,8 @@ use crate::TRUSTCHAIN_DATA;
 pub enum KeyManagerError {
     #[error("Key does not exist.")]
     FailedToLoadKey,
+    #[error("Key could not be saved.")]
+    FailedToSaveKey,
     #[error("Failed to read UTF-8 data.")]
     FailedToReadUTF8,
     #[error("Failed to parse JSON string to JWK.")]
@@ -58,7 +60,7 @@ pub fn read_key(did: &str, key_type: KeyType) -> Result<JWK, KeyManagerError> {
         KeyType::RecoveryKey => "recovery_key.json",
         // TODO: this probably read OneOrMany keys from a single file
         //       see `fn read_keys_from()`
-        KeyType::SigningKey => "siging_key.json",
+        KeyType::SigningKey => "signing_key.json",
     };
 
     // Get environment for TRUSTCHAIN_DATA
@@ -125,8 +127,38 @@ fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManage
 }
 
 /// Saves a key to disk.
-pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> () {
-    todo!()
+pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
+    // Get the stem for the corresponding key type
+    let stem_name = match key_type {
+        KeyType::UpdateKey => "update_key.json",
+        KeyType::RecoveryKey => "recovery_key.json",
+        KeyType::SigningKey => "signing_key.json",
+    };
+
+    // Get environment for TRUSTCHAIN_DATA
+    let path: String = match std::env::var(TRUSTCHAIN_DATA) {
+        Ok(val) => val,
+        Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
+    };
+
+    // Make a path
+    let path = Path::new(path.as_str()).join("key_manager").join(did);
+
+    // Make directory if non-existent
+    std::fs::create_dir_all(&path).unwrap();
+
+    // Open the file
+    let file = File::open(path.join(stem_name));
+
+    // Write key to file
+    if let Ok(mut file) = file {
+        match writeln!(file, "{}", &to_json(key).unwrap()) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(KeyManagerError::FailedToSaveKey),
+        }
+    } else {
+        Err(KeyManagerError::FailedToSaveKey)
+    }
 }
 
 /// Saves one or more keys to disk.
@@ -275,5 +307,13 @@ mod tests {
             Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
             _ => panic!(),
         }
+    }
+
+    #[test]
+    fn test_save_key() {
+        // Init env variables
+        init();
+
+        todo!()
     }
 }
