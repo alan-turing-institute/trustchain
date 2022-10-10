@@ -2,6 +2,18 @@ use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 
 use crate::key_manager::{read_signing_keys, KeyManagerError, KeyType};
+use thiserror::Error;
+
+/// An error relating to Trustchain controllers.
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SubjectError {
+    /// No recovery key for DID.
+    #[error("DID: {0} as Trustchain subject does not exist.")]
+    NoTrustchainSubject(String),
+    /// No recovery key for DID.
+    #[error("DID: {0} with signing key idx {1} does not exist.")]
+    NoSigningKey(String, String),
+}
 
 /// Trait for common DID Subject functionality.
 pub trait Subject {
