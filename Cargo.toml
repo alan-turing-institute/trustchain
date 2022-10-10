@@ -13,7 +13,7 @@ path = "src/bin/create.rs"
 
 [[bin]]
 name = "sign"
-path = "src/sign.rs"
+path = "src/bin/sign.rs"
 
 [[bin]]
 name = "create_and_update"
