@@ -4,7 +4,7 @@ use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::Path;
 use thiserror::Error;
@@ -147,8 +147,12 @@ pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManage
     // Make directory if non-existent
     std::fs::create_dir_all(&path).unwrap();
 
-    // Open the file
-    let file = File::open(path.join(stem_name));
+    // Open the new file
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path.join(stem_name));
 
     // Write key to file
     if let Ok(mut file) = file {
