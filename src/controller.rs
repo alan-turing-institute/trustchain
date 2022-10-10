@@ -23,14 +23,15 @@ pub enum ControllerError {
 }
 
 /// Trait for common DID Controller functionality.
-trait Controller {
+pub trait Controller {
     fn to_subject(&self) -> &TrustchainSubject;
     fn load(&self, controlled_did: &str);
     fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
+    fn next_update_key(&self) -> JWK; // Retrieve the next update key for the loaded DID
     fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
     fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError>;
+    fn generate_next_update_key(&self);
     // fn generate_recovery_key(&self);
-    // fn set_new_update_key();
     // fn update_subject(&self);
     // fn recover_subject(&self);
 }
@@ -41,6 +42,7 @@ pub struct TrustchainController {
     controlled_did: String,
     update_key: Option<JWK>,
     recovery_key: Option<JWK>,
+    next_update_key: Option<JWK>,
 }
 
 impl TrustchainController {
@@ -65,6 +67,7 @@ impl TrustchainController {
             controlled_did: controlled_did.to_owned(),
             update_key,
             recovery_key,
+            next_update_key: None,
         })
     }
 
@@ -83,6 +86,14 @@ impl Controller for TrustchainController {
     }
 
     fn update_key(&self) -> JWK {
+        todo!()
+    }
+
+    fn next_update_key(&self) -> JWK {
+        todo!()
+    }
+
+    fn generate_next_update_key(&self) {
         todo!()
     }
 
