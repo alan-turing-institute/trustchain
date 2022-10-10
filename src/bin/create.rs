@@ -1,3 +1,7 @@
+use clap::{arg, command, Arg, ArgAction};
+use ssi::did::{Document, Service};
+use ssi::jwk::JWK;
+
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
@@ -6,118 +10,117 @@ use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
 
-// fn make_did_ion(suffix: &String) -> String {
-//     "did:ion:test:".to_string() + suffix
-// }
+use trustchain::key_manager::{generate_key, save_key, KeyType};
 
-// fn load_key(file_name: &str, verbose: bool) -> JWK {
-//     // Load previous data
-//     let ec_read = std::fs::read(file_name).unwrap();
-//     let ec_read = std::str::from_utf8(&ec_read).unwrap();
-//     let ec_json: Map<String, Value> = serde_json::from_str(ec_read).unwrap();
-//     let ec_params = ECParams {
-//         curve: Some(ec_json["crv"].to_string().replace("\"", "")),
-//         x_coordinate: Some(
-//             Base64urlUInt::try_from(ec_json["x"].to_string().replace("\"", "")).unwrap(),
-//         ),
-//         y_coordinate: Some(
-//             Base64urlUInt::try_from(ec_json["y"].to_string().replace("\"", "")).unwrap(),
-//         ),
-//         ecc_private_key: Some(
-//             Base64urlUInt::try_from(ec_json["d"].to_string().replace("\"", "")).unwrap(),
-//         ),
-//     };
+// TODO: Implement a function to convert an SSI document (https://docs.rs/ssi/latest/ssi/did/struct.Document.html#)
+// into a DocumentState (https://docs.rs/did-ion/0.1.0/did_ion/sidetree/struct.DocumentState.html)
+fn document_as_document_state(doc: &Document) -> DocumentState {
+    todo!()
+}
 
-//     let ec_params = Params::EC(ec_params);
-//     let update_key = JWK::from(ec_params);
-//     if verbose {
-//         println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
-//     }
-//     update_key
-// }
-
-// Binary to make new DID and create operation.
+// Binary to make a new DID subject to be controlled and correspondong create operation.
 fn main() {
-    // --------------------------
-    // Make some keys
-    // --------------------------
-    let update_key = ION::generate_key();
-    let recovery_key = ION::generate_key();
-    let verification_key = ION::generate_key().unwrap();
+    // CLI pass: verbose, did, controlled_did
+    let matches = command!()
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(arg!(-f --file_path <FILE_PATH>).required(false))
+        .get_matches();
 
-    // Get keys in form for DID
-    let update_key = update_key.unwrap();
+    let verbose = *matches.get_one::<bool>("verbose").unwrap();
+    let file_path = matches.get_one::<String>("file_path");
+
+    // 1. Make keys for controlled DID
+    //
+    // 1.0 Generate random keys
+    let update_key = generate_key();
+    let recovery_key = generate_key();
+
+    // 1.1 Validate keys
     ION::validate_key(&update_key).unwrap();
-    let update_pk = PublicKeyJwk::try_from(update_key.to_public()).unwrap();
-
-    let recovery_key = recovery_key.unwrap();
     ION::validate_key(&recovery_key).unwrap();
+
+    // 1.2 Get PublicKeyJwk versions
+    let update_pk = PublicKeyJwk::try_from(update_key.to_public()).unwrap();
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
-    // --------------------------
-    // Create operation
-    // --------------------------
-    // Make the create patch
-    let mut patches = vec![];
-    let public_key_entry = PublicKeyEntry::try_from(verification_key.clone());
-    let document = DocumentState {
-        public_keys: Some(vec![public_key_entry.unwrap()]),
-        services: None,
+    // 1.3 Signing key: optional variable to assign to if private signing key made for DID
+    let mut signing_key: Option<JWK> = None;
+
+    // 2. Create operation
+    // 2.1 Make the create patch from scratch or passed file
+    let document_state = if file_path.is_none() {
+        signing_key = Some(generate_key());
+        let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+        DocumentState {
+            public_keys: Some(vec![public_key_entry.unwrap()]),
+            services: None,
+        }
+    } else {
+        // 2. Load document from file if passed
+        let contents = std::fs::read_to_string(file_path.unwrap())
+            .expect("Should have been able to read the file");
+        let document: Document = serde_json::from_str(&contents).unwrap();
+        document_as_document_state(&document)
     };
+    // 2.2 Make vec of patches from document state
+    let patches = vec![DIDStatePatch::Replace {
+        document: document_state,
+    }];
 
-    // Make patch from document
-    let patch = DIDStatePatch::Replace { document };
-    patches.push(patch.clone());
-
-    // Make the create operation from pathces
+    // 2.3  Make the create operation from pathces
     let operation = ION::create_existing(&update_pk, &recovery_pk, patches).unwrap();
-    // println!("Create operation:");
 
-    // Verify the enum
+    // 2.4 Verify the operation enum
     let partially_verified_create_operation = operation.clone().partial_verify::<ION>();
-    println!(
-        "Partially verified create: {}",
-        partially_verified_create_operation.is_ok()
-    );
+    if verbose {
+        println!(
+            "Partially verified create: {}",
+            partially_verified_create_operation.is_ok()
+        );
+    }
 
-    // Get the data of the operation enum
+    // 2.5 Get the data of the operation enum
     let create_operation = match operation.clone() {
         Operation::Create(x) => Some(x),
         _ => None,
     };
 
-    // Print JSON operation
-    println!("Create operation:");
-    println!("{}", to_json(&create_operation).unwrap());
+    // 2.6 Print JSON operation
+    if verbose {
+        println!("Create operation:");
+        println!("{}", to_json(&create_operation).unwrap());
+    }
 
+    // 3. Get DID information
     let did_short = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
         .unwrap()
         .to_string();
     let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
         .unwrap()
         .to_string();
-    println!("DID suffix: {:?}", did_short);
-    println!("Long: {:?}", did_long);
+    if verbose {
+        println!("DID suffix: {:?}", did_short);
+        println!("Long: {:?}", did_long);
+    }
 
-    // Writing to file
+    // 4. Writing to file
+    // 4.1 Writing keys
+    save_key(&did_short, KeyType::UpdateKey, &update_key);
+    save_key(&did_short, KeyType::RecoveryKey, &recovery_key);
+    if signing_key.is_some() {
+        save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap());
+    }
+
+    // 4.2 Write create operation to push to ION server
+    // TODO: use publisher to push JSON directly to ION server
     std::fs::write(
         format!("create_operation_{}.json", did_short),
         to_json(&operation).unwrap(),
-    )
-    .unwrap();
-    std::fs::write(
-        format!("update_key_{}.json", did_short),
-        to_json(&update_key).unwrap(),
-    )
-    .unwrap();
-    std::fs::write(
-        format!("signing_key_{}.json", did_short),
-        to_json(&verification_key).unwrap(),
-    )
-    .unwrap();
-    std::fs::write(
-        format!("recovery_key_{}.json", did_short),
-        to_json(&recovery_key).unwrap(),
     )
     .unwrap();
 }
