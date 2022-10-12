@@ -36,6 +36,7 @@ use std::convert::TryFrom;
 //     update_key
 // }
 
+// Binary to make new DID and create operation.
 fn main() {
     // --------------------------
     // Make some keys
