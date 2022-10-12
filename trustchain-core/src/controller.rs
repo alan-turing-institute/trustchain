@@ -1,5 +1,3 @@
-use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
@@ -29,6 +27,7 @@ pub trait Controller {
     fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
     fn next_update_key(&self) -> JWK; // Retrieve the next update key for the loaded DID
     fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
+                                   // E.g JWT https://jwt.io/
     fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError>;
     fn generate_next_update_key(&self);
     // fn generate_recovery_key(&self);

@@ -11,9 +11,9 @@ use did_ion::{sidetree::SidetreeClient, ION};
 use ssi::did::{Document, ServiceEndpoint};
 use ssi::jwk::JWK;
 
-use trustchain::controller::{Controller, TrustchainController};
-use trustchain::resolver::{DIDMethodWrapper, Resolver};
-use trustchain::subject::{SubjectError, TrustchainSubject};
+use trustchain_core::controller::{Controller, TrustchainController};
+use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_core::subject::{SubjectError, TrustchainSubject};
 
 // Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
