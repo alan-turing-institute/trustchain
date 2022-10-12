@@ -7,8 +7,8 @@ use did_ion::ION;
 use ssi::did::ServiceEndpoint;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
-use std::fmt::format;
-use std::fs::{read, write};
+// use std::fmt::format;
+// use std::fs::{read, write};
 // use anyhow::{anyhow, bail, ensure, Context, Error as AError, Result as AResult};
 // use failure::Fail;
 use serde_json::{to_string_pretty as to_json, Map, Value};
@@ -18,22 +18,22 @@ fn make_did_ion(suffix: &String) -> String {
     "did:ion:test:".to_string() + suffix
 }
 
-fn generate_proof_data(did_suffix: &String, document: &String) -> String {
-    // Convert document into proof data
-    todo!()
-}
+// fn generate_proof_data(did_suffix: &String, document: &String) -> String {
+//     // Convert document into proof data
+//     todo!()
+// }
 
-fn get_proof_data(did_suffix: &String) -> String {
-    // Resolve DID
+// fn get_proof_data(did_suffix: &String) -> String {
+//     // Resolve DID
 
-    // Reconstruct into document
-    todo!()
-}
+//     // Reconstruct into document
+//     todo!()
+// }
 
-fn verify_proof_data(key: PublicKeyJwk, data: &String) -> bool {
-    // Verify the signature data
-    todo!()
-}
+// fn verify_proof_data(key: PublicKeyJwk, data: &String) -> bool {
+//     // Verify the signature data
+//     todo!()
+// }
 
 fn load_key(file_name: &str, verbose: bool) -> JWK {
     // Load previous data
@@ -61,6 +61,7 @@ fn load_key(file_name: &str, verbose: bool) -> JWK {
     update_key
 }
 
+// Binary to make new DID and create, update (with a prototype Tructchain Proof Service) and deactivate operations.
 fn main() {
     // Public key entries can look like this
     // TODO: can we add custom controller using this struct?
@@ -128,11 +129,11 @@ fn main() {
     let did_short = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
         .unwrap()
         .to_string();
-    // let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
-    // .unwrap()
-    // .to_string();
+    let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
+        .unwrap()
+        .to_string();
     println!("DID suffix: {:?}", did_short);
-    // println!("Long: {:?}", did_long);
+    println!("Long: {:?}", did_long);
 
     // Sign the DID + canonicalized document with the verification key
     let algorithm = ION::SIGNATURE_ALGORITHM;
@@ -209,7 +210,10 @@ fn main() {
 
     // Make object for services endpoint
     let mut obj: Map<String, Value> = Map::new();
-    obj.insert("controller".to_string(), Value::from(did_short.clone()));
+    obj.insert(
+        "controller".to_string(),
+        Value::from(make_did_ion(&did_short)),
+    );
     obj.insert("proofValue".to_string(), Value::from(signed_data.clone()));
 
     // Make update again but only using loaded data

@@ -22,3 +22,6 @@ Cargo.lock
 
 # Test outputs from running scripts
 outputs/
+
+# VS code
+.vscode
