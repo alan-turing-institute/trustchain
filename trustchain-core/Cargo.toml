@@ -50,6 +50,9 @@ thiserror = "1.0"
 # json-patch = "0.2.6"
 # reqwest = { version = "0.11", features = ["json"] }
 
+# For visualisation
+petgraph = {version = "0.6"}
+
 
 [target.'cfg(target_os = "android")'.dependencies.reqwest]
 version = "0.11"
