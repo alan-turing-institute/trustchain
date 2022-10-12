@@ -19,6 +19,10 @@ path = "src/bin/create_and_update.rs"
 name = "resolve"
 path = "src/bin/resolve.rs"
 
+[[bin]]
+name = "sign"
+path = "src/bin/sign.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
