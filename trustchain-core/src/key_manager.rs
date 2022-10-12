@@ -1,5 +1,3 @@
-use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use ssi::one_or_many::OneOrMany;
@@ -36,7 +34,7 @@ pub enum KeyType {
 
 /// Generates a new cryptographic key.
 pub fn generate_key() -> JWK {
-    ION::generate_key().expect("Could not generate key.")
+    JWK::generate_secp256k1().expect("Could not generate key.")
 }
 
 /// Generates a set of update, recovery and signing keys.
@@ -197,7 +195,7 @@ mod tests {
     fn init() {
         std::env::set_var(
             TRUSTCHAIN_DATA,
-            Path::new(std::env::var("CARGO_MANIFEST_DIR").unwrap().as_str())
+            Path::new(std::env::var("CARGO_WORKSPACE_DIR").unwrap().as_str())
                 .join("resources/test/"),
         );
         println!("{:?}", std::env::var(TRUSTCHAIN_DATA));

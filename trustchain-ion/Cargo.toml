@@ -74,6 +74,7 @@ features = ["json", "native-tls-vendored"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
+mockall = "0.11.2"
 
 # wasm-pack profile option not used currently
 # [profile.release]

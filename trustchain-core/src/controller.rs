@@ -1,5 +1,3 @@
-use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
