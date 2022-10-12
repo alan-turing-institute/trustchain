@@ -1,7 +1,7 @@
 use clap::{arg, command, Arg, ArgAction};
 use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
-use trustchain::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 // Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;

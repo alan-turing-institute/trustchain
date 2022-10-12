@@ -4,7 +4,7 @@ use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
 
 use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 // Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
