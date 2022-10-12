@@ -27,9 +27,9 @@ fn read_trees(trees: &Vec<Vec<Document>>) -> DiGraph<Document, Document> {
     let mut graph = DiGraph::new();
     let mut edges = Vec::new();
     for tree in trees {
-        let ns: Option<u32> = None;
-        let nt: Option<u32> = None;
         for i in 1..tree.len() {
+            // TODO: check if node already present? Might need new struct (e.g. HashMap)
+            // to store nodes as encountered and only add once.
             let ns = graph.add_node(tree[i - 1].clone());
             let nt = graph.add_node(tree[i].clone());
             edges.push((ns, nt));
