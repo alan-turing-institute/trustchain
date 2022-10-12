@@ -10,7 +10,7 @@ use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
 
-use trustchain::key_manager::{generate_key, save_key, KeyType};
+use trustchain_core::key_manager::{generate_key, save_key, KeyType};
 
 // TODO: Implement a function to convert an SSI document (https://docs.rs/ssi/latest/ssi/did/struct.Document.html#)
 // into a DocumentState (https://docs.rs/did-ion/0.1.0/did_ion/sidetree/struct.DocumentState.html)
