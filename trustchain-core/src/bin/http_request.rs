@@ -1,4 +1,4 @@
-use trustchain::publisher::Publisher;
+use trustchain_core::publisher::Publisher;
 
 // Binary to resolve a passed DID from the command line.
 fn main() {
