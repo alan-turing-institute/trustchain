@@ -18,20 +18,22 @@ pub enum GraphError {
 #[derive(Debug)]
 struct TrustchainGraph {
     // TODO: check this is correct type spec
-    graph: DiGraph<Document, Document>,
+    graph: DiGraph<String, ()>,
 }
 
-/// Read trees from a vector of vectors (list of trees) and return a DiGraph.
+/// Read forest from a vector of vectors (list of trees) and return a DiGraph.
 /// See: https://docs.rs/petgraph/latest/petgraph/graph/struct.Graph.html
-fn read_trees(trees: &Vec<Vec<Document>>) -> DiGraph<Document, Document> {
+fn read_forest(forest: &Vec<Vec<Document>>) -> DiGraph<String, ()> {
     let mut graph = DiGraph::new();
     let mut edges = Vec::new();
-    for tree in trees {
+    for tree in forest {
         for i in 1..tree.len() {
             // TODO: check if node already present? Might need new struct (e.g. HashMap)
             // to store nodes as encountered and only add once.
-            let ns = graph.add_node(tree[i - 1].clone());
-            let nt = graph.add_node(tree[i].clone());
+            // TODO: consider whether to use a formatted string with more than DID
+            // as graph label (e.g. truncated DID, service info, key info, etc)
+            let ns = graph.add_node(tree[i - 1].id.clone());
+            let nt = graph.add_node(tree[i].id.clone());
             edges.push((ns, nt));
         }
     }
@@ -41,13 +43,18 @@ fn read_trees(trees: &Vec<Vec<Document>>) -> DiGraph<Document, Document> {
 
 impl TrustchainGraph {
     /// Makes a new TrustchainGraph instance.
-    fn new(trees: &Vec<Vec<Document>>) -> Result<Self, GraphError> {
-        let graph = read_trees(&trees);
+    fn new(forest: &Vec<Vec<Document>>) -> Result<Self, GraphError> {
+        let graph = read_forest(&forest);
         Ok(Self { graph })
     }
 
     /// Outputs graph to graphviz format.
     fn to_graphviz(&self) {
+        todo!()
+    }
+
+    /// Saves to a graphviz/dot file
+    fn save(&self) {
         todo!()
     }
 }
@@ -72,18 +79,19 @@ mod tests {
     use crate::utils::canonicalize;
 
     #[test]
-    fn read_trees() {
+    fn read_forest() {
         let doc1: Document = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT).unwrap();
         let doc2: Document = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT).unwrap();
-        let mut trees = Vec::new();
-        trees.push(vec![doc1, doc2]);
-        let graph = TrustchainGraph::new(&trees).unwrap();
-        println!("{:?}", graph);
+        let mut forest = Vec::new();
+        forest.push(vec![doc1, doc2]);
+        let graph = TrustchainGraph::new(&forest).unwrap();
 
         // Output the tree to `graphviz` `DOT` format
-        // println!("{:?}", Dot::with_config(&graph, &[Config::NodeIndexLabel]));
-        // println!("{:?}", Dot::with_config(&graph, &[Config::NodeIndexLabel]));
-        // todo!()
+        let dot = Dot::with_config(
+            &graph.graph,
+            &[Config::GraphContentOnly, Config::EdgeNoLabel],
+        );
+        println!("{:?}", dot);
     }
     #[test]
     fn invalid_not_a_tree() {
