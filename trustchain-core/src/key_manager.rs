@@ -1,5 +1,5 @@
 use serde_json::{from_str, to_string_pretty as to_json};
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::jwk::{Params, JWK};
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
@@ -20,8 +20,12 @@ pub enum KeyManagerError {
     FailedToReadUTF8,
     #[error("Failed to parse JSON string to JWK.")]
     FailedToParseJWK,
+    #[error("Failed to create path for DID keys during save.")]
+    FailedToCreateDir,
     #[error("No Trustchain data environment variable.")]
     TrustchainDataNotPresent,
+    #[error("Many keys when should be one.")]
+    InvalidManyKeys,
 }
 
 /// KeyType enum.
@@ -38,6 +42,7 @@ pub fn generate_key() -> JWK {
 }
 
 /// Generates a set of update, recovery and signing keys.
+// TODO: consider droppping this function as creating keys is easier one by one.
 pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
     let update_key = generate_key();
     let recovery_key = generate_key();
@@ -51,13 +56,11 @@ pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
 }
 
 /// Reads a key of a given type.
-pub fn read_key(did: &str, key_type: KeyType) -> Result<JWK, KeyManagerError> {
+pub fn read_key(did: &str, key_type: KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
     // Get the stem for the corresponding key type
     let stem_name = match key_type {
         KeyType::UpdateKey => "update_key.json",
         KeyType::RecoveryKey => "recovery_key.json",
-        // TODO: this probably read OneOrMany keys from a single file
-        //       see `fn read_keys_from()`
         KeyType::SigningKey => "signing_key.json",
     };
 
@@ -77,36 +80,47 @@ pub fn read_key(did: &str, key_type: KeyType) -> Result<JWK, KeyManagerError> {
 
     // Read from the file and return
     if let Ok(file) = file {
-        read_key_from(Box::new(file))
+        read_keys_from(Box::new(file))
     } else {
         Err(KeyManagerError::FailedToLoadKey)
     }
 }
 
+/// Check only one key is present and return key.
+fn only_one_key(key: Result<OneOrMany<JWK>, KeyManagerError>) -> Result<JWK, KeyManagerError> {
+    match key {
+        Ok(OneOrMany::One(x)) => Ok(x),
+        Ok(OneOrMany::Many(_)) => Err(KeyManagerError::InvalidManyKeys),
+        Err(e) => Err(e),
+    }
+}
+
 /// Reads an update key.
 pub fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
-    read_key(did, KeyType::UpdateKey)
+    let key = read_key(did, KeyType::UpdateKey);
+    only_one_key(key)
 }
 
 /// Reads a recovery key.
 pub fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
-    read_key(did, KeyType::RecoveryKey)
+    let key = read_key(did, KeyType::RecoveryKey);
+    only_one_key(key)
 }
 
 /// Reads one or more signing keys.
 pub fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    todo!()
+    read_key(did, KeyType::SigningKey)
 }
 
 /// Reads one key from a Reader.
-fn read_key_from(mut reader: Box<dyn Read>) -> Result<JWK, KeyManagerError> {
+fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManagerError> {
     // Read a UTF-8 string from the reader.
     let buf: &mut String = &mut String::new();
     let read_result = reader.read_to_string(buf);
 
     // Read the string as a serialised JWK instance.
     let jwk_result = match read_result {
-        Ok(_) => from_str::<JWK>(buf),
+        Ok(_) => from_str::<OneOrMany<JWK>>(buf),
         Err(_) => return Err(KeyManagerError::FailedToReadUTF8),
     };
 
@@ -117,15 +131,17 @@ fn read_key_from(mut reader: Box<dyn Read>) -> Result<JWK, KeyManagerError> {
     };
 }
 
-/// Reads one or more keys from a Reader.
-fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    // TODO: Use the Deserialize trait on OneOrMany<JWK>
-    // see: https://demo.didkit.dev/2021/11/29/ssi-aleo-rustdoc/ssi/one_or_many/enum.OneOrMany.html#trait-implementations
-    todo!()
-}
-
 /// Saves a key to disk.
 pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
+    save_keys(did, key_type, &OneOrMany::One(key.clone()))
+}
+
+/// Saves one or more keys to disk.
+pub fn save_keys(
+    did: &str,
+    key_type: KeyType,
+    keys: &OneOrMany<JWK>,
+) -> Result<(), KeyManagerError> {
     // Get the stem for the corresponding key type
     let stem_name = match key_type {
         KeyType::UpdateKey => "update_key.json",
@@ -143,8 +159,10 @@ pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManage
     let path = Path::new(path.as_str()).join("key_manager").join(did);
 
     // Make directory if non-existent
-    // TODO: handle error
-    std::fs::create_dir_all(&path).unwrap();
+    match std::fs::create_dir_all(&path) {
+        Ok(_) => (),
+        Err(_) => return Err(KeyManagerError::FailedToCreateDir),
+    };
 
     // Open the new file
     let file = OpenOptions::new()
@@ -155,7 +173,7 @@ pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManage
 
     // Write key to file
     if let Ok(mut file) = file {
-        match writeln!(file, "{}", &to_json(key).unwrap()) {
+        match writeln!(file, "{}", &to_json(keys).unwrap()) {
             Ok(_) => Ok(()),
             Err(_) => Err(KeyManagerError::FailedToSaveKey),
         }
@@ -164,50 +182,48 @@ pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManage
     }
 }
 
-/// Saves one or more keys to disk.
-pub fn save_keys(did: &str, key_type: KeyType, keys: &OneOrMany<JWK>) -> () {
-    todo!()
-}
-
-// fn load_key(did: &str) {
-//     // Load previous data
-//     let file_name = format!("update_{}", did);
-//     let ec_read = std::fs::read(file_name).unwrap();
-//     let ec_read = std::str::from_utf8(&ec_read).unwrap();
-//     let ec_params: ECParams = serde_json::from_str(ec_read).unwrap();
-
-//     // let ec_params = Params::EC(ec_params);
-//     let update_key = JWK::from(Params::EC(ec_params));
-//     println!("Valid key: {}", ION::validate_key(&update_key).is_ok());
-//     // update_key
-//     todo!()
-// }
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use mockall::mock;
     use std::io::Read;
-    // use did_ion::sidetree::Sidetree;
-    // use serde_json::to_string_pretty as to_json;
+    use std::sync::Once;
 
-    use super::*;
-
-    fn init() {
-        std::env::set_var(
-            TRUSTCHAIN_DATA,
-            Path::new(std::env::var("CARGO_WORKSPACE_DIR").unwrap().as_str())
-                .join("resources/test/"),
-        );
-        println!("{:?}", std::env::var(TRUSTCHAIN_DATA));
+    // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+    // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    static INIT: Once = Once::new();
+    pub fn init() {
+        INIT.call_once(|| {
+            // initialization code here
+            let tempdir = tempfile::tempdir().unwrap();
+            std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+        });
     }
 
-    const TEST_SIGNING_KEY: &str = r##"{
-        "kty": "EC",
-        "crv": "secp256k1",
-        "x": "rHaN35OWWa4FHoqy41KTgv4Dtnjx9ux3VOV1ijdt0Wk",
-        "y": "BG2EoOfbfeHrajlcQSXCQCK7wf-jxYRIyHt6Fj7QuZA",
-        "d": "_YDaFkuim9AcB8Seh8wRMH35WGNcEH7D3w8A_HFC0lU"
-    }"##;
+    // Print TRUSTCHAIN_DATA dir
+    fn print_env() {
+        if let Ok(dir) = std::env::var(TRUSTCHAIN_DATA) {
+            println!("{}", dir);
+        }
+    }
+
+    const TEST_SIGNING_KEYS: &str = r##"[
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "aPNNzj64rnImzI60EP0iln_u5fyHZ1k47diqmlUrwXw",
+            "y": "fbfKhw08ZtGy9vbyJo6kiFohhGFIrnzZIUNDvEQeAYQ",
+            "d": "sfsIThyN_6EKPjhQasF8yR27-qlQPUTGiP4QtkPTKM8"
+        },
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "gjk_d4WRM5hFD7tP8vvXhHgp0MQkKwFX0uAvyjNJQJg",
+            "y": "e5lq0RW41Y5MH1pOTm-3_18GcxKp1lO4SfbzApRaVtE",
+            "d": "U7pUq3BovVnYT1mi1lds60wbueUKb5GobV_WvjOuY14"
+        }
+    ]
+    "##;
 
     const TEST_UPDATE_KEY: &str = r##"{
         "kty": "EC",
@@ -229,7 +245,6 @@ mod tests {
     #[test]
     fn test_generate_key() {
         let result = generate_key();
-        // println!("{:?}", result);
 
         // Check for the expected elliptic curve (used by ION to generate keys).
         match result.params {
@@ -257,37 +272,55 @@ mod tests {
     }
 
     #[test]
-    fn test_read_update_key() {
-        // Init env variables
+    fn test_read_update_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
         init();
 
-        // Read key from file
-        let res = read_update_key("test_did");
-        assert!(res.is_ok());
+        // Make path for this test
+        let did_path_str = "test_read_update_key";
 
-        // Check is the same key as here
+        // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
-        let actual_key = res.unwrap();
-        assert_eq!(expected_key, actual_key);
-    }
-
-    #[test]
-    fn test_read_recovery_key() {
-        // Init env variables
-        init();
+        save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
 
         // Read key from file
-        let res = read_recovery_key("test_did");
+        let res = read_update_key(did_path_str);
+
+        // Assert read is ok
         assert!(res.is_ok());
 
-        // Check is the same key as here
-        let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY).unwrap();
-        let actual_key = res.unwrap();
-        assert_eq!(expected_key, actual_key);
+        // Assert same key is read back
+        assert_eq!(expected_key, res.unwrap());
+
+        Ok(())
     }
 
     #[test]
-    fn test_read_key_from() {
+    fn test_read_recovery_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
+        init();
+
+        // Make path for this test
+        let did_path_str = "test_read_recovery_key";
+
+        // Save key to temp file
+        let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+        save_key(did_path_str, KeyType::RecoveryKey, &expected_key)?;
+
+        // Read key from file
+        let res = read_recovery_key(did_path_str);
+
+        // Assert read is ok
+        assert!(res.is_ok());
+
+        // Assert same key is read back
+        assert_eq!(expected_key, res.unwrap());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_keys_from() {
         // Construct a mock Reader.
         let mut mock_reader = MockReader::new();
         mock_reader.expect_read_to_string().return_once(move |buf| {
@@ -297,27 +330,65 @@ mod tests {
             std::io::Result::Ok(0)
         });
 
-        // Construct an empty buffer.
-        let buf: &mut String = &mut String::new();
-        // mock_reader.read_to_string(buf);
-        // println!("{}", buf);
-        let result = read_key_from(Box::new(mock_reader));
+        let result = read_keys_from(Box::new(mock_reader));
         assert!(result.is_ok());
+
         let key = result.unwrap();
 
-        // Check for the expected elliptic curve (used by ION to generate keys).
-        match &key.params {
-            Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
-            _ => panic!(),
+        // Check for the expected elliptic curve.
+        if let OneOrMany::One(key) = key {
+            match &key.params {
+                Params::EC(ecparams) => assert_eq!(ecparams.curve, Some(String::from("secp256k1"))),
+                _ => panic!(),
+            }
+        } else {
+            panic!()
         }
     }
 
     #[test]
-    fn test_save_key() {
-        // TODO: write test to save a given key to file
-        // Init env variables
+    fn test_save_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Set env var
         init();
 
-        todo!()
+        // Make path for this test
+        let did_path_str = "test_save_key";
+
+        // Make keys
+        let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+
+        // Save to temp
+        save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
+
+        // Read keys
+        let actual_key = read_update_key(did_path_str)?;
+
+        // Check keys saved are same as those read back
+        assert_eq!(expected_key, actual_key);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_save_keys() -> Result<(), Box<dyn std::error::Error>> {
+        // Set env var
+        init();
+
+        // Make path for this test
+        let did_path_str = "test_save_keys";
+
+        // Make keys
+        let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+        // Save to temp
+        save_keys(did_path_str, KeyType::SigningKey, &keys)?;
+
+        // Read keys
+        let actual_signing = read_signing_keys(did_path_str)?;
+
+        // Check keys saved are same as those read back
+        assert_eq!(keys, actual_signing);
+
+        Ok(())
     }
 }
