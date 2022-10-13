@@ -47,18 +47,26 @@ pub struct TrustchainController {
 impl TrustchainController {
     /// Construct a new TrustchainController instance
     /// from existing Subject and Controller DIDs.
-    pub fn new(did: &str, controlled_did: &str) -> Result<Self, ControllerError> {
-        // TODO: Convert to return a result type that can be handled
-        let subject = TrustchainSubject::new(did);
+    pub fn new(did: &str, controlled_did: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        // Returns a result with propagating error
+        let subject = TrustchainSubject::new(did)?;
 
         // Read update and recovery keys
         let update_key: Option<JWK> = match read_update_key(controlled_did) {
             Ok(x) => Some(x),
-            Err(_) => return Err(ControllerError::NoUpdateKey(controlled_did.to_string())),
+            Err(_) => {
+                return Err(Box::new(ControllerError::NoUpdateKey(
+                    controlled_did.to_string(),
+                )))
+            }
         };
         let recovery_key: Option<JWK> = match read_recovery_key(controlled_did) {
             Ok(x) => Some(x),
-            Err(_) => return Err(ControllerError::NoRecoveryKey(controlled_did.to_string())),
+            Err(_) => {
+                return Err(Box::new(ControllerError::NoRecoveryKey(
+                    controlled_did.to_string(),
+                )))
+            }
         };
 
         Ok(Self {

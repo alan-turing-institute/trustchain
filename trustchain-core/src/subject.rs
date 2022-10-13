@@ -1,16 +1,16 @@
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 
-use crate::key_manager::{read_signing_keys, KeyManagerError, KeyType};
+use crate::key_manager::{read_signing_keys, KeyManagerError};
 use thiserror::Error;
 
 /// An error relating to Trustchain controllers.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SubjectError {
-    /// No recovery key for DID.
+    /// No trustchain subject.
     #[error("DID: {0} as Trustchain subject does not exist.")]
     NoTrustchainSubject(String),
-    /// No recovery key for DID.
+    /// No signing key of passed ID.
     #[error("DID: {0} with signing key idx {1} does not exist.")]
     NoSigningKey(String, String),
 }
@@ -18,7 +18,8 @@ pub enum SubjectError {
 /// Trait for common DID Subject functionality.
 pub trait Subject {
     fn did(&self) -> &str;
-    fn load(&self);
+    fn load(&mut self, did: &str) -> Result<(), KeyManagerError>;
+    fn save(&self) -> Result<(), SubjectError>;
     fn signing_keys(&self) -> OneOrMany<JWK>;
     fn generate_signing_keys(&self) -> OneOrMany<JWK>;
     fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError>;
@@ -31,26 +32,13 @@ pub struct TrustchainSubject {
 
 impl TrustchainSubject {
     /// Construct a new TrustchainSubject instance.
-    // TODO: consider returning as a result type if no keys can be loaded (i.e. None)
-    pub fn new(did: &str) -> Self {
-        let signing_keys = TrustchainSubject::load_keys(did);
-        Self {
+    pub fn new(did: &str) -> Result<Self, KeyManagerError> {
+        let mut subject = Self {
             did: did.to_owned(),
-            signing_keys,
-        }
-    }
-
-    /// Loads signing keys for the given DID.
-    fn load_keys(did: &str) -> Option<OneOrMany<JWK>> {
-        // Read keys from disk.
-        let read_result = read_signing_keys(did);
-        // If the attempt to read keys failed, return None.
-        let mut keys = match read_result {
-            Ok(x) => x,
-            Err(e) => return None,
+            signing_keys: None,
         };
-        // If keys were read successfully, return the signing keys.
-        Some(keys)
+        subject.load(did)?;
+        Ok(subject)
     }
 }
 
@@ -78,7 +66,16 @@ impl Subject for TrustchainSubject {
         todo!()
     }
 
-    fn load(&self) {
+    fn load(&mut self, did: &str) -> Result<(), KeyManagerError> {
+        if let Ok(signing_keys) = read_signing_keys(did) {
+            self.signing_keys = Some(signing_keys);
+            Ok(())
+        } else {
+            Err(KeyManagerError::FailedToLoadKey)
+        }
+    }
+
+    fn save(&self) -> Result<(), SubjectError> {
         todo!()
     }
 }
@@ -90,5 +87,17 @@ mod tests {
     fn test_constructor() {}
 
     #[test]
-    fn test_load_keys() {}
+    fn test_signing_keys() {}
+
+    #[test]
+    fn test_load() {}
+
+    #[test]
+    fn test_save() {}
+
+    #[test]
+    fn test_get_public_key() {}
+
+    #[test]
+    fn test_generate_signing_keys() {}
 }
