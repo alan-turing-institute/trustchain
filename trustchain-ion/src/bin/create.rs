@@ -19,7 +19,7 @@ fn document_as_document_state(doc: &Document) -> DocumentState {
 }
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // CLI pass: verbose, did, controlled_did
     let matches = command!()
         .arg(
@@ -110,10 +110,10 @@ fn main() {
 
     // 4. Writing to file
     // 4.1 Writing keys
-    save_key(&did_short, KeyType::UpdateKey, &update_key);
-    save_key(&did_short, KeyType::RecoveryKey, &recovery_key);
+    save_key(&did_short, KeyType::UpdateKey, &update_key)?;
+    save_key(&did_short, KeyType::RecoveryKey, &recovery_key)?;
     if signing_key.is_some() {
-        save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap());
+        save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap())?;
     }
 
     // 4.2 Write create operation to push to ION server
@@ -121,6 +121,7 @@ fn main() {
     std::fs::write(
         format!("create_operation_{}.json", did_short),
         to_json(&operation).unwrap(),
-    )
-    .unwrap();
+    )?;
+
+    Ok(())
 }
