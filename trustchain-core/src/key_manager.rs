@@ -32,6 +32,7 @@ pub enum KeyManagerError {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum KeyType {
     UpdateKey,
+    NextUpdateKey,
     RecoveryKey,
     SigningKey,
 }
@@ -60,6 +61,7 @@ pub fn read_key(did: &str, key_type: KeyType) -> Result<OneOrMany<JWK>, KeyManag
     // Get the stem for the corresponding key type
     let stem_name = match key_type {
         KeyType::UpdateKey => "update_key.json",
+        KeyType::NextUpdateKey => "next_update_key.json",
         KeyType::RecoveryKey => "recovery_key.json",
         KeyType::SigningKey => "signing_key.json",
     };
@@ -131,6 +133,11 @@ fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManage
     };
 }
 
+/// Apply the `next_update_key` to `update_key` and remove next_update_key
+fn apply_next_update_key() {
+    todo!()
+}
+
 /// Saves a key to disk.
 pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
     save_keys(did, key_type, &OneOrMany::One(key.clone()))
@@ -145,6 +152,7 @@ pub fn save_keys(
     // Get the stem for the corresponding key type
     let stem_name = match key_type {
         KeyType::UpdateKey => "update_key.json",
+        KeyType::NextUpdateKey => "next_update_key.json",
         KeyType::RecoveryKey => "recovery_key.json",
         KeyType::SigningKey => "signing_key.json",
     };
@@ -389,6 +397,18 @@ mod tests {
         // Check keys saved are same as those read back
         assert_eq!(keys, actual_signing);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_next_update_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Set env var
+        init();
+
+        // Make path for this test
+        let did_path_str = "test_apply_next_update_key";
+
+        todo!();
         Ok(())
     }
 }
