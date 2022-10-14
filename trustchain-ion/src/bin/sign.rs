@@ -120,9 +120,9 @@ fn main() {
     // TODO: This step should be refactored into a general library functionality for
     // recovery keys too and use in other update processes.
     // TODO: check next_update_key() returns an option
-    if let key = controller.next_update_key() {
+    if let Some(key) = controller.next_update_key() {
         // Check whether the key matches the update commitment
-        if is_commitment_key(&doc_meta, &key, KeyType::UpdateKey) {
+        if is_commitment_key(&doc_meta, key, KeyType::UpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
             // TODO: compelete; consider adding functionality directly to key_manager
         }
@@ -160,7 +160,7 @@ fn main() {
     // TODO: handle the unwraps in 2.4 and 2.5
     // 2.4  Generate new update key
     controller.generate_next_update_key();
-    let next_update_pk = controller.next_update_key().to_public();
+    let next_update_pk = controller.next_update_key().unwrap().to_public();
 
     // 2.4. Create update operation including all patches constructed
     let update_operation = ION::update(
