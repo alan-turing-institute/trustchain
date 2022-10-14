@@ -1,7 +1,10 @@
 use clap::{arg, command, Arg, ArgAction};
 // use serde_json::{to_string_pretty as to_json}
 use serde_json::{Map, Value};
+use ssi::did_resolve::DocumentMetadata;
 use std::convert::TryFrom;
+use trustchain_core::controller;
+use trustchain_core::key_manager::KeyType;
 
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
@@ -15,16 +18,16 @@ use trustchain_core::controller::{Controller, TrustchainController};
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 use trustchain_core::subject::{SubjectError, TrustchainSubject};
 
-// Type aliases
+/// Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
-// Check resolver implementation, get the proof service ID if single proof service present,
-// Otherwise return nothing/error
+/// Check resolver implementation, get the proof service ID if single proof service present,
+/// Otherwise return nothing/error
 fn get_proof_service_id(doc: &Document) -> Option<String> {
     todo!()
 }
 
-// Function to get private key with a given key id
+/// Function to get private key with a given key id
 fn get_key(tc_subject: &TrustchainSubject, key_id: usize) -> Result<&JWK, SubjectError> {
     todo!()
 }
@@ -41,6 +44,23 @@ fn add_proof_service(did: &str, proof: &str) -> DIDStatePatch {
             service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
         }],
     }
+}
+
+/// Function to confirm whether a given key is the `commitment` in document metadata
+fn is_commitment_key(doc_meta: &DocumentMetadata, key: &JWK, key_type: KeyType) -> bool {
+    let expected_commitment = key_to_commitment(&key);
+    let actual_commitment = extract_commitment(&doc_meta, key_type);
+    actual_commitment == expected_commitment
+}
+
+/// Extract commitment of passed key type from document metadata
+fn extract_commitment(doc_meta: &DocumentMetadata, key_type: KeyType) -> &str {
+    todo!()
+}
+
+/// Convert a given JWK into a commitment
+fn key_to_commitment(next_update_key: &JWK) -> &str {
+    todo!()
 }
 
 // Binary to resolve a controlled DID, attest to its contents and perform an update
@@ -64,6 +84,7 @@ fn main() {
                 .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
                 .required(false),
         )
+        // TODO: add flag for overriding previous `next_update_key`
         .get_matches();
 
     // 1.0. Get the did to sign and controller to sign it
@@ -94,6 +115,18 @@ fn main() {
         }
         _ => return,
     };
+
+    // 1.3 Check whether a present `next_update_key` matches the update commitment
+    // TODO: This step should be refactored into a general library functionality for
+    // recovery keys too and use in other update processes.
+    // TODO: check next_update_key() returns an option
+    if let key = controller.next_update_key() {
+        // Check whether the key matches the update commitment
+        if is_commitment_key(&doc_meta, &key, KeyType::UpdateKey) {
+            // Set update_key as next_update_key (save to file, delete next_update_key)
+            // TODO: compelete; consider adding functionality directly to key_manager
+        }
+    }
 
     // 2: Make required patches
     let mut patches: Vec<DIDStatePatch> = Vec::<DIDStatePatch>::new();
