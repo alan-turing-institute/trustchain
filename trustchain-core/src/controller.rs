@@ -24,10 +24,10 @@ pub enum ControllerError {
 pub trait Controller {
     fn to_subject(&self) -> &TrustchainSubject;
     fn load(&self, controlled_did: &str);
-    fn update_key(&self) -> JWK; // Retrieve the update key for the loaded DID
-    fn next_update_key(&self) -> JWK; // Retrieve the next update key for the loaded DID
-    fn recovery_key(&self) -> JWK; // Retrieve the recovery key for the loaded DID
-                                   // E.g JWT https://jwt.io/
+    fn update_key(&self) -> &JWK; // Retrieve the update key for the loaded DID
+    fn next_update_key(&self) -> Option<&JWK>; // Retrieve the next update key for the loaded DID
+    fn recovery_key(&self) -> &JWK; // Retrieve the recovery key for the loaded DID
+                                    // E.g JWT https://jwt.io/
     fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError>;
     fn generate_next_update_key(&self);
     // fn generate_recovery_key(&self);
@@ -92,11 +92,11 @@ impl Controller for TrustchainController {
         todo!()
     }
 
-    fn update_key(&self) -> JWK {
+    fn update_key(&self) -> &JWK {
         todo!()
     }
 
-    fn next_update_key(&self) -> JWK {
+    fn next_update_key(&self) -> Option<&JWK> {
         todo!()
     }
 
@@ -104,7 +104,7 @@ impl Controller for TrustchainController {
         todo!()
     }
 
-    fn recovery_key(&self) -> JWK {
+    fn recovery_key(&self) -> &JWK {
         todo!()
     }
 
