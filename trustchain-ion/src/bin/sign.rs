@@ -75,11 +75,13 @@ fn main() {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            // arg!(-d --signer-did <DID>)
             arg!(-d --did <DID>)
                 .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
                 .required(false),
         )
         .arg(
+            // arg!(-c --controller-did <CONTROLLED_DID>)
             arg!(-c --controlled_did <CONTROLLED_DID>)
                 .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
                 .required(false),
@@ -125,6 +127,7 @@ fn main() {
         if is_commitment_key(&doc_meta, key, KeyType::UpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
             // TODO: compelete; consider adding functionality directly to key_manager
+            // controller.apply_next_update_key()
         }
     }
 
@@ -134,6 +137,9 @@ fn main() {
     // 2.1 If Trustchain proof already present, add RemoveService patch, and remove
     //     this service from Doc to be signed
     // TODO: use fn from resolver (e.g. make it pub),
+
+    // TODO: this needs a ION resolve option so that we can see which part of the
+    // document to remove
     if let Some(proof_service_id) = get_proof_service_id(&doc) {
         patches.push(DIDStatePatch::RemoveServices {
             ids: vec![proof_service_id],
@@ -150,6 +156,11 @@ fn main() {
             return;
         }
     };
+
+    // Sign the document from the controller using a "subject" trait method
+    // TODO: update the method to take "key_id" not the key with the lookup
+    // from the signing keys of the subject
+    // let proof_result = controller.attest(&doc, key_id);
     let proof_result = controller.attest(&doc, key);
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch

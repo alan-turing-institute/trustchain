@@ -1,5 +1,5 @@
-use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
+use ssi::{did_resolve::DocumentMetadata, jwk::JWK};
 
 use crate::key_manager::{read_signing_keys, KeyManagerError};
 use thiserror::Error;
@@ -15,12 +15,15 @@ pub enum SubjectError {
     NoSigningKey(String, String),
 }
 
+// use ssi::jwt::encode_sign();
+
 /// Trait for common DID Subject functionality.
 pub trait Subject {
     fn did(&self) -> &str;
     fn load(&mut self, did: &str) -> Result<(), KeyManagerError>;
     fn save(&self) -> Result<(), SubjectError>;
     fn signing_keys(&self) -> OneOrMany<JWK>;
+    // fn sign(&self, doc: &Document) -> &str;
     fn generate_signing_keys(&self) -> OneOrMany<JWK>;
     fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError>;
 }

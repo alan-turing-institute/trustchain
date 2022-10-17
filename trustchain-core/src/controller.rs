@@ -37,6 +37,7 @@ pub trait Controller {
 
 /// Struct for common TrustchainController.
 pub struct TrustchainController {
+    // TODO: could we impl subject for controller to make this cleaner?
     subject: TrustchainSubject,
     controlled_did: String,
     update_key: Option<JWK>,
@@ -83,6 +84,7 @@ impl TrustchainController {
     /// for public key in doc). The function then converts the document into
     /// a create operation that can be pushed to the ION server.
     fn create_subject(doc: Document) -> TrustchainController {
+        // fn create_subject(update_key, recovery_key, signing_key, did) -> TrustchainController {
         todo!()
     }
 }
