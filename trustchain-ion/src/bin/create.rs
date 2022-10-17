@@ -1,21 +1,44 @@
 use clap::{arg, command, Arg, ArgAction};
-use ssi::did::{Document, Service};
+use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::jwk::JWK;
 
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
-use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
+use did_ion::sidetree::{
+    Operation, ServiceEndpointEntry, Sidetree, SidetreeDID, SidetreeOperation,
+};
 use did_ion::ION;
-
 use serde_json::to_string_pretty as to_json;
+use serde_json::{Map, Value};
+use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 
 use trustchain_core::key_manager::{generate_key, save_key, KeyType};
 
-// TODO: Implement a function to convert an SSI document (https://docs.rs/ssi/latest/ssi/did/struct.Document.html#)
-// into a DocumentState (https://docs.rs/did-ion/0.1.0/did_ion/sidetree/struct.DocumentState.html)
-fn document_as_document_state(doc: &Document) -> DocumentState {
-    todo!()
+fn template_doc_state() -> DocumentState {
+    // Make a signing
+    let signing_key = Some(generate_key());
+    let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+
+    // Make object for services endpoint
+    let mut obj: Map<String, Value> = Map::new();
+    obj.insert(
+        "controller".to_string(),
+        Value::from("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg".to_string()),
+    );
+    obj.insert(
+        "proofValue".to_string(),
+        Value::from("dummy_string".to_string()),
+    );
+    let test_service = vec![ServiceEndpointEntry {
+        id: "trustchain-controller-proof".to_string(),
+        r#type: "TrustchainProofService".to_string(),
+        service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
+    }];
+    DocumentState {
+        public_keys: Some(vec![public_key_entry.unwrap()]),
+        services: Some(test_service),
+    }
 }
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
@@ -77,6 +100,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // signing_key = Some(generate_key());
         // }
     };
+    println!("_-------");
+    println!("{}", to_json(&template_doc_state()).unwrap());
+    println!("_-------");
     // 2.2 Make vec of patches from document state
     let patches = vec![DIDStatePatch::Replace {
         document: document_state,
