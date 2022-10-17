@@ -49,11 +49,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
     // 1.3 Signing key: optional variable to assign to if private signing key made for DID
+    // Typically only a self-controller will do this when they want to make themselves a subject at the same time as creating a DID to control
     let mut signing_key: Option<JWK> = None;
 
     // 2. Create operation
     // 2.1 Make the create patch from scratch or passed file
-    let document_state = if file_path.is_none() {
+    let document_state: DocumentState = if file_path.is_none() {
         signing_key = Some(generate_key());
         let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
         DocumentState {
@@ -64,8 +65,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // 2. Load document from file if passed
         let contents = std::fs::read_to_string(file_path.unwrap())
             .expect("Should have been able to read the file");
-        let document: Document = serde_json::from_str(&contents).unwrap();
-        document_as_document_state(&document)
+
+        // Contents are a DocumentState
+        serde_json::from_str(&contents).unwrap()
+
+        // document_as_document_state(&document)
+        // let document: DocumentState = serde_json::from_str(&contents).unwrap();
+        // let document: Document = serde_json::from_str(&contents).unwrap();
+        // If document state only contains a service, also make keys
+        // if document.public_keys.is_none() {
+        // signing_key = Some(generate_key());
+        // }
     };
     // 2.2 Make vec of patches from document state
     let patches = vec![DIDStatePatch::Replace {
@@ -110,6 +120,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4. Writing to file
     // 4.1 Writing keys
+    // TODO: refactor to use a new method for controller:
+    // TrustchainController::create(update_key, recovery_key, signing_key, did);
     save_key(&did_short, KeyType::UpdateKey, &update_key)?;
     save_key(&did_short, KeyType::RecoveryKey, &recovery_key)?;
     if signing_key.is_some() {
@@ -118,6 +130,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4.2 Write create operation to push to ION server
     // TODO: use publisher to push JSON directly to ION server
+    // if use_publisher {
+    // publisher.post(create_operation);
+    // }
     std::fs::write(
         format!("create_operation_{}.json", did_short),
         to_json(&operation).unwrap(),
