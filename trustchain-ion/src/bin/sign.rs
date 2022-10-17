@@ -20,6 +20,8 @@ use trustchain_core::subject::{SubjectError, TrustchainSubject};
 
 use trustchain_ion::is_proof_in_doc_meta;
 
+use trustchain_ion::{add_proof_service, is_commitment_key};
+
 /// Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
@@ -42,51 +44,6 @@ pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 //       "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
 //   }
 // }
-
-/// Function to get private key with a given key id
-fn get_key(tc_subject: &TrustchainSubject, key_id: usize) -> Result<&JWK, SubjectError> {
-    todo!()
-}
-
-/// Function to return a patch for adding a proof service
-fn add_proof_service(did: &str, proof: &str) -> DIDStatePatch {
-    let mut obj: Map<String, Value> = Map::new();
-    obj.insert("controller".to_string(), Value::from(did));
-    obj.insert("proofValue".to_string(), Value::from(proof.to_owned()));
-    DIDStatePatch::AddServices {
-        services: vec![ServiceEndpointEntry {
-            id: "trustchain-controller-proof".to_string(),
-            r#type: "TrustchainProofService".to_string(),
-            service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
-        }],
-    }
-}
-
-/// Function to confirm whether a given key is the `commitment` in document metadata
-fn is_commitment_key(doc_meta: &DocumentMetadata, key: &JWK, key_type: KeyType) -> bool {
-    let expected_commitment = key_to_commitment(&key);
-    let actual_commitment = extract_commitment(&doc_meta, key_type);
-    actual_commitment == expected_commitment
-}
-
-/// Extract commitment of passed key type from document metadata
-fn extract_commitment(doc_meta: &DocumentMetadata, key_type: KeyType) -> &str {
-    todo!()
-}
-
-/// Convert a given JWK into a commitment
-fn key_to_commitment(next_update_key: &JWK) -> String {
-    // todo!()
-    // https://docs.rs/did-ion/latest/src/did_ion/sidetree.rs.html#L214
-    // 1. Convert next_update_key to public key (pk)
-    // 2. Get commitment value from the pk
-    // 3. Return value
-    match ION::commitment_scheme(&PublicKeyJwk::try_from(next_update_key.to_public()).unwrap()) {
-        Ok(x) => x,
-        // TODO: handle error
-        _ => panic!(),
-    }
-}
 
 // Binary to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
@@ -175,20 +132,9 @@ fn main() {
     }
 
     // 2.2. Controller performs attestation to Document to generate proof data
-    // TODO: write fn get_key() to extract key_id
-    let key_id = 0;
-    let key = match get_key(&controller.to_subject(), key_id) {
-        Ok(key) => key,
-        Err(e) => {
-            println!("{}", e);
-            return;
-        }
-    };
-
     // Sign the document from the controller using a "subject" trait method
-    // TODO: update the method to take "key_id" not the key with the lookup
-    // from the signing keys of the subject
-    let proof_result = controller.attest(&doc, key);
+    let key_id = 0;
+    let proof_result = controller.attest(&doc, key_id);
     // let proof_result = controller.attest(&doc, key_id);
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
@@ -204,14 +150,14 @@ fn main() {
     // 2.4. Create update operation including all patches constructed
     let update_operation = ION::update(
         DIDSuffix(controlled_did.to_owned()),
-        &controller.update_key(),
+        controller.update_key(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
     );
 
     // 3. Either publish the update operation using the publisher or write to JSON file
     //    and publish with `curl`.
-    let operation = Operation::Update(update_operation.unwrap().clone());
+    let operation = Operation::Update(update_operation.unwrap());
 
     // TODO: perform publish with publisher
 

@@ -28,7 +28,7 @@ pub trait Controller {
     fn next_update_key(&self) -> Option<&JWK>; // Retrieve the next update key for the loaded DID
     fn recovery_key(&self) -> &JWK; // Retrieve the recovery key for the loaded DID
                                     // E.g JWT https://jwt.io/
-    fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError>;
+    fn attest(&self, doc: &Document, key_id: usize) -> Result<String, ControllerError>;
     fn generate_next_update_key(&self);
     // fn generate_recovery_key(&self);
     // fn update_subject(&self);
@@ -114,7 +114,7 @@ impl Controller for TrustchainController {
         todo!()
     }
 
-    fn attest(&self, doc: &Document, key: &JWK) -> Result<String, ControllerError> {
+    fn attest(&self, doc: &Document, key_id: usize) -> Result<String, ControllerError> {
         // Implement using version in 'create_and_update' binary as basis
         // let proof = (did_short.clone(), document_data_to_be_signed);
         // let proof_json = ION::json_canonicalization_scheme(&proof).unwrap();
