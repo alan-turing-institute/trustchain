@@ -1,7 +1,8 @@
+use crate::key_manager::{KeyManager, KeyManagerError, SubjectKeyManager};
+use ssi::did::Document;
+use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
-use ssi::{did_resolve::DocumentMetadata, jwk::JWK};
-
-use crate::key_manager::{read_signing_keys, KeyManagerError};
+use std::convert::From;
 use thiserror::Error;
 
 /// An error relating to Trustchain controllers.
@@ -19,88 +20,11 @@ pub enum SubjectError {
 
 /// Trait for common DID Subject functionality.
 pub trait Subject {
+    /// Returns the subject's DID.
     fn did(&self) -> &str;
-    fn load(&mut self, did: &str) -> Result<(), KeyManagerError>;
-    fn save(&self) -> Result<(), SubjectError>;
-    fn signing_keys(&self) -> OneOrMany<JWK>;
-    // fn sign(&self, doc: &Document) -> &str;
-    fn generate_signing_keys(&self) -> OneOrMany<JWK>;
-    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError>;
-}
 
-pub struct TrustchainSubject {
-    did: String,
-    signing_keys: Option<OneOrMany<JWK>>,
-}
-
-impl TrustchainSubject {
-    /// Construct a new TrustchainSubject instance.
-    pub fn new(did: &str) -> Result<Self, KeyManagerError> {
-        let mut subject = Self {
-            did: did.to_owned(),
-            signing_keys: None,
-        };
-        subject.load(did)?;
-        Ok(subject)
-    }
-}
-
-impl Subject for TrustchainSubject {
-    fn did(&self) -> &str {
-        &self.did
-    }
-
-    /// Gets the public part of a signing key.
-    fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError> {
-        // let keys = read_keys(&self.did);
-        // let keys = match keys {
-        //     Ok(map) => map,
-        //     Err(e) => return Err(e)
-        // };
-        // let signing = keys.get(&KeyType::SigningKey);
-        todo!();
-    }
-
-    fn signing_keys(&self) -> OneOrMany<JWK> {
-        todo!()
-    }
-
-    fn generate_signing_keys(&self) -> OneOrMany<JWK> {
-        todo!()
-    }
-
-    fn load(&mut self, did: &str) -> Result<(), KeyManagerError> {
-        if let Ok(signing_keys) = read_signing_keys(did) {
-            self.signing_keys = Some(signing_keys);
-            Ok(())
-        } else {
-            Err(KeyManagerError::FailedToLoadKey)
-        }
-    }
-
-    fn save(&self) -> Result<(), SubjectError> {
-        todo!()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_constructor() {}
-
-    #[test]
-    fn test_signing_keys() {}
-
-    #[test]
-    fn test_load() {}
-
-    #[test]
-    fn test_save() {}
-
-    #[test]
-    fn test_get_public_key() {}
-
-    #[test]
-    fn test_generate_signing_keys() {}
+    /// Attests to a DID Document. Subject attests to a did document by signing the document with (one of) its private signing key(s).
+    /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
+    /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.
+    fn attest(&self, doc: &Document, key_id: Option<&JWK>) -> Result<String, SubjectError>;
 }
