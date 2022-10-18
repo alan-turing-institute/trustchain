@@ -5,7 +5,7 @@ use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry};
 use did_ion::ION;
 use serde_json::{Map, Value};
 use ssi::did::{Document, ServiceEndpoint};
-use ssi::did_resolve::DocumentMetadata;
+use ssi::did_resolve::{DocumentMetadata, Metadata};
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -74,7 +74,7 @@ impl IONController {
         // Returns a result with propagating error
 
         // Construct a KeyManager for the Subject.
-        let subject = IONSubject::new(did);
+        // let subject = IONSubject::new(did);
 
         // // Construct a KeyManager for the Controller.
         // let update_key: Option<JWK> = match self.read_update_key(controlled_did) {
@@ -200,7 +200,25 @@ impl IONController {
         doc_meta: &DocumentMetadata,
         key_type: KeyType,
     ) -> Result<String, TrustchainIONError> {
-        todo!()
+        if let Some(property_set) = doc_meta.property_set.as_ref() {
+            if let Some(Metadata::Map(method)) = property_set.get(&"method".to_string()) {
+                let k = match key_type {
+                    KeyType::UpdateKey => "updateCommitment",
+                    KeyType::NextUpdateKey => "updateCommitment",
+                    KeyType::RecoveryKey => "recoveryCommitment",
+                    _ => return Err(TrustchainIONError::IncorrectKeyType),
+                };
+                if let Some(Metadata::String(s)) = method.get(k) {
+                    Ok(s.to_owned())
+                } else {
+                    Err(TrustchainIONError::FailedToExtractCommitment)
+                }
+            } else {
+                Err(TrustchainIONError::FailedToExtractCommitment)
+            }
+        } else {
+            Err(TrustchainIONError::FailedToExtractCommitment)
+        }
     }
 
     /// Converts a given JWK into a commitment.
@@ -223,11 +241,8 @@ impl IONController {
 mod tests {
     use super::*;
     use serde_json;
-    use ssi::did::Proof;
     use ssi::did_resolve::DocumentMetadata;
-    use trustchain_core::data::{
-        TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
-    };
+    use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
     use trustchain_core::data::{
         TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
@@ -312,8 +327,8 @@ mod tests {
         let did = "did_is_proof_in_doc_meta";
         let controlled_did = "controlled_is_proof_in_doc_meta";
         let controller = test_controller(did, controlled_did)?;
-        let expected_recovery_commitment = "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g";
-        let expected_update_commitment = "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg";
+        let expected_recovery_commitment = "EiDZpHjQ5x7aRRqv6aUtmOdHsxWktAm1kU1IZl1w7iexsw";
+        let expected_update_commitment = "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew";
         let doc_meta: DocumentMetadata = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)?;
 
         let update_commiment = controller.extract_commitment(&doc_meta, KeyType::UpdateKey)?;
@@ -338,8 +353,8 @@ mod tests {
 
         let controller = test_controller(did, controlled_did)?;
 
-        let expected_recovery_commitment = "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g";
-        let expected_update_commitment = "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg";
+        let expected_recovery_commitment = "EiDZpHjQ5x7aRRqv6aUtmOdHsxWktAm1kU1IZl1w7iexsw";
+        let expected_update_commitment = "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew";
 
         let update_commitment = controller.key_to_commitment(&update_key)?;
         let recovery_commitment = controller.key_to_commitment(&recovery_key)?;
@@ -367,6 +382,7 @@ mod tests {
 
     #[test]
     fn test_add_proof_service() -> Result<(), Box<dyn std::error::Error>> {
+        // TODO: consider whether more checks than just successful call required
         init();
         let did = "did_add_proof_service";
         let controlled_did = "controlled_add_proof_service";
