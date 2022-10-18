@@ -85,7 +85,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("Should have been able to read the file");
 
         // Contents are a DocumentState
-        serde_json::from_str(&contents).unwrap()
+        let mut loaded_document_state: DocumentState = serde_json::from_str(&contents).unwrap();
+        // If no keys loaded
+        if loaded_document_state.public_keys.is_none() {
+            println!("HERE");
+            signing_key = Some(KeyUtils.generate_key());
+            let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+            loaded_document_state.public_keys = Some(vec![public_key_entry.unwrap()]);
+        }
+        loaded_document_state
     } else {
         // If no document passed, generate key
         signing_key = Some(KeyUtils.generate_key());
@@ -96,6 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             services: None,
         }
     };
+
     // println!("_-------");
     // println!("{}", to_json(&template_doc_state()).unwrap());
     // println!("_-------");
