@@ -39,249 +39,235 @@ pub enum KeyType {
     SigningKey,
 }
 
-/// Generates a new cryptographic key.
-pub fn generate_key() -> JWK {
-    JWK::generate_secp256k1().expect("Could not generate key.")
-}
+pub trait ControllerKeyManager: KeyManager {
+    /// Reads a recovery key.
+    fn read_recovery_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::RecoveryKey);
+        self.only_one_key(key)
+    }
+    /// Reads an update key.
+    fn read_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::UpdateKey);
+        self.only_one_key(key)
+    }
 
-/// Generates a set of update, recovery and signing keys.
-// TODO: consider droppping this function as creating keys is easier one by one.
-pub fn generate_keys() -> HashMap<KeyType, OneOrMany<JWK>> {
-    let update_key = generate_key();
-    let recovery_key = generate_key();
-    let signing_key = generate_key();
+    /// Reads a candidate next update key.
+    fn read_next_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::NextUpdateKey);
+        self.only_one_key(key)
+    }
 
-    let mut map = HashMap::new();
-    map.insert(KeyType::UpdateKey, OneOrMany::One(update_key));
-    map.insert(KeyType::RecoveryKey, OneOrMany::One(recovery_key));
-    map.insert(KeyType::SigningKey, OneOrMany::One(signing_key));
-    map
-}
+    /// Apply the `next_update_key` to `update_key` and remove next_update_key
+    fn apply_next_update_key(
+        &self,
+        did: &str,
+        next_update_key: &JWK,
+    ) -> Result<(), KeyManagerError> {
+        // Save as update key
+        self.save_key(did, KeyType::UpdateKey, next_update_key)?;
 
-/// Reads a key of a given type.
-pub fn read_key(did: &str, key_type: &KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    // Make path
-    let path = get_path(did, key_type, false)?;
+        // Remove "next_update_key"
+        self.remove_keys(did, &KeyType::NextUpdateKey)?;
 
-    // Open the file
-    let file = File::open(&path);
-
-    // Read from the file and return
-    if let Ok(file) = file {
-        read_keys_from(Box::new(file))
-    } else {
-        Err(KeyManagerError::FailedToLoadKey)
+        Ok(())
     }
 }
 
-/// Check only one key is present and return key.
-fn only_one_key(key: Result<OneOrMany<JWK>, KeyManagerError>) -> Result<JWK, KeyManagerError> {
-    match key {
-        Ok(OneOrMany::One(x)) => Ok(x),
-        Ok(OneOrMany::Many(_)) => Err(KeyManagerError::InvalidManyKeys),
-        Err(e) => Err(e),
+pub trait SubjectKeyManager: KeyManager {
+    /// Reads one or more signing keys.
+    fn read_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        self.read_key(did, &KeyType::SigningKey)
     }
 }
 
-/// Reads an update key.
-pub fn read_update_key(did: &str) -> Result<JWK, KeyManagerError> {
-    let key = read_key(did, &KeyType::UpdateKey);
-    only_one_key(key)
-}
-
-/// Reads a candidate next update key.
-pub fn read_next_update_key(did: &str) -> Result<JWK, KeyManagerError> {
-    let key = read_key(did, &KeyType::NextUpdateKey);
-    only_one_key(key)
-}
-
-/// Reads a recovery key.
-pub fn read_recovery_key(did: &str) -> Result<JWK, KeyManagerError> {
-    let key = read_key(did, &KeyType::RecoveryKey);
-    only_one_key(key)
-}
-
-/// Reads one or more signing keys.
-pub fn read_signing_keys(did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    read_key(did, &KeyType::SigningKey)
-}
-
-/// Reads one key from a Reader.
-fn read_keys_from(mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    // Read a UTF-8 string from the reader.
-    let buf: &mut String = &mut String::new();
-    let read_result = reader.read_to_string(buf);
-
-    // Read the string as a serialised JWK instance.
-    let jwk_result = match read_result {
-        Ok(_) => from_str::<OneOrMany<JWK>>(buf),
-        Err(_) => return Err(KeyManagerError::FailedToReadUTF8),
-    };
-
-    // Return the JWK.
-    match jwk_result {
-        Ok(x) => Ok(x),
-        Err(_) => Err(KeyManagerError::FailedToParseJWK),
+pub trait KeyManager {
+    /// Generates a new cryptographic key.
+    fn generate_key(&self) -> JWK {
+        JWK::generate_secp256k1().expect("Could not generate key.")
     }
-}
 
-/// Apply the `next_update_key` to `update_key` and remove next_update_key
-pub fn apply_next_update_key(did: &str, next_update_key: &JWK) -> Result<(), KeyManagerError> {
-    // Save as update key
-    save_key(did, KeyType::UpdateKey, next_update_key)?;
+    /// Generates a set of update, recovery and signing keys.
+    // TODO: consider droppping this function as creating keys is easier one by one.
+    fn generate_keys(&self) -> HashMap<KeyType, OneOrMany<JWK>> {
+        let update_key = self.generate_key();
+        let recovery_key = self.generate_key();
+        let signing_key = self.generate_key();
 
-    // Remove "next_update_key"
-    remove_keys(did, &KeyType::NextUpdateKey)?;
-
-    Ok(())
-}
-
-/// Gets path for a given DID and key type
-fn get_path(did: &str, key_type: &KeyType, dir_only: bool) -> Result<PathBuf, KeyManagerError> {
-    // Get the stem for the corresponding key type
-    let file_name = match key_type {
-        KeyType::UpdateKey => "update_key.json",
-        KeyType::NextUpdateKey => "next_update_key.json",
-        KeyType::RecoveryKey => "recovery_key.json",
-        KeyType::SigningKey => "signing_key.json",
-    };
-
-    // Get environment for TRUSTCHAIN_DATA
-    let path: String = match std::env::var(TRUSTCHAIN_DATA) {
-        Ok(val) => val,
-        Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
-    };
-
-    // Makre directory name
-    let directory = Path::new(path.as_str()).join("key_manager").join(did);
-
-    // Make a path
-    if dir_only {
-        Ok(directory)
-    } else {
-        Ok(directory.join(file_name))
+        let mut map = HashMap::new();
+        map.insert(KeyType::UpdateKey, OneOrMany::One(update_key));
+        map.insert(KeyType::RecoveryKey, OneOrMany::One(recovery_key));
+        map.insert(KeyType::SigningKey, OneOrMany::One(signing_key));
+        map
     }
-}
 
-/// Saves a key to disk.
-pub fn save_key(did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
-    save_keys(did, key_type, &OneOrMany::One(key.clone()))
-}
+    /// Reads a key of a given type.
+    fn read_key(&self, did: &str, key_type: &KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        // Make path
+        let path = &self.get_path(did, key_type, false)?;
 
-/// Saves one or more keys to disk.
-pub fn save_keys(
-    did: &str,
-    key_type: KeyType,
-    keys: &OneOrMany<JWK>,
-) -> Result<(), KeyManagerError> {
-    // Get directory and path
-    let directory = get_path(did, &key_type, true)?;
-    let path = get_path(did, &key_type, false)?;
+        // Open the file
+        let file = File::open(&path);
 
-    // Make directory if non-existent
-    match std::fs::create_dir_all(&directory) {
-        Ok(_) => (),
-        Err(_) => return Err(KeyManagerError::FailedToCreateDir),
-    };
-
-    // Open the new file
-    let file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(path);
-
-    // Write key to file
-    if let Ok(mut file) = file {
-        match writeln!(file, "{}", &to_json(keys).unwrap()) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(KeyManagerError::FailedToSaveKey),
+        // Read from the file and return
+        if let Ok(file) = file {
+            self.read_keys_from(Box::new(file))
+        } else {
+            Err(KeyManagerError::FailedToLoadKey)
         }
-    } else {
-        Err(KeyManagerError::FailedToSaveKey)
     }
-}
 
-pub fn remove_keys(did: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
-    // Make path
-    let path = get_path(did, key_type, false)?;
-
-    // Check path exists as a file
-    if path.is_file() {
-        match std::fs::remove_file(path) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(KeyManagerError::FailedToRemoveKey),
+    /// Check only one key is present and return key.
+    fn only_one_key(
+        &self,
+        key: Result<OneOrMany<JWK>, KeyManagerError>,
+    ) -> Result<JWK, KeyManagerError> {
+        match key {
+            Ok(OneOrMany::One(x)) => Ok(x),
+            Ok(OneOrMany::Many(_)) => Err(KeyManagerError::InvalidManyKeys),
+            Err(e) => Err(e),
         }
-    } else {
-        Err(KeyManagerError::FailedToRemoveKey)
+    }
+
+    /// Reads one key from a Reader.
+    fn read_keys_from(&self, mut reader: Box<dyn Read>) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        // Read a UTF-8 string from the reader.
+        let buf: &mut String = &mut String::new();
+        let read_result = reader.read_to_string(buf);
+
+        // Read the string as a serialised JWK instance.
+        let jwk_result = match read_result {
+            Ok(_) => from_str::<OneOrMany<JWK>>(buf),
+            Err(_) => return Err(KeyManagerError::FailedToReadUTF8),
+        };
+
+        // Return the JWK.
+        match jwk_result {
+            Ok(x) => Ok(x),
+            Err(_) => Err(KeyManagerError::FailedToParseJWK),
+        }
+    }
+
+    /// Gets path for a given DID and key type
+    fn get_path(
+        &self,
+        did: &str,
+        key_type: &KeyType,
+        dir_only: bool,
+    ) -> Result<PathBuf, KeyManagerError> {
+        // Get the stem for the corresponding key type
+        let file_name = match key_type {
+            KeyType::UpdateKey => "update_key.json",
+            KeyType::NextUpdateKey => "next_update_key.json",
+            KeyType::RecoveryKey => "recovery_key.json",
+            KeyType::SigningKey => "signing_key.json",
+        };
+
+        // Get environment for TRUSTCHAIN_DATA
+        let path: String = match std::env::var(TRUSTCHAIN_DATA) {
+            Ok(val) => val,
+            Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
+        };
+
+        // Makre directory name
+        let directory = Path::new(path.as_str()).join("key_manager").join(did);
+
+        // Make a path
+        if dir_only {
+            Ok(directory)
+        } else {
+            Ok(directory.join(file_name))
+        }
+    }
+
+    /// Saves a key to disk.
+    fn save_key(&self, did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
+        self.save_keys(did, key_type, &OneOrMany::One(key.clone()))
+    }
+
+    /// Saves one or more keys to disk.
+    fn save_keys(
+        &self,
+        did: &str,
+        key_type: KeyType,
+        keys: &OneOrMany<JWK>,
+    ) -> Result<(), KeyManagerError> {
+        // Get directory and path
+        let directory = &self.get_path(did, &key_type, true)?;
+        let path = &self.get_path(did, &key_type, false)?;
+
+        // Make directory if non-existent
+        match std::fs::create_dir_all(&directory) {
+            Ok(_) => (),
+            Err(_) => return Err(KeyManagerError::FailedToCreateDir),
+        };
+
+        // Open the new file
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path);
+
+        // Write key to file
+        if let Ok(mut file) = file {
+            match writeln!(file, "{}", &to_json(keys).unwrap()) {
+                Ok(_) => Ok(()),
+                Err(_) => Err(KeyManagerError::FailedToSaveKey),
+            }
+        } else {
+            Err(KeyManagerError::FailedToSaveKey)
+        }
+    }
+
+    fn remove_keys(&self, did: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
+        // Make path
+        let path = &self.get_path(did, key_type, false)?;
+
+        // Check path exists as a file
+        if path.is_file() {
+            match std::fs::remove_file(path) {
+                Ok(_) => Ok(()),
+                Err(_) => Err(KeyManagerError::FailedToRemoveKey),
+            }
+        } else {
+            Err(KeyManagerError::FailedToRemoveKey)
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
+    use crate::data::{
+        TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
+    };
+    use crate::init;
     use mockall::mock;
     use ssi::jwk::Params;
     use std::io::Read;
-    use std::sync::Once;
+    // use std::sync::Once;
+    // // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+    // // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    // static INIT: Once = Once::new();
+    // pub fn init() {
+    //     INIT.call_once(|| {
+    //         // initialization code here
+    //         let tempdir = tempfile::tempdir().unwrap();
+    //         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+    //     });
+    // }
 
-    // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
-    // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    static INIT: Once = Once::new();
-    pub fn init() {
-        INIT.call_once(|| {
-            // initialization code here
-            let tempdir = tempfile::tempdir().unwrap();
-            std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-        });
-    }
+    pub struct TestKeyManager;
 
-    const TEST_SIGNING_KEYS: &str = r##"[
-        {
-            "kty": "EC",
-            "crv": "secp256k1",
-            "x": "aPNNzj64rnImzI60EP0iln_u5fyHZ1k47diqmlUrwXw",
-            "y": "fbfKhw08ZtGy9vbyJo6kiFohhGFIrnzZIUNDvEQeAYQ",
-            "d": "sfsIThyN_6EKPjhQasF8yR27-qlQPUTGiP4QtkPTKM8"
-        },
-        {
-            "kty": "EC",
-            "crv": "secp256k1",
-            "x": "gjk_d4WRM5hFD7tP8vvXhHgp0MQkKwFX0uAvyjNJQJg",
-            "y": "e5lq0RW41Y5MH1pOTm-3_18GcxKp1lO4SfbzApRaVtE",
-            "d": "U7pUq3BovVnYT1mi1lds60wbueUKb5GobV_WvjOuY14"
-        }
-    ]
-    "##;
-
-    const TEST_UPDATE_KEY: &str = r##"{
-        "kty": "EC",
-        "crv": "secp256k1",
-        "x": "2hm19BwmXmR8Vfuw2XbGrusm89Pg6dyExlzDfc-CiM8",
-        "y": "uFjW0fKdhHaY4c_5E9Wkk3cPi9sJ5rP3oyl1ssV_X6A",
-        "d": "Z2vJqNRjbWvJX2NzABKlHI2V00HWmV2KNI5P4mmxRbg"
-    }"##;
-
-    const TEST_NEXT_UPDATE_KEY: &str = r##"{
-        "kty": "EC",
-        "crv": "secp256k1",
-        "x": "hm_Pj46yibXbFNyARPXfOKIAEI_UKqfmZwzZDfbUSSk",
-        "y": "Djxgs6Ex71m6K0QCrn4l2naNo4F6IYXfu0LrBhW2RQU",
-        "d": "rAUu7DWaQ2ceSap_NzJNj1YOD2yP_bf1JqabuQJz6rc"
-      }"##;
-
-    const TEST_RECOVERY_KEY: &str = r##"{
-        "kty": "EC",
-        "crv": "secp256k1",
-        "x": "_Z1JRmGwvj0jIpDW-QF0dmQnAL8D_FuNg2WxF7uJSYo",
-        "y": "orKbmG6L6kRugAB2OWzWNgulXRfyOR06GTm353Er--c",
-        "d": "YobJpI7p7T5dfU0cDRE4SQwp0eOFR6LOGrsqZE1GG1A"
-    }"##;
+    impl KeyManager for TestKeyManager {}
+    impl SubjectKeyManager for TestKeyManager {}
+    impl ControllerKeyManager for TestKeyManager {}
 
     /// Test for generating keys
     #[test]
     fn test_generate_key() {
-        let result = generate_key();
+        let target = TestKeyManager;
+        let result = target.generate_key();
 
         // Check for the expected elliptic curve (used by ION to generate keys).
         match result.params {
@@ -294,7 +280,8 @@ mod tests {
 
     #[test]
     fn test_generate_keys() {
-        let result = generate_keys();
+        let target = TestKeyManager;
+        let result = target.generate_keys();
         assert_eq!(result.len(), 3);
         assert!(result.contains_key(&KeyType::UpdateKey));
         assert!(result.contains_key(&KeyType::RecoveryKey));
@@ -320,10 +307,12 @@ mod tests {
 
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
-        save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
+
+        let target = TestKeyManager;
+        target.save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
 
         // Read key from file
-        let res = read_update_key(did_path_str);
+        let res = target.read_update_key(did_path_str);
 
         // Assert read is ok
         assert!(res.is_ok());
@@ -344,10 +333,12 @@ mod tests {
 
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
-        save_key(did_path_str, KeyType::RecoveryKey, &expected_key)?;
+
+        let target = TestKeyManager;
+        target.save_key(did_path_str, KeyType::RecoveryKey, &expected_key)?;
 
         // Read key from file
-        let res = read_recovery_key(did_path_str);
+        let res = target.read_recovery_key(did_path_str);
 
         // Assert read is ok
         assert!(res.is_ok());
@@ -369,7 +360,8 @@ mod tests {
             std::io::Result::Ok(0)
         });
 
-        let result = read_keys_from(Box::new(mock_reader));
+        let target = TestKeyManager;
+        let result = target.read_keys_from(Box::new(mock_reader));
         assert!(result.is_ok());
 
         let key = result.unwrap();
@@ -397,10 +389,11 @@ mod tests {
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
 
         // Save to temp
-        save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
+        let target = TestKeyManager;
+        target.save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
 
         // Read keys
-        let actual_key = read_update_key(did_path_str)?;
+        let actual_key = target.read_update_key(did_path_str)?;
 
         // Check keys saved are same as those read back
         assert_eq!(expected_key, actual_key);
@@ -420,10 +413,11 @@ mod tests {
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
         // Save to temp
-        save_keys(did_path_str, KeyType::SigningKey, &keys)?;
+        let target = TestKeyManager;
+        target.save_keys(did_path_str, KeyType::SigningKey, &keys)?;
 
         // Read keys
-        let actual_signing = read_signing_keys(did_path_str)?;
+        let actual_signing = target.read_signing_keys(did_path_str)?;
 
         // Check keys saved are same as those read back
         assert_eq!(keys, actual_signing);
@@ -439,29 +433,31 @@ mod tests {
         // Make path for this test
         let did_path_str = "test_apply_next_update_key";
 
+        let target = TestKeyManager;
+
         // Save update key and next update key
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let next_update_key: JWK = serde_json::from_str(TEST_NEXT_UPDATE_KEY)?;
-        save_key(did_path_str, KeyType::UpdateKey, &update_key)?;
-        save_key(did_path_str, KeyType::NextUpdateKey, &next_update_key)?;
+        target.save_key(did_path_str, KeyType::UpdateKey, &update_key)?;
+        target.save_key(did_path_str, KeyType::NextUpdateKey, &next_update_key)?;
 
         // Read next update
-        let loaded_update_key = read_update_key(did_path_str)?;
-        let loaded_next_update_key = read_next_update_key(did_path_str)?;
+        let loaded_update_key = target.read_update_key(did_path_str)?;
+        let loaded_next_update_key = target.read_next_update_key(did_path_str)?;
         assert_eq!(loaded_update_key, update_key);
         assert_eq!(loaded_next_update_key, next_update_key);
 
         // // Apply next update key
-        apply_next_update_key(did_path_str, &next_update_key)?;
+        target.apply_next_update_key(did_path_str, &next_update_key)?;
 
         // // Check if next_update_key is removed
-        let path = get_path(did_path_str, &KeyType::NextUpdateKey, false)?;
+        let path = target.get_path(did_path_str, &KeyType::NextUpdateKey, false)?;
         if path.is_file() {
             return Err(Box::new(KeyManagerError::FailedToRemoveKey));
         }
 
         // Check the update key is now next_update_key
-        let actual_update_key = read_update_key(did_path_str)?;
+        let actual_update_key = target.read_update_key(did_path_str)?;
 
         // Check update key is now next_update_key
         assert_eq!(next_update_key, actual_update_key);

@@ -38,3 +38,5 @@ const TEST_DOC_STATE: &str = r##"{
       }
     ]
   }"##;
+pub mod controller;
+pub mod subject;

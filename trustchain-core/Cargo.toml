@@ -50,6 +50,8 @@ thiserror = "1.0"
 # json-patch = "0.2.6"
 # reqwest = { version = "0.11", features = ["json"] }
 
+tempfile = { version = "3.3" }
+
 [target.'cfg(target_os = "android")'.dependencies.reqwest]
 version = "0.11"
 features = ["json", "native-tls-vendored"]
@@ -58,7 +60,6 @@ features = ["json", "native-tls-vendored"]
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
 mockall = "0.11.2"
-tempfile = { version = "3.3" }
 
 # wasm-pack profile option not used currently
 # [profile.release]

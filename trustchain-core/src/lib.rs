@@ -1,10 +1,26 @@
 //! Trustchain library.
-mod controller;
-mod data;
+pub mod controller;
+pub mod data;
 pub mod key_manager;
 pub mod resolver;
-mod subject;
+pub mod subject;
 mod utils;
+
+// use std::io::Read;
+use std::path::Path;
+use std::sync::Once;
+use tempfile;
+
+// Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+static INIT: Once = Once::new();
+pub fn init() {
+    INIT.call_once(|| {
+        // initialization code here
+        let tempdir = tempfile::tempdir().unwrap();
+        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+    });
+}
 
 // WASM
 use wasm_bindgen::prelude::*;
