@@ -1,20 +1,18 @@
 use clap::{arg, command, Arg, ArgAction};
 // use serde_json::{to_string_pretty as to_json}
-use serde_json::{Map, Value};
-use ssi::did_resolve::{DocumentMetadata, Metadata};
+// use serde_json::{Map, Value};
+// use ssi::did_resolve::{DocumentMetadata, Metadata};
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use trustchain_core::controller;
 use trustchain_core::data::TEST_SIGNING_KEYS;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
-use trustchain_ion::subject::IONSubject;
 
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
-use did_ion::sidetree::{DIDSuffix, Operation, ServiceEndpointEntry, Sidetree};
+use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::{sidetree::SidetreeClient, ION};
 
-use ssi::did::{Document, ServiceEndpoint};
+// use ssi::did::{Document, ServiceEndpoint};
 use ssi::jwk::JWK;
 
 use trustchain_core::controller::Controller;
@@ -24,9 +22,9 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 use trustchain_ion::controller::IONController;
 // use trustchain_core::subject::{SubjectError, IONSubject};
 
-use trustchain_ion::is_proof_in_doc_meta;
+// use trustchain_ion::is_proof_in_doc_meta;
 
-use trustchain_ion::{add_proof_service, is_commitment_key};
+// use trustchain_ion::{add_proof_service, is_commitment_key};
 
 /// Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
@@ -82,7 +80,7 @@ fn main() {
     let controlled_did = matches.get_one::<String>("controlled_did").unwrap();
 
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
-    let mut controller = match IONController::new(&did, &controlled_did) {
+    let controller = match IONController::new(did, controlled_did) {
         Ok(x) => x,
         Err(e) => {
             println!("{}", e);
@@ -97,7 +95,7 @@ fn main() {
     ))));
 
     // Extract resolution items
-    let (res, doc, doc_meta) = match resolver.resolve_as_result(&controlled_did) {
+    let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did) {
         Ok((res, Some(doc), Some(doc_meta))) => (res, doc, doc_meta),
         Err(e) => {
             println!("{}", e);
@@ -112,11 +110,13 @@ fn main() {
     // TODO: check next_update_key() returns an option
     if let Ok(Some(key)) = controller.next_update_key() {
         // Check whether the key matches the update commitment
-        if is_commitment_key(&doc_meta, &key, KeyType::NextUpdateKey) {
+        if controller.is_commitment_key(&doc_meta, &key, KeyType::NextUpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
             // TODO: compelete; consider adding functionality directly to key_manager
             // controller.apply_next_update_key()
-            controller.apply_next_update_key(controlled_did, &key);
+            controller
+                .apply_next_update_key(controlled_did, &key)
+                .unwrap();
         } else {
             // update_commitment value is not related to next_update_key, don't continue
             panic!();
@@ -131,7 +131,7 @@ fn main() {
     // TODO: use fn from resolver (e.g. make it pub),
 
     // Check if proof in document metadata
-    if is_proof_in_doc_meta(&doc_meta) {
+    if controller.is_proof_in_doc_meta(&doc_meta) {
         patches.push(DIDStatePatch::RemoveServices {
             ids: vec!["trustchain-controller-proof".to_string()],
         });
@@ -141,7 +141,7 @@ fn main() {
     // Sign the document from the controller using a "subject" trait method
 
     // TODO: make signing keys available to the subject trait
-    let controller_into_subject = controller.into_subject();
+    // let controller_into_subject = controller.into_subject();
 
     // Temporary to get a key
     let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS).unwrap();
@@ -153,7 +153,7 @@ fn main() {
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
     if let Ok(proof) = proof_result {
-        patches.push(add_proof_service(&did, &proof))
+        patches.push(controller.add_proof_service(did, &proof))
     }
 
     // TODO: handle the unwraps in 2.4 and 2.5
