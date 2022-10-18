@@ -241,21 +241,21 @@ pub mod tests {
     use crate::data::{
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
+    use crate::init;
     use mockall::mock;
     use ssi::jwk::Params;
     use std::io::Read;
-    use std::sync::Once;
-
-    // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
-    // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    static INIT: Once = Once::new();
-    pub fn init() {
-        INIT.call_once(|| {
-            // initialization code here
-            let tempdir = tempfile::tempdir().unwrap();
-            std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-        });
-    }
+    // use std::sync::Once;
+    // // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+    // // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    // static INIT: Once = Once::new();
+    // pub fn init() {
+    //     INIT.call_once(|| {
+    //         // initialization code here
+    //         let tempdir = tempfile::tempdir().unwrap();
+    //         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+    //     });
+    // }
 
     pub struct TestKeyManager;
 
