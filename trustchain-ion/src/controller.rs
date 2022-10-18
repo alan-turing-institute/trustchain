@@ -11,6 +11,48 @@ use trustchain_core::subject::{Subject, SubjectError};
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
+/// Type for holding controller data.
+struct ControllerData {
+    did: String,
+    controlled_did: String,
+    update_key: JWK,
+    recovery_key: JWK,
+}
+
+impl ControllerData {
+    fn new(did: String, controlled_did: String, update_key: JWK, recovery_key: JWK) -> Self {
+        ControllerData {
+            did,
+            controlled_did,
+            update_key,
+            recovery_key,
+        }
+    }
+}
+
+impl TryFrom<ControllerData> for IONController {
+    type Error = Box<dyn std::error::Error>;
+    fn try_from(data: ControllerData) -> Result<Self, Self::Error> {
+        let controller = IONController {
+            did: data.did,
+            controlled_did: data.controlled_did,
+        };
+        // Save the update key
+        controller.save_key(
+            &controller.controlled_did,
+            KeyType::UpdateKey,
+            &data.update_key,
+        )?;
+        // Save the recovery key
+        controller.save_key(
+            &controller.controlled_did,
+            KeyType::RecoveryKey,
+            &data.recovery_key,
+        )?;
+        Ok(controller)
+    }
+}
+
 /// Struct for common IONController.
 pub struct IONController {
     did: String,
@@ -111,27 +153,6 @@ mod tests {
 
     use trustchain_core::init;
 
-    // DID, Update Key, Recovery Key
-    type ControllerData = (String, String, JWK, JWK);
-
-    impl TryFrom<ControllerData> for IONController {
-        type Error = Box<dyn std::error::Error>;
-        fn try_from(data: ControllerData) -> Result<Self, Self::Error> {
-            let controller = IONController {
-                did: data.0,
-                controlled_did: data.1,
-            };
-            // Save the update key
-            controller.save_key(&controller.controlled_did, KeyType::UpdateKey, &data.2)?;
-            // Save the recovery key
-            controller.save_key(&controller.controlled_did, KeyType::RecoveryKey, &data.3)?;
-            Ok(controller)
-        }
-    }
-
-    const DID: &str = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-    const CONTROLLED_DID: &str = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5AuAAA";
-
     // TODO: move the update_key and recovery_key loads out as lazy_static!()
 
     // Make a IONController using this test function
@@ -141,7 +162,7 @@ mod tests {
     ) -> Result<IONController, Box<dyn std::error::Error>> {
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
-        IONController::try_from((
+        IONController::try_from(ControllerData::new(
             did.to_string(),
             controlled_did.to_string(),
             update_key,
@@ -158,12 +179,8 @@ mod tests {
         let did = "did_try_from";
         let controlled_did = "controlled_did_try_from";
 
-        let target = IONController::try_from((
-            did.to_string(),
-            controlled_did.to_string(),
-            update_key.clone(),
-            recovery_key.clone(),
-        ))?;
+        // Make controller using try_from()
+        let target = test_controller(did, controlled_did)?;
 
         assert_eq!(target.controlled_did(), controlled_did);
 
