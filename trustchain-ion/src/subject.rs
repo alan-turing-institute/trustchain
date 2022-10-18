@@ -1,7 +1,10 @@
+use std::convert::TryFrom;
+
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
+use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     key_manager::{KeyManager, KeyManagerError, SubjectKeyManager},
     subject::{Subject, SubjectError},
@@ -9,7 +12,6 @@ use trustchain_core::{
 
 pub struct IONSubject {
     did: String,
-    signing_keys: Option<OneOrMany<JWK>>,
 }
 
 impl SubjectKeyManager for IONSubject {}
@@ -21,13 +23,17 @@ impl IONSubject {
     pub fn new(did: &str) -> Self {
         Self {
             did: did.to_owned(),
-            signing_keys: None,
         }
+    }
+
+    fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        self.read_signing_keys(&self.did)
     }
 
     /// Get the Subject's signing key.
     fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        let keys = self.read_signing_keys(&self.did)?;
+        // let keys = self.read_signing_keys(&self.did)?;
+        let keys = self.signing_keys()?;
         // If no key_id is given, return the first available key.
         if key_id.is_none() {
             match keys.first() {
@@ -57,12 +63,14 @@ impl IONSubject {
 
 type SubjectData = (String, OneOrMany<JWK>);
 
-impl From<SubjectData> for IONSubject {
-    fn from(subject_data: SubjectData) -> Self {
-        IONSubject {
-            did: subject_data.0,
-            signing_keys: Some(subject_data.1),
-        }
+impl TryFrom<SubjectData> for IONSubject {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(data: SubjectData) -> Result<Self, Self::Error> {
+        let subject = IONSubject { did: data.0 };
+
+        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1)?;
+        Ok(subject)
     }
 }
 
@@ -97,31 +105,24 @@ impl Subject for IONSubject {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::from_str;
     use ssi::did::Document;
 
     use trustchain_core::data::{TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
-
-    // // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
-    // // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    // static INIT: Once = Once::new();
-    // pub fn init() {
-    //     INIT.call_once(|| {
-    //         // initialization code here
-    //         let tempdir = tempfile::tempdir().unwrap();
-    //         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-    //     });
-    // }
+    use trustchain_core::init;
 
     #[test]
-    fn test_from() -> Result<(), Box<dyn std::error::Error>> {
-        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-        let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+    fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        assert_eq!(0, 0);
+        let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+        let did = "did_try_from";
 
-        let target = IONSubject::from((did.to_string(), keys.clone()));
+        let target = IONSubject::try_from((did.to_string(), signing_keys.clone()))?;
 
         assert_eq!(target.did(), did);
-        assert_eq!(target.signing_keys.unwrap(), keys);
+
+        let loaded_signing_keys = target.signing_keys()?;
+        assert_eq!(loaded_signing_keys, signing_keys);
 
         Ok(())
     }
@@ -132,7 +133,7 @@ mod tests {
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let signing_key = keys.first().unwrap();
 
-        let target = IONSubject::from((did.to_string(), keys.clone()));
+        let target = IONSubject::try_from((did.to_string(), keys.clone()))?;
 
         println!("{:?}", target.read_signing_keys(did));
 
