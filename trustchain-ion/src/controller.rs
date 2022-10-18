@@ -84,7 +84,7 @@ impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
     }
-    fn attest(&self, doc: &Document, key_id: Option<&JWK>) -> Result<String, SubjectError> {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, SubjectError> {
         todo!()
     }
 }

@@ -49,7 +49,7 @@ impl Subject for IONSubject {
         &self.did
     }
 
-    fn attest(&self, doc: &Document, key_id: Option<&JWK>) -> Result<String, SubjectError> {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, SubjectError> {
         todo!()
         // let algorithm = ION::SIGNATURE_ALGORITHM;
         // let proof = (did_short.clone(), document_data_to_be_signed);
