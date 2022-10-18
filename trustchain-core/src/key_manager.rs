@@ -272,7 +272,7 @@ pub mod tests {
     ]
     "##;
 
-    const TEST_UPDATE_KEY: &str = r##"{
+    pub const TEST_UPDATE_KEY: &str = r##"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "2hm19BwmXmR8Vfuw2XbGrusm89Pg6dyExlzDfc-CiM8",
@@ -280,7 +280,7 @@ pub mod tests {
         "d": "Z2vJqNRjbWvJX2NzABKlHI2V00HWmV2KNI5P4mmxRbg"
     }"##;
 
-    const TEST_NEXT_UPDATE_KEY: &str = r##"{
+    pub const TEST_NEXT_UPDATE_KEY: &str = r##"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "hm_Pj46yibXbFNyARPXfOKIAEI_UKqfmZwzZDfbUSSk",
@@ -288,7 +288,7 @@ pub mod tests {
         "d": "rAUu7DWaQ2ceSap_NzJNj1YOD2yP_bf1JqabuQJz6rc"
     }"##;
 
-    const TEST_RECOVERY_KEY: &str = r##"{
+    pub const TEST_RECOVERY_KEY: &str = r##"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "_Z1JRmGwvj0jIpDW-QF0dmQnAL8D_FuNg2WxF7uJSYo",

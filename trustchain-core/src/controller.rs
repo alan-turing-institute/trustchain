@@ -3,7 +3,7 @@ use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
-use crate::key_manager::{ControllerKeyManager, KeyManager};
+use crate::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError};
 
 // use crate::key_manager::{read_recovery_key, read_update_key};
 use crate::subject::{Subject, TrustchainSubject};
@@ -23,13 +23,20 @@ pub enum ControllerError {
 }
 
 // DID, Update Key, Recovery Key
-type ControllerData = (String, JWK, JWK);
+type ControllerData = (String, String, JWK, JWK);
 
 impl From<ControllerData> for TrustchainController {
     fn from(data: ControllerData) -> Self {
-        todo!()
+        TrustchainController {
+            did: data.0,
+            controlled_did: data.1,
+            update_key: Some(data.2),
+            recovery_key: Some(data.3),
+            next_update_key: None,
+        }
     }
 }
+
 impl KeyManager for TrustchainController {}
 impl ControllerKeyManager for TrustchainController {}
 
@@ -48,10 +55,10 @@ pub struct TrustchainController {
 pub trait Controller: Subject {
     // fn to_subject(&self) -> &TrustchainSubject;
     fn load(&self, controlled_did: &str);
-    fn update_key(&self) -> &JWK; // Retrieve the update key for the loaded DID
-    fn next_update_key(&self) -> Option<&JWK>; // Retrieve the next update key for the loaded DID
-    fn recovery_key(&self) -> &JWK; // Retrieve the recovery key for the loaded DID
-                                    // E.g JWT https://jwt.io/
+    fn update_key(&mut self) -> Result<&JWK, KeyManagerError>; // Retrieve the update key for the loaded DID
+    fn next_update_key(&mut self) -> Result<&Option<JWK>, KeyManagerError>; // Retrieve the next update key for the loaded DID
+    fn recovery_key(&mut self) -> Result<&JWK, KeyManagerError>; // Retrieve the recovery key for the loaded DID
+                                                                 // E.g JWT https://jwt.io/
     fn generate_next_update_key(&self);
     // fn generate_recovery_key(&self);
     // fn update_subject(&self);
@@ -114,20 +121,32 @@ impl Controller for TrustchainController {
         todo!()
     }
 
-    fn update_key(&self) -> &JWK {
-        todo!()
+    fn update_key(&mut self) -> Result<&JWK, KeyManagerError> {
+        if self.update_key.is_none() {
+            let read_key = self.read_update_key(self.did())?;
+            self.update_key = Some(read_key);
+        }
+        Ok(&self.update_key.as_ref().unwrap())
     }
 
-    fn next_update_key(&self) -> Option<&JWK> {
-        todo!()
+    fn next_update_key(&mut self) -> Result<&Option<JWK>, KeyManagerError> {
+        if self.next_update_key.is_none() {
+            let read_key = self.read_next_update_key(self.did())?;
+            self.next_update_key = Some(read_key);
+        }
+        Ok(&self.next_update_key)
     }
 
     fn generate_next_update_key(&self) {
         todo!()
     }
 
-    fn recovery_key(&self) -> &JWK {
-        todo!()
+    fn recovery_key(&mut self) -> Result<&JWK, KeyManagerError> {
+        if self.recovery_key.is_none() {
+            let read_key = self.read_recovery_key(self.did())?;
+            self.recovery_key = Some(read_key);
+        }
+        Ok(&self.recovery_key.as_ref().unwrap())
     }
 }
 
@@ -136,22 +155,35 @@ mod tests {
     // use super::TrustchainController;
     // use crate::controller::Controller;
     use super::*;
+    use crate::key_manager::tests::{TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
     use crate::subject::Subject;
 
-    // #[test]
-    // fn test_from() -> Result<(), Box<dyn std::error::Error>> {
+    #[test]
+    fn test_from() -> Result<(), Box<dyn std::error::Error>> {
+        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+        let controlled_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5AuAAA";
+        let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+        let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
 
-    //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-    //     let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
-    //     let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+        // Fn being tested
+        let mut target = TrustchainController::from((
+            did.to_string(),
+            controlled_did.to_string(),
+            update_key.clone(),
+            recovery_key.clone(),
+        ));
 
-    //     let target = TrustchainSubject::from((did.to_string(), keys.clone()));
+        assert_eq!(target.did(), did);
+        let loaded_update_key = target.update_key()?;
+        assert_eq!(loaded_update_key, &update_key);
 
-    //     assert_eq!(target.did(), did);
-    //     assert_eq!(target.signing_keys.unwrap(), keys);
+        let loaded_recovery_key = target.recovery_key()?;
+        assert_eq!(loaded_recovery_key, &recovery_key);
 
-    //     Ok(())
-    // }
+        // Getter tested elsewhere, should be None here.
+        assert_eq!(target.next_update_key, None);
+        Ok(())
+    }
 
     // #[test]
     // fn test_to_subject() {
