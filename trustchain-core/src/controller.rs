@@ -3,7 +3,7 @@ use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
-use crate::key_manager::KeyManager;
+use crate::key_manager::{ControllerKeyManager, KeyManager};
 
 // use crate::key_manager::{read_recovery_key, read_update_key};
 use crate::subject::{Subject, TrustchainSubject};
@@ -30,6 +30,8 @@ impl From<ControllerData> for TrustchainController {
         todo!()
     }
 }
+impl KeyManager for TrustchainController {}
+impl ControllerKeyManager for TrustchainController {}
 
 /// Struct for common TrustchainController.
 pub struct TrustchainController {
@@ -41,10 +43,9 @@ pub struct TrustchainController {
 }
 
 /// Trait for common DID Controller functionality.
-/// Controller extends Subject because every dDID 
+/// Controller extends Subject because every dDID
 /// controller is itself the subject of the uDID.
-pub trait Controller : Subject {
-    
+pub trait Controller: Subject {
     // fn to_subject(&self) -> &TrustchainSubject;
     fn load(&self, controlled_did: &str);
     fn update_key(&self) -> &JWK; // Retrieve the update key for the loaded DID
@@ -64,37 +65,31 @@ impl TrustchainController {
         // Returns a result with propagating error
 
         // Construct a KeyManager for the Subject.
-        let key_manager = KeyManager::new();
-        let subject = TrustchainSubject::new(did, key_manager);
+        let subject = TrustchainSubject::new(did);
 
-        // subject.load(); // Do we need this?
-
-        // Read update and recovery keys
-
-        // Construct a KeyManager for the Controller.
-        let key_manager = KeyManager::new(); 
-        let update_key: Option<JWK> = match key_manager.read_update_key(controlled_did) {
-            Ok(x) => Some(x),
-            Err(_) => {
-                return Err(Box::new(ControllerError::NoUpdateKey(
-                    controlled_did.to_string(),
-                )))
-            }
-        };
-        let recovery_key: Option<JWK> = match key_manager.read_recovery_key(controlled_did) {
-            Ok(x) => Some(x),
-            Err(_) => {
-                return Err(Box::new(ControllerError::NoRecoveryKey(
-                    controlled_did.to_string(),
-                )))
-            }
-        };
+        // // Construct a KeyManager for the Controller.
+        // let update_key: Option<JWK> = match self.read_update_key(controlled_did) {
+        //     Ok(x) => Some(x),
+        //     Err(_) => {
+        //         return Err(Box::new(ControllerError::NoUpdateKey(
+        //             controlled_did.to_string(),
+        //         )))
+        //     }
+        // };
+        // let recovery_key: Option<JWK> = match self.read_recovery_key(controlled_did) {
+        //     Ok(x) => Some(x),
+        //     Err(_) => {
+        //         return Err(Box::new(ControllerError::NoRecoveryKey(
+        //             controlled_did.to_string(),
+        //         )))
+        //     }
+        // };
 
         Ok(Self {
             did: did.to_owned(),
             controlled_did: controlled_did.to_owned(),
-            update_key,
-            recovery_key,
+            update_key: None,
+            recovery_key: None,
             next_update_key: None,
         })
     }
@@ -108,8 +103,7 @@ impl TrustchainController {
     }
 }
 
-impl Subject for TrustchainController { 
-
+impl Subject for TrustchainController {
     fn did(&self) -> &str {
         &self.did
     }
@@ -135,7 +129,6 @@ impl Controller for TrustchainController {
     fn recovery_key(&self) -> &JWK {
         todo!()
     }
-
 }
 
 #[cfg(test)]
@@ -147,7 +140,7 @@ mod tests {
 
     // #[test]
     // fn test_from() -> Result<(), Box<dyn std::error::Error>> {
-        
+
     //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
     //     let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
     //     let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
@@ -168,7 +161,7 @@ mod tests {
     //     let target = TrustchainController::new(did, controlled_did);
 
     //     assert!(target.is_ok());
-        
+
     //     let controller = target.unwrap();
     //     let subject = controller.to_subject();
     //     assert_eq!(subject.did(), did);

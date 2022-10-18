@@ -39,22 +39,56 @@ pub enum KeyType {
     SigningKey,
 }
 
-pub struct KeyManager;
-
-impl KeyManager {
-
-    pub fn new() -> Self {
-        Self
+pub trait ControllerKeyManager: KeyManager {
+    /// Reads a recovery key.
+    fn read_recovery_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::RecoveryKey);
+        self.only_one_key(key)
+    }
+    /// Reads an update key.
+    fn read_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::UpdateKey);
+        self.only_one_key(key)
     }
 
+    /// Reads a candidate next update key.
+    fn read_next_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did, &KeyType::NextUpdateKey);
+        self.only_one_key(key)
+    }
+
+    /// Apply the `next_update_key` to `update_key` and remove next_update_key
+    fn apply_next_update_key(
+        &self,
+        did: &str,
+        next_update_key: &JWK,
+    ) -> Result<(), KeyManagerError> {
+        // Save as update key
+        &self.save_key(did, KeyType::UpdateKey, next_update_key)?;
+
+        // Remove "next_update_key"
+        &self.remove_keys(did, &KeyType::NextUpdateKey)?;
+
+        Ok(())
+    }
+}
+
+pub trait SubjectKeyManager: KeyManager {
+    /// Reads one or more signing keys.
+    fn read_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        self.read_key(did, &KeyType::SigningKey)
+    }
+}
+
+pub trait KeyManager {
     /// Generates a new cryptographic key.
-    pub fn generate_key(&self) -> JWK {
+    fn generate_key(&self) -> JWK {
         JWK::generate_secp256k1().expect("Could not generate key.")
     }
 
     /// Generates a set of update, recovery and signing keys.
     // TODO: consider droppping this function as creating keys is easier one by one.
-    pub fn generate_keys(&self) -> HashMap<KeyType, OneOrMany<JWK>> {
+    fn generate_keys(&self) -> HashMap<KeyType, OneOrMany<JWK>> {
         let update_key = self.generate_key();
         let recovery_key = self.generate_key();
         let signing_key = self.generate_key();
@@ -67,7 +101,7 @@ impl KeyManager {
     }
 
     /// Reads a key of a given type.
-    pub fn read_key(&self, did: &str, key_type: &KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
+    fn read_key(&self, did: &str, key_type: &KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
         // Make path
         let path = &self.get_path(did, key_type, false)?;
 
@@ -83,35 +117,15 @@ impl KeyManager {
     }
 
     /// Check only one key is present and return key.
-    fn only_one_key(&self,key: Result<OneOrMany<JWK>, KeyManagerError>) -> Result<JWK, KeyManagerError> {
+    fn only_one_key(
+        &self,
+        key: Result<OneOrMany<JWK>, KeyManagerError>,
+    ) -> Result<JWK, KeyManagerError> {
         match key {
             Ok(OneOrMany::One(x)) => Ok(x),
             Ok(OneOrMany::Many(_)) => Err(KeyManagerError::InvalidManyKeys),
             Err(e) => Err(e),
         }
-    }
-
-    /// Reads an update key.
-    pub fn read_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::UpdateKey);
-        self.only_one_key(key)
-    }
-
-    /// Reads a candidate next update key.
-    pub fn read_next_update_key(&self,did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::NextUpdateKey);
-        self.only_one_key(key)
-    }
-
-    /// Reads a recovery key.
-    pub fn read_recovery_key(&self,did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::RecoveryKey);
-        self.only_one_key(key)
-    }
-
-    /// Reads one or more signing keys.
-    pub fn read_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
-        self.read_key(did, &KeyType::SigningKey)
     }
 
     /// Reads one key from a Reader.
@@ -133,19 +147,13 @@ impl KeyManager {
         }
     }
 
-    /// Apply the `next_update_key` to `update_key` and remove next_update_key
-    pub fn apply_next_update_key(&self,did: &str, next_update_key: &JWK) -> Result<(), KeyManagerError> {
-        // Save as update key
-        &self.save_key(did, KeyType::UpdateKey, next_update_key)?;
-
-        // Remove "next_update_key"
-        &self.remove_keys(did, &KeyType::NextUpdateKey)?;
-
-        Ok(())
-    }
-
     /// Gets path for a given DID and key type
-    fn get_path(&self, did: &str, key_type: &KeyType, dir_only: bool) -> Result<PathBuf, KeyManagerError> {
+    fn get_path(
+        &self,
+        did: &str,
+        key_type: &KeyType,
+        dir_only: bool,
+    ) -> Result<PathBuf, KeyManagerError> {
         // Get the stem for the corresponding key type
         let file_name = match key_type {
             KeyType::UpdateKey => "update_key.json",
@@ -172,12 +180,13 @@ impl KeyManager {
     }
 
     /// Saves a key to disk.
-    pub fn save_key(&self, did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
+    fn save_key(&self, did: &str, key_type: KeyType, key: &JWK) -> Result<(), KeyManagerError> {
         self.save_keys(did, key_type, &OneOrMany::One(key.clone()))
     }
 
     /// Saves one or more keys to disk.
-    pub fn save_keys(&self,
+    fn save_keys(
+        &self,
         did: &str,
         key_type: KeyType,
         keys: &OneOrMany<JWK>,
@@ -210,7 +219,7 @@ impl KeyManager {
         }
     }
 
-    pub fn remove_keys(&self, did: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
+    fn remove_keys(&self, did: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
         // Make path
         let path = &self.get_path(did, key_type, false)?;
 
@@ -287,11 +296,16 @@ pub mod tests {
         "d": "YobJpI7p7T5dfU0cDRE4SQwp0eOFR6LOGrsqZE1GG1A"
     }"##;
 
+    pub struct TestKeyManager;
+
+    impl KeyManager for TestKeyManager {}
+    impl SubjectKeyManager for TestKeyManager {}
+    impl ControllerKeyManager for TestKeyManager {}
+
     /// Test for generating keys
     #[test]
     fn test_generate_key() {
-
-        let target = KeyManager;
+        let target = TestKeyManager;
         let result = target.generate_key();
 
         // Check for the expected elliptic curve (used by ION to generate keys).
@@ -305,7 +319,7 @@ pub mod tests {
 
     #[test]
     fn test_generate_keys() {
-        let target = KeyManager;
+        let target = TestKeyManager;
         let result = target.generate_keys();
         assert_eq!(result.len(), 3);
         assert!(result.contains_key(&KeyType::UpdateKey));
@@ -326,14 +340,14 @@ pub mod tests {
     fn test_read_update_key() -> Result<(), Box<dyn std::error::Error>> {
         // Init env
         init();
-        
+
         // Make path for this test
         let did_path_str = "test_read_update_key";
-        
+
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
 
-        let target = KeyManager;
+        let target = TestKeyManager;
         target.save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
 
         // Read key from file
@@ -359,7 +373,7 @@ pub mod tests {
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
 
-        let target = KeyManager;
+        let target = TestKeyManager;
         target.save_key(did_path_str, KeyType::RecoveryKey, &expected_key)?;
 
         // Read key from file
@@ -385,7 +399,7 @@ pub mod tests {
             std::io::Result::Ok(0)
         });
 
-        let target = KeyManager;
+        let target = TestKeyManager;
         let result = target.read_keys_from(Box::new(mock_reader));
         assert!(result.is_ok());
 
@@ -414,7 +428,7 @@ pub mod tests {
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
 
         // Save to temp
-        let target = KeyManager;
+        let target = TestKeyManager;
         target.save_key(did_path_str, KeyType::UpdateKey, &expected_key)?;
 
         // Read keys
@@ -438,7 +452,7 @@ pub mod tests {
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
         // Save to temp
-        let target = KeyManager;
+        let target = TestKeyManager;
         target.save_keys(did_path_str, KeyType::SigningKey, &keys)?;
 
         // Read keys
@@ -458,7 +472,7 @@ pub mod tests {
         // Make path for this test
         let did_path_str = "test_apply_next_update_key";
 
-        let target = KeyManager;
+        let target = TestKeyManager;
 
         // Save update key and next update key
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;

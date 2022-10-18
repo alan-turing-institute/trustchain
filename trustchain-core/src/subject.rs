@@ -1,10 +1,9 @@
+use crate::key_manager::{KeyManager, KeyManagerError, SubjectKeyManager};
+use ssi::did::Document;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
-use ssi::did::Document;
-use crate::key_manager::{KeyManager, KeyManagerError};
-use thiserror::Error;
 use std::convert::From;
-
+use thiserror::Error;
 
 /// An error relating to Trustchain controllers.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -19,10 +18,9 @@ pub enum SubjectError {
 
 /// Trait for common DID Subject functionality.
 pub trait Subject {
-
     // Returns the subject's DID as a string slice.
     fn did(&self) -> &str;
-    
+
     // fn load(&mut self, did: &str) -> Result<(), KeyManagerError>;
     // fn save(&self) -> Result<(), SubjectError>;
     // fn signing_keys(&self) -> OneOrMany<JWK>;
@@ -49,22 +47,22 @@ pub trait Subject {
 
 pub struct TrustchainSubject {
     did: String,
-    key_manager: KeyManager,
     signing_keys: Option<OneOrMany<JWK>>,
 }
 
+impl SubjectKeyManager for TrustchainSubject {}
+
 impl TrustchainSubject {
     /// Construct a new TrustchainSubject instance.
-    pub fn new(did: &str, key_manager: KeyManager) -> Self {
+    pub fn new(did: &str) -> Self {
         Self {
             did: did.to_owned(),
-            key_manager,
             signing_keys: None,
         }
     }
 
-    fn load(&mut self, did: &str, key_manager: KeyManager) -> Result<(), KeyManagerError> {
-        if let Ok(signing_keys) = key_manager.read_signing_keys(did) {
+    fn load(&mut self, did: &str) -> Result<(), KeyManagerError> {
+        if let Ok(signing_keys) = self.read_signing_keys(did) {
             self.signing_keys = Some(signing_keys);
             Ok(())
         } else {
@@ -74,7 +72,6 @@ impl TrustchainSubject {
 }
 
 impl Subject for TrustchainSubject {
-    
     fn did(&self) -> &str {
         &self.did
     }
@@ -106,11 +103,15 @@ impl Subject for TrustchainSubject {
 type SubjectData = (String, OneOrMany<JWK>);
 
 impl From<SubjectData> for TrustchainSubject {
-    fn from(_: SubjectData) -> Self {
-        todo!()
+    fn from(subject_data: SubjectData) -> Self {
+        TrustchainSubject {
+            did: subject_data.0,
+            signing_keys: Some(subject_data.1),
+        }
     }
 }
 
+impl KeyManager for TrustchainSubject {}
 
 #[cfg(test)]
 mod tests {
@@ -134,7 +135,6 @@ mod tests {
 
     #[test]
     fn test_from() -> Result<(), Box<dyn std::error::Error>> {
-        
         let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
@@ -146,13 +146,12 @@ mod tests {
         Ok(())
     }
 
-
     // #[test]
     // fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
     //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
 
     //     // Construct a mock KeyManager.
-    //     let mut key_manager = KeyManager::default(); 
+    //     let mut key_manager = KeyManager::default();
 
     //     // let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
@@ -160,7 +159,7 @@ mod tests {
     //         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS).unwrap();
     //         Result::Ok(keys)
     //     });
-        
+
     //     // TEMP TEST:
     //     // let keys = key_manager.read_signing_keys(did);
     //     // println!("hello!");
@@ -178,7 +177,7 @@ mod tests {
     //     // // Test that the proof_result string is valid JSON.
     //     // // TODO: figure out the correct result type here (guessed &str).
     //     // let json_proof_result: Result<&str, serde_json::Error> = serde_json::from_str(&proof_result);
-        
+
     //     // TODO: check for a key-value in the JSON.
     //     Ok(())
     // }
