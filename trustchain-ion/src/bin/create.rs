@@ -12,34 +12,36 @@ use serde_json::to_string_pretty as to_json;
 use serde_json::{Map, Value};
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
+use trustchain_core::key_manager::{KeyManager, KeyType};
+use trustchain_ion::KeyUtils;
 
-use trustchain_core::key_manager::{generate_key, save_key, KeyType};
+// use trustchain_core::key_manager::{generate_key, save_key, KeyType};
 
-fn template_doc_state() -> DocumentState {
-    // Make a signing
-    let signing_key = Some(generate_key());
-    let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+// fn template_doc_state() -> DocumentState {
+//     // Make a signing
+//     let signing_key = Some(generate_key());
+//     let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
 
-    // Make object for services endpoint
-    let mut obj: Map<String, Value> = Map::new();
-    obj.insert(
-        "controller".to_string(),
-        Value::from("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg".to_string()),
-    );
-    obj.insert(
-        "proofValue".to_string(),
-        Value::from("dummy_string".to_string()),
-    );
-    let test_service = vec![ServiceEndpointEntry {
-        id: "trustchain-controller-proof".to_string(),
-        r#type: "TrustchainProofService".to_string(),
-        service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
-    }];
-    DocumentState {
-        public_keys: Some(vec![public_key_entry.unwrap()]),
-        services: Some(test_service),
-    }
-}
+//     // Make object for services endpoint
+//     let mut obj: Map<String, Value> = Map::new();
+//     obj.insert(
+//         "controller".to_string(),
+//         Value::from("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg".to_string()),
+//     );
+//     obj.insert(
+//         "proofValue".to_string(),
+//         Value::from("dummy_string".to_string()),
+//     );
+//     let test_service = vec![ServiceEndpointEntry {
+//         id: "trustchain-controller-proof".to_string(),
+//         r#type: "TrustchainProofService".to_string(),
+//         service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
+//     }];
+//     DocumentState {
+//         public_keys: Some(vec![public_key_entry.unwrap()]),
+//         services: Some(test_service),
+//     }
+// }
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -60,8 +62,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Make keys for controlled DID
     //
     // 1.0 Generate random keys
-    let update_key = generate_key();
-    let recovery_key = generate_key();
+    let update_key = KeyUtils.generate_key();
+    let recovery_key = KeyUtils.generate_key();
 
     // 1.1 Validate keys
     ION::validate_key(&update_key).unwrap();
@@ -77,32 +79,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Create operation
     // 2.1 Make the create patch from scratch or passed file
-    let document_state: DocumentState = if file_path.is_none() {
-        signing_key = Some(generate_key());
-        let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
-        DocumentState {
-            public_keys: Some(vec![public_key_entry.unwrap()]),
-            services: None,
-        }
-    } else {
-        // 2. Load document from file if passed
-        let contents = std::fs::read_to_string(file_path.unwrap())
+    let document_state: DocumentState = if let Some(file_path_data) = file_path {
+        // 1. Load document from file if passed
+        let contents = std::fs::read_to_string(file_path_data)
             .expect("Should have been able to read the file");
 
         // Contents are a DocumentState
         serde_json::from_str(&contents).unwrap()
-
-        // document_as_document_state(&document)
-        // let document: DocumentState = serde_json::from_str(&contents).unwrap();
-        // let document: Document = serde_json::from_str(&contents).unwrap();
-        // If document state only contains a service, also make keys
-        // if document.public_keys.is_none() {
-        // signing_key = Some(generate_key());
-        // }
+    } else {
+        // If no document passed, generate key
+        signing_key = Some(KeyUtils.generate_key());
+        let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+        // TODO
+        DocumentState {
+            public_keys: Some(vec![public_key_entry.unwrap()]),
+            services: None,
+        }
     };
-    println!("_-------");
-    println!("{}", to_json(&template_doc_state()).unwrap());
-    println!("_-------");
+    // println!("_-------");
+    // println!("{}", to_json(&template_doc_state()).unwrap());
+    // println!("_-------");
     // 2.2 Make vec of patches from document state
     let patches = vec![DIDStatePatch::Replace {
         document: document_state,
@@ -148,10 +144,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4.1 Writing keys
     // TODO: refactor to use a new method for controller:
     // TrustchainController::create(update_key, recovery_key, signing_key, did);
-    save_key(&did_short, KeyType::UpdateKey, &update_key)?;
-    save_key(&did_short, KeyType::RecoveryKey, &recovery_key)?;
+    KeyUtils.save_key(&did_short, KeyType::UpdateKey, &update_key)?;
+    KeyUtils.save_key(&did_short, KeyType::RecoveryKey, &recovery_key)?;
     if signing_key.is_some() {
-        save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap())?;
+        KeyUtils.save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap())?;
     }
 
     // 4.2 Write create operation to push to ION server
