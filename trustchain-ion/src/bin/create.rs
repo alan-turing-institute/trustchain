@@ -88,7 +88,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut loaded_document_state: DocumentState = serde_json::from_str(&contents).unwrap();
         // If no keys loaded
         if loaded_document_state.public_keys.is_none() {
-            println!("HERE");
             signing_key = Some(KeyUtils.generate_key());
             let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
             loaded_document_state.public_keys = Some(vec![public_key_entry.unwrap()]);
