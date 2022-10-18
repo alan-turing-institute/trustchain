@@ -2,9 +2,12 @@ use clap::{arg, command, Arg, ArgAction};
 // use serde_json::{to_string_pretty as to_json}
 use serde_json::{Map, Value};
 use ssi::did_resolve::{DocumentMetadata, Metadata};
+use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::controller;
+use trustchain_core::data::TEST_SIGNING_KEYS;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
+use trustchain_ion::subject::IONSubject;
 
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
@@ -109,11 +112,11 @@ fn main() {
     // TODO: check next_update_key() returns an option
     if let Ok(Some(key)) = controller.next_update_key() {
         // Check whether the key matches the update commitment
-        if is_commitment_key(&doc_meta, key, KeyType::NextUpdateKey) {
+        if is_commitment_key(&doc_meta, &key, KeyType::NextUpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
             // TODO: compelete; consider adding functionality directly to key_manager
             // controller.apply_next_update_key()
-            controller.apply_next_update_key(controlled_did, key);
+            controller.apply_next_update_key(controlled_did, &key);
         } else {
             // update_commitment value is not related to next_update_key, don't continue
             panic!();
@@ -136,8 +139,17 @@ fn main() {
 
     // 2.2. Controller performs attestation to Document to generate proof data
     // Sign the document from the controller using a "subject" trait method
-    let proof_result = controller.attest(&doc, None);
-    // let proof_result = controller.attest(&doc, key_id);
+
+    // TODO: make signing keys available to the subject trait
+    let controller_into_subject = controller.into_subject();
+
+    // Temporary to get a key
+    let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS).unwrap();
+    let signing_key = match signing_keys {
+        OneOrMany::Many(keys) => keys[0].clone(),
+        _ => panic!(),
+    };
+    let proof_result = controller.attest(&doc, &signing_key);
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
     if let Ok(proof) = proof_result {
@@ -147,17 +159,18 @@ fn main() {
     // TODO: handle the unwraps in 2.4 and 2.5
     // 2.4  Generate new update key
     controller.generate_next_update_key();
+
     // Store update key
     let update_key = controller.update_key();
     let next_update_pk = match controller.next_update_key() {
-        Ok(&Some(key)) => key.to_public(),
-        Err(_) => panic!(),
+        Ok(Some(key)) => key.to_public(),
+        _ => panic!(),
     };
 
     // 2.4. Create update operation including all patches constructed
     let update_operation = ION::update(
         DIDSuffix(controlled_did.to_owned()),
-        update_key.unwrap(),
+        &update_key.unwrap(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
     );
