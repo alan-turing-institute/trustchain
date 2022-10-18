@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 use ssi::did_resolve::{DocumentMetadata, Metadata};
 use std::convert::TryFrom;
 use trustchain_core::controller;
-use trustchain_core::key_manager::{apply_next_update_key, KeyType};
+use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
@@ -14,9 +14,12 @@ use did_ion::{sidetree::SidetreeClient, ION};
 use ssi::did::{Document, ServiceEndpoint};
 use ssi::jwk::JWK;
 
-use trustchain_core::controller::{Controller, TrustchainController};
+use trustchain_core::controller::Controller;
+use trustchain_core::subject::Subject;
+
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-use trustchain_core::subject::{SubjectError, TrustchainSubject};
+use trustchain_ion::controller::IONController;
+// use trustchain_core::subject::{SubjectError, IONSubject};
 
 use trustchain_ion::is_proof_in_doc_meta;
 
@@ -76,7 +79,7 @@ fn main() {
     let controlled_did = matches.get_one::<String>("controlled_did").unwrap();
 
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
-    let controller = match TrustchainController::new(&did, &controlled_did) {
+    let mut controller = match IONController::new(&did, &controlled_did) {
         Ok(x) => x,
         Err(e) => {
             println!("{}", e);
@@ -104,13 +107,13 @@ fn main() {
     // TODO: This step should be refactored into a general library functionality for
     // recovery keys too and use in other update processes.
     // TODO: check next_update_key() returns an option
-    if let Some(key) = controller.next_update_key() {
+    if let Ok(Some(key)) = controller.next_update_key() {
         // Check whether the key matches the update commitment
         if is_commitment_key(&doc_meta, key, KeyType::NextUpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
             // TODO: compelete; consider adding functionality directly to key_manager
             // controller.apply_next_update_key()
-            apply_next_update_key(controlled_did, key);
+            controller.apply_next_update_key(controlled_did, key);
         } else {
             // update_commitment value is not related to next_update_key, don't continue
             panic!();
@@ -133,8 +136,7 @@ fn main() {
 
     // 2.2. Controller performs attestation to Document to generate proof data
     // Sign the document from the controller using a "subject" trait method
-    let key_id = 0;
-    let proof_result = controller.attest(&doc, key_id);
+    let proof_result = controller.attest(&doc, None);
     // let proof_result = controller.attest(&doc, key_id);
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
@@ -145,12 +147,17 @@ fn main() {
     // TODO: handle the unwraps in 2.4 and 2.5
     // 2.4  Generate new update key
     controller.generate_next_update_key();
-    let next_update_pk = controller.next_update_key().unwrap().to_public();
+    // Store update key
+    let update_key = controller.update_key();
+    let next_update_pk = match controller.next_update_key() {
+        Ok(&Some(key)) => key.to_public(),
+        Err(_) => panic!(),
+    };
 
     // 2.4. Create update operation including all patches constructed
     let update_operation = ION::update(
         DIDSuffix(controlled_did.to_owned()),
-        controller.update_key(),
+        update_key.unwrap(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
     );

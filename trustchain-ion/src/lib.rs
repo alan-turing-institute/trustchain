@@ -1,3 +1,6 @@
+pub mod controller;
+pub mod subject;
+
 use serde_json::{Map, Value};
 use ssi::did_resolve::{DocumentMetadata, Metadata};
 use std::convert::TryFrom;
@@ -61,8 +64,7 @@ pub fn is_commitment_key(doc_meta: &DocumentMetadata, key: &JWK, key_type: KeyTy
         panic!()
     }
 }
-pub mod controller;
-pub mod subject;
+
 /// Extracts commitment of passed key type from document metadata.s
 fn extract_commitment(
     doc_meta: &DocumentMetadata,
