@@ -64,6 +64,8 @@ impl IONController {
 
 impl Subject for IONController {
     fn did(&self) -> &str {
+        // TODO: consider whether happy with controlled_did being the "did" of
+        // "controller"
         &self.did
     }
     fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError> {
@@ -72,13 +74,17 @@ impl Subject for IONController {
 }
 
 impl Controller for IONController {
+    fn controlled_did(&self) -> &str {
+        &self.controlled_did
+    }
+
     fn update_key(&self) -> Result<JWK, KeyManagerError> {
-        let update_key = self.read_update_key(self.did())?;
+        let update_key = self.read_update_key(self.controlled_did())?;
         Ok(update_key)
     }
 
     fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError> {
-        let next_update_key = self.read_next_update_key(self.did())?;
+        let next_update_key = self.read_next_update_key(self.controlled_did())?;
         Ok(Some(next_update_key))
     }
 
@@ -87,7 +93,7 @@ impl Controller for IONController {
     }
 
     fn recovery_key(&self) -> Result<JWK, KeyManagerError> {
-        let recovery_key = self.read_recovery_key(self.did())?;
+        let recovery_key = self.read_recovery_key(self.controlled_did())?;
         Ok(recovery_key)
     }
 
@@ -115,8 +121,9 @@ mod tests {
                 did: data.0,
                 controlled_did: data.1,
             };
-
+            // Save the update key
             controller.save_key(&controller.controlled_did, KeyType::UpdateKey, &data.2)?;
+            // Save the recovery key
             controller.save_key(&controller.controlled_did, KeyType::RecoveryKey, &data.3)?;
             Ok(controller)
         }
@@ -127,19 +134,18 @@ mod tests {
 
     // TODO: move the update_key and recovery_key loads out as lazy_static!()
 
-    // fn test_controller() -> Result<IONController, Box<dyn std::error::Error>> {
+    // Make a IONController using this test function
     fn test_controller(
         did: &str,
         controlled_did: &str,
     ) -> Result<IONController, Box<dyn std::error::Error>> {
-        // init();
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
         IONController::try_from((
             did.to_string(),
             controlled_did.to_string(),
-            update_key.clone(),
-            recovery_key.clone(),
+            update_key,
+            recovery_key,
         ))
     }
 
@@ -159,12 +165,10 @@ mod tests {
             recovery_key.clone(),
         ))?;
 
-        // println!("{:?}", target.update_key);
+        assert_eq!(target.controlled_did(), controlled_did);
 
-        assert_eq!(target.did(), did);
-
-        // let loaded_update_key = target.update_key()?;
-        // assert_eq!(loaded_update_key, update_key);
+        let loaded_update_key = target.update_key()?;
+        assert_eq!(loaded_update_key, update_key);
 
         let loaded_recovery_key = target.recovery_key()?;
         assert_eq!(loaded_recovery_key, recovery_key);
