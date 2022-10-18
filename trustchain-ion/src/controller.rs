@@ -1,6 +1,11 @@
 use crate::subject::IONSubject;
-use serde_json::Value;
-use ssi::did::Document;
+use crate::TrustchainIONError;
+use did_ion::sidetree::Sidetree;
+use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry};
+use did_ion::ION;
+use serde_json::{Map, Value};
+use ssi::did::{Document, ServiceEndpoint};
+use ssi::did_resolve::DocumentMetadata;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -144,13 +149,88 @@ impl Controller for IONController {
     }
 }
 
+impl IONController {
+    /// Checks whether there is a proof field in document metadata.
+    pub fn is_proof_in_doc_meta(&self, doc_meta: &DocumentMetadata) -> bool {
+        if let Some(property_set) = doc_meta.property_set.as_ref() {
+            property_set.contains_key(&"proof".to_string())
+        } else {
+            false
+        }
+    }
+
+    /// Function to return a patch for adding a proof service.
+    pub fn add_proof_service(&self, did: &str, proof: &str) -> DIDStatePatch {
+        let mut obj: Map<String, Value> = Map::new();
+        obj.insert("controller".to_string(), Value::from(did));
+        obj.insert("proofValue".to_string(), Value::from(proof.to_owned()));
+
+        DIDStatePatch::AddServices {
+            services: vec![ServiceEndpointEntry {
+                id: "trustchain-controller-proof".to_string(),
+                r#type: "TrustchainProofService".to_string(),
+                service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
+            }],
+        }
+    }
+
+    /// Function to confirm whether a given key is the `commitment` in document metadata
+    pub fn is_commitment_key(
+        &self,
+        doc_meta: &DocumentMetadata,
+        key: &JWK,
+        key_type: KeyType,
+    ) -> bool {
+        if let Ok(expected_commitment) = self.key_to_commitment(key) {
+            if let Ok(actual_commitment) = self.extract_commitment(doc_meta, key_type) {
+                actual_commitment == expected_commitment
+            } else {
+                // TODO: handle error
+                panic!()
+            }
+        } else {
+            // TODO: handle error
+            panic!()
+        }
+    }
+
+    /// Extracts commitment of passed key type from document metadata.s
+    fn extract_commitment(
+        &self,
+        doc_meta: &DocumentMetadata,
+        key_type: KeyType,
+    ) -> Result<String, TrustchainIONError> {
+        todo!()
+    }
+
+    /// Converts a given JWK into a commitment.
+    fn key_to_commitment(&self, next_update_key: &JWK) -> Result<String, TrustchainIONError> {
+        // https://docs.rs/did-ion/latest/src/did_ion/sidetree.rs.html#L214
+        // 1. Convert next_update_key to public key (pk)
+        // 2. Get commitment value from the pk
+        // 3. Return value
+        match &PublicKeyJwk::try_from(next_update_key.to_public()) {
+            Ok(pk_jwk) => match ION::commitment_scheme(pk_jwk) {
+                Ok(commitment) => Ok(commitment),
+                Err(_) => Err(TrustchainIONError::FailedToConvertToCommitment),
+            },
+            Err(_) => Err(TrustchainIONError::FailedToConvertToCommitment),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json;
+    use ssi::did::Proof;
+    use ssi::did_resolve::DocumentMetadata;
     use trustchain_core::data::{
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
-
+    use trustchain_core::data::{
+        TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+    };
     use trustchain_core::init;
 
     // TODO: move the update_key and recovery_key loads out as lazy_static!()
@@ -205,6 +285,94 @@ mod tests {
         let result = target.into_subject();
         assert_eq!(result.did(), did);
         assert_ne!(result.did(), controlled_did);
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_proof_in_doc_meta() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        let did = "did_is_proof_in_doc_meta";
+        let controlled_did = "controlled_is_proof_in_doc_meta";
+        let controller = test_controller(did, controlled_did)?;
+
+        let tc_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)?;
+        assert!(controller.is_proof_in_doc_meta(&tc_doc_meta));
+
+        let sidetree_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)?;
+        assert!(!controller.is_proof_in_doc_meta(&sidetree_doc_meta));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_commitment() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        let did = "did_is_proof_in_doc_meta";
+        let controlled_did = "controlled_is_proof_in_doc_meta";
+        let controller = test_controller(did, controlled_did)?;
+        let expected_recovery_commitment = "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g";
+        let expected_update_commitment = "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg";
+        let doc_meta: DocumentMetadata = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)?;
+
+        let update_commiment = controller.extract_commitment(&doc_meta, KeyType::UpdateKey)?;
+        assert_eq!(expected_update_commitment, update_commiment.as_str());
+
+        let next_update_commiment =
+            controller.extract_commitment(&doc_meta, KeyType::NextUpdateKey)?;
+        assert_eq!(expected_update_commitment, next_update_commiment.as_str());
+
+        let recovery_commiment = controller.extract_commitment(&doc_meta, KeyType::RecoveryKey)?;
+        assert_eq!(expected_recovery_commitment, recovery_commiment.as_str());
+        Ok(())
+    }
+
+    #[test]
+    fn test_key_to_commitment() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        let did = "did_key_to_commitment";
+        let controlled_did = "controlled_key_to_commitment";
+        let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+        let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+
+        let controller = test_controller(did, controlled_did)?;
+
+        let expected_recovery_commitment = "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g";
+        let expected_update_commitment = "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg";
+
+        let update_commitment = controller.key_to_commitment(&update_key)?;
+        let recovery_commitment = controller.key_to_commitment(&recovery_key)?;
+
+        assert_eq!(expected_update_commitment, update_commitment);
+        assert_eq!(expected_recovery_commitment, recovery_commitment);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_commitment_key() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        let did = "did_is_commitment_key";
+        let controlled_did = "controlled_is_commitment_key";
+        let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+        let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+        let controller = test_controller(did, controlled_did)?;
+        let doc_meta: DocumentMetadata = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)?;
+
+        assert!(controller.is_commitment_key(&doc_meta, &update_key, KeyType::UpdateKey));
+        assert!(controller.is_commitment_key(&doc_meta, &recovery_key, KeyType::RecoveryKey));
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_proof_service() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        let did = "did_add_proof_service";
+        let controlled_did = "controlled_add_proof_service";
+        let controller = test_controller(did, controlled_did)?;
+        let proof = "test_proof_information".to_string();
+        let _ = controller.add_proof_service(controlled_did, &proof);
         Ok(())
     }
 }
