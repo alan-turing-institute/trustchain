@@ -26,8 +26,7 @@ pub enum ControllerError {
 /// Controller extends Subject because every dDID
 /// controller is itself the subject of the uDID.
 pub trait Controller: Subject {
-    // fn to_subject(&self) -> &TrustchainSubject;
-    fn load(&self, controlled_did: &str);
+    fn into_subject(&self) -> Box<dyn Subject>;
     fn update_key(&mut self) -> Result<&JWK, KeyManagerError>; // Retrieve the update key for the loaded DID
     fn next_update_key(&mut self) -> Result<&Option<JWK>, KeyManagerError>; // Retrieve the next update key for the loaded DID
     fn recovery_key(&mut self) -> Result<&JWK, KeyManagerError>; // Retrieve the recovery key for the loaded DID

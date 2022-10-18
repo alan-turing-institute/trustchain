@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::subject::IONSubject;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError};
-use trustchain_core::subject::Subject;
+use trustchain_core::subject::{Subject, SubjectError};
 
 // DID, Update Key, Recovery Key
 type ControllerData = (String, String, JWK, JWK);
@@ -84,13 +84,12 @@ impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
     }
+    fn attest(&self, doc: &Document, key_id: Option<&JWK>) -> Result<String, SubjectError> {
+        todo!()
+    }
 }
 
 impl Controller for IONController {
-    fn load(&self, controlled_did: &str) {
-        todo!()
-    }
-
     fn update_key(&mut self) -> Result<&JWK, KeyManagerError> {
         if self.update_key.is_none() {
             let read_key = self.read_update_key(self.did())?;
@@ -118,6 +117,10 @@ impl Controller for IONController {
         }
         Ok(&self.recovery_key.as_ref().unwrap())
     }
+
+    fn into_subject(&self) -> Box<dyn Subject> {
+        Box::new(IONSubject::new(&self.did))
+    }
 }
 
 #[cfg(test)]
@@ -127,20 +130,27 @@ mod tests {
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
 
-    #[test]
-    fn test_from() -> Result<(), Box<dyn std::error::Error>> {
-        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-        let controlled_did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5AuAAA";
+    const did: &str = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+    const controlled_did: &str = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5AuAAA";
+
+    // TODO: move the update_key and recovery_key loads out as lazy_static!()
+
+    fn test_controller() -> Result<IONController, Box<dyn std::error::Error>> {
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
-
-        // Fn being tested
-        let mut target = IONController::from((
+        Ok(IONController::from((
             did.to_string(),
             controlled_did.to_string(),
             update_key.clone(),
             recovery_key.clone(),
-        ));
+        )))
+    }
+
+    #[test]
+    fn test_from() -> Result<(), Box<dyn std::error::Error>> {
+        let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+        let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+        let mut target = test_controller()?;
 
         assert_eq!(target.did(), did);
         let loaded_update_key = target.update_key()?;
@@ -154,17 +164,15 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_to_subject() {
+    #[test]
+    fn test_into_subject() -> Result<(), Box<dyn std::error::Error>> {
+        let target = test_controller()?;
+        assert_eq!(target.did(), did);
+        assert_ne!(target.did(), controlled_did);
 
-    //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-    //     let controlled_did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
-    //     let target = IONController::new(did, controlled_did);
-
-    //     assert!(target.is_ok());
-
-    //     let controller = target.unwrap();
-    //     let subject = controller.to_subject();
-    //     assert_eq!(subject.did(), did);
-    // }
+        let result = target.into_subject();
+        assert_eq!(result.did(), did);
+        assert_ne!(result.did(), controlled_did);
+        Ok(())
+    }
 }

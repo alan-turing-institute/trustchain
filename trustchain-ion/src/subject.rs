@@ -1,7 +1,8 @@
+use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use trustchain_core::{
     key_manager::{KeyManager, KeyManagerError, SubjectKeyManager},
-    subject::Subject,
+    subject::{Subject, SubjectError},
 };
 
 pub struct IONSubject {
@@ -48,28 +49,17 @@ impl Subject for IONSubject {
         &self.did
     }
 
-    // /// Gets the public part of a signing key.
-    // fn get_public_key(&self, key_id: Option<String>) -> Result<JWK, KeyManagerError> {
-    //     // let keys = read_keys(&self.did);
-    //     // let keys = match keys {
-    //     //     Ok(map) => map,
-    //     //     Err(e) => return Err(e)
-    //     // };
-    //     // let signing = keys.get(&KeyType::SigningKey);
-    //     todo!();
-    // }
-
-    // fn signing_keys(&self) -> OneOrMany<JWK> {
-    //     todo!()
-    // }
-
-    // fn generate_signing_keys(&self) -> OneOrMany<JWK> {
-    //     todo!()
-    // }
-
-    // fn save(&self) -> Result<(), SubjectError> {
-    //     todo!()
-    // }
+    fn attest(&self, doc: &Document, key_id: Option<&JWK>) -> Result<String, SubjectError> {
+        todo!()
+        // let algorithm = ION::SIGNATURE_ALGORITHM;
+        // let proof = (did_short.clone(), document_data_to_be_signed);
+        // let proof_json = ION::json_canonicalization_scheme(&proof).unwrap();
+        // let proof_json_bytes = ION::hash(proof_json.as_bytes());
+        // let signed_data =
+        //     ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &verification_key).unwrap();
+        // println!("Proof json (data to be signed): {}", proof_json);
+        // println!("Signed hash of DID and patch: {}", signed_data);
+    }
 }
 
 #[cfg(test)]
