@@ -4,6 +4,7 @@ use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use thiserror::Error;
 
 use crate::key_manager::KeyManager;
+
 // use crate::key_manager::{read_recovery_key, read_update_key};
 use crate::subject::{Subject, TrustchainSubject};
 
@@ -19,6 +20,24 @@ pub enum ControllerError {
     /// No update key for DID.
     #[error("DID: {0} recovery key does not exist.")]
     NoUpdateKey(String),
+}
+
+// DID, Update Key, Recovery Key
+type ControllerData = (String, JWK, JWK);
+
+impl From<ControllerData> for TrustchainController {
+    fn from(data: ControllerData) -> Self {
+        todo!()
+    }
+}
+
+/// Struct for common TrustchainController.
+pub struct TrustchainController {
+    did: String,
+    controlled_did: String,
+    update_key: Option<JWK>,
+    recovery_key: Option<JWK>,
+    next_update_key: Option<JWK>,
 }
 
 /// Trait for common DID Controller functionality.
@@ -38,28 +57,22 @@ pub trait Controller : Subject {
     // fn recover_subject(&self);
 }
 
-/// Struct for common TrustchainController.
-pub struct TrustchainController {
-    did: String,
-    controlled_did: String,
-    update_key: Option<JWK>,
-    recovery_key: Option<JWK>,
-    next_update_key: Option<JWK>,
-}
-
 impl TrustchainController {
     /// Construct a new TrustchainController instance
     /// from existing Subject and Controller DIDs.
     pub fn new(did: &str, controlled_did: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // Returns a result with propagating error
 
-        let key_manager = KeyManager;
+        // Construct a KeyManager for the Subject.
+        let key_manager = KeyManager::new();
         let subject = TrustchainSubject::new(did, key_manager);
 
         // subject.load(); // Do we need this?
 
         // Read update and recovery keys
-        let key_manager = KeyManager;
+
+        // Construct a KeyManager for the Controller.
+        let key_manager = KeyManager::new(); 
         let update_key: Option<JWK> = match key_manager.read_update_key(controlled_did) {
             Ok(x) => Some(x),
             Err(_) => {
@@ -127,9 +140,25 @@ impl Controller for TrustchainController {
 
 #[cfg(test)]
 mod tests {
-    use super::TrustchainController;
-    use crate::controller::Controller;
+    // use super::TrustchainController;
+    // use crate::controller::Controller;
+    use super::*;
     use crate::subject::Subject;
+
+    // #[test]
+    // fn test_from() -> Result<(), Box<dyn std::error::Error>> {
+        
+    //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+    //     let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+    //     let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
+
+    //     let target = TrustchainSubject::from((did.to_string(), keys.clone()));
+
+    //     assert_eq!(target.did(), did);
+    //     assert_eq!(target.signing_keys.unwrap(), keys);
+
+    //     Ok(())
+    // }
 
     // #[test]
     // fn test_to_subject() {

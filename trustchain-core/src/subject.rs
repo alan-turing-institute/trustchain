@@ -1,9 +1,10 @@
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use ssi::did::Document;
-
-use crate::key_manager::{KeyManagerError, KeyManager};
+use crate::key_manager::{KeyManager, KeyManagerError};
 use thiserror::Error;
+use std::convert::From;
+
 
 /// An error relating to Trustchain controllers.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -102,33 +103,85 @@ impl Subject for TrustchainSubject {
     // }
 }
 
+type SubjectData = (String, OneOrMany<JWK>);
+
+impl From<SubjectData> for TrustchainSubject {
+    fn from(_: SubjectData) -> Self {
+        todo!()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use serde_json::from_str;
     use ssi::did::Document;
 
-    use super::*;
-    use crate::{data::TEST_TRUSTCHAIN_DOCUMENT, key_manager};
+    use crate::data::TEST_TRUSTCHAIN_DOCUMENT;
+    use crate::key_manager::tests::TEST_SIGNING_KEYS;
+
+    // // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+    // // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    // static INIT: Once = Once::new();
+    // pub fn init() {
+    //     INIT.call_once(|| {
+    //         // initialization code here
+    //         let tempdir = tempfile::tempdir().unwrap();
+    //         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+    //     });
+    // }
 
     #[test]
-    fn test_attest() {
-        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
-
-        // TODO: mock the KeyManager
-        let key_manager = KeyManager;
-        let target = TrustchainSubject::new(did, key_manager);
-
-        let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
-        let result = target.attest(&doc, Option::None);
-
-        assert!(result.is_ok());
-        let proof_result = result.unwrap();
-
-        // Test that the proof_result string is valid JSON.
-        // TODO: figure out the correct result type here (guessed &str).
-        let json_proof_result: Result<&str, serde_json::Error> = serde_json::from_str(&proof_result);
+    fn test_from() -> Result<(), Box<dyn std::error::Error>> {
         
-        // TODO: check for a key-value in the JSON.
+        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+        let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+        let target = TrustchainSubject::from((did.to_string(), keys.clone()));
+
+        assert_eq!(target.did(), did);
+        assert_eq!(target.signing_keys.unwrap(), keys);
+
+        Ok(())
     }
+
+
+    // #[test]
+    // fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
+    //     let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+
+    //     // Construct a mock KeyManager.
+    //     let mut key_manager = KeyManager::default(); 
+
+    //     // let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+    //     key_manager.expect_read_signing_keys().return_once(|did| {
+    //         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS).unwrap();
+    //         Result::Ok(keys)
+    //     });
+        
+    //     // TEMP TEST:
+    //     // let keys = key_manager.read_signing_keys(did);
+    //     // println!("hello!");
+    //     // println!("{:?}", keys);
+    //     // assert!(keys.is_ok());
+
+    //     let target = TrustchainSubject::new(did, key_manager);
+
+    //     let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+    //     let result = target.attest(&doc, Option::None);
+
+    //     assert!(result.is_ok());
+    //     // let proof_result = result.unwrap();
+
+    //     // // Test that the proof_result string is valid JSON.
+    //     // // TODO: figure out the correct result type here (guessed &str).
+    //     // let json_proof_result: Result<&str, serde_json::Error> = serde_json::from_str(&proof_result);
+        
+    //     // TODO: check for a key-value in the JSON.
+    //     Ok(())
+    // }
 
     // #[test]
     // fn test_signing_keys() {}

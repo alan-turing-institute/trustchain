@@ -43,6 +43,10 @@ pub struct KeyManager;
 
 impl KeyManager {
 
+    pub fn new() -> Self {
+        Self
+    }
+
     /// Generates a new cryptographic key.
     pub fn generate_key(&self) -> JWK {
         JWK::generate_secp256k1().expect("Could not generate key.")
@@ -223,7 +227,7 @@ impl KeyManager {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use mockall::mock;
     use ssi::jwk::Params;
@@ -241,7 +245,7 @@ mod tests {
         });
     }
 
-    const TEST_SIGNING_KEYS: &str = r##"[
+    pub const TEST_SIGNING_KEYS: &str = r##"[
         {
             "kty": "EC",
             "crv": "secp256k1",
@@ -273,7 +277,7 @@ mod tests {
         "x": "hm_Pj46yibXbFNyARPXfOKIAEI_UKqfmZwzZDfbUSSk",
         "y": "Djxgs6Ex71m6K0QCrn4l2naNo4F6IYXfu0LrBhW2RQU",
         "d": "rAUu7DWaQ2ceSap_NzJNj1YOD2yP_bf1JqabuQJz6rc"
-      }"##;
+    }"##;
 
     const TEST_RECOVERY_KEY: &str = r##"{
         "kty": "EC",
