@@ -25,27 +25,34 @@ impl IONSubject {
         }
     }
 
-    /// Gets the signing keys.
-    fn signing_keys(&mut self) -> Result<OneOrMany<JWK>, KeyManagerError> {
-        match self.signing_keys.as_mut() {
-            Some(keys) => Ok(keys.clone()),
-            None => {
-                // self.read_signing_keys(&self.did)?;
-                let signing_keys = self.read_signing_keys(&self.did)?;
-                self.signing_keys = Some(signing_keys.clone());
-                Ok(signing_keys)
+    /// Get the Subject's signing key.
+    fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
+        let keys = self.read_signing_keys(&self.did)?;
+        // If no key_id is given, return the first available key.
+        if key_id.is_none() {
+            match keys.first() {
+                Some(key) => return Ok(key.to_owned()),
+                None => Err(KeyManagerError::FailedToLoadKey),
             }
+        } else {
+            let key_id = key_id.unwrap();
+            // Iterate over the available keys.
+            for key in keys.into_iter() {
+                // If the key has a key_id which matches the given key_id, return it.
+                // Otherwise continue.
+                match key.key_id {
+                    Some(ref this_key_id) => {
+                        if this_key_id == key_id {
+                            return Ok(key);
+                        }
+                    }
+                    None => continue,
+                }
+            }
+            // If none of the keys has a matching key_id, the required key does not exist.
+            Err(KeyManagerError::FailedToLoadKey)
         }
     }
-
-    // fn load(&mut self, did: &str) -> Result<(), KeyManagerError> {
-    //     if let Ok(signing_keys) = self.read_signing_keys(did) {
-    //         self.signing_keys = Some(signing_keys);
-    //         Ok(())
-    //     } else {
-    //         Err(KeyManagerError::FailedToLoadKey)
-    //     }
-    // }
 }
 
 type SubjectData = (String, OneOrMany<JWK>);
@@ -147,17 +154,5 @@ mod tests {
     }
 
     // #[test]
-    // fn test_signing_keys() {}
-
-    // #[test]
-    // fn test_load() {}
-
-    // #[test]
-    // fn test_save() {}
-
-    // #[test]
-    // fn test_get_public_key() {}
-
-    // #[test]
-    // fn test_generate_signing_keys() {}
+    // fn test_signing_key() {}
 }
