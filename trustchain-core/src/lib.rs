@@ -1,9 +1,9 @@
 //! Trustchain library.
-mod controller;
-mod data;
+pub mod controller;
+pub mod data;
 pub mod key_manager;
 pub mod resolver;
-mod subject;
+pub mod subject;
 mod utils;
 
 // WASM
