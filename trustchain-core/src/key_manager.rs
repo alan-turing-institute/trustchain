@@ -64,10 +64,10 @@ pub trait ControllerKeyManager: KeyManager {
         next_update_key: &JWK,
     ) -> Result<(), KeyManagerError> {
         // Save as update key
-        &self.save_key(did, KeyType::UpdateKey, next_update_key)?;
+        self.save_key(did, KeyType::UpdateKey, next_update_key)?;
 
         // Remove "next_update_key"
-        &self.remove_keys(did, &KeyType::NextUpdateKey)?;
+        self.remove_keys(did, &KeyType::NextUpdateKey)?;
 
         Ok(())
     }
