@@ -1,7 +1,8 @@
 use clap::{arg, command, Arg, ArgAction};
-// use serde_json::{to_string_pretty as to_json}
+use serde_json::to_string_pretty as to_json;
 // use serde_json::{Map, Value};
 // use ssi::did_resolve::{DocumentMetadata, Metadata};
+use core::panic;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::data::TEST_SIGNING_KEYS;
@@ -51,7 +52,7 @@ pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 // Binary to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // CLI pass: verbose, did, controlled_did
     let matches = command!()
         .arg(
@@ -84,7 +85,7 @@ fn main() {
         Ok(x) => x,
         Err(e) => {
             println!("{}", e);
-            return;
+            return Err(e);
         }
     };
 
@@ -99,9 +100,9 @@ fn main() {
         Ok((res, Some(doc), Some(doc_meta))) => (res, doc, doc_meta),
         Err(e) => {
             println!("{}", e);
-            return;
+            return Err(Box::new(e));
         }
-        _ => return,
+        _ => panic!(),
     };
 
     // 1.3 Check whether a present `next_update_key` matches the update commitment
@@ -175,4 +176,12 @@ fn main() {
 
     // 4. Once the operation is no longer queued (or wait until published?) commit the new_update_key to replace the previous
     // TODO
+
+    // 4.1 Save operation to file
+    std::fs::write(
+        format!("attest_operation_{}.json", controlled_did),
+        to_json(&operation).unwrap(),
+    )?;
+
+    Ok(())
 }
