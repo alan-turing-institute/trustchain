@@ -15,12 +15,12 @@ use did_ion::{sidetree::SidetreeClient, ION};
 // use ssi::did::{Document, ServiceEndpoint};
 use ssi::jwk::JWK;
 
+use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
-use trustchain_core::subject::Subject;
 
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::controller::IONController;
-// use trustchain_core::subject::{SubjectError, IONSubject};
 
 // use trustchain_ion::is_proof_in_doc_meta;
 
@@ -140,18 +140,8 @@ fn main() {
     }
 
     // 2.2. Controller performs attestation to Document to generate proof data
-    // Sign the document from the controller using a "subject" trait method
-
-    // TODO: make signing keys available to the subject trait
-    // let controller_into_subject = controller.into_subject();
-
-    // Temporary to get a key
-    let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS).unwrap();
-    let signing_key = match signing_keys {
-        OneOrMany::Many(keys) => keys[0].clone(),
-        _ => panic!(),
-    };
-    let proof_result = controller.attest(&doc, &signing_key);
+    // Sign the document from the controller using the "Attestor" trait method
+    let proof_result = controller.to_attestor().attest(&doc, None);
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
     if let Ok(proof) = proof_result {

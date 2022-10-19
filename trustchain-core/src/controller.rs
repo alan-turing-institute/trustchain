@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError};
 
 // use crate::key_manager::{read_recovery_key, read_update_key};
-use crate::subject::Subject;
+use crate::attestor::Attestor;
 
 /// An error relating to Trustchain controllers.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -22,17 +22,15 @@ pub enum ControllerError {
     NoUpdateKey(String),
 }
 
-/// Trait for common DID Controller functionality.
-/// Controller extends Subject because every dDID
-/// controller is itself the subject of the uDID.
-pub trait Controller: Subject {
+/// A DID controller.
+pub trait Controller {
     fn controlled_did(&self) -> &str;
-    fn into_subject(&self) -> Box<dyn Subject>;
+    fn to_attestor(&self) -> Box<dyn Attestor>;
     fn update_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the update key for the loaded DID
     fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError>; // Retrieve the next update key for the loaded DID
     fn recovery_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the recovery key for the loaded DID
                                                             // E.g JWT https://jwt.io/
-    fn generate_next_update_key(&self);
+    fn generate_next_update_key(&self) -> Result<(), KeyManagerError>;
     // fn generate_recovery_key(&self);
     // fn update_subject(&self);
     // fn recover_subject(&self);

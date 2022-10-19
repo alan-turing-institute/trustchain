@@ -1,5 +1,5 @@
+pub mod attestor;
 pub mod controller;
-pub mod subject;
 
 use thiserror::Error;
 
