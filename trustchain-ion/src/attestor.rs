@@ -6,19 +6,20 @@ use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
-    key_manager::{KeyManager, KeyManagerError, SubjectKeyManager},
-    subject::{Subject, SubjectError},
+    attestor::{Attestor, AttestorError},
+    key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
+    Subject,
 };
 
-pub struct IONSubject {
+pub struct IONAttestor {
     did: String,
 }
 
-impl SubjectKeyManager for IONSubject {}
+impl AttestorKeyManager for IONAttestor {}
 
-impl KeyManager for IONSubject {}
+impl KeyManager for IONAttestor {}
 
-impl IONSubject {
+impl IONAttestor {
     /// Construct a new TrustchainSubject instance.
     pub fn new(did: &str) -> Self {
         Self {
@@ -61,43 +62,61 @@ impl IONSubject {
     }
 }
 
-type SubjectData = (String, OneOrMany<JWK>);
+type AttestorData = (String, OneOrMany<JWK>);
 
-impl TryFrom<SubjectData> for IONSubject {
+impl TryFrom<AttestorData> for IONAttestor {
     type Error = Box<dyn std::error::Error>;
 
-    fn try_from(data: SubjectData) -> Result<Self, Self::Error> {
-        let subject = IONSubject { did: data.0 };
+    fn try_from(data: AttestorData) -> Result<Self, Self::Error> {
+        let subject = IONAttestor { did: data.0 };
 
-        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1)?;
+        // Attempt to save the keys but do not overwrite existing key information.
+        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1, false)?;
         Ok(subject)
     }
 }
 
-impl Subject for IONSubject {
+impl Subject for IONAttestor {
     fn did(&self) -> &str {
         &self.did
     }
+}
 
-    fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError> {
+impl Attestor for IONAttestor {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         let canonical_document = match ION::json_canonicalization_scheme(&doc) {
             Ok(str) => str,
-            Err(_) => return Err(SubjectError::InvalidDocumentParameters(doc.id.clone())),
+            Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
         };
         let proof = (&doc.id.clone(), canonical_document);
 
         let proof_json = match ION::json_canonicalization_scheme(&proof) {
             Ok(str) => str,
-            Err(_) => return Err(SubjectError::InvalidDocumentParameters(doc.id.clone())),
+            Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
         };
 
         let proof_json_bytes = ION::hash(proof_json.as_bytes());
 
-        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, signing_key) {
+        // Get the signing key.
+        let signing_key = match self.signing_key(key_id) {
+            Ok(key) => key,
+            Err(_) => {
+                if key_id.is_none() {
+                    return Err(AttestorError::NoSigningKey(doc.id.to_string()));
+                } else {
+                    return Err(AttestorError::NoSigningKeyWithId(
+                        doc.id.to_string(),
+                        key_id.unwrap().to_string(),
+                    ));
+                }
+            }
+        };
+
+        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &signing_key) {
             Ok(str) => Ok(str),
-            Err(e) => Err(SubjectError::SigningError(doc.id.clone(), e.to_string())),
+            Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
         }
     }
 }
@@ -117,7 +136,7 @@ mod tests {
         let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let did = "did_try_from";
 
-        let target = IONSubject::try_from((did.to_string(), signing_keys.clone()))?;
+        let target = IONAttestor::try_from((did.to_string(), signing_keys.clone()))?;
 
         assert_eq!(target.did(), did);
 
@@ -133,13 +152,13 @@ mod tests {
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let signing_key = keys.first().unwrap();
 
-        let target = IONSubject::try_from((did.to_string(), keys.clone()))?;
+        let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
 
         println!("{:?}", target.read_signing_keys(did));
 
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
 
-        let result = target.attest(&doc, signing_key);
+        let result = target.attest(&doc, None);
         assert!(result.is_ok());
 
         let proof_result = result?;

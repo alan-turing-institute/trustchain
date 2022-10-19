@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+pub mod attestor;
 // //! trustchain-ion library fns
 // use did_ion::sidetree::Operation;
 
@@ -9,7 +10,6 @@
 // }
 
 pub mod controller;
-pub mod subject;
 
 use trustchain_core::key_manager::KeyManager;
 pub struct KeyUtils;

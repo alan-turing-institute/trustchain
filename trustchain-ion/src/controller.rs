@@ -1,13 +1,13 @@
-use crate::subject::IONSubject;
+use crate::attestor::IONAttestor;
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
 use thiserror::Error;
+use trustchain_core::attestor::{Attestor, AttestorError};
 use trustchain_core::controller::{Controller, ControllerError};
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::subject::{Subject, SubjectError};
-
+use trustchain_core::Subject;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -37,17 +37,19 @@ impl TryFrom<ControllerData> for IONController {
             did: data.did,
             controlled_did: data.controlled_did,
         };
-        // Save the update key
+        // Attempt to save the update key, but do not overwrite existing key data.
         controller.save_key(
             &controller.controlled_did,
             KeyType::UpdateKey,
             &data.update_key,
+            false,
         )?;
-        // Save the recovery key
+        // Attempt to save the recovery key, but do not overwrite existing key data.
         controller.save_key(
             &controller.controlled_did,
             KeyType::RecoveryKey,
             &data.recovery_key,
+            false,
         )?;
         Ok(controller)
     }
@@ -66,29 +68,6 @@ impl IONController {
     /// Construct a new IONController instance
     /// from existing Subject and Controller DIDs.
     pub fn new(did: &str, controlled_did: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        // Returns a result with propagating error
-
-        // Construct a KeyManager for the Subject.
-        let subject = IONSubject::new(did);
-
-        // // Construct a KeyManager for the Controller.
-        // let update_key: Option<JWK> = match self.read_update_key(controlled_did) {
-        //     Ok(x) => Some(x),
-        //     Err(_) => {
-        //         return Err(Box::new(ControllerError::NoUpdateKey(
-        //             controlled_did.to_string(),
-        //         )))
-        //     }
-        // };
-        // let recovery_key: Option<JWK> = match self.read_recovery_key(controlled_did) {
-        //     Ok(x) => Some(x),
-        //     Err(_) => {
-        //         return Err(Box::new(ControllerError::NoRecoveryKey(
-        //             controlled_did.to_string(),
-        //         )))
-        //     }
-        // };
-
         Ok(Self {
             did: did.to_owned(),
             controlled_did: controlled_did.to_owned(),
@@ -106,12 +85,7 @@ impl IONController {
 
 impl Subject for IONController {
     fn did(&self) -> &str {
-        // TODO: consider whether happy with controlled_did being the "did" of
-        // "controller"
         &self.did
-    }
-    fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError> {
-        todo!()
     }
 }
 
@@ -130,8 +104,10 @@ impl Controller for IONController {
         Ok(Some(next_update_key))
     }
 
-    fn generate_next_update_key(&self) {
-        todo!()
+    fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
+        let key = self.generate_key();
+        self.save_key(&self.did, KeyType::NextUpdateKey, &key, false)?;
+        Ok(())
     }
 
     fn recovery_key(&self) -> Result<JWK, KeyManagerError> {
@@ -139,8 +115,8 @@ impl Controller for IONController {
         Ok(recovery_key)
     }
 
-    fn into_subject(&self) -> Box<dyn Subject> {
-        Box::new(IONSubject::new(&self.did))
+    fn to_attestor(&self) -> Box<dyn Attestor> {
+        Box::new(IONAttestor::new(&self.did))
     }
 }
 
@@ -202,7 +178,7 @@ mod tests {
         assert_eq!(target.did(), did);
         assert_ne!(target.did(), controlled_did);
 
-        let result = target.into_subject();
+        let result = target.to_attestor();
         assert_eq!(result.did(), did);
         assert_ne!(result.did(), controlled_did);
         Ok(())

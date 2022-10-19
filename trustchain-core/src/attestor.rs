@@ -1,13 +1,14 @@
-use crate::key_manager::{KeyManager, KeyManagerError, SubjectKeyManager};
+use crate::key_manager::{AttestorKeyManager, KeyManager, KeyManagerError};
+use crate::Subject;
 use ssi::did::Document;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::From;
 use thiserror::Error;
 
-/// An error relating to Trustchain controllers.
+/// An error relating to a Trustchain Attestor.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SubjectError {
+pub enum AttestorError {
     /// No trustchain subject.
     #[error("DID: {0} as Trustchain subject does not exist.")]
     NoTrustchainSubject(String),
@@ -25,13 +26,10 @@ pub enum SubjectError {
     SigningError(String, String),
 }
 
-/// Trait for common DID Subject functionality.
-pub trait Subject {
-    /// Returns the subject's DID.
-    fn did(&self) -> &str;
-
+/// An upstream entity that attests to a downstream DID.
+pub trait Attestor: Subject {
     /// Attests to a DID Document. Subject attests to a did document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.
-    fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError>;
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
 }

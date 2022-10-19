@@ -152,10 +152,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4.1 Writing keys
     // TODO: refactor to use a new method for controller:
     // TrustchainController::create(update_key, recovery_key, signing_key, did);
-    KeyUtils.save_key(&did_short, KeyType::UpdateKey, &update_key)?;
-    KeyUtils.save_key(&did_short, KeyType::RecoveryKey, &recovery_key)?;
+    KeyUtils.save_key(&did_short, KeyType::UpdateKey, &update_key, false)?;
+    KeyUtils.save_key(&did_short, KeyType::RecoveryKey, &recovery_key, false)?;
     if signing_key.is_some() {
-        KeyUtils.save_key(&did_short, KeyType::SigningKey, &signing_key.unwrap())?;
+        KeyUtils.save_key(
+            &did_short,
+            KeyType::SigningKey,
+            &signing_key.unwrap(),
+            false,
+        )?;
     }
 
     // 4.2 Write create operation to push to ION server
