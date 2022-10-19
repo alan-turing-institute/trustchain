@@ -12,7 +12,7 @@ use std::sync::Once;
 use tempfile;
 
 /// A DID Subject.
-pub trait HasDID {
+pub trait Subject {
     fn did(&self) -> &str;
 }
 

@@ -7,7 +7,7 @@ use thiserror::Error;
 use trustchain_core::attestor::{Attestor, AttestorError};
 use trustchain_core::controller::{Controller, ControllerError};
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::HasDID;
+use trustchain_core::Subject;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -106,7 +106,7 @@ impl IONController {
     }
 }
 
-impl HasDID for IONController {
+impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
     }

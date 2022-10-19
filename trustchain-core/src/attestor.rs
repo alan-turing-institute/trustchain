@@ -1,5 +1,5 @@
 use crate::key_manager::{AttestorKeyManager, KeyManager, KeyManagerError};
-use crate::HasDID;
+use crate::Subject;
 use ssi::did::Document;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
@@ -27,7 +27,7 @@ pub enum AttestorError {
 }
 
 /// An upstream entity that attests to a downstream DID.
-pub trait Attestor: HasDID {
+pub trait Attestor: Subject {
     /// Attests to a DID Document. Subject attests to a did document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.

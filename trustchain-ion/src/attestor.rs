@@ -8,7 +8,7 @@ use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
-    HasDID,
+    Subject,
 };
 
 pub struct IONAttestor {
@@ -76,7 +76,7 @@ impl TryFrom<AttestorData> for IONAttestor {
     }
 }
 
-impl HasDID for IONAttestor {
+impl Subject for IONAttestor {
     fn did(&self) -> &str {
         &self.did
     }
