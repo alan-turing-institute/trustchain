@@ -20,8 +20,8 @@ name = "resolve"
 path = "src/bin/resolve.rs"
 
 [[bin]]
-name = "sign"
-path = "src/bin/sign.rs"
+name = "attest"
+path = "src/bin/attest.rs"
 
 [features]
 default = ["console_error_panic_hook"]
