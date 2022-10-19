@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
-        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+        let did = "test_attest";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let (valid_key, invalid_key) = if let OneOrMany::Many(keys_vec) = &keys {
             (keys_vec.first().unwrap(), keys_vec.last().unwrap())
