@@ -68,29 +68,6 @@ impl IONController {
     /// Construct a new IONController instance
     /// from existing Subject and Controller DIDs.
     pub fn new(did: &str, controlled_did: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        // Returns a result with propagating error
-
-        // Construct a KeyManager for the Subject.
-        let subject = IONAttestor::new(did);
-
-        // // Construct a KeyManager for the Controller.
-        // let update_key: Option<JWK> = match self.read_update_key(controlled_did) {
-        //     Ok(x) => Some(x),
-        //     Err(_) => {
-        //         return Err(Box::new(ControllerError::NoUpdateKey(
-        //             controlled_did.to_string(),
-        //         )))
-        //     }
-        // };
-        // let recovery_key: Option<JWK> = match self.read_recovery_key(controlled_did) {
-        //     Ok(x) => Some(x),
-        //     Err(_) => {
-        //         return Err(Box::new(ControllerError::NoRecoveryKey(
-        //             controlled_did.to_string(),
-        //         )))
-        //     }
-        // };
-
         Ok(Self {
             did: did.to_owned(),
             controlled_did: controlled_did.to_owned(),
@@ -127,8 +104,10 @@ impl Controller for IONController {
         Ok(Some(next_update_key))
     }
 
-    fn generate_next_update_key(&self) {
-        todo!()
+    fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
+        let key = self.generate_key();
+        self.save_key(&self.did, KeyType::NextUpdateKey, &key, false)?;
+        Ok(())
     }
 
     fn recovery_key(&self) -> Result<JWK, KeyManagerError> {
