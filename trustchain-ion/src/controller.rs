@@ -326,8 +326,8 @@ mod tests {
     #[test]
     fn test_extract_commitment() -> Result<(), Box<dyn std::error::Error>> {
         init();
-        let did = "did_is_proof_in_doc_meta";
-        let controlled_did = "controlled_is_proof_in_doc_meta";
+        let did = "did_extract_commitment";
+        let controlled_did = "controlled_extract_commitment";
         let controller = test_controller(did, controlled_did)?;
         let expected_recovery_commitment = "EiDZpHjQ5x7aRRqv6aUtmOdHsxWktAm1kU1IZl1w7iexsw";
         let expected_update_commitment = "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew";
