@@ -1,5 +1,6 @@
 use clap::{arg, command, Arg, ArgAction};
 use serde_json::to_string_pretty as to_json;
+use trustchain_core::Subject;
 // use serde_json::{Map, Value};
 // use ssi::did_resolve::{DocumentMetadata, Metadata};
 use core::panic;
@@ -79,10 +80,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1.0. Get the did to sign and controller to sign it
     let did = matches.get_one::<String>("did").unwrap();
     let controlled_did = matches.get_one::<String>("controlled_did").unwrap();
-    let did_suffix = DIDSuffix(did.to_string()).to_string();
-    let controlled_did_suffix = DIDSuffix(controlled_did.to_string()).to_string();
-    let did_suffix = did_suffix.as_str();
-    let controlled_did_suffix = controlled_did_suffix.as_str();
+    let did_suffix = did.split(':').last().unwrap();
+    let controlled_did_suffix = controlled_did.split(':').last().unwrap();
+    // let did_suffix = did_suffix.as_str();
+    // let controlled_did_suffix = controlled_did_suffix.as_str();
 
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
     let controller = match IONController::new(did_suffix, controlled_did_suffix) {
@@ -92,6 +93,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(e);
         }
     };
+
+    // TODO: testing print
+    // println!("===============");
+    // println!("{}", controller.did());
+    // println!("{}", controller.controlled_did());
+    // println!("{}", did);
+    // println!("{}", controlled_did);
+    // println!("{}", did_suffix);
+    // println!("{}", controlled_did_suffix);
+    // println!("===============");
 
     // 1.2. Resolve controlled_did document with Trustchain resolver
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.

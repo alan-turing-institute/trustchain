@@ -139,7 +139,8 @@ impl IONController {
     /// Function to return a patch for adding a proof service.
     pub fn add_proof_service(&self, did: &str, proof: &str) -> DIDStatePatch {
         let mut obj: Map<String, Value> = Map::new();
-        obj.insert("controller".to_string(), Value::from(did));
+        let full_did = format!("did:ion:test:{}", did);
+        obj.insert("controller".to_string(), Value::from(full_did));
         obj.insert("proofValue".to_string(), Value::from(proof.to_owned()));
 
         DIDStatePatch::AddServices {
