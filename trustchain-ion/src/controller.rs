@@ -112,7 +112,7 @@ impl Controller for IONController {
 
     fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
         let key = self.generate_key();
-        self.save_key(&self.did, KeyType::NextUpdateKey, &key, false)?;
+        self.save_key(self.controlled_did(), KeyType::NextUpdateKey, &key, false)?;
         Ok(())
     }
 
