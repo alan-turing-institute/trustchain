@@ -3,9 +3,9 @@ use serde_json::to_string_pretty as to_json;
 // use serde_json::{Map, Value};
 // use ssi::did_resolve::{DocumentMetadata, Metadata};
 use core::panic;
-use ssi::one_or_many::OneOrMany;
+// use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use trustchain_core::data::TEST_SIGNING_KEYS;
+// use trustchain_core::data::TEST_SIGNING_KEYS;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 
 use did_ion::sidetree::DIDStatePatch;
@@ -14,13 +14,13 @@ use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::{sidetree::SidetreeClient, ION};
 
 // use ssi::did::{Document, ServiceEndpoint};
-use ssi::jwk::JWK;
+// use ssi::jwk::JWK;
 
-use trustchain_core::attestor::Attestor;
+// use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
 
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-use trustchain_ion::attestor::IONAttestor;
+// use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::controller::IONController;
 
 // use trustchain_ion::is_proof_in_doc_meta;
@@ -151,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // TODO: handle the unwraps in 2.4 and 2.5
     // 2.4  Generate new update key
-    controller.generate_next_update_key();
+    controller.generate_next_update_key()?;
 
     // Store update key
     let update_key = controller.update_key();
