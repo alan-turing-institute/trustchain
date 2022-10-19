@@ -86,18 +86,13 @@ impl Attestor for IONAttestor {
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
-        let canonical_document = match ION::json_canonicalization_scheme(&doc) {
+        // Canonicalize document
+        let doc_canon = match ION::json_canonicalization_scheme(&doc) {
             Ok(str) => str,
             Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
         };
-        let proof = (&doc.id.clone(), canonical_document);
-
-        let proof_json = match ION::json_canonicalization_scheme(&proof) {
-            Ok(str) => str,
-            Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
-        };
-
-        let proof_json_bytes = ION::hash(proof_json.as_bytes());
+        // Hash canonicalized document
+        let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
         let signing_key = match self.signing_key(key_id) {
@@ -113,8 +108,8 @@ impl Attestor for IONAttestor {
                 }
             }
         };
-
-        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &signing_key) {
+        // Encode and sign
+        match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
             Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
         }
@@ -148,28 +143,38 @@ mod tests {
 
     #[test]
     fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
-        let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
+        let did = "test_attest";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
-        let signing_key = keys.first().unwrap();
+        let (valid_key, invalid_key) = if let OneOrMany::Many(keys_vec) = &keys {
+            (keys_vec.first().unwrap(), keys_vec.last().unwrap())
+        } else {
+            panic!()
+        };
 
         let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
 
-        println!("{:?}", target.read_signing_keys(did));
-
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
-
         let result = target.attest(&doc, None);
+
+        // Check attest was ok
         assert!(result.is_ok());
 
+        // Check signature
         let proof_result = result?;
+        let valid_decoded: Result<String, ssi::error::Error> =
+            ssi::jwt::decode_verify(&proof_result, valid_key);
+        let invalid_decoded: Result<String, ssi::error::Error> =
+            ssi::jwt::decode_verify(&proof_result, invalid_key);
+        assert!(valid_decoded.is_ok());
+        assert!(invalid_decoded.is_err());
 
-        // Test that the proof_result string is valid JSON.
-        // TODO: figure out the correct result type here (guessed &str).
-        let json_proof_result: Result<&str, serde_json::Error> =
-            serde_json::from_str(&proof_result);
+        // Check payload
+        let valid_decoded = valid_decoded.unwrap();
+        let doc_canon = ION::json_canonicalization_scheme(&doc)?;
+        let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
-        // TODO: check for a key-value in the JSON.
-        // println!("{:?}", json_proof_result);
+        assert_eq!(valid_decoded, doc_canon_hash);
+
         Ok(())
     }
 
