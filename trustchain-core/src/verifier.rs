@@ -28,7 +28,7 @@ pub enum VerifierError {
     UnresolvableDID(String),
 }
 
-/// Trait for common DID Controller functionality.
+/// Verifier of root and downstream DIDs.
 trait Verifier {
     fn verify(&mut self, did: &str) -> Result<(), VerifierError>;
 }
@@ -105,7 +105,7 @@ impl<T> Verifier for TrustchainVerifier<T>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Performs search from did upwards to root node.
+    /// Verifies a dDID by following a chain Performs search from did upwards to root node.
     fn verify(&mut self, did: &str) -> Result<(), VerifierError> {
         // Clear visited hashmap
         self.visited.clear();
