@@ -69,7 +69,8 @@ impl TryFrom<SubjectData> for IONSubject {
     fn try_from(data: SubjectData) -> Result<Self, Self::Error> {
         let subject = IONSubject { did: data.0 };
 
-        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1)?;
+        // Attempt to save the keys but do not overwrite existing key information.
+        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1, false)?;
         Ok(subject)
     }
 }

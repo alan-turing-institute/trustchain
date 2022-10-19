@@ -42,17 +42,19 @@ impl TryFrom<ControllerData> for IONController {
             did: data.did,
             controlled_did: data.controlled_did,
         };
-        // Save the update key
+        // Attempt to save the update key, but do not overwrite existing key data.
         controller.save_key(
             &controller.controlled_did,
             KeyType::UpdateKey,
             &data.update_key,
+            false,
         )?;
-        // Save the recovery key
+        // Attempt to save the recovery key, but do not overwrite existing key data.
         controller.save_key(
             &controller.controlled_did,
             KeyType::RecoveryKey,
             &data.recovery_key,
+            false,
         )?;
         Ok(controller)
     }
