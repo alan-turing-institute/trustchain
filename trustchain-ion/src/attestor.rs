@@ -86,18 +86,13 @@ impl Attestor for IONAttestor {
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
-        let canonical_document = match ION::json_canonicalization_scheme(&doc) {
+        // Canonicalize document
+        let doc_canon = match ION::json_canonicalization_scheme(&doc) {
             Ok(str) => str,
             Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
         };
-        let proof = (&doc.id.clone(), canonical_document);
-
-        let proof_json = match ION::json_canonicalization_scheme(&proof) {
-            Ok(str) => str,
-            Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
-        };
-
-        let proof_json_bytes = ION::hash(proof_json.as_bytes());
+        // Hash canonicalized document
+        let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
         let signing_key = match self.signing_key(key_id) {
@@ -113,8 +108,8 @@ impl Attestor for IONAttestor {
                 }
             }
         };
-
-        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &signing_key) {
+        // Encode and sign
+        match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
             Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
         }
