@@ -73,7 +73,7 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Set-up
 
     // Write keys as &str
-    let home = std::env::var("$USER")?;
+    let home = std::env::var("HOME")?;
     let signing_key_file = format!("{}/.trustchain/key_manager/EiAVrUJpqDgrvwr4xfwAUj_o9l5RZlzlgu7VGTY93UzpyQ/signing_key.json", home);
     let update_key_file = format!(
         "{}/.trustchain/key_manager/EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA/update_key.json",
