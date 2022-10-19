@@ -16,13 +16,13 @@ pub enum ChainError {
 /// A chain of DIDs.
 trait Chain {
     /// Prepend a DID to the chain.
-    fn prepend(&self, tuple: (Document, DocumentMetadata)) -> Result<(), ChainError>;
+    fn prepend(&mut self, tuple: (Document, DocumentMetadata));
 
     /// Returns the length of the DID chain.
     fn len(&self) -> usize;
 
     /// Returns the level of the given DID in the chain.
-    fn level(&self, did: &str) -> Option<u8>;
+    fn level(&self, did: &str) -> Option<usize>;
 }
 
 struct DIDChain {
@@ -30,32 +30,37 @@ struct DIDChain {
     did_map: HashMap<String, (Document, DocumentMetadata)>,
 
     // Vector to keep track of the level of each DID.
-    level_vec: Vec<u8>,
+    level_vec: Vec<String>,
 }
 
 impl DIDChain {
     fn new() -> Self {
         Self {
             did_map: HashMap::<String, (Document, DocumentMetadata)>::new(),
-            level_vec: Vec::<u8>::new(),
+            level_vec: Vec::<String>::new(),
         }
     }
 }
 
-impl Chain for DIDChain {
-    fn prepend(&self, tuple: (Document, DocumentMetadata)) -> Result<(), ChainError> {
-        todo!()
+impl<'a> Chain for DIDChain {
+    fn prepend(&mut self, tuple: (Document, DocumentMetadata)) {
+        let (doc, doc_meta) = tuple;
+        &self.level_vec.push(doc.id.to_owned());
+        &self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
     }
 
     fn len(&self) -> usize {
         self.level_vec.len().to_owned()
     }
 
-    fn level(&self, did: &str) -> Option<u8> {
-        // Subtract level vector index from the length.
+    fn level(&self, did: &str) -> Option<usize> {
+        if !&self.level_vec.contains(&did.to_owned()) {
+            return None;
+        }
 
-        // &self.len() - level_vec.iter().position(|&x| x == did).unwrap()
-        todo!();
+        // Subtract level vector index from the length.
+        let index = &self.level_vec.iter().position(|x| x == did).unwrap();
+        Some(&self.len() - 1 - index)
     }
 }
 
@@ -76,23 +81,27 @@ mod tests {
     #[test]
     fn test_chain() {
         let mut target = DIDChain::new();
+        let expected_ddid = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
-        let did0 = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
-
+        // Check that the chain is initially empty.
         assert_eq!(target.len(), 0);
-        assert!(target.level(did0).is_none());
+        assert!(target.level(expected_ddid).is_none());
 
         // Prepend a DID to the chain
         target.prepend(resolved_tuple());
 
+        // Check that the chain now has one node.
+        assert_eq!(target.len(), 1);
+
         // Check that the HashMap key matches the DID.
         assert_eq!(target.did_map.keys().len(), 1);
-        assert!(target.did_map.contains_key(did0));
+        assert!(target.did_map.contains_key(expected_ddid));
 
-        assert_eq!(target.len(), 1);
-        assert!(target.level(did0).is_some());
-        assert_eq!(target.level(did0).unwrap(), 0);
+        // Check the level.
+        assert!(target.level(expected_ddid).is_some());
+        assert_eq!(target.level(expected_ddid).unwrap(), 0);
 
+        // TODO: prepend another DID and repeat the above tests.
         // let did1 = ""
     }
 
