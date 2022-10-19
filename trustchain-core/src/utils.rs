@@ -1,6 +1,23 @@
 //! Utils module.
 use serde::Serialize;
 
+// use std::io::Read;
+use crate::TRUSTCHAIN_DATA;
+use std::path::Path;
+use std::sync::Once;
+use tempfile;
+
+// Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+static INIT: Once = Once::new();
+pub fn init() {
+    INIT.call_once(|| {
+        // initialization code here
+        let tempdir = tempfile::tempdir().unwrap();
+        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+    });
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 #[allow(dead_code)]
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
