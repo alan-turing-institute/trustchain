@@ -73,6 +73,17 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Set-up
 
     // Write keys as &str
+    // let home = std::env::var("HOME")?;
+    // let signing_key_file = format!("{}/.trustchain/tests/key_manager/EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ/signing_key.json", home);
+    // let update_key_file = format!(
+    //     "{}/.trustchain/tests/key_manager/EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA/update_key.json",
+    //     home
+    // );
+    // let recovery_key_file = format!("{}/.trustchain/tests/key_manager/EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA/recovery_key.json", home);
+    // let signing_key = read_from_specific_file(&signing_key_file)?;
+    // let update_key = read_from_specific_file(&update_key_file)?;
+    // let recovery_key = read_from_specific_file(&recovery_key_file)?;
+
     let home = std::env::var("HOME")?;
     let signing_key_file = format!("{}/.trustchain/key_manager/EiAVrUJpqDgrvwr4xfwAUj_o9l5RZlzlgu7VGTY93UzpyQ/signing_key.json", home);
     let update_key_file = format!(
@@ -134,47 +145,22 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
 
     let (_res_meta, doc, doc_meta) = result.unwrap();
 
+    // TODO: once attestation is made, extract proof value from doc_meta instead
+    // of passing as value
+
     // Check the DID Document was successfully resolved.
     assert!(doc.is_some());
-    let doc = doc.unwrap();
 
     // 3. Decode proof: get payload, check payload is hash of doc
-
-    let algorithm = ION::SIGNATURE_ALGORITHM;
-
-    let canonical_document = match ION::json_canonicalization_scheme(&doc) {
-        Ok(str) => str,
-        Err(_) => {
-            return Err(Box::new(AttestorError::InvalidDocumentParameters(
-                doc.id.clone(),
-            )))
-        }
-    };
-
-    // TODO: check we really want this to be the proof?
-    let proof = (&doc.id.clone(), canonical_document);
-
-    let proof_json = match ION::json_canonicalization_scheme(&proof) {
-        Ok(str) => str,
-        Err(_) => {
-            return Err(Box::new(AttestorError::InvalidDocumentParameters(
-                doc.id.clone(),
-            )))
-        }
-    };
-    let proof_json_bytes = ION::hash(proof_json.as_bytes());
-    let proof_json_str = proof_json_bytes.as_str();
-
-    let decoded_proof_value: String = ssi::jwt::decode_unverified(&expected_proof_value)?;
-
-    println!("{:?}", decoded_proof_value);
-    println!("{:?}", proof_json_str);
+    let doc = doc.unwrap();
+    let doc_canon = ION::json_canonicalization_scheme(&doc)?;
+    let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
     // 4. Check signature on proof_value is valid for signing key
     //    AND
     //    that decoded payload is equal to reconstructed hashed document
-    let decoded_result: String = ssi::jwt::decode_verify(&expected_proof_value, &signing_key)?;
-    assert_eq!(decoded_result, proof_json_str);
+    let decoded_result: String = ssi::jwt::decode_verify(expected_proof_value, &signing_key)?;
+    assert_eq!(decoded_result, doc_canon_hash);
 
     Ok(())
 }
