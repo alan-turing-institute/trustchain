@@ -2,7 +2,7 @@ use clap::{arg, command, Arg, ArgAction};
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::jwk::JWK;
 
-use did_ion::sidetree::DIDStatePatch;
+use did_ion::sidetree::{DIDStatePatch, DIDSuffix};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{
     Operation, ServiceEndpointEntry, Sidetree, SidetreeDID, SidetreeOperation,
@@ -147,7 +147,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("DID suffix: {:?}", did_short);
         println!("Long: {:?}", did_long);
     }
-
+    println!("{}", DIDSuffix(did_short.to_string()));
     // 4. Writing to file
     // 4.1 Writing keys
     // TODO: refactor to use a new method for controller:
