@@ -7,7 +7,7 @@ use thiserror::Error;
 use trustchain_core::controller::{Controller, ControllerError};
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::subject::{Subject, SubjectError};
-
+use trustchain_core::HasDID;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -106,14 +106,9 @@ impl IONController {
     }
 }
 
-impl Subject for IONController {
+impl HasDID for IONController {
     fn did(&self) -> &str {
-        // TODO: consider whether happy with controlled_did being the "did" of
-        // "controller"
         &self.did
-    }
-    fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError> {
-        todo!()
     }
 }
 

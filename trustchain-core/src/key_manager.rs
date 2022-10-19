@@ -405,7 +405,7 @@ pub mod tests {
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
 
         // Make path for this test
-        let did_path_str = "test_save_key";
+        let did_path_str = "test_keys_exist";
 
         assert!(!target.keys_exist(did_path_str, &KeyType::UpdateKey));
 

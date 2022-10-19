@@ -25,7 +25,7 @@ pub enum ControllerError {
 /// Trait for common DID Controller functionality.
 /// Controller extends Subject because every dDID
 /// controller is itself the subject of the uDID.
-pub trait Controller: Subject {
+pub trait Controller {
     fn controlled_did(&self) -> &str;
     fn into_subject(&self) -> Box<dyn Subject>;
     fn update_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the update key for the loaded DID

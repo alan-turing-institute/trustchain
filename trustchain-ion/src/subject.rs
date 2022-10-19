@@ -8,6 +8,7 @@ use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     key_manager::{KeyManager, KeyManagerError, SubjectKeyManager},
     subject::{Subject, SubjectError},
+    HasDID,
 };
 
 pub struct IONSubject {
@@ -75,12 +76,14 @@ impl TryFrom<SubjectData> for IONSubject {
     }
 }
 
-impl Subject for IONSubject {
+impl HasDID for IONSubject {
     fn did(&self) -> &str {
         &self.did
     }
+}
 
-    fn attest(&self, doc: &Document, signing_key: &JWK) -> Result<String, SubjectError> {
+impl Subject for IONSubject {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, SubjectError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         let canonical_document = match ION::json_canonicalization_scheme(&doc) {
@@ -96,7 +99,22 @@ impl Subject for IONSubject {
 
         let proof_json_bytes = ION::hash(proof_json.as_bytes());
 
-        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, signing_key) {
+        // Get the signing key.
+        let signing_key = match self.signing_key(key_id) {
+            Ok(key) => key,
+            Err(_) => {
+                if key_id.is_none() {
+                    return Err(SubjectError::NoSigningKey(doc.id.to_string()));
+                } else {
+                    return Err(SubjectError::NoSigningKeyWithId(
+                        doc.id.to_string(),
+                        key_id.unwrap().to_string(),
+                    ));
+                }
+            }
+        };
+
+        match ssi::jwt::encode_sign(algorithm, &proof_json_bytes, &signing_key) {
             Ok(str) => Ok(str),
             Err(e) => Err(SubjectError::SigningError(doc.id.clone(), e.to_string())),
         }
@@ -140,7 +158,7 @@ mod tests {
 
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
 
-        let result = target.attest(&doc, signing_key);
+        let result = target.attest(&doc, None);
         assert!(result.is_ok());
 
         let proof_result = result?;
