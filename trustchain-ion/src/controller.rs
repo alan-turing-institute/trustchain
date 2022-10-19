@@ -18,7 +18,7 @@ impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
 /// Type for holding controller data.
-struct ControllerData {
+pub struct ControllerData {
     did: String,
     controlled_did: String,
     update_key: JWK,
@@ -26,7 +26,7 @@ struct ControllerData {
 }
 
 impl ControllerData {
-    fn new(did: String, controlled_did: String, update_key: JWK, recovery_key: JWK) -> Self {
+    pub fn new(did: String, controlled_did: String, update_key: JWK, recovery_key: JWK) -> Self {
         ControllerData {
             did,
             controlled_did,
