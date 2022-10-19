@@ -1,9 +1,9 @@
 //! Trustchain library.
+pub mod attestor;
 pub mod controller;
 pub mod data;
 pub mod key_manager;
 pub mod resolver;
-pub mod subject;
 mod utils;
 
 // use std::io::Read;
@@ -11,6 +11,7 @@ use std::path::Path;
 use std::sync::Once;
 use tempfile;
 
+/// A DID Subject.
 pub trait HasDID {
     fn did(&self) -> &str;
 }

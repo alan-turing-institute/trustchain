@@ -1,12 +1,12 @@
-use crate::subject::IONSubject;
+use crate::attestor::IONAttestor;
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use std::convert::TryFrom;
 use thiserror::Error;
+use trustchain_core::attestor::{Attestor, AttestorError};
 use trustchain_core::controller::{Controller, ControllerError};
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::subject::{Subject, SubjectError};
 use trustchain_core::HasDID;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
@@ -71,7 +71,7 @@ impl IONController {
         // Returns a result with propagating error
 
         // Construct a KeyManager for the Subject.
-        let subject = IONSubject::new(did);
+        let subject = IONAttestor::new(did);
 
         // // Construct a KeyManager for the Controller.
         // let update_key: Option<JWK> = match self.read_update_key(controlled_did) {
@@ -136,8 +136,8 @@ impl Controller for IONController {
         Ok(recovery_key)
     }
 
-    fn into_subject(&self) -> Box<dyn Subject> {
-        Box::new(IONSubject::new(&self.did))
+    fn to_attestor(&self) -> Box<dyn Attestor> {
+        Box::new(IONAttestor::new(&self.did))
     }
 }
 
@@ -199,7 +199,7 @@ mod tests {
         assert_eq!(target.did(), did);
         assert_ne!(target.did(), controlled_did);
 
-        let result = target.into_subject();
+        let result = target.to_attestor();
         assert_eq!(result.did(), did);
         assert_ne!(result.did(), controlled_did);
         Ok(())

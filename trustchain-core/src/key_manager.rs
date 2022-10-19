@@ -73,7 +73,7 @@ pub trait ControllerKeyManager: KeyManager {
     }
 }
 
-pub trait SubjectKeyManager: KeyManager {
+pub trait AttestorKeyManager: KeyManager {
     /// Reads one or more signing keys.
     fn read_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
         self.read_key(did, &KeyType::SigningKey)
@@ -277,7 +277,7 @@ pub mod tests {
     pub struct TestKeyManager;
 
     impl KeyManager for TestKeyManager {}
-    impl SubjectKeyManager for TestKeyManager {}
+    impl AttestorKeyManager for TestKeyManager {}
     impl ControllerKeyManager for TestKeyManager {}
 
     /// Test for generating keys
