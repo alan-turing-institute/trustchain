@@ -130,6 +130,8 @@ fn main() {
     //     this service from Doc to be signed
     // TODO: use fn from resolver (e.g. make it pub),
 
+    // TODO: this should not be in the sign, a proof should be removed when a content
+    // update is performed
     // Check if proof in document metadata
     if controller.is_proof_in_doc_meta(&doc_meta) {
         patches.push(DIDStatePatch::RemoveServices {
