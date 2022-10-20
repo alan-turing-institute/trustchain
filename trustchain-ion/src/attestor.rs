@@ -143,6 +143,10 @@ mod tests {
 
     #[test]
     fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
         let did = "test_attest";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let (valid_key, invalid_key) = if let OneOrMany::Many(keys_vec) = &keys {
@@ -150,10 +154,12 @@ mod tests {
         } else {
             panic!()
         };
-
         let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
 
+        // Load doc
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
+
+        // Attest to doc
         let result = target.attest(&doc, None);
 
         // Check attest was ok
