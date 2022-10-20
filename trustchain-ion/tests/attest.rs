@@ -23,7 +23,7 @@ use trustchain_core::TRUSTCHAIN_DATA;
 
 use did_ion::sidetree::Sidetree;
 use serde_json;
-use ssi::did_resolve::DocumentMetadata;
+use ssi::did_resolve::{DocumentMetadata, Metadata};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
 use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
@@ -121,7 +121,7 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     let attestor = IONAttestor::try_from((did.to_string(), OneOrMany::One(signing_key.clone())));
 
     // Set proof_value as hardcoded one to check
-    let expected_proof_value = "eyJhbGciOiJFUzI1NksifQ.IkVpQjdMOWJZeU5MMjBsbEptY25jbzk4TFliZzlDbWJSVU4xV3NHSXJhVzBvTkEi.TiSMTT9KRDi879EBo0QsLDz4H_LI4FJ9q1i2FHhGquMywgVlTVSnn4uqaQkBuPERtpl9YgmSjSUi0Vc5v3jarg";
+    // let expected_proof_value = "eyJhbGciOiJFUzI1NksifQ.IkVpQjdMOWJZeU5MMjBsbEptY25jbzk4TFliZzlDbWJSVU4xV3NHSXJhVzBvTkEi.TiSMTT9KRDi879EBo0QsLDz4H_LI4FJ9q1i2FHhGquMywgVlTVSnn4uqaQkBuPERtpl9YgmSjSUi0Vc5v3jarg";
 
     // TODO: once attestation is made, extract proof value from doc_meta instead
     // of passing as value
@@ -139,20 +139,50 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.
     assert!(result.is_ok());
 
-    let (_res_meta, doc, doc_meta) = result.unwrap();
+    // Destructure
+    let (_res_meta, doc, doc_meta) = if let (_res_meta, doc, Some(doc_meta)) = result.unwrap() {
+        (_res_meta, doc, doc_meta)
+    } else {
+        todo!()
+    };
+
+    // Get controller and proof
+    let (expected_proof_value, controller_str) =
+        if let Some(property_set) = doc_meta.property_set.as_ref() {
+            if let Some(Metadata::Map(proof)) = property_set.get("proof") {
+                if let (Some(Metadata::String(proof_value)), Some(Metadata::String(controller))) =
+                    (proof.get("proofValue"), proof.get("id"))
+                {
+                    (proof_value.to_string(), controller.to_string())
+                } else {
+                    panic!()
+                }
+            } else {
+                panic!()
+            }
+        } else {
+            panic!()
+        };
 
     // Check the DID Document was successfully resolved.
     assert!(doc.is_some());
 
     // 3. Decode proof: get payload, check payload is hash of doc
-    let doc = doc.unwrap();
+    let mut doc = doc.unwrap();
+    // Have to set controller as None as was not controlled without proof_service
+    doc.controller = None;
+
     let doc_canon = ION::json_canonicalization_scheme(&doc)?;
     let doc_canon_hash = ION::hash(doc_canon.as_bytes());
+
+    // 3.1 TODO: Get public key from controller DID
+    let controller_result = resolver.resolve_as_result(&full_controlled_did);
+    // let (_res_meta, controller_doc, doc_meta) =
 
     // 4. Check signature on proof_value is valid for signing key
     //    AND
     //    that decoded payload is equal to reconstructed hashed document
-    let decoded_result: String = ssi::jwt::decode_verify(expected_proof_value, &signing_key)?;
+    let decoded_result: String = ssi::jwt::decode_verify(&expected_proof_value, &signing_key)?;
     assert_eq!(decoded_result, doc_canon_hash);
 
     Ok(())
