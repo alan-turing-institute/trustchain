@@ -1,12 +1,13 @@
 use crate::chain::{Chain, DIDChain};
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::canonicalize;
-use crate::ROOT_EVENT_TIME;
+use crate::{controller, ROOT_EVENT_TIME};
 use serde_json::to_string_pretty as to_json;
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::did_resolve::ResolutionMetadata;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::one_or_many::OneOrMany;
 use ssi::{
     did::Document,
     did_resolve::{DIDResolver, DocumentMetadata},
@@ -39,6 +40,9 @@ pub enum VerifierError {
     /// No proof value present.
     #[error("No proof could be retrieved from document metadata.")]
     FailureToGetProof,
+    /// Failure to get controller from document.
+    #[error("No controller could be retrieved from document.")]
+    FailureToGetController,
 }
 
 /// Verifier of root and downstream DIDs.
@@ -87,9 +91,14 @@ where
 //   - Some are already implemented in resolver.
 //   - Some may benefit from being part of a struct impl.
 
-/// Consider using resolver functions (these are currently private)
-fn get_controller(doc: &Document) -> String {
-    todo!()
+/// Gets controller from the passed document.
+fn get_controller(doc: &Document) -> Result<String, VerifierError> {
+    // Get property set
+    if let Some(OneOrMany::One(controller)) = doc.controller.as_ref() {
+        Ok(controller.to_string())
+    } else {
+        Err(VerifierError::FailureToGetController)
+    }
 }
 /// Gets proof from DocumentMetadata.
 fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, VerifierError> {
@@ -295,8 +304,8 @@ mod tests {
     "##;
 
     use crate::data::{
-        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT_METADATA,
-        TEST_ROOT_PLUS_2_DOCUMENT_METADATA,
+        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
+        TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT_METADATA,
     };
     use crate::utils::canonicalize;
     use ssi::did_resolve::HTTPDIDResolver;
@@ -325,6 +334,15 @@ mod tests {
         let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
         let actual_root_keys = extract_keys(&root_doc);
         assert_eq!(actual_root_keys, expected_root_keys);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_controller() -> Result<(), Box<dyn std::error::Error>> {
+        let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let expected_controller = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let actual_controller = get_controller(&doc)?;
+        assert_eq!(expected_controller, actual_controller);
         Ok(())
     }
 
