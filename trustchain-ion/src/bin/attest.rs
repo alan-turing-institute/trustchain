@@ -178,7 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2.4. Create update operation including all patches constructed
     // DIDSuffix gives the hased suffix data only from full string.
     let update_operation = ION::update(
-        DIDSuffix(controlled_did.to_owned()),
+        DIDSuffix(controlled_did.split(':').last().unwrap().to_owned()),
         &update_key.unwrap(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
