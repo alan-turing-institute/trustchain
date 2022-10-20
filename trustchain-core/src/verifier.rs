@@ -120,7 +120,7 @@ where
     T: Send + Sync + DIDResolver,
 {
     fn verify(&self, did: &str) -> Result<(), VerifierError> {
-        // Build the chain from the given DID to the root.
+        // Build a DID chain from the given DID to the root.
         let chain = match DIDChain::new(did, &self.resolver) {
             Ok(x) => x,
             Err(e) => return Err(VerifierError::ChainBuildFailure(e.to_string())),

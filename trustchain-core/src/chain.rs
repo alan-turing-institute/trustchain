@@ -13,8 +13,8 @@ use ssi::{
 pub enum ChainError {
     // #[error("Invalid data. Failed to prepend DID: {0}.")]
     // PrependFailed(String),
-    #[error("No chain nodes found for DID: {0}.")]
-    NoChainNodes(String),
+    #[error("Failed to resolve DID: {0}.")]
+    ResolutionFailure(String),
     #[error("Found multiple controllers in DID: {0}.")]
     MultipleControllers(String),
 }
@@ -84,7 +84,7 @@ impl DIDChain {
                 ddid = udid;
             } else {
                 // If any resolution attempt fails, return an error.
-                return Err(ChainError::NoChainNodes(ddid));
+                return Err(ChainError::ResolutionFailure(ddid));
             }
         }
     }
