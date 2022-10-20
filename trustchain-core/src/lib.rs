@@ -14,6 +14,8 @@ use tempfile;
 /// A DID Subject.
 pub trait Subject {
     fn did(&self) -> &str;
+    // TODO: add did_suffix for subject trait
+    // fn did_suffix(&self) -> &str;
 }
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA

@@ -1,7 +1,7 @@
+use did_ion::{sidetree::SidetreeClient, ION};
+use serde_json::to_string_pretty as to_json;
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::one_or_many::OneOrMany;
-
-use did_ion::{sidetree::SidetreeClient, ION};
 use trustchain_core::attestor::{Attestor, AttestorError};
 use trustchain_core::controller::Controller;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -74,24 +74,39 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Set-up
     // Set controlled_did
-    let controlled_did = "EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA";
+    // let controlled_did = "EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA";
+
+    // root-plus-2
+    let controlled_did = "EiARthjGCeGU4sPS-qsK3dvAP-6XG8FGfD2hazxPzTya9w";
+
+    // root-plus-1
+    // let controlled_did = "EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA";
 
     // Set did
-    let did = "EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+    // let did = "EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+
+    // root
+    // let did = "EiAVrUJpqDgrvwr4xfwAUj_o9l5RZlzlgu7VGTY93UzpyQ";
+
+    // root-plus-1
+    let did = "EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA";
+
+    let test = "";
+    // let test = "tests";
 
     // Write keys as &str
     let home = std::env::var("HOME")?;
     let signing_key_file = format!(
-        "{}/.trustchain/tests/key_manager/{}/signing_key.json",
-        home, did
+        "{}/.trustchain/{}/key_manager/{}/signing_key.json",
+        home, test, did
     );
     let update_key_file = format!(
-        "{}/.trustchain/tests/key_manager/{}/update_key.json",
-        home, controlled_did
+        "{}/.trustchain/{}/key_manager/{}/update_key.json",
+        home, test, controlled_did
     );
     let recovery_key_file = format!(
-        "{}/.trustchain/tests/key_manager/{}/recovery_key.json",
-        home, controlled_did
+        "{}/.trustchain/{}/key_manager/{}/recovery_key.json",
+        home, test, controlled_did
     );
     println!("{:?}", signing_key_file);
     let signing_key = read_from_specific_file(&signing_key_file)?;
@@ -171,7 +186,13 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Decode proof: get payload, check payload is hash of doc
     let mut doc = doc.unwrap();
     // Have to set controller as None as was not controlled without proof_service
-    doc.controller = None;
+
+    // Temp fix to check
+    doc.controller = match doc.controller {
+        Some(OneOrMany::One(x)) => Some(OneOrMany::One(x.split(':').last().unwrap().to_string())),
+        _ => panic!(),
+    };
+
     let doc_canon = ION::json_canonicalization_scheme(&doc)?;
     let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
@@ -200,8 +221,8 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
             panic!()
         };
 
-    println!("{:?}", signing_public_key);
-    println!("{:?}", signing_key);
+    assert_eq!(&signing_key.to_public(), signing_public_key);
+
     // 4. Check signature on proof_value is valid for signing key
     //    AND
     //    that decoded payload is equal to reconstructed hashed document
