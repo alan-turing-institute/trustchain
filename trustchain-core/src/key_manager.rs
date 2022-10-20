@@ -414,6 +414,14 @@ pub mod tests {
 
         assert!(target.keys_exist(did_path_str, &KeyType::UpdateKey));
 
+        // Failing overwrite
+        let try_overwrite = target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, false);
+        assert!(try_overwrite.is_err());
+
+        // Successful overwrite
+        let try_overwrite = target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, true);
+        assert!(try_overwrite.is_ok());
+
         Ok(())
     }
 

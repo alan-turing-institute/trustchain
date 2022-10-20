@@ -88,7 +88,10 @@ impl Attestor for IONAttestor {
 
         // Add controller to document
         let mut doc = doc.clone();
-        doc.controller = Some(OneOrMany::One(self.did().to_string()));
+
+        // Temporary fix: prepend 'did:ion:test:' to did as controller
+        let full_did = format!("did:ion:test:{}", self.did());
+        doc.controller = Some(OneOrMany::One(full_did));
 
         // Canonicalize document
         let doc_canon = match ION::json_canonicalization_scheme(&doc) {
@@ -183,7 +186,8 @@ mod tests {
 
         // Reconstruct doc
         let mut doc_with_controller = doc;
-        doc_with_controller.controller = Some(OneOrMany::One(target.did().to_string()));
+        let full_did = format!("did:ion:test:{}", target.did());
+        doc_with_controller.controller = Some(OneOrMany::One(full_did));
         let doc_canon = ION::json_canonicalization_scheme(&doc_with_controller)?;
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
