@@ -1,3 +1,4 @@
+use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::one_or_many::OneOrMany;
 
 use did_ion::{sidetree::SidetreeClient, ION};
@@ -171,18 +172,42 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     let mut doc = doc.unwrap();
     // Have to set controller as None as was not controlled without proof_service
     doc.controller = None;
-
     let doc_canon = ION::json_canonicalization_scheme(&doc)?;
     let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
     // 3.1 TODO: Get public key from controller DID
-    let controller_result = resolver.resolve_as_result(&full_controlled_did);
+    // let full_did = format!("did:test:ion:{}", controller_str);
+    // println!("{}", full_did);
+    let (_, controller_doc, _) = match resolver.resolve_as_result(&controller_str) {
+        Ok((res_meta, Some(controller_doc), Some(controller_doc_meta))) => {
+            (res_meta, controller_doc, controller_doc_meta)
+        }
+        _ => panic!(),
+    };
     // let (_res_meta, controller_doc, doc_meta) =
+    let signing_public_key =
+        if let Some(verfication_method) = controller_doc.verification_method.as_ref() {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(val),
+                ..
+            }) = verfication_method.first().unwrap()
+            {
+                val
+            } else {
+                panic!()
+            }
+        } else {
+            panic!()
+        };
 
+    println!("{:?}", signing_public_key);
+    println!("{:?}", signing_key);
     // 4. Check signature on proof_value is valid for signing key
     //    AND
     //    that decoded payload is equal to reconstructed hashed document
-    let decoded_result: String = ssi::jwt::decode_verify(&expected_proof_value, &signing_key)?;
+    // let decoded_result: String = ssi::jwt::decode_verify(&expected_proof_value, &signing_key)?;
+    let decoded_result: String =
+        ssi::jwt::decode_verify(&expected_proof_value, signing_public_key)?;
     assert_eq!(decoded_result, doc_canon_hash);
 
     Ok(())
