@@ -1,12 +1,13 @@
-use std::{collections::HashMap, convert::TryFrom};
-use thiserror::Error;
-
 use crate::resolver::{Resolver, ResolverError};
+use crate::utils::canonicalize;
 use ssi::{
     did::{self, Document},
     did_resolve::{DIDResolver, DocumentMetadata},
+    ldp::JsonWebSignature2020,
     one_or_many::OneOrMany,
 };
+use std::{collections::HashMap, convert::TryFrom};
+use thiserror::Error;
 
 /// An error relating to a DID chain.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,8 +28,16 @@ pub trait Chain {
     fn len(&self) -> usize;
     /// Returns the level of the given DID in the chain.
     fn level(&self, did: &str) -> Option<usize>;
-    /// Returns the root DID.
+    /// Gets the root DID.
     fn root(&self) -> &str;
+    /// Gets the leaf node DID.
+    fn leaf(&self) -> &str;
+    /// Gets the next upstream DID.
+    fn upstream(&self, did: &str) -> Option<&str>;
+    /// Gets the next downstream DID.
+    fn downstream(&self, did: &str) -> Option<&str>;
+    /// Gets data for the given DID.
+    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
 }
@@ -70,6 +79,7 @@ impl DIDChain {
                 // Extract the controller from the DID document.
                 // If there is no controller, this is the root.
                 // If there is more than one controller, return an error.
+                // TODO: multiple controllers is a verfication error, not a chain error.
                 let udid = match controller {
                     None => {
                         return Ok(chain); // Ok(Box::new(chain))
@@ -128,11 +138,115 @@ impl Chain for DIDChain {
         }
     }
 
+    fn leaf(&self) -> &str {
+        match &self.len() > &0 {
+            true => &self.level_vec.first().unwrap(),
+            // The public constructor prevents an empty chain from existing.
+            false => panic!("Empty chain!"),
+        }
+    }
+
     fn verify_proofs(&self) -> Result<(), ChainError> {
         // TODO: move some of the chain verification logic from the
         // original Verifier::verify implementation into this method.
         // (See file verifier.rs)
 
+        // TODO: verify signatures in parallel.
+
+        // Start from the leaf node.
+        let did = self.leaf();
+
+        while did != self.root() {
+            // Get the DID & its data.
+            let (did_doc, did_doc_meta) = self.data(&did).unwrap();
+
+            // Get the upstream DID & its data.
+            let udid = &self.upstream(did).unwrap();
+            let (udid_doc, udid_doc_meta) = self.data(&udid).unwrap();
+
+            // Extract the controller proof from the document metadata.
+            // let proof = get_proof(&did_doc_meta);
+
+            todo!();
+            // TODO FROM HERE:
+            // - Add a get_proof_payload(&doc_meta) function inside the Verifier module.
+            // - Call it to get the proof_payload.
+            // - Check whether "payload" is the correct term (in JWS).
+            // - Create a util function: fn hash(Document);
+
+            // Verify the payload of the JWS proofvalue matches the DID document.
+            // TODO (see below)
+
+            // Reconstruct the actual payload.
+            // let actual_payload = hash(&canonicalize(&udid_doc).unwrap());
+        }
+        Ok(())
+
+        //             // 0.2 Extract proof from document metadata
+        //             let proof = get_proof(&ddoc_meta);
+
+        //             // 1. Verify the payload of the JWS proofvalue is equal to the doc
+        //             // 1.1 Get proof payload
+        //             let proof_payload = decode(&proof);
+
+        //             // 1.2 Reconstruct payload
+        //             let actual_payload = hash(&canonicalize(&ddoc).unwrap());
+
+        //             // 1.3 Check equality
+        //             if proof_payload != actual_payload {
+        //                 return Err(VerifierError::InvalidPayload(ddid.to_string()));
+        //             }
+
+        //             // 2. Check the signature itself is valid
+        //             // Resolve the uDID (either get hashmap entry or resolve)
+        //             let udid_resolution = self
+        //                 .visited
+        //                 .entry(udid.clone())
+        //                 .or_insert(self.resolver.resolve_as_result(&udid));
+
+        //             if let Ok((_, Some(udoc), Some(udoc_meta))) = udid_resolution {
+        //                 // 2.1 Extract keys from the uDID document
+        //                 let udid_pks: Vec<JWK> = extract_keys(&udoc);
+
+        //                 // // 2.2 Loop over the keys until signature is valid
+        //                 let one_valid_key: bool = verify_jws(&proof, &udid_pks);
+
+        //                 // // 2.3 If one_valid_key is false, return error
+        //                 if !one_valid_key {
+        //                     return Err(VerifierError::InvalidSignature(ddid.to_string()));
+        //                 }
+
+        //                 // 2.4 Get uDID controller (uuDID)
+        //                 let uudid: &str = get_controller(&udoc);
+
+        //                 // 2.5 If uuDID is the same as uDID, this is a root,
+        //                 // check "created_at" property matches hard coded ROOT_EVENT_TIME
+        //                 if uudid == udid {
+        //                     let created_at = get_created_at(&udoc_meta);
+        //                     if created_at == ROOT_EVENT_TIME {
+        //                         return Ok(());
+        //                     } else {
+        //                         return Err(VerifierError::InvalidRoot(uudid.to_string()));
+        //                     }
+        //                 } else {
+        //                     // 2.6 If not a root, set ddid as udid, and return to start of loop
+        //                     ddid = udid;
+        //                 }
+        //             } else {
+        //                 // Return an error as uDID not resolvable
+        //                 return Err(VerifierError::UnresolvableDID(udid.to_string()));
+        //             }
+    }
+
+    fn upstream(&self, did: &str) -> Option<&str> {
+        todo!()
+    }
+
+    fn downstream(&self, did: &str) -> Option<&str> {
+        todo!()
+    }
+
+    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)> {
         todo!()
     }
 }
