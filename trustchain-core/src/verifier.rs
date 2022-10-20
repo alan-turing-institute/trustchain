@@ -37,8 +37,8 @@ pub enum VerifierError {
 
 /// Verifier of root and downstream DIDs.
 trait Verifier {
-    /// Verify a downstream DID.
-    fn verify(&self, did: &str) -> Result<(), VerifierError>;
+    /// Verify a downstream DID by tracing its chain back to the root.
+    fn verify(&self, did: &str, root_timestamp: u32) -> Result<(), VerifierError>;
     /// Get the verified timestamp for a DID as a Unix time.
     fn verified_timestamp(&self, did: &str) -> u32;
     // /// Get the resolver used for DID verification.
@@ -119,19 +119,25 @@ impl<T> Verifier for TrustchainVerifier<T>
 where
     T: Send + Sync + DIDResolver,
 {
-    fn verify(&self, did: &str) -> Result<(), VerifierError> {
+    fn verify(&self, did: &str, root_timestamp: u32) -> Result<(), VerifierError> {
         // Build a DID chain from the given DID to the root.
         let chain = match DIDChain::new(did, &self.resolver) {
             Ok(x) => x,
             Err(e) => return Err(VerifierError::ChainBuildFailure(e.to_string())),
         };
 
-        // Verify the chain.
+        // Verify the proofs in the chain.
+        match chain.verify_proofs() {
+            Ok(_) => (),
+            Err(e) => return Err(VerifierError::InvalidChain(e.to_string())),
+        };
+
+        // Verify the root timestamp.
         let root = chain.root();
-        match chain.verify(self.verified_timestamp(root)) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(VerifierError::InvalidChain(e.to_string())),
+        if self.verified_timestamp(root) != root_timestamp {
+            return Err(VerifierError::InvalidRoot(root.to_string()));
         }
+        Ok(())
     }
 
     // TODO: re-instate (most of) the logic below into the DIDChain::verify method.

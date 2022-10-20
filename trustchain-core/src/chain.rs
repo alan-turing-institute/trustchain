@@ -29,8 +29,8 @@ pub trait Chain {
     fn level(&self, did: &str) -> Option<usize>;
     /// Returns the root DID.
     fn root(&self) -> &str;
-    /// Verifies the chain.
-    fn verify(&self, root_timestamp: u32) -> Result<(), ChainError>;
+    /// Verify all of the proofs in the chain.
+    fn verify_proofs(&self) -> Result<(), ChainError>;
 }
 
 pub struct DIDChain {
@@ -128,8 +128,8 @@ impl Chain for DIDChain {
         }
     }
 
-    fn verify(&self, root_timestamp: u32) -> Result<(), ChainError> {
-        // TODO: move the chain verification logic from the
+    fn verify_proofs(&self) -> Result<(), ChainError> {
+        // TODO: move some of the chain verification logic from the
         // original Verifier::verify implementation into this method.
         // (See file verifier.rs)
 
