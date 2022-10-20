@@ -1,17 +1,22 @@
 #![allow(dead_code)]
 pub mod attestor;
-// //! trustchain-ion library fns
-// use did_ion::sidetree::Operation;
-
-// TODO: move the create binary to a library function
-// fn create(file_path: Option<&str>, verbose: bool) -> Operation {
-//     // Move the binary logic into this fn
-
-// }
-
 pub mod controller;
-
+use did_ion::{sidetree::SidetreeClient, ION};
 use thiserror::Error;
+use trustchain_core::key_manager::KeyManager;
+use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+
+/// Key utility struct
+pub struct KeyUtils;
+impl KeyManager for KeyUtils {}
+
+/// Type alias
+pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
+
+/// Test resolver
+pub fn test_resolver(endpoint: &str) -> IONResolver {
+    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
+}
 
 /// An error relating for rustchain-ion crate.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -23,10 +28,6 @@ pub enum TrustchainIONError {
     #[error("Incorrect key type is provided.")]
     IncorrectKeyType,
 }
-
-use trustchain_core::key_manager::KeyManager;
-pub struct KeyUtils;
-impl KeyManager for KeyUtils {}
 
 // TODO: move to fixtures for trustchain-ion
 const TEST_DOC_STATE: &str = r##"{
