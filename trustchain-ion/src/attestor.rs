@@ -86,6 +86,10 @@ impl Attestor for IONAttestor {
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
+        // Add controller to document
+        let mut doc = doc.clone();
+        doc.controller = Some(OneOrMany::One(self.did().to_string()));
+
         // Canonicalize document
         let doc_canon = match ION::json_canonicalization_scheme(&doc) {
             Ok(str) => str,
@@ -176,7 +180,11 @@ mod tests {
 
         // Check payload
         let valid_decoded = valid_decoded.unwrap();
-        let doc_canon = ION::json_canonicalization_scheme(&doc)?;
+
+        // Reconstruct doc
+        let mut doc_with_controller = doc;
+        doc_with_controller.controller = Some(OneOrMany::One(target.did().to_string()));
+        let doc_canon = ION::json_canonicalization_scheme(&doc_with_controller)?;
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         assert_eq!(valid_decoded, doc_canon_hash);
