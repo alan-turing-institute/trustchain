@@ -1,31 +1,39 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryFrom};
 use thiserror::Error;
 
+use crate::resolver::{Resolver, ResolverError};
 use ssi::{
     did::{self, Document},
-    did_resolve::DocumentMetadata,
+    did_resolve::{DIDResolver, DocumentMetadata},
+    one_or_many::OneOrMany,
 };
 
 /// An error relating to a DID chain.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChainError {
-    #[error("Failed to prepend to DID chain. Invalid data.")]
-    PrependFailed,
+    // #[error("Invalid data. Failed to prepend DID: {0}.")]
+    // PrependFailed(String),
+    #[error("No chain nodes found for DID: {0}.")]
+    NoChainNodes(String),
+    #[error("Found multiple controllers in DID: {0}.")]
+    MultipleControllers(String),
 }
 
 /// A chain of DIDs.
-trait Chain {
-    /// Prepend a DID to the chain.
-    fn prepend(&mut self, tuple: (Document, DocumentMetadata));
-
+pub trait Chain {
+    // /// Constructs a new DID chain.
+    // fn new<T: DIDResolver + Sync + Send>(did: &str, resolver: &Resolver<T>) -> Result<Box<Self>, ChainError>;
     /// Returns the length of the DID chain.
     fn len(&self) -> usize;
-
     /// Returns the level of the given DID in the chain.
     fn level(&self, did: &str) -> Option<usize>;
+    /// Returns the root DID.
+    fn root(&self) -> &str;
+    /// Verifies the chain.
+    fn verify(&self, root_timestamp: u32) -> Result<(), ChainError>;
 }
 
-struct DIDChain {
+pub struct DIDChain {
     // An map from DID strings to resolved tuples.
     did_map: HashMap<String, (Document, DocumentMetadata)>,
 
@@ -34,21 +42,70 @@ struct DIDChain {
 }
 
 impl DIDChain {
-    fn new() -> Self {
+    // Public constructor.
+    pub fn new<T: DIDResolver + Sync + Send>(
+        did: &str,
+        resolver: &Resolver<T>,
+    ) -> Result<Self, ChainError> {
+        // Result<Box<Self>, ChainError> {
+
+        // Construct an empty chain.
+        let mut chain = DIDChain::empty();
+
+        // Start from the passed DID.
+        let mut ddid: String = did.to_string();
+
+        // Loop up the DID chain until the root is reached or an error occurs.
+        loop {
+            // Resolve the current DID.
+            let resolved = resolver.resolve_as_result(&ddid);
+
+            if let Ok((_, Some(ddoc), Some(ddoc_meta))) = resolved {
+                // Clone the controller information before moving ddoc into the chain.
+                let controller = ddoc.controller.to_owned();
+
+                // Prepend the current DID to the chain.
+                chain.prepend((ddoc, ddoc_meta));
+
+                // Extract the controller from the DID document.
+                // If there is no controller, this is the root.
+                // If there is more than one controller, return an error.
+                let udid = match controller {
+                    None => {
+                        return Ok(chain); // Ok(Box::new(chain))
+                    }
+                    Some(x) => match x.to_owned() {
+                        OneOrMany::One(udid) => udid,
+                        OneOrMany::Many(_) => return Err(ChainError::MultipleControllers(ddid)),
+                    },
+                };
+
+                // If ddid is not the root, return to start of loop on the controller's DID.
+                ddid = udid;
+            } else {
+                // If any resolution attempt fails, return an error.
+                return Err(ChainError::NoChainNodes(ddid));
+            }
+        }
+    }
+
+    /// Private constructor of an empty DIDChain.
+    fn empty() -> Self {
         Self {
             did_map: HashMap::<String, (Document, DocumentMetadata)>::new(),
             level_vec: Vec::<String>::new(),
         }
     }
-}
 
-impl<'a> Chain for DIDChain {
+    /// Prepend a DID to the chain.
     fn prepend(&mut self, tuple: (Document, DocumentMetadata)) {
         let (doc, doc_meta) = tuple;
         &self.level_vec.push(doc.id.to_owned());
         &self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
     }
+}
 
+impl Chain for DIDChain {
     fn len(&self) -> usize {
         self.level_vec.len().to_owned()
     }
@@ -61,6 +118,22 @@ impl<'a> Chain for DIDChain {
         // Subtract level vector index from the length.
         let index = &self.level_vec.iter().position(|x| x == did).unwrap();
         Some(&self.len() - 1 - index)
+    }
+
+    fn root(&self) -> &str {
+        match &self.len() > &0 {
+            true => &self.level_vec.last().unwrap(),
+            // The public constructor prevents an empty chain from existing.
+            false => panic!("Empty chain!"),
+        }
+    }
+
+    fn verify(&self, root_timestamp: u32) -> Result<(), ChainError> {
+        // TODO: move the chain verification logic from the
+        // original Verifier::verify implementation into this method.
+        // (See file verifier.rs)
+
+        todo!()
     }
 }
 
@@ -80,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_chain() {
-        let mut target = DIDChain::new();
+        let mut target = DIDChain::empty();
         let expected_ddid = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
         // Check that the chain is initially empty.
@@ -105,6 +178,9 @@ mod tests {
         // let did1 = ""
     }
 
+    // TODO: test the new constructor.
+
+    // TODO?:
     // fn test_prepend() {
     //     let mut target = DIDChain::new();
     //     let result = target.prepend(());
