@@ -1,41 +1,13 @@
-use did_ion::{sidetree::SidetreeClient, ION};
-use ssi::did::{VerificationMethod, VerificationMethodMap};
-use ssi::one_or_many::OneOrMany;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
-
 use did_ion::sidetree::Sidetree;
+use did_ion::ION;
+use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
-use std::convert::TryFrom;
-use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
-use trustchain_core::key_manager::KeyManager;
-use trustchain_ion::controller::ControllerData;
-use trustchain_ion::controller::IONController;
-
-// Make a IONController using this test function
-fn test_controller(
-    did: &str,
-    controlled_did: &str,
-) -> Result<IONController, Box<dyn std::error::Error>> {
-    let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
-    let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
-    IONController::try_from(ControllerData::new(
-        did.to_string(),
-        controlled_did.to_string(),
-        update_key,
-        recovery_key,
-    ))
-}
-
+use ssi::one_or_many::OneOrMany;
 use std::fs::File;
+use trustchain_core::key_manager::KeyManager;
 use trustchain_core::key_manager::KeyManagerError;
+use trustchain_ion::test_resolver;
 use trustchain_ion::KeyUtils;
 
 fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
