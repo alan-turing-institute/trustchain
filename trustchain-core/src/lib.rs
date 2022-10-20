@@ -4,9 +4,10 @@ pub mod chain;
 pub mod controller;
 pub mod data;
 pub mod key_manager;
+pub mod graph;
 pub mod resolver;
-mod utils;
 pub mod verifier;
+mod utils;
 
 // use std::io::Read;
 use std::path::Path;
