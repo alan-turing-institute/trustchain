@@ -2,6 +2,8 @@ use crate::chain::{Chain, DIDChain};
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::canonicalize;
 use crate::ROOT_EVENT_TIME;
+use serde_json::to_string_pretty as to_json;
+use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::did_resolve::ResolutionMetadata;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
@@ -89,7 +91,7 @@ where
 fn get_controller(doc: &Document) -> String {
     todo!()
 }
-/// Consider using resolver functions (these are currently private)
+/// Gets proof from DocumentMetadata.
 fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, VerifierError> {
     // Get property set
     if let Some(property_set) = doc_meta.property_set.as_ref() {
@@ -119,9 +121,23 @@ fn hash(canonicalized_value: &str) -> String {
     todo!()
 }
 
-// TODO: Extract vec of public keys from a doc
-fn extract_keys(canonicalized_value: &Document) -> Vec<JWK> {
-    todo!()
+/// Extracts vec of public keys from a doc.
+fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
 }
 
 // TODO: Check whether correct signature on proof_value given vec of public keys
@@ -267,8 +283,19 @@ mod tests {
     //     TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     // };
 
+    const ROOT_SIGNING_KEYS: &str = r##"
+    [
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+            "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+        }
+    ]
+    "##;
+
     use crate::data::{
-        TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT_METADATA,
+        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT_METADATA,
         TEST_ROOT_PLUS_2_DOCUMENT_METADATA,
     };
     use crate::utils::canonicalize;
@@ -289,6 +316,15 @@ mod tests {
         assert!(root_proof.is_err());
         assert!(root_plus_1_proof.is_ok());
         assert!(root_plus_2_proof.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_keys() -> Result<(), Box<dyn std::error::Error>> {
+        let expected_root_keys: Vec<JWK> = serde_json::from_str(ROOT_SIGNING_KEYS)?;
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let actual_root_keys = extract_keys(&root_doc);
+        assert_eq!(actual_root_keys, expected_root_keys);
         Ok(())
     }
 
