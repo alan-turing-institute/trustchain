@@ -3,11 +3,11 @@ pub mod attestor;
 pub mod chain;
 pub mod controller;
 pub mod data;
-pub mod key_manager;
 pub mod graph;
+pub mod key_manager;
 pub mod resolver;
-pub mod verifier;
 mod utils;
+pub mod verifier;
 
 // use std::io::Read;
 use std::path::Path;

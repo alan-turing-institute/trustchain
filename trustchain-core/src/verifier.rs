@@ -2,6 +2,7 @@ use crate::chain::{Chain, DIDChain};
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::canonicalize;
 use crate::ROOT_EVENT_TIME;
+use ssi::did_resolve::Metadata;
 use ssi::did_resolve::ResolutionMetadata;
 use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
 use ssi::{
@@ -33,6 +34,9 @@ pub enum VerifierError {
     /// Chain verification failed.
     #[error("Chain verification failed: {0}.")]
     InvalidChain(String),
+    /// No proof value present.
+    #[error("No proof could be retrieved from document metadata.")]
+    FailureToGetProof,
 }
 
 /// Verifier of root and downstream DIDs.
@@ -79,15 +83,30 @@ where
 
 // TODO: the functions below need completing. Comments:
 //   - Some are already implemented in resolver.
-//   -Some may benefit from being part of a struct impl.
+//   - Some may benefit from being part of a struct impl.
 
 /// Consider using resolver functions (these are currently private)
-fn get_controller(doc: &Document) -> &str {
+fn get_controller(doc: &Document) -> String {
     todo!()
 }
 /// Consider using resolver functions (these are currently private)
-fn get_proof(doc: &DocumentMetadata) -> JsonWebSignature2020 {
-    todo!()
+fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, VerifierError> {
+    // Get property set
+    if let Some(property_set) = doc_meta.property_set.as_ref() {
+        // Get proof
+        if let Some(Metadata::Map(proof)) = property_set.get("proof") {
+            // Get proof value
+            if let Some(Metadata::String(proof_value)) = proof.get("proofValue") {
+                Ok(proof_value)
+            } else {
+                Err(VerifierError::FailureToGetProof)
+            }
+        } else {
+            Err(VerifierError::FailureToGetProof)
+        }
+    } else {
+        Err(VerifierError::FailureToGetProof)
+    }
 }
 
 /// TODO: Extract payload from JWS
@@ -248,8 +267,30 @@ mod tests {
     //     TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     // };
 
+    use crate::data::{
+        TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT_METADATA,
+        TEST_ROOT_PLUS_2_DOCUMENT_METADATA,
+    };
     use crate::utils::canonicalize;
     use ssi::did_resolve::HTTPDIDResolver;
+
+    #[test]
+    fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let root_plus_1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let root_plus_2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        let root_proof = get_proof(&root_doc_meta);
+        let root_plus_1_proof = get_proof(&root_plus_1_doc_meta);
+        let root_plus_2_proof = get_proof(&root_plus_2_doc_meta);
+
+        assert!(root_proof.is_err());
+        assert!(root_plus_1_proof.is_ok());
+        assert!(root_plus_2_proof.is_ok());
+        Ok(())
+    }
 
     // TODO: make valid DDID_DOC test doc with proof
     // const DDID_DOC: &str = r##"
