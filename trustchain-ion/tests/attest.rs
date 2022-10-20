@@ -67,36 +67,35 @@ fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError
 }
 
 #[test]
+#[ignore]
 fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     init();
 
     // 1. Set-up
+    // Set controlled_did
+    let controlled_did = "EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA";
+
+    // Set did
+    let did = "EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
 
     // Write keys as &str
-    // let home = std::env::var("HOME")?;
-    // let signing_key_file = format!("{}/.trustchain/tests/key_manager/EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ/signing_key.json", home);
-    // let update_key_file = format!(
-    //     "{}/.trustchain/tests/key_manager/EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA/update_key.json",
-    //     home
-    // );
-    // let recovery_key_file = format!("{}/.trustchain/tests/key_manager/EiDAQdupXXEwqO6d5Oh9camtm8Sv-3-viA4luy0uClNmWA/recovery_key.json", home);
-    // let signing_key = read_from_specific_file(&signing_key_file)?;
-    // let update_key = read_from_specific_file(&update_key_file)?;
-    // let recovery_key = read_from_specific_file(&recovery_key_file)?;
-
     let home = std::env::var("HOME")?;
-    let signing_key_file = format!("{}/.trustchain/key_manager/EiAVrUJpqDgrvwr4xfwAUj_o9l5RZlzlgu7VGTY93UzpyQ/signing_key.json", home);
-    let update_key_file = format!(
-        "{}/.trustchain/key_manager/EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA/update_key.json",
-        home
+    let signing_key_file = format!(
+        "{}/.trustchain/tests/key_manager/{}/signing_key.json",
+        home, did
     );
-    let recovery_key_file = format!("{}/.trustchain/key_manager/EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA/recovery_key.json", home);
+    let update_key_file = format!(
+        "{}/.trustchain/tests/key_manager/{}/update_key.json",
+        home, controlled_did
+    );
+    let recovery_key_file = format!(
+        "{}/.trustchain/tests/key_manager/{}/recovery_key.json",
+        home, controlled_did
+    );
+    println!("{:?}", signing_key_file);
     let signing_key = read_from_specific_file(&signing_key_file)?;
     let update_key = read_from_specific_file(&update_key_file)?;
     let recovery_key = read_from_specific_file(&recovery_key_file)?;
-    // println!("-------integration test attestor---------------");
-    // println!("{:?}", signing_key);
-    // println!("-------");
 
     // Unwrap the keys
     let (signing_key, update_key, recovery_key) = if let (
@@ -110,12 +109,6 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
         panic!()
     };
 
-    // Set controlled_did
-    let controlled_did = "EiCQt8FvI6ClKUU6fpqm0q2hDNNPhS5WmhsswKxgOMAvgA";
-
-    // Set did
-    let did = "EiAVrUJpqDgrvwr4xfwAUj_o9l5RZlzlgu7VGTY93UzpyQ";
-
     // Save keys to did and controlled_did
     let controller = IONController::try_from(ControllerData::new(
         did.to_string(),
@@ -128,7 +121,10 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     let attestor = IONAttestor::try_from((did.to_string(), OneOrMany::One(signing_key.clone())));
 
     // Set proof_value as hardcoded one to check
-    let expected_proof_value = "eyJhbGciOiJFUzI1NksifQ.IkVpQ1pJNDRQYU9JQV9KaVE1NDZpMjQ4RVF3Y05fQXZVWjJQNG1memJ1eGNkRFEi.N8hYOEEtn1D6oqI6MLSFk8keJYDosxU59XD_xkyk974bdzWRTgHRe_H4KfGAJ9f9RDOB9gdMZkPlbY2fPbKtOg";
+    let expected_proof_value = "eyJhbGciOiJFUzI1NksifQ.IkVpQjdMOWJZeU5MMjBsbEptY25jbzk4TFliZzlDbWJSVU4xV3NHSXJhVzBvTkEi.TiSMTT9KRDi879EBo0QsLDz4H_LI4FJ9q1i2FHhGquMywgVlTVSnn4uqaQkBuPERtpl9YgmSjSUi0Vc5v3jarg";
+
+    // TODO: once attestation is made, extract proof value from doc_meta instead
+    // of passing as value
 
     // 2. Resolve controlled_did: doc, doc_meta
 
@@ -144,9 +140,6 @@ fn trustchain_attest() -> Result<(), Box<dyn std::error::Error>> {
     assert!(result.is_ok());
 
     let (_res_meta, doc, doc_meta) = result.unwrap();
-
-    // TODO: once attestation is made, extract proof value from doc_meta instead
-    // of passing as value
 
     // Check the DID Document was successfully resolved.
     assert!(doc.is_some());
