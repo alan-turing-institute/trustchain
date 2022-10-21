@@ -47,13 +47,15 @@ pub trait Chain {
     /// Gets the leaf node DID.
     fn leaf(&self) -> &str;
     /// Gets the next upstream DID.
-    fn upstream(&self, did: &str) -> Option<&str>;
+    fn upstream(&self, did: &str) -> Option<&String>;
     /// Gets the next downstream DID.
-    fn downstream(&self, did: &str) -> Option<&str>;
+    fn downstream(&self, did: &str) -> Option<&String>;
     /// Gets data for the given DID.
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
+    /// Return view of chain in correct order
+    fn as_vec(&self) -> &Vec<String>;
 }
 
 // TODO: the functions below need completing. Comments:
@@ -148,6 +150,7 @@ impl DIDChain {
                 // TODO: multiple controllers is a verfication error, not a chain error.
                 let udid = match controller {
                     None => {
+                        chain.level_vec.reverse();
                         return Ok(chain); // Ok(Box::new(chain))
                     }
                     Some(x) => match x.to_owned() {
@@ -182,6 +185,10 @@ impl DIDChain {
 }
 
 impl Chain for DIDChain {
+    fn as_vec(&self) -> &Vec<String> {
+        &self.level_vec
+    }
+
     fn len(&self) -> usize {
         self.level_vec.len().to_owned()
     }
@@ -192,21 +199,21 @@ impl Chain for DIDChain {
         }
 
         // Subtract level vector index from the length.
-        let index = &self.level_vec.iter().position(|x| x == did).unwrap();
-        Some(&self.len() - 1 - index)
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        Some(index)
     }
 
     fn root(&self) -> &str {
-        match self.len() > 0 {
-            true => self.level_vec.last().unwrap(),
+        match &self.len() > &0 {
+            true => &self.level_vec.first().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
     }
 
     fn leaf(&self) -> &str {
-        match self.len() > 0 {
-            true => self.level_vec.first().unwrap(),
+        match &self.len() > &0 {
+            true => &self.level_vec.last().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
@@ -269,16 +276,28 @@ impl Chain for DIDChain {
         Ok(())
     }
 
-    fn upstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn upstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != 0 {
+            let index_prev = index - 1;
+            self.level_vec.get(index_prev)
+        } else {
+            None
+        }
     }
 
-    fn downstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn downstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != self.level_vec.len() - 1 {
+            let index_next = index + 1;
+            self.level_vec.get(index_next)
+        } else {
+            None
+        }
     }
 
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)> {
-        todo!()
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)> {
+        self.did_map.get(did)
     }
 }
 
@@ -367,6 +386,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -387,6 +407,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -418,11 +439,33 @@ mod tests {
     }
 
     #[test]
+    fn test_as_vec() {
+        let target = test_chain().unwrap();
+        let mut expected_vec = Vec::new();
+        expected_vec
+            .push("did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string()); //ROOT DID
+        expected_vec
+            .push("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()); // LEVEL ONE DID
+        expected_vec
+            .push("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()); // LEVEL TWO DID
+        assert_eq!(target.as_vec(), &expected_vec);
+    }
+
+    #[test]
     fn test_root() {
         let target = test_chain().unwrap();
         assert_eq!(
             target.root(),
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        )
+    }
+
+    #[test]
+    fn test_leaf() {
+        let target = test_chain().unwrap();
+        assert_eq!(
+            target.leaf(),
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
         )
     }
 
@@ -434,5 +477,106 @@ mod tests {
         assert!(target.verify_proofs().is_err());
     }
 
-    // TODO: other unit tests.
+    #[test]
+    fn test_level() {
+        // test the level returned for each node in the test chain
+        let target = test_chain().unwrap();
+        let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        assert_eq!(target.level(expected_root_did).unwrap(), 0);
+
+        let expected_level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        assert_eq!(target.level(expected_level1_did).unwrap(), 1);
+        assert_eq!(target.level(expected_level2_did).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_upstream() {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+
+        let target_udid = match target.upstream(did) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_udid, expected_udid);
+
+        let target_uudid = match target.upstream(target_udid) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_uudid, expected_uudid);
+
+        let target_uuudid = target.upstream(target_uudid);
+        assert_eq!(target_uuudid, None);
+    }
+
+    #[test]
+    fn test_downstream() {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        match target.downstream(did) {
+            Some(s) => assert_eq!(s, expected_ddid),
+            _ => panic!(),
+        };
+        match target.downstream(target.downstream(did).unwrap()) {
+            Some(s) => assert_eq!(s, expected_dddid),
+            _ => panic!(),
+        };
+        assert!(target
+            .downstream(target.downstream(target.downstream(did).unwrap()).unwrap())
+            .is_none());
+    }
+
+    #[test]
+    fn test_data() -> Result<(), Box<dyn std::error::Error>> {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
+
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let level1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let level2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        if let Some((doc, doc_meta)) = target.data(did) {
+            assert_eq!(doc, &root_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&root_doc_meta).unwrap()
+            );
+        } else {
+            panic!();
+        }
+        if let Some((doc, doc_meta)) = target.data(level1_did) {
+            assert_eq!(doc, &level1_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level1_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        if let Some((doc, doc_meta)) = target.data(level2_did) {
+            assert_eq!(doc, &level2_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level2_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
 }
