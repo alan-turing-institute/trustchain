@@ -89,7 +89,7 @@ unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
     /// Runtime for calling async functions.
-    runtime: Runtime,
+    pub runtime: Runtime,
     /// Resolver for performing DID Method resolutions.
     wrapped_resolver: T,
 }
