@@ -1,6 +1,7 @@
 //! Utils module.
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use ssi::jwk::JWK;
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
 use std::path::Path;
@@ -81,6 +82,16 @@ pub fn hash(data: &str) -> String {
     data_encoding_scheme(&hash)
 }
 
+/// Extracts payload from JWT and verifies signature.
+pub fn decode_verify(jwt: &str, key: &JWK) -> Result<(), ssi::error::Error> {
+    ssi::jwt::decode_verify(jwt, key)
+}
+
+/// Extracts and decodes the payload from the JWT.
+pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
+    ssi::jwt::decode_unverified(jwt)
+}
+
 #[allow(dead_code)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -91,4 +102,33 @@ pub fn set_panic_hook() {
     // https://github.com/rustwasm/console_error_panic_hook#readme
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
+}
+
+#[cfg(test)]
+mod tests {
+    use ssi::did::Document;
+
+    use super::*;
+    use crate::data::{TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
+
+    #[test]
+    fn test_decode() {
+        todo!()
+    }
+
+    #[test]
+    fn test_decode_verify() {
+        todo!()
+    }
+
+    #[test]
+    fn test_canonicalize_hash() -> Result<(), Box<dyn std::error::Error>> {
+        let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let doc_canon = canonicalize(&doc)?;
+        let actual_hash = hash(&doc_canon);
+        let jwt = TEST_ROOT_PLUS_1_JWT;
+        let expected_hash = decode(jwt)?;
+        assert_eq!(expected_hash, actual_hash);
+        Ok(())
+    }
 }

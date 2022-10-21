@@ -1,5 +1,5 @@
 use crate::resolver::{Resolver, ResolverError};
-use crate::utils::{canonicalize, hash};
+use crate::utils::{canonicalize, decode, decode_verify, hash};
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
@@ -88,16 +88,6 @@ fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
     } else {
         Err(ChainError::FailureToGetProof)
     }
-}
-
-/// Extracts payload from JWT and verifies signature.
-fn decode_verify(jwt: &str, key: &JWK) -> Result<(), ssi::error::Error> {
-    ssi::jwt::decode_verify(jwt, key)
-}
-
-/// Extracts and decodes the payload from the JWT.
-fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
-    ssi::jwt::decode_unverified(jwt)
 }
 
 /// Extracts vec of public keys from a doc.
@@ -441,6 +431,7 @@ mod tests {
         // let did1 = ""
     }
 
+    #[test]
     fn test_root() {
         let target = test_chain().unwrap();
         assert_eq!(
@@ -449,6 +440,7 @@ mod tests {
         )
     }
 
+    #[test]
     fn test_verify_proofs() {
         let target = test_chain().unwrap();
         assert!(target.verify_proofs().is_ok());
