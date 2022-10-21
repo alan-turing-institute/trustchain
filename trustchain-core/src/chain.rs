@@ -6,7 +6,6 @@ use ssi::jwk::JWK;
 use ssi::{
     did::{self, Document},
     did_resolve::{DIDResolver, DocumentMetadata},
-    ldp::JsonWebSignature2020,
     one_or_many::OneOrMany,
 };
 use std::{collections::HashMap, convert::TryFrom};
@@ -214,10 +213,6 @@ impl Chain for DIDChain {
     }
 
     fn verify_proofs(&self) -> Result<(), ChainError> {
-        // TODO: move some of the chain verification logic from the
-        // original Verifier::verify implementation into this method.
-        // (See file verifier.rs)
-
         // TODO: verify signatures in parallel.
 
         // Start from the leaf node.
@@ -268,7 +263,7 @@ impl Chain for DIDChain {
                 false => return Err(ChainError::InvalidKeys),
             }
 
-            // Set: did <- udid
+            // 3. Set: did <- udid
             did = udid;
         }
         Ok(())
@@ -298,12 +293,6 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
-    // use crate::data::{
-    //     TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA,
-    //     TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
-    //     TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
-    //     TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
-    // };
 
     const ROOT_SIGNING_KEYS: &str = r##"
     [
@@ -315,9 +304,6 @@ mod tests {
         }
     ]
     "##;
-
-    use crate::utils::canonicalize;
-    use ssi::did_resolve::HTTPDIDResolver;
 
     #[test]
     fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {
