@@ -1,5 +1,6 @@
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
+use crate::ROOT_EVENT_TIME;
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
@@ -107,12 +108,14 @@ pub struct DIDChain {
 /// Struct for displaying DID in a box.
 struct PrettyDID {
     did: String,
+    is_root: bool,
 }
 
 impl PrettyDID {
-    fn new(did: &str) -> Self {
+    fn new(did: &str, is_root: bool) -> Self {
         Self {
             did: did.to_string(),
+            is_root,
         }
     }
 }
@@ -121,10 +124,19 @@ impl fmt::Display for PrettyDID {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
         // "+---------+"
-        // "| did:... |"  TICK
+        // "| did:... |"  ✓
         // "+---------+"
         let box_width = self.did.len() + 2;
         writeln!(f, "+{}+", "-".repeat(box_width))?;
+        if self.is_root {
+            // write!(f, "|")?;
+            // let title = format!("🕑 Block Height: {} 🕑", ROOT_EVENT_TIME);
+            // let did_width = (self.did.len() + 4) / 2;
+            // let indent = did_width - title.len() / 2;
+            // let title = format!("{}{}", title, " ".repeat(indent+2));
+            // writeln!(f, "{}{}|", " ".repeat(indent), title)?;
+            // writeln!(f, "| : {}", )?;
+        }
         writeln!(f, "| {} |  ✓", self.did)?;
         writeln!(f, "+{}+", "-".repeat(box_width))?;
         Ok(())
@@ -135,23 +147,23 @@ impl fmt::Display for DIDChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
         // "+---------+"
-        // "| did:... |"  TICK
+        // "| did:... |"  ✓
         // "+----------+"
         //       ⛓
         // "+---------+"
-        // "| did:... |"  TICK
+        // "| did:... |"  ✓
         // "+---------+"
         let title = "₿ DON'T TRUST, VERIFY! ₿";
         let did_width = (self.root().len() + 4) / 2;
         let indent = did_width - title.len() / 2;
-        writeln!(f, "{}{}", " ".repeat(indent), title)?;
+        writeln!(f, "{}{}\n", " ".repeat(indent), title)?;
         for (i, did) in self.level_vec.iter().enumerate() {
             if i == 0 {
-                writeln!(f, "ROOT")?;
+                writeln!(f, "ROOT: 🕑 Block Height {} 🕑", ROOT_EVENT_TIME)?;
             } else {
                 writeln!(f, "Level {}", i)?;
             }
-            write!(f, "{}", PrettyDID::new(did))?;
+            write!(f, "{}", PrettyDID::new(did, i == 0))?;
             let link_string = match did.len() {
                 x if x % 2 == 0 => "||",
                 _ => "⛓",
