@@ -155,8 +155,6 @@ mod tests {
 
         let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
 
-        println!("{:?}", target.read_signing_keys(did));
-
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
 
         let result = target.attest(&doc, None);
