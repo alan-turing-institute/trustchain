@@ -282,61 +282,6 @@ impl Chain for DIDChain {
             did = udid;
         }
         Ok(())
-
-        //             // 0.2 Extract proof from document metadata
-        //             let proof = get_proof(&ddoc_meta);
-
-        //             // 1. Verify the payload of the JWS proofvalue is equal to the doc
-        //             // 1.1 Get proof payload
-        //             let proof_payload = decode(&proof);
-
-        //             // 1.2 Reconstruct payload
-        //             let actual_payload = hash(&canonicalize(&ddoc).unwrap());
-
-        //             // 1.3 Check equality
-        //             if proof_payload != actual_payload {
-        //                 return Err(VerifierError::InvalidPayload(ddid.to_string()));
-        //             }
-
-        //             // 2. Check the signature itself is valid
-        //             // Resolve the uDID (either get hashmap entry or resolve)
-        //             let udid_resolution = self
-        //                 .visited
-        //                 .entry(udid.clone())
-        //                 .or_insert(self.resolver.resolve_as_result(&udid));
-
-        //             if let Ok((_, Some(udoc), Some(udoc_meta))) = udid_resolution {
-        //                 // 2.1 Extract keys from the uDID document
-        //                 let udid_pks: Vec<JWK> = extract_keys(&udoc);
-
-        //                 // // 2.2 Loop over the keys until signature is valid
-        //                 let one_valid_key: bool = verify_jws(&proof, &udid_pks);
-
-        //                 // // 2.3 If one_valid_key is false, return error
-        //                 if !one_valid_key {
-        //                     return Err(VerifierError::InvalidSignature(ddid.to_string()));
-        //                 }
-
-        //                 // 2.4 Get uDID controller (uuDID)
-        //                 let uudid: &str = get_controller(&udoc);
-
-        //                 // 2.5 If uuDID is the same as uDID, this is a root,
-        //                 // check "created_at" property matches hard coded ROOT_EVENT_TIME
-        //                 if uudid == udid {
-        //                     let created_at = get_created_at(&udoc_meta);
-        //                     if created_at == ROOT_EVENT_TIME {
-        //                         return Ok(());
-        //                     } else {
-        //                         return Err(VerifierError::InvalidRoot(uudid.to_string()));
-        //                     }
-        //                 } else {
-        //                     // 2.6 If not a root, set ddid as udid, and return to start of loop
-        //                     ddid = udid;
-        //                 }
-        //             } else {
-        //                 // Return an error as uDID not resolvable
-        //                 return Err(VerifierError::UnresolvableDID(udid.to_string()));
-        //             }
     }
 
     fn upstream(&self, did: &str) -> Option<&str> {
