@@ -258,7 +258,8 @@ mod tests {
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
         TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
         TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_SIDETREE_DOCUMENT,
-        TEST_SIDETREE_DOCUMENT_METADATA,
+        TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
+        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
 
     // Helper function returns a resolved tuple.
@@ -281,6 +282,26 @@ mod tests {
         let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
         let level1_doc_meta: DocumentMetadata =
             serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let level2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        chain.prepend((level2_doc, level2_doc_meta));
+        chain.prepend((level1_doc, level1_doc_meta));
+        chain.prepend((root_doc, root_doc_meta));
+        Ok(chain)
+    }
+
+    // Helper function returns an invalid chain of three DIDs.
+    fn test_invalid_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
+        let mut chain = DIDChain::empty();
+
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let level1_doc: Document = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT)?;
+        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
+
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let level1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT_METADATA)?;
         let level2_doc_meta: DocumentMetadata =
             serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
 
@@ -323,6 +344,13 @@ mod tests {
             target.root(),
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
         )
+    }
+
+    fn test_verify_proofs() {
+        let target = test_chain().unwrap();
+        assert!(target.verify_proofs().is_ok());
+        let target = test_invalid_chain().unwrap();
+        assert!(target.verify_proofs().is_err());
     }
 
     // TODO: other unit tests.

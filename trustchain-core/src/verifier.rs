@@ -164,7 +164,7 @@ where
     T: Send + Sync + DIDResolver,
 {
     fn verify(&self, did: &str, root_timestamp: u32) -> Result<(), VerifierError> {
-        // Build a DID chain from the given DID to the root.
+        // Build a chain from the given DID to the root.
         let chain = match DIDChain::new(did, &self.resolver) {
             Ok(x) => x,
             Err(e) => return Err(VerifierError::ChainBuildFailure(e.to_string())),
