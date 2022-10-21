@@ -42,6 +42,15 @@ pub enum VerifierError {
     /// Failure to get controller from document.
     #[error("No controller could be retrieved from document.")]
     FailureToGetController,
+    /// Failure to get DID operation.
+    #[error("Error getting {0} DID operation: {1}")]
+    FailureToGetDIDOperation(String, String),
+    /// Invalid block height.
+    #[error("Invalid block height: {0}")]
+    InvalidBlockHeight(i32),
+    /// Invalid transaction index.
+    #[error("Invalid transaction index: {0}")]
+    InvalidTransactionIndex(i32),
 }
 
 /// Verifier of root and downstream DIDs.

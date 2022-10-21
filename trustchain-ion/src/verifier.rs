@@ -1,9 +1,11 @@
 use crate::{
-    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_DATABASE_ION_TESTNET_CORE,
+    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
+    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
 };
 use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
+use std::convert::TryFrom;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
@@ -29,29 +31,70 @@ where
 
     /// Returns the ledger transaction representing the ION DID operation.
     fn transaction(&self, did: &str) -> Result<Transaction, VerifierError> {
-        // Query the database.
         self.resolver().runtime.block_on(async {
-            // sidetree resolved resolution metadata, document and document metadata
-            let doc = block_on(Self::query_mongo(did));
+            // Query the database.
+            let doc = match block_on(Self::query_mongo(did)) {
+                Ok(x) => x,
+                Err(e) => {
+                    return Err(VerifierError::FailureToGetDIDOperation(
+                        did.to_owned(),
+                        e.to_string(),
+                    ))
+                }
+            };
 
-            // let json = serde_json::from_str()?;
+            // Extract the block height.
+            let block_height: u32 = match doc.get_i32("txnTime") {
+                Ok(x) => match u32::try_from(x) {
+                    Ok(y) => y,
+                    Err(_) => return Err(VerifierError::InvalidBlockHeight(x)),
+                },
+                Err(e) => {
+                    return Err(VerifierError::FailureToGetDIDOperation(
+                        did.to_owned(),
+                        e.to_string(),
+                    ))
+                }
+            };
 
-            // Extract the transaction data.
-            // let block_height = json.get("txnTime");
+            // Extract the index of the transaction inside the block.
+            let txn_number_str = match doc.get_i64("txnNumber") {
+                Ok(x) => x,
+                Err(e) => {
+                    return Err(VerifierError::FailureToGetDIDOperation(
+                        did.to_owned(),
+                        e.to_string(),
+                    ))
+                }
+            }
+            .to_string();
 
-            // TODO: txnNumber looks like NumberLong("2377445000003")
-            // so we need to parse it, remove the block_height and then convert to a u32.
-            // let transaction_index = json.get("txnNumber");
-            Ok((0, 0))
+            let transaction_index = match txn_number_str.strip_prefix(&block_height.to_string()) {
+                Some(x) => match str::parse::<u32>(x) {
+                    Ok(y) => y,
+                    Err(e) => {
+                        return Err(VerifierError::FailureToGetDIDOperation(
+                            did.to_owned(),
+                            e.to_string(),
+                        ))
+                    }
+                },
+                // Includes a check that the transaction txnNumber starts with the block height.
+                None => {
+                    return Err(VerifierError::FailureToGetDIDOperation(
+                        did.to_owned(),
+                        String::from("txnNumber should start with block height."),
+                    ))
+                }
+            };
+            println!("{:?}", (block_height, transaction_index)); // TEMP
+            Ok((block_height, transaction_index))
         })
     }
 
     /// Query the ION MongoDB for a DID operation.
     async fn query_mongo(did: &str) -> mongodb::error::Result<mongodb::bson::Document> {
-        // Connect to the ION Mongo DB.
-        // Parse your connection string into an options struct
-        let mut client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
-
+        let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
         let client = Client::with_options(client_options)?;
 
         let doc: mongodb::bson::Document = client
@@ -59,12 +102,13 @@ where
             .collection(MONGO_COLLECTION_OPERATIONS)
             .find_one(
                 doc! {
-                    "didSuffix": did
+                    MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                    MONGO_FILTER_DID_SUFFIX : did
                 },
                 None,
             )
             .await?
-            .expect("Missing 'Parasite' document.");
+            .expect("MongoDB query error");
         Ok(doc)
     }
 }
@@ -96,6 +140,13 @@ mod tests {
     fn test_transaction() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
+
+        let did = "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+
+        let (block_height, transaction_index) = target.transaction(did).unwrap();
+
+        assert_eq!(block_height, 1902377);
+        assert_eq!(transaction_index, 118);
 
         let did = "EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
 
