@@ -1,5 +1,8 @@
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::canonicalize;
+use ssi::did::{VerificationMethod, VerificationMethodMap};
+use ssi::did_resolve::Metadata;
+use ssi::jwk::JWK;
 use ssi::{
     did::{self, Document},
     did_resolve::{DIDResolver, DocumentMetadata},
@@ -18,6 +21,12 @@ pub enum ChainError {
     ResolutionFailure(String),
     #[error("Found multiple controllers in DID: {0}.")]
     MultipleControllers(String),
+    /// No proof value present.
+    #[error("No proof could be retrieved from document metadata.")]
+    FailureToGetProof,
+    /// Failure to get controller from document.
+    #[error("No controller could be retrieved from document.")]
+    FailureToGetController,
 }
 
 /// A chain of DIDs.
@@ -40,6 +49,73 @@ pub trait Chain {
     fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
+}
+
+// TODO: the functions below need completing. Comments:
+//   - Some are already implemented in resolver.
+//   - Some may benefit from being part of a struct impl.
+
+/// Gets controller from the passed document.
+fn get_controller(doc: &Document) -> Result<String, ChainError> {
+    // Get property set
+    if let Some(OneOrMany::One(controller)) = doc.controller.as_ref() {
+        Ok(controller.to_string())
+    } else {
+        Err(ChainError::FailureToGetController)
+    }
+}
+/// Gets proof from DocumentMetadata.
+fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
+    // Get property set
+    if let Some(property_set) = doc_meta.property_set.as_ref() {
+        // Get proof
+        if let Some(Metadata::Map(proof)) = property_set.get("proof") {
+            // Get proof value
+            if let Some(Metadata::String(proof_value)) = proof.get("proofValue") {
+                Ok(proof_value)
+            } else {
+                Err(ChainError::FailureToGetProof)
+            }
+        } else {
+            Err(ChainError::FailureToGetProof)
+        }
+    } else {
+        Err(ChainError::FailureToGetProof)
+    }
+}
+
+/// TODO: Extract payload from JWS
+fn decode(proof_value: &JsonWebSignature2020) -> String {
+    todo!()
+}
+
+// TODO: Hash a canonicalized object
+fn hash(canonicalized_value: &str) -> String {
+    todo!()
+}
+
+/// Extracts vec of public keys from a doc.
+fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
+}
+
+// TODO: Check whether correct signature on proof_value given vec of public keys
+fn verify_jws(proof_value: &JsonWebSignature2020, public_keys: &Vec<JWK>) -> bool {
+    todo!()
 }
 
 pub struct DIDChain {
@@ -254,6 +330,7 @@ impl Chain for DIDChain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::*;
     use crate::data::{
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
         TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
@@ -261,6 +338,62 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
+    // use crate::data::{
+    //     TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA,
+    //     TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
+    //     TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
+    //     TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+    // };
+
+    const ROOT_SIGNING_KEYS: &str = r##"
+    [
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+            "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+        }
+    ]
+    "##;
+
+    use crate::utils::canonicalize;
+    use ssi::did_resolve::HTTPDIDResolver;
+
+    #[test]
+    fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let root_plus_1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let root_plus_2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        let root_proof = get_proof(&root_doc_meta);
+        let root_plus_1_proof = get_proof(&root_plus_1_doc_meta);
+        let root_plus_2_proof = get_proof(&root_plus_2_doc_meta);
+
+        assert!(root_proof.is_err());
+        assert!(root_plus_1_proof.is_ok());
+        assert!(root_plus_2_proof.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_keys() -> Result<(), Box<dyn std::error::Error>> {
+        let expected_root_keys: Vec<JWK> = serde_json::from_str(ROOT_SIGNING_KEYS)?;
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let actual_root_keys = extract_keys(&root_doc);
+        assert_eq!(actual_root_keys, expected_root_keys);
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_controller() -> Result<(), Box<dyn std::error::Error>> {
+        let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let expected_controller = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let actual_controller = get_controller(&doc)?;
+        assert_eq!(expected_controller, actual_controller);
+        Ok(())
+    }
 
     // Helper function returns a resolved tuple.
     fn resolved_tuple() -> (Document, DocumentMetadata) {
