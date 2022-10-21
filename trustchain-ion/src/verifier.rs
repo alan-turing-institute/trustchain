@@ -1,7 +1,9 @@
 use crate::{
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
     MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
     MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
 };
+use bitcoincore_rpc::RpcApi;
 use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
@@ -128,6 +130,31 @@ where
             }
         }
     }
+
+    /// Gets the OP_RETURN in the Bitcoin transaction for a given DID.
+    fn op_return(&self, did: &str) -> Result<&str, VerifierError> {
+        let (block_height, transaction_index) = self.transaction(did)?;
+
+        let rpc = bitcoincore_rpc::Client::new(
+            BITCOIN_CONNECTION_STRING,
+            bitcoincore_rpc::Auth::UserPass(
+                BITCOIN_RPC_USERNAME.to_string(),
+                BITCOIN_RPC_PASSWORD.to_string(),
+            ),
+        )
+        .unwrap();
+
+        let block_hash = rpc.get_block_hash(u64::from(block_height)).unwrap();
+        let block_header = rpc.get_block_header(&block_hash).unwrap();
+
+        println!("best block hash: {:?}", block_header);
+
+        let op_return = "abc";
+
+        // TODO.
+
+        Ok(op_return)
+    }
 }
 
 impl<T> Verifier<T> for IONVerifier<T>
@@ -181,5 +208,16 @@ mod tests {
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
         let result = target.transaction(invalid_did);
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[ignore = "Integration test requires MongoDB"]
+    fn test_op_return() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+
+        let result = target.op_return(did);
     }
 }
