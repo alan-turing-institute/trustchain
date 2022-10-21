@@ -204,16 +204,16 @@ impl Chain for DIDChain {
     }
 
     fn root(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.first().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.first().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
     }
 
     fn leaf(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.last().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.last().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
