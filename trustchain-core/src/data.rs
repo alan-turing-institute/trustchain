@@ -558,6 +558,16 @@ pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r##"
 }
 "##;
 
+/// Root JWK public key
+pub const TEST_ROOT_JWK_PK: &str = r##"
+{
+   "kty": "EC",
+   "crv": "secp256k1",
+   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+}
+"##;
+
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_1_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g";
 

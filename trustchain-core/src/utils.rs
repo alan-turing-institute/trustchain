@@ -106,10 +106,10 @@ pub fn set_panic_hook() {
 
 #[cfg(test)]
 mod tests {
-    use ssi::did::Document;
-
     use super::*;
-    use crate::data::{TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
+    use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
+    use serde_json::to_string_pretty as to_json;
+    use ssi::did::Document;
 
     #[test]
     fn test_decode() {
@@ -117,8 +117,15 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_verify() {
-        todo!()
+    fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {
+        // TODO: fix as failing
+        let key: JWK = serde_json::from_str(TEST_ROOT_JWK_PK)?;
+        let jwt = TEST_ROOT_PLUS_1_JWT;
+        println!("{}", &to_json(&TEST_ROOT_PLUS_1_JWT).unwrap());
+        println!("{}", &to_json(&key).unwrap());
+        let result = decode_verify(jwt, &key);
+        assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
