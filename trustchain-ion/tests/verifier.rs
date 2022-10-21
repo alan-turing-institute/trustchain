@@ -36,8 +36,9 @@ fn trustchain_verification() {
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME);
         println!(
-            "DID: {:?},  VERIFIED!!!\n{:?}",
-            did,
+            // "DID: {:?},  VERIFIED!!!\n{:?}",
+            "{}",
+            // did,
             result.as_ref().unwrap()
         );
         assert!(result.is_ok());

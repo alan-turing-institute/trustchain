@@ -9,6 +9,7 @@ use ssi::{
     one_or_many::OneOrMany,
 };
 use std::collections::HashMap;
+use std::fmt;
 use thiserror::Error;
 
 /// An error relating to a DID chain.
@@ -101,6 +102,68 @@ pub struct DIDChain {
 
     // Vector to keep track of the level of each DID.
     level_vec: Vec<String>,
+}
+
+/// Struct for displaying DID in a box.
+struct PrettyDID {
+    did: String,
+}
+
+impl PrettyDID {
+    fn new(did: &str) -> Self {
+        Self {
+            did: did.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for PrettyDID {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Style:
+        // "+---------+"
+        // "| did:... |"  TICK
+        // "+---------+"
+        let box_width = self.did.len() + 2;
+        writeln!(f, "+{}+", "-".repeat(box_width))?;
+        writeln!(f, "| {} |  ✓", self.did)?;
+        writeln!(f, "+{}+", "-".repeat(box_width))?;
+        Ok(())
+    }
+}
+
+impl fmt::Display for DIDChain {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Style:
+        // "+---------+"
+        // "| did:... |"  TICK
+        // "+----------+"
+        //       ⛓
+        // "+---------+"
+        // "| did:... |"  TICK
+        // "+---------+"
+        let title = "₿ DON'T TRUST, VERIFY! ₿";
+        let did_width = (self.root().len() + 4) / 2;
+        let indent = did_width - title.len() / 2;
+        writeln!(f, "{}{}", " ".repeat(indent), title)?;
+        for (i, did) in self.level_vec.iter().enumerate() {
+            if i == 0 {
+                writeln!(f, "ROOT")?;
+            } else {
+                writeln!(f, "Level {}", i)?;
+            }
+            write!(f, "{}", PrettyDID::new(did))?;
+            let link_string = match did.len() {
+                x if x % 2 == 0 => "||",
+                _ => "⛓",
+            };
+            let link_width = (did.len() + 2) / 2;
+            if self.downstream(did).is_some() {
+                writeln!(f, "{}{}", " ".repeat(link_width), link_string)?;
+                writeln!(f, "{}{}", " ".repeat(link_width), link_string)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl DIDChain {
