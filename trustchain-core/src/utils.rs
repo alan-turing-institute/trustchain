@@ -83,7 +83,7 @@ pub fn hash(data: &str) -> String {
 }
 
 /// Extracts payload from JWT and verifies signature.
-pub fn decode_verify(jwt: &str, key: &JWK) -> Result<(), ssi::error::Error> {
+pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_verify(jwt, key)
 }
 
@@ -118,11 +118,8 @@ mod tests {
 
     #[test]
     fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {
-        // TODO: fix as failing
         let key: JWK = serde_json::from_str(TEST_ROOT_JWK_PK)?;
         let jwt = TEST_ROOT_PLUS_1_JWT;
-        println!("{}", &to_json(&TEST_ROOT_PLUS_1_JWT).unwrap());
-        println!("{}", &to_json(&key).unwrap());
         let result = decode_verify(jwt, &key);
         assert!(result.is_ok());
         Ok(())
