@@ -36,6 +36,16 @@ pub enum ResolverError {
     DIDNotFound(String),
 }
 
+/// Type for resolver result.
+type ResolverResult = Result<
+    (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ),
+    ResolverError,
+>;
+
 // Newtype pattern (workaround for lack of trait upcasting coercion).
 // Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
 // The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
