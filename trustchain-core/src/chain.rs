@@ -254,7 +254,12 @@ impl Chain for DIDChain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{TEST_SIDETREE_DOCUMENT, TEST_SIDETREE_DOCUMENT_METADATA};
+    use crate::data::{
+        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
+        TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
+        TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_SIDETREE_DOCUMENT,
+        TEST_SIDETREE_DOCUMENT_METADATA,
+    };
 
     // Helper function returns a resolved tuple.
     fn resolved_tuple() -> (Document, DocumentMetadata) {
@@ -265,8 +270,28 @@ mod tests {
         )
     }
 
+    // Helper function returns a chain of three DIDs.
+    fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
+        let mut chain = DIDChain::empty();
+
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
+
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let level1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let level2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        chain.prepend((level2_doc, level2_doc_meta));
+        chain.prepend((level1_doc, level1_doc_meta));
+        chain.prepend((root_doc, root_doc_meta));
+        Ok(chain)
+    }
+
     #[test]
-    fn test_chain() {
+    fn test_len_level_prepend() {
         let mut target = DIDChain::empty();
         let expected_ddid = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
 
@@ -292,11 +317,13 @@ mod tests {
         // let did1 = ""
     }
 
-    // TODO: test the new constructor.
+    fn test_root() {
+        let target = test_chain().unwrap();
+        assert_eq!(
+            target.root(),
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        )
+    }
 
-    // TODO?:
-    // fn test_prepend() {
-    //     let mut target = DIDChain::new();
-    //     let result = target.prepend(());
-    //     assert!(result.is_err());
+    // TODO: other unit tests.
 }
