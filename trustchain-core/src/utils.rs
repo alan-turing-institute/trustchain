@@ -112,11 +112,6 @@ mod tests {
     use ssi::did::Document;
 
     #[test]
-    fn test_decode() {
-        todo!()
-    }
-
-    #[test]
     fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {
         let key: JWK = serde_json::from_str(TEST_ROOT_JWK_PK)?;
         let jwt = TEST_ROOT_PLUS_1_JWT;
@@ -126,7 +121,7 @@ mod tests {
     }
 
     #[test]
-    fn test_canonicalize_hash() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_decode_canonicalize_hash() -> Result<(), Box<dyn std::error::Error>> {
         let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
         let doc_canon = canonicalize(&doc)?;
         let actual_hash = hash(&doc_canon);
