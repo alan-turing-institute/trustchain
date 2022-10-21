@@ -33,11 +33,11 @@ pub trait Chain {
     /// Gets the leaf node DID.
     fn leaf(&self) -> &str;
     /// Gets the next upstream DID.
-    fn upstream(&self, did: &str) -> Option<&str>;
+    fn upstream(&self, did: &str) -> Option<&String>;
     /// Gets the next downstream DID.
-    fn downstream(&self, did: &str) -> Option<&str>;
+    fn downstream(&self, did: &str) -> Option<&String>;
     /// Gets data for the given DID.
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
     /// Return view of chain in correct order
@@ -113,8 +113,8 @@ impl DIDChain {
     /// Prepend a DID to the chain.
     fn prepend(&mut self, tuple: (Document, DocumentMetadata)) {
         let (doc, doc_meta) = tuple;
-        &self.level_vec.push(doc.id.to_owned());
-        &self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
+        self.level_vec.push(doc.id.to_owned());
+        self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
     }
 }
 
@@ -245,16 +245,28 @@ impl Chain for DIDChain {
         //             }
     }
 
-    fn upstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn upstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != 0 {
+            let index_prev = index - 1;
+            self.level_vec.get(index_prev)
+        } else {
+            None
+        }
     }
 
-    fn downstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn downstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != self.level_vec.len() - 1 {
+            let index_next = index + 1;
+            self.level_vec.get(index_next)
+        } else {
+            None
+        }
     }
 
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)> {
-        todo!()
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)> {
+        self.did_map.get(did)
     }
 }
 
@@ -388,6 +400,7 @@ mod tests {
 
     #[test]
     fn test_level() {
+        // test the level returned for each node in the test chain
         let target = test_chain().unwrap();
         let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         assert_eq!(target.level(expected_root_did).unwrap(), 0);
@@ -400,7 +413,91 @@ mod tests {
 
     #[test]
     fn test_upstream() {
-        todo!()
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+
+        let target_udid = match target.upstream(did) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_udid, expected_udid);
+
+        let target_uudid = match target.upstream(target_udid) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_uudid, expected_uudid);
+
+        let target_uuudid = target.upstream(target_uudid);
+        assert_eq!(target_uuudid, None);
     }
-    // TODO: other unit tests.
+
+    #[test]
+    fn test_downstream() {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        match target.downstream(did) {
+            Some(s) => assert_eq!(s, expected_ddid),
+            _ => panic!(),
+        };
+        match target.downstream(target.downstream(did).unwrap()) {
+            Some(s) => assert_eq!(s, expected_dddid),
+            _ => panic!(),
+        };
+        assert!(target
+            .downstream(target.downstream(target.downstream(did).unwrap()).unwrap())
+            .is_none());
+    }
+
+    #[test]
+    fn test_data() -> Result<(), Box<dyn std::error::Error>> {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
+
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let level1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let level2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        if let Some((doc, doc_meta)) = target.data(did) {
+            assert_eq!(doc, &root_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&root_doc_meta).unwrap()
+            );
+        } else {
+            panic!();
+        }
+        if let Some((doc, doc_meta)) = target.data(level1_did) {
+            assert_eq!(doc, &level1_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level1_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        if let Some((doc, doc_meta)) = target.data(level2_did) {
+            assert_eq!(doc, &level2_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level2_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
 }
