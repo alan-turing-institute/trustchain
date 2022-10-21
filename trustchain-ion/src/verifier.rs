@@ -171,11 +171,15 @@ mod tests {
         assert_eq!(block_height, 1902377);
         assert_eq!(transaction_index, 118);
 
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let (block_height, transaction_index) = target.transaction(did).unwrap();
 
-        // let (block_height, transaction_index) = target.transaction(did).unwrap();
+        assert_eq!(block_height, 2377445);
+        assert_eq!(transaction_index, 3);
 
-        // assert_eq!(block_height, 2377445);
-        // assert_eq!(transaction_index, 3);
+        // Invalid DID
+        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+        let result = target.transaction(invalid_did);
+        assert!(result.is_err());
     }
 }
