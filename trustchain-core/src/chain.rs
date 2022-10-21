@@ -1,14 +1,14 @@
-use crate::resolver::{Resolver, ResolverError};
+use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
 use ssi::{
-    did::{self, Document},
+    did::Document,
     did_resolve::{DIDResolver, DocumentMetadata},
     one_or_many::OneOrMany,
 };
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// An error relating to a DID chain.
@@ -23,9 +23,6 @@ pub enum ChainError {
     /// No proof value present.
     #[error("No proof could be retrieved from document metadata.")]
     FailureToGetProof,
-    /// Failure to get controller from document.
-    #[error("No controller could be retrieved from document.")]
-    FailureToGetController,
     /// Failure to verify JWT.
     #[error("No keys are valid for the JWT provided.")]
     InvalidKeys,
@@ -58,19 +55,6 @@ pub trait Chain {
     fn as_vec(&self) -> &Vec<String>;
 }
 
-// TODO: the functions below need completing. Comments:
-//   - Some are already implemented in resolver.
-//   - Some may benefit from being part of a struct impl.
-
-/// Gets controller from the passed document.
-fn get_controller(doc: &Document) -> Result<String, ChainError> {
-    // Get property set
-    if let Some(OneOrMany::One(controller)) = doc.controller.as_ref() {
-        Ok(controller.to_string())
-    } else {
-        Err(ChainError::FailureToGetController)
-    }
-}
 /// Gets proof from DocumentMetadata.
 fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
     // Get property set
@@ -151,7 +135,7 @@ impl DIDChain {
                 let udid = match controller {
                     None => {
                         chain.level_vec.reverse();
-                        return Ok(chain); // Ok(Box::new(chain))
+                        return Ok(chain);
                     }
                     Some(x) => match x.to_owned() {
                         OneOrMany::One(udid) => udid,
@@ -304,7 +288,6 @@ impl Chain for DIDChain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::*;
     use crate::data::{
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
         TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
@@ -348,15 +331,6 @@ mod tests {
         let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
         let actual_root_keys = extract_keys(&root_doc);
         assert_eq!(actual_root_keys, expected_root_keys);
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_controller() -> Result<(), Box<dyn std::error::Error>> {
-        let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
-        let expected_controller = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let actual_controller = get_controller(&doc)?;
-        assert_eq!(expected_controller, actual_controller);
         Ok(())
     }
 
