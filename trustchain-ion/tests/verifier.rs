@@ -4,6 +4,7 @@ use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
 
 use did_ion::{sidetree::SidetreeClient, ION};
+use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 // Type aliases
@@ -32,9 +33,13 @@ fn trustchain_verification() {
     let resolver = test_resolver("http://localhost:3000/");
 
     let verifier = IONVerifier::new(resolver);
-    for did in &dids {
+    for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME);
-        println!("DID: {},  VERIFIED!!!\n{:?}", did, result);
+        println!(
+            "DID: {:?},  VERIFIED!!!\n{:?}",
+            did,
+            result.as_ref().unwrap()
+        );
         assert!(result.is_ok());
     }
 }

@@ -53,9 +53,9 @@ pub enum VerifierError {
 /// Verifier of root and downstream DIDs.
 pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verify a downstream DID by tracing its chain back to the root.
-    fn verify(&self, did: &str, root_timestamp: u32) -> Result<(), VerifierError> {
+    fn verify(&self, did: &str, root_timestamp: u32) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
-        let chain = match DIDChain::new(did, &self.resolver()) {
+        let chain = match DIDChain::new(did, self.resolver()) {
             Ok(x) => x,
             Err(e) => return Err(VerifierError::ChainBuildFailure(e.to_string())),
         };
@@ -76,7 +76,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         } else {
             return Err(VerifierError::FailureToGetBlockHeight(root.to_owned()));
         }
-        Ok(())
+        Ok(chain)
     }
 
     /// Get the verified block height for a DID.

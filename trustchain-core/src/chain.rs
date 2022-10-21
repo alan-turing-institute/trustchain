@@ -94,6 +94,7 @@ fn extract_keys(doc: &Document) -> Vec<JWK> {
     public_keys
 }
 
+#[derive(Debug)]
 pub struct DIDChain {
     // An map from DID strings to resolved tuples.
     did_map: HashMap<String, (Document, DocumentMetadata)>,
