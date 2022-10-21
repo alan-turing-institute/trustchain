@@ -37,12 +37,6 @@ pub enum VerifierError {
     /// Chain verification failed.
     #[error("Chain verification failed: {0}.")]
     InvalidChain(String),
-    /// No proof value present.
-    #[error("No proof could be retrieved from document metadata.")]
-    FailureToGetProof,
-    /// Failure to get controller from document.
-    #[error("No controller could be retrieved from document.")]
-    FailureToGetController,
 }
 
 /// Verifier of root and downstream DIDs.
@@ -85,73 +79,6 @@ where
         // Ok(Self { resolver, visited })
         Self { resolver }
     }
-}
-
-// TODO: the functions below need completing. Comments:
-//   - Some are already implemented in resolver.
-//   - Some may benefit from being part of a struct impl.
-
-/// Gets controller from the passed document.
-fn get_controller(doc: &Document) -> Result<String, VerifierError> {
-    // Get property set
-    if let Some(OneOrMany::One(controller)) = doc.controller.as_ref() {
-        Ok(controller.to_string())
-    } else {
-        Err(VerifierError::FailureToGetController)
-    }
-}
-/// Gets proof from DocumentMetadata.
-fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, VerifierError> {
-    // Get property set
-    if let Some(property_set) = doc_meta.property_set.as_ref() {
-        // Get proof
-        if let Some(Metadata::Map(proof)) = property_set.get("proof") {
-            // Get proof value
-            if let Some(Metadata::String(proof_value)) = proof.get("proofValue") {
-                Ok(proof_value)
-            } else {
-                Err(VerifierError::FailureToGetProof)
-            }
-        } else {
-            Err(VerifierError::FailureToGetProof)
-        }
-    } else {
-        Err(VerifierError::FailureToGetProof)
-    }
-}
-
-/// TODO: Extract payload from JWS
-fn decode(proof_value: &JsonWebSignature2020) -> String {
-    todo!()
-}
-
-// TODO: Hash a canonicalized object
-fn hash(canonicalized_value: &str) -> String {
-    todo!()
-}
-
-/// Extracts vec of public keys from a doc.
-fn extract_keys(doc: &Document) -> Vec<JWK> {
-    let mut public_keys: Vec<JWK> = Vec::new();
-    if let Some(verification_methods) = doc.verification_method.as_ref() {
-        for verification_method in verification_methods {
-            if let VerificationMethod::Map(VerificationMethodMap {
-                public_key_jwk: Some(key),
-                ..
-            }) = verification_method
-            {
-                public_keys.push(key.clone());
-            } else {
-                continue;
-            }
-        }
-    }
-    public_keys
-}
-
-// TODO: Check whether correct signature on proof_value given vec of public keys
-fn verify_jws(proof_value: &JsonWebSignature2020, public_keys: &Vec<JWK>) -> bool {
-    todo!()
 }
 
 // TODO: Get the created at time from document metadata for comparison with ROOT_EVENT_TIME
@@ -309,42 +236,6 @@ mod tests {
     };
     use crate::utils::canonicalize;
     use ssi::did_resolve::HTTPDIDResolver;
-
-    #[test]
-    fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {
-        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
-        let root_plus_1_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
-        let root_plus_2_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
-
-        let root_proof = get_proof(&root_doc_meta);
-        let root_plus_1_proof = get_proof(&root_plus_1_doc_meta);
-        let root_plus_2_proof = get_proof(&root_plus_2_doc_meta);
-
-        assert!(root_proof.is_err());
-        assert!(root_plus_1_proof.is_ok());
-        assert!(root_plus_2_proof.is_ok());
-        Ok(())
-    }
-
-    #[test]
-    fn test_extract_keys() -> Result<(), Box<dyn std::error::Error>> {
-        let expected_root_keys: Vec<JWK> = serde_json::from_str(ROOT_SIGNING_KEYS)?;
-        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
-        let actual_root_keys = extract_keys(&root_doc);
-        assert_eq!(actual_root_keys, expected_root_keys);
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_controller() -> Result<(), Box<dyn std::error::Error>> {
-        let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
-        let expected_controller = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let actual_controller = get_controller(&doc)?;
-        assert_eq!(expected_controller, actual_controller);
-        Ok(())
-    }
 
     // TODO: make valid DDID_DOC test doc with proof
     // const DDID_DOC: &str = r##"
