@@ -45,7 +45,7 @@ pub enum VerifierError {
 }
 
 /// Verifier of root and downstream DIDs.
-trait Verifier<T: Sync + Send + DIDResolver> {
+pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verify a downstream DID by tracing its chain back to the root.
     fn verify(&self, did: &str, root_timestamp: u32) -> Result<(), VerifierError> {
         // Build a chain from the given DID to the root.
@@ -71,7 +71,7 @@ trait Verifier<T: Sync + Send + DIDResolver> {
     /// Get the verified timestamp for a DID as a Unix time.
     fn verified_timestamp(&self, did: &str) -> u32;
     // /// Get the resolver used for DID verification.
-    fn resolver(&self) -> Resolver<T>;
+    fn resolver(&self) -> &Resolver<T>;
 }
 
 /// Gets controller from the passed document.
