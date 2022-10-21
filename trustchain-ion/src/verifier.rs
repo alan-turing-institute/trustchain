@@ -6,6 +6,7 @@ use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
 use std::convert::TryFrom;
+use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
@@ -31,9 +32,10 @@ where
 
     /// Returns the ledger transaction representing the ION DID operation.
     fn transaction(&self, did: &str) -> Result<Transaction, VerifierError> {
+        let suffix = did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database.
-            let doc = match block_on(Self::query_mongo(did)) {
+            let doc = match block_on(Self::query_mongo(suffix)) {
                 Ok(x) => x,
                 Err(e) => {
                     return Err(VerifierError::FailureToGetDIDOperation(
@@ -51,7 +53,7 @@ where
                 },
                 Err(e) => {
                     return Err(VerifierError::FailureToGetDIDOperation(
-                        did.to_owned(),
+                        suffix.to_owned(),
                         e.to_string(),
                     ))
                 }
@@ -62,7 +64,7 @@ where
                 Ok(x) => x,
                 Err(e) => {
                     return Err(VerifierError::FailureToGetDIDOperation(
-                        did.to_owned(),
+                        suffix.to_owned(),
                         e.to_string(),
                     ))
                 }
@@ -74,7 +76,7 @@ where
                     Ok(y) => y,
                     Err(e) => {
                         return Err(VerifierError::FailureToGetDIDOperation(
-                            did.to_owned(),
+                            suffix.to_owned(),
                             e.to_string(),
                         ))
                     }
@@ -87,7 +89,6 @@ where
                     ))
                 }
             };
-            println!("{:?}", (block_height, transaction_index)); // TEMP
             Ok((block_height, transaction_index))
         })
     }
@@ -117,7 +118,12 @@ impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
 {
-    fn verified_timestamp(&self, did: &str) -> u32 {
+    fn verified_block_height(&self, did: &str) -> Result<u32, VerifierError> {
+        let (block_height, _) = self.transaction(did)?;
+        Ok(block_height)
+    }
+
+    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError> {
         todo!()
     }
 
@@ -137,18 +143,19 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Integration test requires MongoDB"]
     fn test_transaction() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
-        let did = "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
 
         let (block_height, transaction_index) = target.transaction(did).unwrap();
 
         assert_eq!(block_height, 1902377);
         assert_eq!(transaction_index, 118);
 
-        let did = "EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
 
         let (block_height, transaction_index) = target.transaction(did).unwrap();
 

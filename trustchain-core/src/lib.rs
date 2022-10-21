@@ -19,6 +19,11 @@ pub trait Subject {
     fn did(&self) -> &str;
 }
 
+/// Returns the suffix of a short-form DID.
+pub fn did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
+}
+
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 static INIT: Once = Once::new();

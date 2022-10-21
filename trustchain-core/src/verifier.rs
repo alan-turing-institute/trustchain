@@ -51,6 +51,9 @@ pub enum VerifierError {
     /// Invalid transaction index.
     #[error("Invalid transaction index: {0}")]
     InvalidTransactionIndex(i32),
+    /// Failed to get the block height for DID.
+    #[error("Failed to get block height for DID: {0}")]
+    FailureToGetBlockHeight(String),
 }
 
 /// Verifier of root and downstream DIDs.
@@ -70,15 +73,22 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         };
 
         // Verify the root timestamp.
+        // TODO: use the Unix timestamp rather than the block height.
         let root = chain.root();
-        if self.verified_timestamp(root) != root_timestamp {
-            return Err(VerifierError::InvalidRoot(root.to_string()));
+        if let Ok(block_height) = self.verified_block_height(root) {
+            if block_height != root_timestamp {
+                return Err(VerifierError::InvalidRoot(root.to_string()));
+            }
+        } else {
+            return Err(VerifierError::FailureToGetBlockHeight(root.to_owned()));
         }
         Ok(())
     }
 
+    /// Get the verified block height for a DID.
+    fn verified_block_height(&self, did: &str) -> Result<u32, VerifierError>;
     /// Get the verified timestamp for a DID as a Unix time.
-    fn verified_timestamp(&self, did: &str) -> u32;
+    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError>;
     // /// Get the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;
 }
