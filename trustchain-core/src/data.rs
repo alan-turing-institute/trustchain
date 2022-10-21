@@ -558,6 +558,19 @@ pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r##"
 }
 "##;
 
+/// Root JWK public key
+pub const TEST_ROOT_JWK_PK: &str = r##"
+{
+   "kty": "EC",
+   "crv": "secp256k1",
+   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+}
+"##;
+
+/// Proof value from metadata
+pub const TEST_ROOT_PLUS_1_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g";
+
 pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
 {
    "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
@@ -573,3 +586,5 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
    }
 }
 "##;
+/// Proof value from metadata
+pub const TEST_ROOT_PLUS_2_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw";

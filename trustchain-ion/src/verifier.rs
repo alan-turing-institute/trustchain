@@ -89,7 +89,6 @@ where
                     ))
                 }
             };
-            println!("hey {:?}", (block_height, transaction_index));
             Ok((block_height, transaction_index))
         })
     }

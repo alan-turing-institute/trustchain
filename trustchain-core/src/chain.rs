@@ -1,12 +1,14 @@
-use crate::resolver::{Resolver, ResolverError};
-use crate::utils::canonicalize;
+use crate::resolver::Resolver;
+use crate::utils::{canonicalize, decode, decode_verify, hash};
+use ssi::did::{VerificationMethod, VerificationMethodMap};
+use ssi::did_resolve::Metadata;
+use ssi::jwk::JWK;
 use ssi::{
-    did::{self, Document},
+    did::Document,
     did_resolve::{DIDResolver, DocumentMetadata},
-    ldp::JsonWebSignature2020,
     one_or_many::OneOrMany,
 };
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// An error relating to a DID chain.
@@ -18,6 +20,15 @@ pub enum ChainError {
     ResolutionFailure(String),
     #[error("Found multiple controllers in DID: {0}.")]
     MultipleControllers(String),
+    /// No proof value present.
+    #[error("No proof could be retrieved from document metadata.")]
+    FailureToGetProof,
+    /// Failure to verify JWT.
+    #[error("No keys are valid for the JWT provided.")]
+    InvalidKeys,
+    /// Failure to verify payload.
+    #[error("Payload of JWT does not match reconstructed payload.")]
+    InvalidPayload,
 }
 
 /// A chain of DIDs.
@@ -33,13 +44,54 @@ pub trait Chain {
     /// Gets the leaf node DID.
     fn leaf(&self) -> &str;
     /// Gets the next upstream DID.
-    fn upstream(&self, did: &str) -> Option<&str>;
+    fn upstream(&self, did: &str) -> Option<&String>;
     /// Gets the next downstream DID.
-    fn downstream(&self, did: &str) -> Option<&str>;
+    fn downstream(&self, did: &str) -> Option<&String>;
     /// Gets data for the given DID.
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
+    /// Return view of chain in correct order
+    fn as_vec(&self) -> &Vec<String>;
+}
+
+/// Gets proof from DocumentMetadata.
+fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
+    // Get property set
+    if let Some(property_set) = doc_meta.property_set.as_ref() {
+        // Get proof
+        if let Some(Metadata::Map(proof)) = property_set.get("proof") {
+            // Get proof value
+            if let Some(Metadata::String(proof_value)) = proof.get("proofValue") {
+                Ok(proof_value)
+            } else {
+                Err(ChainError::FailureToGetProof)
+            }
+        } else {
+            Err(ChainError::FailureToGetProof)
+        }
+    } else {
+        Err(ChainError::FailureToGetProof)
+    }
+}
+
+/// Extracts vec of public keys from a doc.
+fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
 }
 
 pub struct DIDChain {
@@ -82,7 +134,8 @@ impl DIDChain {
                 // TODO: multiple controllers is a verfication error, not a chain error.
                 let udid = match controller {
                     None => {
-                        return Ok(chain); // Ok(Box::new(chain))
+                        chain.level_vec.reverse();
+                        return Ok(chain);
                     }
                     Some(x) => match x.to_owned() {
                         OneOrMany::One(udid) => udid,
@@ -110,12 +163,16 @@ impl DIDChain {
     /// Prepend a DID to the chain.
     fn prepend(&mut self, tuple: (Document, DocumentMetadata)) {
         let (doc, doc_meta) = tuple;
-        &self.level_vec.push(doc.id.to_owned());
-        &self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
+        self.level_vec.push(doc.id.to_owned());
+        self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
     }
 }
 
 impl Chain for DIDChain {
+    fn as_vec(&self) -> &Vec<String> {
+        &self.level_vec
+    }
+
     fn len(&self) -> usize {
         self.level_vec.len().to_owned()
     }
@@ -126,128 +183,105 @@ impl Chain for DIDChain {
         }
 
         // Subtract level vector index from the length.
-        let index = &self.level_vec.iter().position(|x| x == did).unwrap();
-        Some(&self.len() - 1 - index)
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        Some(index)
     }
 
     fn root(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.last().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.first().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
     }
 
     fn leaf(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.first().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.last().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
     }
 
     fn verify_proofs(&self) -> Result<(), ChainError> {
-        // TODO: move some of the chain verification logic from the
-        // original Verifier::verify implementation into this method.
-        // (See file verifier.rs)
-
         // TODO: verify signatures in parallel.
 
         // Start from the leaf node.
-        let did = self.leaf();
+        let mut did = self.leaf();
 
         while did != self.root() {
-            // Get the DID & its data.
-            let (did_doc, did_doc_meta) = self.data(&did).unwrap();
+            // 0. Get the DID & its data.
+            let (did_doc, did_doc_meta) = self.data(did).unwrap();
 
             // Get the upstream DID & its data.
             let udid = &self.upstream(did).unwrap();
-            let (udid_doc, udid_doc_meta) = self.data(&udid).unwrap();
+            let (udid_doc, _) = self.data(udid).unwrap();
 
             // Extract the controller proof from the document metadata.
-            // let proof = get_proof(&did_doc_meta);
+            let proof = get_proof(&did_doc_meta)?;
 
-            todo!();
-            // TODO FROM HERE:
-            // - Add a get_proof_payload(&doc_meta) function inside the Verifier module.
-            // - Call it to get the proof_payload.
-            // - Check whether "payload" is the correct term (in JWS).
-            // - Create a util function: fn hash(Document);
+            // 1. Reconstruct the actual payload.
+            let actual_payload = hash(&canonicalize(&did_doc).unwrap());
 
-            // Verify the payload of the JWS proofvalue matches the DID document.
-            // TODO (see below)
+            // Decode the payload from the proof
+            let decoded_payload = decode(proof);
 
-            // Reconstruct the actual payload.
-            // let actual_payload = hash(&canonicalize(&udid_doc).unwrap());
+            if let Ok(decoded_payload) = decoded_payload {
+                if actual_payload != decoded_payload {
+                    return Err(ChainError::InvalidPayload);
+                }
+            } else {
+                return Err(ChainError::InvalidPayload);
+            }
+
+            // 2. Check the keys
+            // Get keys
+            let keys = extract_keys(&udid_doc);
+
+            // Check at least one key valid
+            let mut one_valid_key = false;
+            for key in &keys {
+                match decode_verify(proof, key) {
+                    Ok(_) => {
+                        one_valid_key = true;
+                        break;
+                    }
+                    Err(_) => continue,
+                };
+            }
+            match one_valid_key {
+                true => (),
+                false => return Err(ChainError::InvalidKeys),
+            }
+
+            // 3. Set: did <- udid
+            did = udid;
         }
         Ok(())
-
-        //             // 0.2 Extract proof from document metadata
-        //             let proof = get_proof(&ddoc_meta);
-
-        //             // 1. Verify the payload of the JWS proofvalue is equal to the doc
-        //             // 1.1 Get proof payload
-        //             let proof_payload = decode(&proof);
-
-        //             // 1.2 Reconstruct payload
-        //             let actual_payload = hash(&canonicalize(&ddoc).unwrap());
-
-        //             // 1.3 Check equality
-        //             if proof_payload != actual_payload {
-        //                 return Err(VerifierError::InvalidPayload(ddid.to_string()));
-        //             }
-
-        //             // 2. Check the signature itself is valid
-        //             // Resolve the uDID (either get hashmap entry or resolve)
-        //             let udid_resolution = self
-        //                 .visited
-        //                 .entry(udid.clone())
-        //                 .or_insert(self.resolver.resolve_as_result(&udid));
-
-        //             if let Ok((_, Some(udoc), Some(udoc_meta))) = udid_resolution {
-        //                 // 2.1 Extract keys from the uDID document
-        //                 let udid_pks: Vec<JWK> = extract_keys(&udoc);
-
-        //                 // // 2.2 Loop over the keys until signature is valid
-        //                 let one_valid_key: bool = verify_jws(&proof, &udid_pks);
-
-        //                 // // 2.3 If one_valid_key is false, return error
-        //                 if !one_valid_key {
-        //                     return Err(VerifierError::InvalidSignature(ddid.to_string()));
-        //                 }
-
-        //                 // 2.4 Get uDID controller (uuDID)
-        //                 let uudid: &str = get_controller(&udoc);
-
-        //                 // 2.5 If uuDID is the same as uDID, this is a root,
-        //                 // check "created_at" property matches hard coded ROOT_EVENT_TIME
-        //                 if uudid == udid {
-        //                     let created_at = get_created_at(&udoc_meta);
-        //                     if created_at == ROOT_EVENT_TIME {
-        //                         return Ok(());
-        //                     } else {
-        //                         return Err(VerifierError::InvalidRoot(uudid.to_string()));
-        //                     }
-        //                 } else {
-        //                     // 2.6 If not a root, set ddid as udid, and return to start of loop
-        //                     ddid = udid;
-        //                 }
-        //             } else {
-        //                 // Return an error as uDID not resolvable
-        //                 return Err(VerifierError::UnresolvableDID(udid.to_string()));
-        //             }
     }
 
-    fn upstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn upstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != 0 {
+            let index_prev = index - 1;
+            self.level_vec.get(index_prev)
+        } else {
+            None
+        }
     }
 
-    fn downstream(&self, did: &str) -> Option<&str> {
-        todo!()
+    fn downstream(&self, did: &str) -> Option<&String> {
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        if index != self.level_vec.len() - 1 {
+            let index_next = index + 1;
+            self.level_vec.get(index_next)
+        } else {
+            None
+        }
     }
 
-    fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)> {
-        todo!()
+    fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)> {
+        self.did_map.get(did)
     }
 }
 
@@ -261,6 +295,44 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
+
+    const ROOT_SIGNING_KEYS: &str = r##"
+    [
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+            "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+        }
+    ]
+    "##;
+
+    #[test]
+    fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let root_plus_1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let root_plus_2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        let root_proof = get_proof(&root_doc_meta);
+        let root_plus_1_proof = get_proof(&root_plus_1_doc_meta);
+        let root_plus_2_proof = get_proof(&root_plus_2_doc_meta);
+
+        assert!(root_proof.is_err());
+        assert!(root_plus_1_proof.is_ok());
+        assert!(root_plus_2_proof.is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_extract_keys() -> Result<(), Box<dyn std::error::Error>> {
+        let expected_root_keys: Vec<JWK> = serde_json::from_str(ROOT_SIGNING_KEYS)?;
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let actual_root_keys = extract_keys(&root_doc);
+        assert_eq!(actual_root_keys, expected_root_keys);
+        Ok(())
+    }
 
     // Helper function returns a resolved tuple.
     fn resolved_tuple() -> (Document, DocumentMetadata) {
@@ -288,6 +360,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -308,6 +381,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -338,6 +412,20 @@ mod tests {
         // let did1 = ""
     }
 
+    #[test]
+    fn test_as_vec() {
+        let target = test_chain().unwrap();
+        let mut expected_vec = Vec::new();
+        expected_vec
+            .push("did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string()); //ROOT DID
+        expected_vec
+            .push("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()); // LEVEL ONE DID
+        expected_vec
+            .push("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()); // LEVEL TWO DID
+        assert_eq!(target.as_vec(), &expected_vec);
+    }
+
+    #[test]
     fn test_root() {
         let target = test_chain().unwrap();
         assert_eq!(
@@ -346,6 +434,16 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_leaf() {
+        let target = test_chain().unwrap();
+        assert_eq!(
+            target.leaf(),
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        )
+    }
+
+    #[test]
     fn test_verify_proofs() {
         let target = test_chain().unwrap();
         assert!(target.verify_proofs().is_ok());
@@ -353,5 +451,106 @@ mod tests {
         assert!(target.verify_proofs().is_err());
     }
 
-    // TODO: other unit tests.
+    #[test]
+    fn test_level() {
+        // test the level returned for each node in the test chain
+        let target = test_chain().unwrap();
+        let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        assert_eq!(target.level(expected_root_did).unwrap(), 0);
+
+        let expected_level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        assert_eq!(target.level(expected_level1_did).unwrap(), 1);
+        assert_eq!(target.level(expected_level2_did).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_upstream() {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+
+        let target_udid = match target.upstream(did) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_udid, expected_udid);
+
+        let target_uudid = match target.upstream(target_udid) {
+            Some(s) => s,
+            _ => panic!(),
+        };
+        assert_eq!(target_uudid, expected_uudid);
+
+        let target_uuudid = target.upstream(target_uudid);
+        assert_eq!(target_uuudid, None);
+    }
+
+    #[test]
+    fn test_downstream() {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        match target.downstream(did) {
+            Some(s) => assert_eq!(s, expected_ddid),
+            _ => panic!(),
+        };
+        match target.downstream(target.downstream(did).unwrap()) {
+            Some(s) => assert_eq!(s, expected_dddid),
+            _ => panic!(),
+        };
+        assert!(target
+            .downstream(target.downstream(target.downstream(did).unwrap()).unwrap())
+            .is_none());
+    }
+
+    #[test]
+    fn test_data() -> Result<(), Box<dyn std::error::Error>> {
+        let target = test_chain().unwrap();
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
+        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
+        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
+
+        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
+        let level1_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
+        let level2_doc_meta: DocumentMetadata =
+            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
+
+        if let Some((doc, doc_meta)) = target.data(did) {
+            assert_eq!(doc, &root_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&root_doc_meta).unwrap()
+            );
+        } else {
+            panic!();
+        }
+        if let Some((doc, doc_meta)) = target.data(level1_did) {
+            assert_eq!(doc, &level1_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level1_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        if let Some((doc, doc_meta)) = target.data(level2_did) {
+            assert_eq!(doc, &level2_doc);
+            assert_eq!(
+                canonicalize(&doc_meta).unwrap(),
+                canonicalize(&level2_doc_meta).unwrap()
+            );
+        } else {
+            panic!()
+        }
+        Ok(())
+    }
 }

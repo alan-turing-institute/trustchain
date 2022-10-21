@@ -21,16 +21,20 @@ use trustchain_ion::verifier::IONVerifier;
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
 fn trustchain_verification() {
     // Integration test of the Trustchain resolution pipeline.
-
-    // root-plus-2
-    let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+    // root - root-plus-1 - root-plus-2
+    let dids = vec![
+        "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+        "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+        "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+    ];
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = test_resolver("http://localhost:3000/");
 
     let verifier = IONVerifier::new(resolver);
-
-    let result = verifier.verify(did, ROOT_EVENT_TIME);
-
-    assert!(result.is_ok());
+    for did in &dids {
+        let result = verifier.verify(did, ROOT_EVENT_TIME);
+        println!("DID: {},  VERIFIED!!!\n{:?}", did, result);
+        assert!(result.is_ok());
+    }
 }

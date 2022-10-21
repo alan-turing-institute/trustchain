@@ -148,6 +148,7 @@ mod tests {
 
     #[test]
     fn test_attest() -> Result<(), Box<dyn std::error::Error>> {
+        init();
         let did = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9YP";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let signing_key = keys.first().unwrap();
