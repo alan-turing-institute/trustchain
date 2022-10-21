@@ -1,5 +1,5 @@
 use crate::resolver::{Resolver, ResolverError};
-use crate::utils::canonicalize;
+use crate::utils::{canonicalize, hash};
 use ssi::did::{VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
@@ -27,6 +27,12 @@ pub enum ChainError {
     /// Failure to get controller from document.
     #[error("No controller could be retrieved from document.")]
     FailureToGetController,
+    /// Failure to verify JWT.
+    #[error("No keys are valid for the JWT provided.")]
+    InvalidKeys,
+    /// Failure to verify payload.
+    #[error("Payload of JWT does not match reconstructed payload.")]
+    InvalidPayload,
 }
 
 /// A chain of DIDs.
@@ -84,14 +90,14 @@ fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
     }
 }
 
-/// TODO: Extract payload from JWS
-fn decode(proof_value: &JsonWebSignature2020) -> String {
-    todo!()
+/// Extracts payload from JWT and verifies signature.
+fn decode_verify(jwt: &str, key: &JWK) -> Result<(), ssi::error::Error> {
+    ssi::jwt::decode_verify(jwt, key)
 }
 
-// TODO: Hash a canonicalized object
-fn hash(canonicalized_value: &str) -> String {
-    todo!()
+/// Extracts and decodes the payload from the JWT.
+fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
+    ssi::jwt::decode_unverified(jwt)
 }
 
 /// Extracts vec of public keys from a doc.
@@ -111,11 +117,6 @@ fn extract_keys(doc: &Document) -> Vec<JWK> {
         }
     }
     public_keys
-}
-
-// TODO: Check whether correct signature on proof_value given vec of public keys
-fn verify_jws(proof_value: &JsonWebSignature2020, public_keys: &Vec<JWK>) -> bool {
-    todo!()
 }
 
 pub struct DIDChain {
@@ -186,8 +187,8 @@ impl DIDChain {
     /// Prepend a DID to the chain.
     fn prepend(&mut self, tuple: (Document, DocumentMetadata)) {
         let (doc, doc_meta) = tuple;
-        &self.level_vec.push(doc.id.to_owned());
-        &self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
+        self.level_vec.push(doc.id.to_owned());
+        self.did_map.insert(doc.id.to_owned(), (doc, doc_meta));
     }
 }
 
@@ -207,16 +208,16 @@ impl Chain for DIDChain {
     }
 
     fn root(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.last().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.last().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
     }
 
     fn leaf(&self) -> &str {
-        match &self.len() > &0 {
-            true => &self.level_vec.first().unwrap(),
+        match self.len() > 0 {
+            true => self.level_vec.first().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
@@ -230,31 +231,55 @@ impl Chain for DIDChain {
         // TODO: verify signatures in parallel.
 
         // Start from the leaf node.
-        let did = self.leaf();
+        let mut did = self.leaf();
 
         while did != self.root() {
-            // Get the DID & its data.
-            let (did_doc, did_doc_meta) = self.data(&did).unwrap();
+            // 0. Get the DID & its data.
+            let (did_doc, did_doc_meta) = self.data(did).unwrap();
 
             // Get the upstream DID & its data.
             let udid = &self.upstream(did).unwrap();
-            let (udid_doc, udid_doc_meta) = self.data(&udid).unwrap();
+            let (udid_doc, _) = self.data(udid).unwrap();
 
             // Extract the controller proof from the document metadata.
-            // let proof = get_proof(&did_doc_meta);
+            let proof = get_proof(&did_doc_meta)?;
 
-            todo!();
-            // TODO FROM HERE:
-            // - Add a get_proof_payload(&doc_meta) function inside the Verifier module.
-            // - Call it to get the proof_payload.
-            // - Check whether "payload" is the correct term (in JWS).
-            // - Create a util function: fn hash(Document);
+            // 1. Reconstruct the actual payload.
+            let actual_payload = hash(&canonicalize(&did_doc).unwrap());
 
-            // Verify the payload of the JWS proofvalue matches the DID document.
-            // TODO (see below)
+            // Decode the payload from the proof
+            let decoded_payload = decode(proof);
 
-            // Reconstruct the actual payload.
-            // let actual_payload = hash(&canonicalize(&udid_doc).unwrap());
+            if let Ok(decoded_payload) = decoded_payload {
+                if actual_payload != decoded_payload {
+                    return Err(ChainError::InvalidPayload);
+                }
+            } else {
+                return Err(ChainError::InvalidPayload);
+            }
+
+            // 2. Check the keys
+            // Get keys
+            let keys = extract_keys(&udid_doc);
+
+            // Check at least one key valid
+            let mut one_valid_key = false;
+            for key in &keys {
+                match decode_verify(proof, key) {
+                    Ok(_) => {
+                        one_valid_key = true;
+                        break;
+                    }
+                    Err(_) => continue,
+                };
+            }
+            match one_valid_key {
+                true => (),
+                false => return Err(ChainError::InvalidKeys),
+            }
+
+            // Set: did <- udid
+            did = udid;
         }
         Ok(())
 
