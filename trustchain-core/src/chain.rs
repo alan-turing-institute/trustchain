@@ -40,6 +40,8 @@ pub trait Chain {
     fn data(&self, did: &str) -> Option<(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
+    /// Return view of chain in correct order
+    fn as_vec(&self) -> &Vec<String>;
 }
 
 pub struct DIDChain {
@@ -82,6 +84,7 @@ impl DIDChain {
                 // TODO: multiple controllers is a verfication error, not a chain error.
                 let udid = match controller {
                     None => {
+                        chain.level_vec.reverse();
                         return Ok(chain); // Ok(Box::new(chain))
                     }
                     Some(x) => match x.to_owned() {
@@ -116,6 +119,10 @@ impl DIDChain {
 }
 
 impl Chain for DIDChain {
+    fn as_vec(&self) -> &Vec<String> {
+        &self.level_vec
+    }
+
     fn len(&self) -> usize {
         self.level_vec.len().to_owned()
     }
@@ -126,13 +133,13 @@ impl Chain for DIDChain {
         }
 
         // Subtract level vector index from the length.
-        let index = &self.level_vec.iter().position(|x| x == did).unwrap();
-        Some(&self.len() - 1 - index)
+        let index = self.level_vec.iter().position(|x| x == did).unwrap();
+        Some(index)
     }
 
     fn root(&self) -> &str {
         match &self.len() > &0 {
-            true => &self.level_vec.last().unwrap(),
+            true => &self.level_vec.first().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
@@ -140,7 +147,7 @@ impl Chain for DIDChain {
 
     fn leaf(&self) -> &str {
         match &self.len() > &0 {
-            true => &self.level_vec.first().unwrap(),
+            true => &self.level_vec.last().unwrap(),
             // The public constructor prevents an empty chain from existing.
             false => panic!("Empty chain!"),
         }
@@ -288,6 +295,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -308,6 +316,7 @@ mod tests {
         chain.prepend((level2_doc, level2_doc_meta));
         chain.prepend((level1_doc, level1_doc_meta));
         chain.prepend((root_doc, root_doc_meta));
+        chain.level_vec.reverse();
         Ok(chain)
     }
 
@@ -338,6 +347,20 @@ mod tests {
         // let did1 = ""
     }
 
+    #[test]
+    fn test_as_vec() {
+        let target = test_chain().unwrap();
+        let mut expected_vec = Vec::new();
+        expected_vec
+            .push("did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string()); //ROOT DID
+        expected_vec
+            .push("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()); // LEVEL ONE DID
+        expected_vec
+            .push("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()); // LEVEL TWO DID
+        assert_eq!(target.as_vec(), &expected_vec);
+    }
+
+    #[test]
     fn test_root() {
         let target = test_chain().unwrap();
         assert_eq!(
@@ -346,6 +369,16 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_leaf() {
+        let target = test_chain().unwrap();
+        assert_eq!(
+            target.leaf(),
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        )
+    }
+
+    #[test]
     fn test_verify_proofs() {
         let target = test_chain().unwrap();
         assert!(target.verify_proofs().is_ok());
@@ -353,5 +386,21 @@ mod tests {
         assert!(target.verify_proofs().is_err());
     }
 
+    #[test]
+    fn test_level() {
+        let target = test_chain().unwrap();
+        let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        assert_eq!(target.level(expected_root_did).unwrap(), 0);
+
+        let expected_level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let expected_level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        assert_eq!(target.level(expected_level1_did).unwrap(), 1);
+        assert_eq!(target.level(expected_level2_did).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_upstream() {
+        todo!()
+    }
     // TODO: other unit tests.
 }
