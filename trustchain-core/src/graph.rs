@@ -93,20 +93,20 @@ mod tests {
         );
         println!("{:?}", dot);
     }
-    #[test]
-    fn invalid_not_a_tree() {
-        todo!()
-    }
-    #[test]
-    fn valid_tree() {
-        todo!()
-    }
-    #[test]
-    fn to_graphviz() {
-        todo!()
-    }
-    #[test]
-    fn display() {
-        todo!()
-    }
+    // #[test]
+    // fn invalid_not_a_tree() {
+    //     todo!()
+    // }
+    // #[test]
+    // fn valid_tree() {
+    //     todo!()
+    // }
+    // #[test]
+    // fn to_graphviz() {
+    //     todo!()
+    // }
+    // #[test]
+    // fn display() {
+    //     todo!()
+    // }
 }

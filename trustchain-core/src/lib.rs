@@ -42,7 +42,7 @@ use wasm_bindgen::prelude::*;
 pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
 
 /// Root event time hardcoded into binary
-pub const ROOT_EVENT_TIME: u64 = 42;
+pub const ROOT_EVENT_TIME: u32 = 2377445;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
