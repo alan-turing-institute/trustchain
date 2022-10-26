@@ -36,6 +36,16 @@ pub enum ResolverError {
     DIDNotFound(String),
 }
 
+/// Type for resolver result.
+type ResolverResult = Result<
+    (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ),
+    ResolverError,
+>;
+
 // Newtype pattern (workaround for lack of trait upcasting coercion).
 // Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
 // The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
@@ -79,7 +89,7 @@ unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
     /// Runtime for calling async functions.
-    runtime: Runtime,
+    pub runtime: Runtime,
     /// Resolver for performing DID Method resolutions.
     wrapped_resolver: T,
 }
