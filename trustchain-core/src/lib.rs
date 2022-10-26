@@ -4,7 +4,7 @@ pub mod controller;
 pub mod data;
 pub mod key_manager;
 pub mod resolver;
-mod utils;
+pub mod utils;
 
 // use std::io::Read;
 use std::path::Path;

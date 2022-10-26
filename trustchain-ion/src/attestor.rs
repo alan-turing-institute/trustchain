@@ -121,6 +121,60 @@ impl Attestor for IONAttestor {
             Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
         }
     }
+
+    /// Attests to a passed string slice.
+    fn attest_jws(&self, doc: &str, key_id: Option<&str>) -> Result<String, AttestorError> {
+        let algorithm = ION::SIGNATURE_ALGORITHM;
+
+        // Hash canonicalized document
+        let doc_canon_hash = ION::hash(doc.as_bytes());
+
+        // Get the signing key.
+        let signing_key = match self.signing_key(key_id) {
+            Ok(key) => key,
+            Err(_) => {
+                if key_id.is_none() {
+                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
+                } else {
+                    return Err(AttestorError::NoSigningKeyWithId(
+                        self.did().to_string(),
+                        key_id.unwrap().to_string(),
+                    ));
+                }
+            }
+        };
+        // Encode and sign
+        // TODO: check use of jws: seems correct as payload is a hash not a JSON.
+        match ssi::jws::detached_sign_unencoded_payload(
+            algorithm,
+            doc_canon_hash.as_bytes(),
+            &signing_key,
+        ) {
+            Ok(str) => Ok(str),
+            Err(e) => Err(AttestorError::SigningError(
+                self.did().to_string(),
+                e.to_string(),
+            )),
+        }
+    }
+    /// Attests to a passed string slice.
+    fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, AttestorError> {
+        // Get the signing public key.
+        let signing_key = match self.signing_key(key_id) {
+            Ok(key) => key,
+            Err(_) => {
+                if let Some(key_id) = key_id {
+                    return Err(AttestorError::NoSigningKeyWithId(
+                        self.did().to_string(),
+                        key_id.to_string(),
+                    ));
+                } else {
+                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
+                }
+            }
+        };
+        Ok(signing_key.to_public())
+    }
 }
 
 #[cfg(test)]
