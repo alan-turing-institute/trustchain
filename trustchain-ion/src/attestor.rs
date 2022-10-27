@@ -4,6 +4,7 @@ use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
+use trustchain_core::get_did_suffix;
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
@@ -28,7 +29,7 @@ impl IONAttestor {
     }
 
     fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
-        self.read_signing_keys(&self.did)
+        self.read_signing_keys(self.did_suffix())
     }
 
     /// Get the Subject's signing key.
@@ -62,16 +63,31 @@ impl IONAttestor {
     }
 }
 
-type AttestorData = (String, OneOrMany<JWK>);
+/// Type for holding attestor data.
+pub struct AttestorData {
+    did: String,
+    signing_keys: OneOrMany<JWK>,
+}
+
+impl AttestorData {
+    pub fn new(did: String, signing_keys: OneOrMany<JWK>) -> Self {
+        Self { did, signing_keys }
+    }
+}
 
 impl TryFrom<AttestorData> for IONAttestor {
     type Error = Box<dyn std::error::Error>;
 
     fn try_from(data: AttestorData) -> Result<Self, Self::Error> {
-        let subject = IONAttestor { did: data.0 };
+        let subject = IONAttestor { did: data.did };
 
         // Attempt to save the keys but do not overwrite existing key information.
-        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1, false)?;
+        subject.save_keys(
+            subject.did_suffix(),
+            KeyType::SigningKey,
+            &data.signing_keys,
+            false,
+        )?;
         Ok(subject)
     }
 }
@@ -79,6 +95,9 @@ impl TryFrom<AttestorData> for IONAttestor {
 impl Subject for IONAttestor {
     fn did(&self) -> &str {
         &self.did
+    }
+    fn did_suffix(&self) -> &str {
+        get_did_suffix(&self.did)
     }
 }
 
@@ -89,9 +108,8 @@ impl Attestor for IONAttestor {
         // Add controller to document
         let mut doc = doc.clone();
 
-        // Temporary fix: prepend 'did:ion:test:' to did as controller
-        let full_did = format!("did:ion:test:{}", self.did());
-        doc.controller = Some(OneOrMany::One(full_did));
+        // Use full short-form DID as controller
+        doc.controller = Some(OneOrMany::One(self.did().to_string()));
 
         // Canonicalize document
         let doc_canon = match ION::json_canonicalization_scheme(&doc) {
@@ -102,6 +120,7 @@ impl Attestor for IONAttestor {
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
+        // TODO: should this be did
         let signing_key = match self.signing_key(key_id) {
             Ok(key) => key,
             Err(_) => {
@@ -190,11 +209,13 @@ mod tests {
         init();
         assert_eq!(0, 0);
         let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
-        let did = "did_try_from";
+        let did = "did:example:did_try_from";
+        let did_suffix = "did_try_from";
 
-        let target = IONAttestor::try_from((did.to_string(), signing_keys.clone()))?;
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), signing_keys.clone()))?;
 
-        assert_eq!(target.did(), did);
+        assert_eq!(target.did_suffix(), did_suffix);
 
         let loaded_signing_keys = target.signing_keys()?;
         assert_eq!(loaded_signing_keys, signing_keys);
@@ -208,14 +229,14 @@ mod tests {
         init();
 
         // Set-up keys and attestor
-        let did = "test_attest";
+        let did = "did:example:test_attest";
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let (valid_key, invalid_key) = if let OneOrMany::Many(keys_vec) = &keys {
             (keys_vec.first().unwrap(), keys_vec.last().unwrap())
         } else {
             panic!()
         };
-        let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
+        let target = IONAttestor::try_from(AttestorData::new(did.to_string(), keys.clone()))?;
 
         // Load doc
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
@@ -240,8 +261,7 @@ mod tests {
 
         // Reconstruct doc
         let mut doc_with_controller = doc;
-        let full_did = format!("did:ion:test:{}", target.did());
-        doc_with_controller.controller = Some(OneOrMany::One(full_did));
+        doc_with_controller.controller = Some(OneOrMany::One(target.did().to_string()));
         let doc_canon = ION::json_canonicalization_scheme(&doc_with_controller)?;
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
