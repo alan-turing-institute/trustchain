@@ -72,7 +72,7 @@ impl TryFrom<AttestorData> for IONAttestor {
         let subject = IONAttestor { did: data.0 };
 
         // Attempt to save the keys but do not overwrite existing key information.
-        subject.save_keys(&subject.did, KeyType::SigningKey, &data.1, false)?;
+        subject.save_keys(subject.did_suffix(), KeyType::SigningKey, &data.1, false)?;
         Ok(subject)
     }
 }
