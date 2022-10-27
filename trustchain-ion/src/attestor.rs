@@ -29,7 +29,7 @@ impl IONAttestor {
     }
 
     fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
-        self.read_signing_keys(&self.did)
+        self.read_signing_keys(self.did_suffix())
     }
 
     /// Get the Subject's signing key.
