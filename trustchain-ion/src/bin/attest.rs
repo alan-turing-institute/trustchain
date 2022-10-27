@@ -80,13 +80,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1.0. Get the did to sign and controller to sign it
     let did = matches.get_one::<String>("did").unwrap();
     let controlled_did = matches.get_one::<String>("controlled_did").unwrap();
-    let did_suffix = did.split(':').last().unwrap();
-    let controlled_did_suffix = controlled_did.split(':').last().unwrap();
-    // let did_suffix = did_suffix.as_str();
-    // let controlled_did_suffix = controlled_did_suffix.as_str();
 
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
-    let controller = match IONController::new(did_suffix, controlled_did_suffix) {
+    let controller = match IONController::new(did, controlled_did) {
         Ok(x) => x,
         Err(e) => {
             println!("{}", e);
@@ -131,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // TODO: compelete; consider adding functionality directly to key_manager
             // controller.apply_next_update_key()
             controller
-                .apply_next_update_key(controlled_did_suffix, &key)
+                .apply_next_update_key(controller.controlled_did_suffix(), &key)
                 .unwrap();
         } else {
             // update_commitment value is not related to next_update_key, don't continue
@@ -161,7 +157,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
     if let Ok(proof) = proof_result {
-        patches.push(controller.add_proof_service(did_suffix, &proof))
+        patches.push(controller.add_proof_service(controller.did(), &proof));
+    } else {
+        return Err(Box::new(proof_result.err().unwrap()));
     }
 
     // TODO: handle the unwraps in 2.4 and 2.5
@@ -178,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2.4. Create update operation including all patches constructed
     // DIDSuffix gives the hased suffix data only from full string.
     let update_operation = ION::update(
-        DIDSuffix(controlled_did.split(':').last().unwrap().to_owned()),
+        DIDSuffix(controller.controlled_did_suffix().to_string()),
         &update_key.unwrap(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
@@ -195,7 +193,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4.1 Save operation to file
     std::fs::write(
-        format!("attest_operation_{}.json", controlled_did_suffix),
+        format!(
+            "attest_operation_{}.json",
+            controller.controlled_did_suffix()
+        ),
         to_json(&operation).unwrap(),
     )?;
 

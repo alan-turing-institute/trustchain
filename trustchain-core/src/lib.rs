@@ -14,8 +14,12 @@ use tempfile;
 /// A DID Subject.
 pub trait Subject {
     fn did(&self) -> &str;
-    // TODO: add did_suffix for subject trait
-    // fn did_suffix(&self) -> &str;
+    fn did_suffix(&self) -> &str;
+}
+
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
 }
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA

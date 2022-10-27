@@ -41,33 +41,33 @@ pub enum KeyType {
 
 pub trait ControllerKeyManager: KeyManager {
     /// Reads a recovery key.
-    fn read_recovery_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::RecoveryKey);
+    fn read_recovery_key(&self, did_suffix: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did_suffix, &KeyType::RecoveryKey);
         self.only_one_key(key)
     }
     /// Reads an update key.
-    fn read_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::UpdateKey);
+    fn read_update_key(&self, did_suffix: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did_suffix, &KeyType::UpdateKey);
         self.only_one_key(key)
     }
 
     /// Reads a candidate next update key.
-    fn read_next_update_key(&self, did: &str) -> Result<JWK, KeyManagerError> {
-        let key = self.read_key(did, &KeyType::NextUpdateKey);
+    fn read_next_update_key(&self, did_suffix: &str) -> Result<JWK, KeyManagerError> {
+        let key = self.read_key(did_suffix, &KeyType::NextUpdateKey);
         self.only_one_key(key)
     }
 
     /// Apply the `next_update_key` to `update_key` and remove next_update_key
     fn apply_next_update_key(
         &self,
-        did: &str,
+        did_suffix: &str,
         next_update_key: &JWK,
     ) -> Result<(), KeyManagerError> {
         // Save as update key
-        self.save_key(did, KeyType::UpdateKey, next_update_key, true)?;
+        self.save_key(did_suffix, KeyType::UpdateKey, next_update_key, true)?;
 
         // Remove "next_update_key"
-        self.remove_keys(did, &KeyType::NextUpdateKey)?;
+        self.remove_keys(did_suffix, &KeyType::NextUpdateKey)?;
 
         Ok(())
     }
@@ -75,8 +75,8 @@ pub trait ControllerKeyManager: KeyManager {
 
 pub trait AttestorKeyManager: KeyManager {
     /// Reads one or more signing keys.
-    fn read_signing_keys(&self, did: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
-        self.read_key(did, &KeyType::SigningKey)
+    fn read_signing_keys(&self, did_suffix: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
+        self.read_key(did_suffix, &KeyType::SigningKey)
     }
 }
 
@@ -101,9 +101,13 @@ pub trait KeyManager {
     }
 
     /// Reads a key of a given type.
-    fn read_key(&self, did: &str, key_type: &KeyType) -> Result<OneOrMany<JWK>, KeyManagerError> {
+    fn read_key(
+        &self,
+        did_suffix: &str,
+        key_type: &KeyType,
+    ) -> Result<OneOrMany<JWK>, KeyManagerError> {
         // Make path
-        let path = &self.get_path(did, key_type, false)?;
+        let path = &self.get_path(did_suffix, key_type, false)?;
 
         // Open the file
         let file = File::open(&path);
@@ -150,7 +154,7 @@ pub trait KeyManager {
     /// Gets path for a given DID and key type
     fn get_path(
         &self,
-        did: &str,
+        did_suffix: &str,
         key_type: &KeyType,
         dir_only: bool,
     ) -> Result<PathBuf, KeyManagerError> {
@@ -169,7 +173,9 @@ pub trait KeyManager {
         };
 
         // Makre directory name
-        let directory = Path::new(path.as_str()).join("key_manager").join(did);
+        let directory = Path::new(path.as_str())
+            .join("key_manager")
+            .join(did_suffix);
 
         // Make a path
         if dir_only {
@@ -180,35 +186,40 @@ pub trait KeyManager {
     }
 
     /// Checks whether keys already exist on disk.
-    fn keys_exist(&self, did: &str, key_type: &KeyType) -> bool {
-        self.get_path(did, key_type, false).unwrap().exists()
+    fn keys_exist(&self, did_suffix: &str, key_type: &KeyType) -> bool {
+        self.get_path(did_suffix, key_type, false).unwrap().exists()
     }
 
     /// Saves a key to disk.
     fn save_key(
         &self,
-        did: &str,
+        did_suffix: &str,
         key_type: KeyType,
         key: &JWK,
         overwrite: bool,
     ) -> Result<(), KeyManagerError> {
-        self.save_keys(did, key_type, &OneOrMany::One(key.clone()), overwrite)
+        self.save_keys(
+            did_suffix,
+            key_type,
+            &OneOrMany::One(key.clone()),
+            overwrite,
+        )
     }
 
     /// Saves one or more keys to disk.
     fn save_keys(
         &self,
-        did: &str,
+        did_suffix: &str,
         key_type: KeyType,
         keys: &OneOrMany<JWK>,
         overwrite: bool,
     ) -> Result<(), KeyManagerError> {
         // Get directory and path
-        let directory = &self.get_path(did, &key_type, true)?;
-        let path = &self.get_path(did, &key_type, false)?;
+        let directory = &self.get_path(did_suffix, &key_type, true)?;
+        let path = &self.get_path(did_suffix, &key_type, false)?;
 
         // Stop if keys already exist and overwrite is false.
-        if self.keys_exist(did, &key_type) && !overwrite {
+        if self.keys_exist(did_suffix, &key_type) && !overwrite {
             return Err(KeyManagerError::FailedToSaveKey);
         }
 
@@ -236,9 +247,9 @@ pub trait KeyManager {
         }
     }
 
-    fn remove_keys(&self, did: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
+    fn remove_keys(&self, did_suffix: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
         // Make path
-        let path = &self.get_path(did, key_type, false)?;
+        let path = &self.get_path(did_suffix, key_type, false)?;
 
         // Check path exists as a file
         if path.is_file() {
@@ -320,16 +331,16 @@ pub mod tests {
         init();
 
         // Make path for this test
-        let did_path_str = "test_read_update_key";
+        let did_suffix = "test_read_update_key";
 
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
 
         let target = TestKeyManager;
-        target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, true)?;
+        target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true)?;
 
         // Read key from file
-        let res = target.read_update_key(did_path_str);
+        let res = target.read_update_key(did_suffix);
 
         // Assert read is ok
         assert!(res.is_ok());
@@ -346,16 +357,16 @@ pub mod tests {
         init();
 
         // Make path for this test
-        let did_path_str = "test_read_recovery_key";
+        let did_suffix = "test_read_recovery_key";
 
         // Save key to temp file
         let expected_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
 
         let target = TestKeyManager;
-        target.save_key(did_path_str, KeyType::RecoveryKey, &expected_key, true)?;
+        target.save_key(did_suffix, KeyType::RecoveryKey, &expected_key, true)?;
 
         // Read key from file
-        let res = target.read_recovery_key(did_path_str);
+        let res = target.read_recovery_key(did_suffix);
 
         // Assert read is ok
         assert!(res.is_ok());
@@ -405,21 +416,29 @@ pub mod tests {
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
 
         // Make path for this test
-        let did_path_str = "test_keys_exist";
+        let did_suffix = "test_keys_exist";
 
-        assert!(!target.keys_exist(did_path_str, &KeyType::UpdateKey));
+        assert!(!target.keys_exist(did_suffix, &KeyType::UpdateKey));
 
         // Save to temp
-        target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, true)?;
+        target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true)?;
 
-        assert!(target.keys_exist(did_path_str, &KeyType::UpdateKey));
+        assert!(target.keys_exist(did_suffix, &KeyType::UpdateKey));
 
         // Failing overwrite
-        let try_overwrite = target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, false);
+        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
         assert!(try_overwrite.is_err());
 
         // Successful overwrite
-        let try_overwrite = target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, true);
+        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
+        assert!(try_overwrite.is_ok());
+
+        // Failing overwrite
+        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
+        assert!(try_overwrite.is_err());
+
+        // Successful overwrite
+        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
         assert!(try_overwrite.is_ok());
 
         Ok(())
@@ -431,17 +450,17 @@ pub mod tests {
         init();
 
         // Make path for this test
-        let did_path_str = "test_save_key";
+        let did_suffix = "test_save_key";
 
         // Make keys
         let expected_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
 
         // Save to temp
         let target = TestKeyManager;
-        target.save_key(did_path_str, KeyType::UpdateKey, &expected_key, true)?;
+        target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true)?;
 
         // Read keys
-        let actual_key = target.read_update_key(did_path_str)?;
+        let actual_key = target.read_update_key(did_suffix)?;
 
         // Check keys saved are same as those read back
         assert_eq!(expected_key, actual_key);
@@ -455,17 +474,17 @@ pub mod tests {
         init();
 
         // Make path for this test
-        let did_path_str = "test_save_keys";
+        let did_suffix = "test_save_keys";
 
         // Make keys
         let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
         // Save to temp
         let target = TestKeyManager;
-        target.save_keys(did_path_str, KeyType::SigningKey, &keys, true)?;
+        target.save_keys(did_suffix, KeyType::SigningKey, &keys, true)?;
 
         // Read keys
-        let actual_signing = target.read_signing_keys(did_path_str)?;
+        let actual_signing = target.read_signing_keys(did_suffix)?;
 
         // Check keys saved are same as those read back
         assert_eq!(keys, actual_signing);
@@ -479,33 +498,33 @@ pub mod tests {
         init();
 
         // Make path for this test
-        let did_path_str = "test_apply_next_update_key";
+        let did_suffix = "test_apply_next_update_key";
 
         let target = TestKeyManager;
 
         // Save update key and next update key
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let next_update_key: JWK = serde_json::from_str(TEST_NEXT_UPDATE_KEY)?;
-        target.save_key(did_path_str, KeyType::UpdateKey, &update_key, true)?;
-        target.save_key(did_path_str, KeyType::NextUpdateKey, &next_update_key, true)?;
+        target.save_key(did_suffix, KeyType::UpdateKey, &update_key, true)?;
+        target.save_key(did_suffix, KeyType::NextUpdateKey, &next_update_key, true)?;
 
         // Read next update
-        let loaded_update_key = target.read_update_key(did_path_str)?;
-        let loaded_next_update_key = target.read_next_update_key(did_path_str)?;
+        let loaded_update_key = target.read_update_key(did_suffix)?;
+        let loaded_next_update_key = target.read_next_update_key(did_suffix)?;
         assert_eq!(loaded_update_key, update_key);
         assert_eq!(loaded_next_update_key, next_update_key);
 
         // // Apply next update key
-        target.apply_next_update_key(did_path_str, &next_update_key)?;
+        target.apply_next_update_key(did_suffix, &next_update_key)?;
 
         // // Check if next_update_key is removed
-        let path = target.get_path(did_path_str, &KeyType::NextUpdateKey, false)?;
+        let path = target.get_path(did_suffix, &KeyType::NextUpdateKey, false)?;
         if path.is_file() {
             return Err(Box::new(KeyManagerError::FailedToRemoveKey));
         }
 
         // Check the update key is now next_update_key
-        let actual_update_key = target.read_update_key(did_path_str)?;
+        let actual_update_key = target.read_update_key(did_suffix)?;
 
         // Check update key is now next_update_key
         assert_eq!(next_update_key, actual_update_key);
