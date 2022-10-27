@@ -64,7 +64,7 @@ impl IONAttestor {
 }
 
 /// Type for holding attestor data.
-struct AttestorData {
+pub struct AttestorData {
     did: String,
     signing_keys: OneOrMany<JWK>,
 }
