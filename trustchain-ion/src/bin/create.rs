@@ -1,60 +1,34 @@
 use clap::{arg, command, Arg, ArgAction};
-use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::jwk::JWK;
 
-use did_ion::sidetree::{DIDStatePatch, DIDSuffix};
+use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
-use did_ion::sidetree::{
-    Operation, ServiceEndpointEntry, Sidetree, SidetreeDID, SidetreeOperation,
-};
+use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
 use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
-use serde_json::{Map, Value};
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use trustchain_core::get_did_suffix;
-use trustchain_core::key_manager::{KeyManager, KeyType};
+use trustchain_core::key_manager::KeyManager;
+use trustchain_ion::attestor::{AttestorData, IONAttestor};
+use trustchain_ion::controller::{ControllerData, IONController};
 use trustchain_ion::KeyUtils;
-
-// use trustchain_core::key_manager::{generate_key, save_key, KeyType};
-
-// fn template_doc_state() -> DocumentState {
-//     // Make a signing
-//     let signing_key = Some(generate_key());
-//     let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
-
-//     // Make object for services endpoint
-//     let mut obj: Map<String, Value> = Map::new();
-//     obj.insert(
-//         "controller".to_string(),
-//         Value::from("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg".to_string()),
-//     );
-//     obj.insert(
-//         "proofValue".to_string(),
-//         Value::from("dummy_string".to_string()),
-//     );
-//     let test_service = vec![ServiceEndpointEntry {
-//         id: "trustchain-controller-proof".to_string(),
-//         r#type: "TrustchainProofService".to_string(),
-//         service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
-//     }];
-//     DocumentState {
-//         public_keys: Some(vec![public_key_entry.unwrap()]),
-//         services: Some(test_service),
-//     }
-// }
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // CLI pass: verbose, did, controlled_did
+    // CLI args: verbose, file_path, did
     let matches = command!()
+        // Verbose output
         .arg(
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
                 .action(ArgAction::SetTrue),
         )
+        // File path to a document state to be used for new DID.
         .arg(arg!(-f --file_path <FILE_PATH>).required(false))
+        // Controller DID can be passed, currently not used in this binary but
+        // required to make a IONController instance.
+        .arg(arg!(-d --did <DID>).required(false))
         .get_matches();
 
     let verbose = *matches.get_one::<bool>("verbose").unwrap();
@@ -105,9 +79,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // println!("_-------");
-    // println!("{}", to_json(&template_doc_state()).unwrap());
-    // println!("_-------");
     // 2.2 Make vec of patches from document state
     let patches = vec![DIDStatePatch::Replace {
         document: document_state,
@@ -138,30 +109,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 3. Get DID information
-    let did_suffix = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
+    let controlled_did_suffix =
+        ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
+            .unwrap()
+            .to_string();
+    let controlled_did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.unwrap())
         .unwrap()
         .to_string();
-    let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
-        .unwrap()
-        .to_string();
+    let controlled_did = controlled_did_long.rsplit_once(':').unwrap().0;
     if verbose {
-        println!("DID suffix: {:?}", did_suffix);
-        println!("DID (long-form): {:?}", did_long);
+        println!("Controlled DID suffix: {:?}", controlled_did_suffix);
+        println!("Controlled DID (short-form): {:?}", controlled_did);
+        println!("Controlled DID (long-form) : {:?}", controlled_did_long);
     }
-    // 4. Writing to file
-    // 4.1 Writing keys
-    // TODO: refactor to use a new method for controller:
-    // TrustchainController::create(update_key, recovery_key, signing_key, did);
-    KeyUtils.save_key(&did_suffix, KeyType::UpdateKey, &update_key, false)?;
-    KeyUtils.save_key(&did_suffix, KeyType::RecoveryKey, &recovery_key, false)?;
-    if signing_key.is_some() {
-        KeyUtils.save_key(
-            &did_suffix,
-            KeyType::SigningKey,
-            &signing_key.unwrap(),
-            false,
-        )?;
+
+    // 4. Write to file
+    // 4.1 If a signing key has been made, IONAttestor needs to be saved
+    if let Some(signing_key) = signing_key {
+        IONAttestor::try_from(AttestorData::new(
+            controlled_did.to_string(),
+            OneOrMany::One(signing_key),
+        ))?;
     }
+
+    // 4.2 Write controller data
+    let did = if let Some(did) = matches.get_one::<String>("did") {
+        did.to_string()
+    } else {
+        controlled_did.to_string()
+    };
+    IONController::try_from(ControllerData::new(
+        did,
+        controlled_did.to_string(),
+        update_key,
+        recovery_key,
+    ))?;
 
     // 4.2 Write create operation to push to ION server
     // TODO: use publisher to push JSON directly to ION server
@@ -169,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // publisher.post(create_operation);
     // }
     std::fs::write(
-        format!("create_operation_{}.json", did_suffix),
+        format!("create_operation_{}.json", controlled_did_suffix),
         to_json(&operation).unwrap(),
     )?;
 
