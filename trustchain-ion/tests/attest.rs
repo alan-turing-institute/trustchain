@@ -23,18 +23,21 @@ fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError
     }
 }
 
-fn verify(did: &str, controlled_did: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn verify(did_suffix: &str, controlled_did_suffix: &str) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Set-up
     // Load keys from shared path
     let home = std::env::var("HOME")?;
-    let signing_key_file = format!("{}/.trustchain/key_manager/{}/signing_key.json", home, did);
+    let signing_key_file = format!(
+        "{}/.trustchain/key_manager/{}/signing_key.json",
+        home, did_suffix
+    );
     let update_key_file = format!(
         "{}/.trustchain/key_manager/{}/update_key.json",
-        home, controlled_did
+        home, controlled_did_suffix
     );
     let recovery_key_file = format!(
         "{}/.trustchain/key_manager/{}/recovery_key.json",
-        home, controlled_did
+        home, controlled_did_suffix
     );
     let signing_key = read_from_specific_file(&signing_key_file)?;
     let update_key = read_from_specific_file(&update_key_file)?;
@@ -57,8 +60,8 @@ fn verify(did: &str, controlled_did: &str) -> Result<(), Box<dyn std::error::Err
     let resolver = test_resolver("http://localhost:3000/");
 
     // Resolve DID Document & Metadata.
-    let full_controlled_did = format!("did:ion:test:{}", &controlled_did);
-    let result = resolver.resolve_as_result(&full_controlled_did);
+    let controlled_did = format!("did:ion:test:{}", &controlled_did_suffix);
+    let result = resolver.resolve_as_result(&controlled_did);
 
     // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.

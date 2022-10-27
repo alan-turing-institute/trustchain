@@ -12,6 +12,7 @@ use serde_json::to_string_pretty as to_json;
 use serde_json::{Map, Value};
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
+use trustchain_core::get_did_suffix;
 use trustchain_core::key_manager::{KeyManager, KeyType};
 use trustchain_ion::KeyUtils;
 
@@ -137,26 +138,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 3. Get DID information
-    let did_short = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
+    let did_suffix = ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
         .unwrap()
         .to_string();
     let did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.clone().unwrap())
         .unwrap()
         .to_string();
     if verbose {
-        println!("DID suffix: {:?}", did_short);
-        println!("Long: {:?}", did_long);
+        println!("DID suffix: {:?}", did_suffix);
+        println!("DID (long-form): {:?}", did_long);
     }
-    println!("{}", DIDSuffix(did_short.to_string()));
     // 4. Writing to file
     // 4.1 Writing keys
     // TODO: refactor to use a new method for controller:
     // TrustchainController::create(update_key, recovery_key, signing_key, did);
-    KeyUtils.save_key(&did_short, KeyType::UpdateKey, &update_key, false)?;
-    KeyUtils.save_key(&did_short, KeyType::RecoveryKey, &recovery_key, false)?;
+    KeyUtils.save_key(&did_suffix, KeyType::UpdateKey, &update_key, false)?;
+    KeyUtils.save_key(&did_suffix, KeyType::RecoveryKey, &recovery_key, false)?;
     if signing_key.is_some() {
         KeyUtils.save_key(
-            &did_short,
+            &did_suffix,
             KeyType::SigningKey,
             &signing_key.unwrap(),
             false,
@@ -169,7 +169,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // publisher.post(create_operation);
     // }
     std::fs::write(
-        format!("create_operation_{}.json", did_short),
+        format!("create_operation_{}.json", did_suffix),
         to_json(&operation).unwrap(),
     )?;
 

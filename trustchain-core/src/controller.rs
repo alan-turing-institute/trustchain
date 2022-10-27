@@ -25,8 +25,7 @@ pub enum ControllerError {
 /// A DID controller.
 pub trait Controller {
     fn controlled_did(&self) -> &str;
-    // TODO: add controlled_did_suffix for controller trait
-    // fn controlled_did_suffix(&self) -> &str;
+    fn controlled_did_suffix(&self) -> &str;
     fn to_attestor(&self) -> Box<dyn Attestor>;
     fn update_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the update key for the loaded DID
     fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError>; // Retrieve the next update key for the loaded DID
