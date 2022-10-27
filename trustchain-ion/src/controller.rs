@@ -7,7 +7,7 @@ use thiserror::Error;
 use trustchain_core::attestor::{Attestor, AttestorError};
 use trustchain_core::controller::{Controller, ControllerError};
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::Subject;
+use trustchain_core::{get_did_suffix, Subject};
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -39,14 +39,14 @@ impl TryFrom<ControllerData> for IONController {
         };
         // Attempt to save the update key, but do not overwrite existing key data.
         controller.save_key(
-            &controller.controlled_did,
+            controller.controlled_did_suffix(),
             KeyType::UpdateKey,
             &data.update_key,
             false,
         )?;
         // Attempt to save the recovery key, but do not overwrite existing key data.
         controller.save_key(
-            &controller.controlled_did,
+            controller.controlled_did_suffix(),
             KeyType::RecoveryKey,
             &data.recovery_key,
             false,
@@ -87,6 +87,9 @@ impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
     }
+    fn did_suffix(&self) -> &str {
+        get_did_suffix(&self.did)
+    }
 }
 
 impl Controller for IONController {
@@ -94,24 +97,33 @@ impl Controller for IONController {
         &self.controlled_did
     }
 
+    fn controlled_did_suffix(&self) -> &str {
+        get_did_suffix(&self.controlled_did)
+    }
+
     fn update_key(&self) -> Result<JWK, KeyManagerError> {
-        let update_key = self.read_update_key(self.controlled_did())?;
+        let update_key = self.read_update_key(self.controlled_did_suffix())?;
         Ok(update_key)
     }
 
     fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError> {
-        let next_update_key = self.read_next_update_key(self.controlled_did())?;
+        let next_update_key = self.read_next_update_key(self.controlled_did_suffix())?;
         Ok(Some(next_update_key))
     }
 
     fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
         let key = self.generate_key();
-        self.save_key(self.controlled_did(), KeyType::NextUpdateKey, &key, false)?;
+        self.save_key(
+            self.controlled_did_suffix(),
+            KeyType::NextUpdateKey,
+            &key,
+            false,
+        )?;
         Ok(())
     }
 
     fn recovery_key(&self) -> Result<JWK, KeyManagerError> {
-        let recovery_key = self.read_recovery_key(self.controlled_did())?;
+        let recovery_key = self.read_recovery_key(self.controlled_did_suffix())?;
         Ok(recovery_key)
     }
 
@@ -152,13 +164,14 @@ mod tests {
         assert_eq!(0, 0);
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
-        let did = "did_try_from";
-        let controlled_did = "controlled_did_try_from";
+        let did = "did:example:did_try_from";
+        let controlled_did = "did:example:controlled_did_try_from";
+        let controlled_did_suffix = "controlled_did_try_from";
 
         // Make controller using try_from()
         let target = test_controller(did, controlled_did)?;
 
-        assert_eq!(target.controlled_did(), controlled_did);
+        assert_eq!(target.controlled_did_suffix(), controlled_did_suffix);
 
         let loaded_update_key = target.update_key()?;
         assert_eq!(loaded_update_key, update_key);
@@ -170,17 +183,23 @@ mod tests {
     }
 
     #[test]
-    fn test_into_subject() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_to_attestor() -> Result<(), Box<dyn std::error::Error>> {
         init();
-        let did = "did_into_subject";
-        let controlled_did = "controlled_did_into_subject";
+        let did = "did:example:did_to_attestor";
+        let controlled_did = "did:example:controlled_did_to_attestor";
+        let did_suffix = "did_to_attestor";
+        let controlled_did_suffix = "controlled_did_to_attestor";
         let target = test_controller(did, controlled_did)?;
         assert_eq!(target.did(), did);
         assert_ne!(target.did(), controlled_did);
+        assert_eq!(target.did_suffix(), did_suffix);
+        assert_ne!(target.did_suffix(), controlled_did_suffix);
 
         let result = target.to_attestor();
         assert_eq!(result.did(), did);
         assert_ne!(result.did(), controlled_did);
+        assert_eq!(result.did_suffix(), did_suffix);
+        assert_ne!(result.did_suffix(), controlled_did_suffix);
         Ok(())
     }
 }
