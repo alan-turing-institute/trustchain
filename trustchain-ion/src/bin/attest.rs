@@ -158,10 +158,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
     if let Ok(proof) = proof_result {
         patches.push(controller.add_proof_service(controller.did(), &proof));
-        println!("{:?}", patches);
     } else {
-        println!("{:?}", proof_result);
-        panic!()
+        return Err(Box::new(proof_result.err().unwrap()));
     }
 
     // TODO: handle the unwraps in 2.4 and 2.5
