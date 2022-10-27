@@ -17,10 +17,11 @@ use tempfile;
 /// A DID Subject.
 pub trait Subject {
     fn did(&self) -> &str;
+    fn did_suffix(&self) -> &str;
 }
 
 /// Returns the suffix of a short-form DID.
-pub fn did_suffix(did: &str) -> &str {
+pub fn get_did_suffix(did: &str) -> &str {
     did.split(':').last().unwrap()
 }
 

@@ -6,7 +6,7 @@ use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
 use std::convert::TryFrom;
-use trustchain_core::did_suffix;
+use trustchain_core::get_did_suffix;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
@@ -32,7 +32,7 @@ where
 
     /// Returns the ledger transaction representing the ION DID operation.
     fn transaction(&self, did: &str) -> Result<Transaction, VerifierError> {
-        let suffix = did_suffix(did);
+        let suffix = get_did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database.
             let doc = match block_on(Self::query_mongo(suffix)) {
