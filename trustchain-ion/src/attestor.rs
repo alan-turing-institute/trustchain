@@ -63,16 +63,31 @@ impl IONAttestor {
     }
 }
 
-type AttestorData = (String, OneOrMany<JWK>);
+/// Type for holding attestor data.
+struct AttestorData {
+    did: String,
+    signing_keys: OneOrMany<JWK>,
+}
+
+impl AttestorData {
+    pub fn new(did: String, signing_keys: OneOrMany<JWK>) -> Self {
+        Self { did, signing_keys }
+    }
+}
 
 impl TryFrom<AttestorData> for IONAttestor {
     type Error = Box<dyn std::error::Error>;
 
     fn try_from(data: AttestorData) -> Result<Self, Self::Error> {
-        let subject = IONAttestor { did: data.0 };
+        let subject = IONAttestor { did: data.did };
 
         // Attempt to save the keys but do not overwrite existing key information.
-        subject.save_keys(subject.did_suffix(), KeyType::SigningKey, &data.1, false)?;
+        subject.save_keys(
+            subject.did_suffix(),
+            KeyType::SigningKey,
+            &data.signing_keys,
+            false,
+        )?;
         Ok(subject)
     }
 }
@@ -143,7 +158,8 @@ mod tests {
         let did = "did:example:did_try_from";
         let did_suffix = "did_try_from";
 
-        let target = IONAttestor::try_from((did.to_string(), signing_keys.clone()))?;
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), signing_keys.clone()))?;
 
         assert_eq!(target.did_suffix(), did_suffix);
 
@@ -166,7 +182,7 @@ mod tests {
         } else {
             panic!()
         };
-        let target = IONAttestor::try_from((did.to_string(), keys.clone()))?;
+        let target = IONAttestor::try_from(AttestorData::new(did.to_string(), keys.clone()))?;
 
         // Load doc
         let doc = Document::from_json(TEST_TRUSTCHAIN_DOCUMENT).expect("Document failed to load.");
