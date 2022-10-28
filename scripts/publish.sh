@@ -9,4 +9,7 @@
 # Returns:
 #   OK / Bad Request
 
-curl --tr-encoding -X POST -v -# -o $2 -T $1 -H "Content-Type: application/json; charset=utf-8" http://localhost:3000/operations
+for file in $(find "$HOME/.trustchain/operations" -name "*.json"); do
+    echo $file
+    curl --tr-encoding -X POST -v -# -o "$file.out.json" -T $file -H "Content-Type: application/json; charset=utf-8" http://localhost:3000/operations
+done
