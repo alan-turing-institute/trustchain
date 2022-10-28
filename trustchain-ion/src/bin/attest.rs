@@ -1,11 +1,13 @@
 use clap::{arg, command, Arg, ArgAction};
 use serde_json::to_string_pretty as to_json;
 use trustchain_core::Subject;
+use trustchain_core::TRUSTCHAIN_DATA;
 // use serde_json::{Map, Value};
 // use ssi::did_resolve::{DocumentMetadata, Metadata};
 use core::panic;
 // use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
+use std::path::Path;
 // use trustchain_core::data::TEST_SIGNING_KEYS;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 
@@ -192,13 +194,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // TODO
 
     // 4.1 Save operation to file
-    std::fs::write(
-        format!(
-            "attest_operation_{}.json",
-            controller.controlled_did_suffix()
-        ),
-        to_json(&operation).unwrap(),
-    )?;
+    // Get environment for TRUSTCHAIN_DATA
+    let path: String = match std::env::var(TRUSTCHAIN_DATA) {
+        Ok(val) => val,
+        Err(_) => panic!(),
+    };
+
+    // Make directory name
+    let path = Path::new(path.as_str()).join("operations").join(format!(
+        "attest_operation_{}.json",
+        controller.controlled_did_suffix()
+    ));
+    std::fs::write(path, to_json(&operation).unwrap())?;
 
     Ok(())
 }
