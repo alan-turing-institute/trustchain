@@ -44,6 +44,7 @@ pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
 
 /// Root event time hardcoded into binary
 pub const ROOT_EVENT_TIME: u32 = 2377445;
+pub const ROOT_EVENT_TIME_2378493: u32 = 2378493;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
