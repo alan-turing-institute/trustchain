@@ -35,12 +35,19 @@ pub trait Attestor: Subject {
     /// Attests to a DID Document. Subject attests to a did document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.
-    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
-    fn attest_jws(&self, doc: &str, key_id: Option<&str>) -> Result<String, AttestorError>;
-    fn get_signing_key(&self, key_id: Option<&str>, public: bool) -> Result<JWK, AttestorError>;
+    fn attest(
+        &self,
+        doc: &Document,
+        key_id: Option<&str>,
+    ) -> Result<String, Box<dyn std::error::Error>>;
+    fn attest_jws(
+        &self,
+        doc: &str,
+        key_id: Option<&str>,
+    ) -> Result<String, Box<dyn std::error::Error>>;
 }
 
-/// An attestor attests to a credential to generate a verifiable credential.
+/// A credential attestor attests to a credential to generate a verifiable credential.
 #[async_trait]
 pub trait CredentialAttestor: Attestor {
     /// Attests to a Credential. Attestor attests to a credential by signing the credential with (one of) its private signing key(s).

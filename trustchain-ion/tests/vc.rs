@@ -110,7 +110,7 @@ fn sign_vc() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", &to_string_pretty(&vc).unwrap());
 
     // 7. Verify
-    let signing_pk = attestor.get_signing_key(None, true)?;
+    let signing_pk = attestor.signing_pk(None)?;
 
     // Check the signature is valid by passing in the payload and detached signature
     let det_ver = detached_verify(

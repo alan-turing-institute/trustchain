@@ -37,7 +37,7 @@ impl IONAttestor {
         self.read_signing_keys(self.did_suffix())
     }
 
-    /// Get the Subject's signing key.
+    /// Get the IONAttestor's signing key.
     fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
         // let keys = self.read_signing_keys(&self.did)?;
         let keys = self.signing_keys()?;
@@ -64,6 +64,13 @@ impl IONAttestor {
             }
             // If none of the keys has a matching key_id, the required key does not exist.
             Err(KeyManagerError::FailedToLoadKey)
+        }
+    }
+    /// Get the IONAttestor's public signing key.
+    pub fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
+        match self.signing_key(key_id) {
+            Ok(key) => Ok(key.to_public()),
+            Err(e) => Err(e),
         }
     }
 }
@@ -107,7 +114,11 @@ impl Subject for IONAttestor {
 }
 
 impl Attestor for IONAttestor {
-    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
+    fn attest(
+        &self,
+        doc: &Document,
+        key_id: Option<&str>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         // Add controller to document
@@ -119,30 +130,41 @@ impl Attestor for IONAttestor {
         // Canonicalize document
         let doc_canon = match ION::json_canonicalization_scheme(&doc) {
             Ok(str) => str,
-            Err(_) => return Err(AttestorError::InvalidDocumentParameters(doc.id.clone())),
+            Err(_) => {
+                return Err(Box::new(AttestorError::InvalidDocumentParameters(
+                    doc.id.clone(),
+                )))
+            }
         };
         // Hash canonicalized document
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
-        let signing_key = self.get_signing_key(key_id, false)?;
+        let signing_key = self.signing_key(key_id)?;
 
         // Encode and sign
         match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
-            Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
+            Err(e) => Err(Box::new(AttestorError::SigningError(
+                doc.id.clone(),
+                e.to_string(),
+            ))),
         }
     }
 
     /// Attests to a passed string slice.
-    fn attest_jws(&self, doc: &str, key_id: Option<&str>) -> Result<String, AttestorError> {
+    fn attest_jws(
+        &self,
+        doc: &str,
+        key_id: Option<&str>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         // Hash canonicalized document
         let doc_canon_hash = ION::hash(doc.as_bytes());
 
         // Get the signing key.
-        let signing_key = self.get_signing_key(key_id, false)?;
+        let signing_key = self.signing_key(key_id)?;
 
         // Encode and sign
         // TODO: check use of jws: seems correct as payload is a hash not a JSON.
@@ -152,32 +174,10 @@ impl Attestor for IONAttestor {
             &signing_key,
         ) {
             Ok(str) => Ok(str),
-            Err(e) => Err(AttestorError::SigningError(
+            Err(e) => Err(Box::new(AttestorError::SigningError(
                 self.did().to_string(),
                 e.to_string(),
-            )),
-        }
-    }
-    /// Attests to a passed string slice.
-    fn get_signing_key(&self, key_id: Option<&str>, public: bool) -> Result<JWK, AttestorError> {
-        // Get the signing public key.
-        let signing_key = match self.signing_key(key_id) {
-            Ok(key) => key,
-            Err(_) => {
-                if let Some(key_id) = key_id {
-                    return Err(AttestorError::NoSigningKeyWithId(
-                        self.did().to_string(),
-                        key_id.to_string(),
-                    ));
-                } else {
-                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
-                }
-            }
-        };
-        if public {
-            Ok(signing_key.to_public())
-        } else {
-            Ok(signing_key)
+            ))),
         }
     }
 }
@@ -192,7 +192,7 @@ impl CredentialAttestor for IONAttestor {
         resolver: &dyn DIDResolver,
     ) -> Result<Credential, Box<dyn std::error::Error>> {
         // Get the signing key.
-        let signing_key = self.get_signing_key(key_id, false)?;
+        let signing_key = self.signing_key(key_id)?;
         // Generate proof
         let proof = doc
             .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
