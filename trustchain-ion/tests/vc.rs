@@ -67,6 +67,7 @@ fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError
     }
 }
 
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
 #[test]
 fn sign_vc() -> Result<(), Box<dyn std::error::Error>> {
     // Part 1: Use trustchain-proof-service process for signing and verifying credential
@@ -109,7 +110,7 @@ fn sign_vc() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", &to_string_pretty(&vc).unwrap());
 
     // 7. Verify
-    let signing_pk = attestor.signing_pk(None)?;
+    let signing_pk = attestor.get_signing_key(None, true)?;
 
     // Check the signature is valid by passing in the payload and detached signature
     let det_ver = detached_verify(

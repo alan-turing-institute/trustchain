@@ -1,8 +1,12 @@
 use crate::key_manager::{AttestorKeyManager, KeyManager, KeyManagerError};
+use crate::resolver::Resolver;
 use crate::Subject;
+use async_trait::async_trait;
 use ssi::did::Document;
+use ssi::did_resolve::DIDResolver;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
+use ssi::vc::Credential;
 use std::convert::From;
 use thiserror::Error;
 
@@ -33,5 +37,17 @@ pub trait Attestor: Subject {
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
     fn attest_jws(&self, doc: &str, key_id: Option<&str>) -> Result<String, AttestorError>;
-    fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, AttestorError>;
+    fn get_signing_key(&self, key_id: Option<&str>, public: bool) -> Result<JWK, AttestorError>;
+}
+
+/// An attestor attests to a credential to generate a verifiable credential.
+#[async_trait]
+pub trait CredentialAttestor: Attestor {
+    /// Attests to a Credential. Attestor attests to a credential by signing the credential with (one of) its private signing key(s).
+    async fn attest_credential(
+        &self,
+        doc: &Credential,
+        key_id: Option<&str>,
+        resolver: &dyn DIDResolver,
+    ) -> Result<Credential, Box<dyn std::error::Error>>;
 }
