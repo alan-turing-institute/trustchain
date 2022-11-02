@@ -40,7 +40,7 @@ pub trait Attestor: Subject {
         doc: &Document,
         key_id: Option<&str>,
     ) -> Result<String, Box<dyn std::error::Error>>;
-    fn attest_jws(
+    fn attest_str(
         &self,
         doc: &str,
         key_id: Option<&str>,

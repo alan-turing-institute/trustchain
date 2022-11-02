@@ -94,7 +94,7 @@ fn sign_vc() -> Result<(), Box<dyn std::error::Error>> {
     let vc_canon = canonicalize(&vc)?;
 
     // 5. Get a detached JWS signature for VC
-    let proof = attestor.attest_jws(&vc_canon, None);
+    let proof = attestor.attest_str(&vc_canon, None);
     assert!(proof.is_ok());
 
     // Unwrap attestation proof

@@ -153,7 +153,7 @@ impl Attestor for IONAttestor {
     }
 
     /// Attests to a passed string slice.
-    fn attest_jws(
+    fn attest_str(
         &self,
         doc: &str,
         key_id: Option<&str>,
@@ -214,8 +214,11 @@ mod tests {
     use super::*;
     use crate::test_resolver;
     use ssi::did::Document;
+    use ssi::jws::detached_verify;
+    use ssi::vc::Proof;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
     use trustchain_core::init;
+    use trustchain_core::utils::canonicalize;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
@@ -284,6 +287,51 @@ mod tests {
     }
 
     #[test]
+    fn test_attest_str() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
+        let did = "did:example:test_attest_str";
+        let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+        // 2. Load Attestor
+        let attestor = IONAttestor::try_from(AttestorData::new(did.to_string(), signing_keys))?;
+
+        // 3. Read credential
+        let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL)?;
+
+        // 4. Canonicalize and attest
+        let vc_canon = canonicalize(&vc)?;
+
+        // 5. Get a detached JWS signature for VC
+        let proof = attestor.attest_str(&vc_canon, None);
+        assert!(proof.is_ok());
+
+        // Unwrap attestation proof
+        let proof = proof.unwrap();
+
+        // 6. Set proof property
+        vc.proof = Some(OneOrMany::One(Proof {
+            jws: Some(proof.clone()),
+            ..Default::default()
+        }));
+
+        // 7. Verify
+        let signing_pk = attestor.signing_key(None).unwrap().to_public();
+
+        // Check the signature is valid by passing in the payload and detached signature
+        let det_ver = detached_verify(
+            &proof,
+            ION::hash(vc_canon.as_bytes()).as_bytes(),
+            &signing_pk,
+        );
+        assert!(det_ver.is_ok());
+
+        Ok(())
+    }
+
+    #[test]
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize temp path for saving keys
@@ -311,7 +359,6 @@ mod tests {
             // Assert credential has proof
             assert!(doc_with_proof.proof.is_some());
         });
-
         Ok(())
     }
 
