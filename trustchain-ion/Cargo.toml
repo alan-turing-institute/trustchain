@@ -23,6 +23,10 @@ path = "src/bin/resolve.rs"
 name = "attest"
 path = "src/bin/attest.rs"
 
+[[bin]]
+name = "vc"
+path = "src/bin/vc.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
