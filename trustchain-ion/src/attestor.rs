@@ -10,7 +10,6 @@ use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use trustchain_core::attestor::CredentialAttestor;
 use trustchain_core::get_did_suffix;
 use trustchain_core::key_manager::KeyType;
-use trustchain_core::resolver::Resolver;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
@@ -44,7 +43,7 @@ impl IONAttestor {
         // If no key_id is given, return the first available key.
         if key_id.is_none() {
             match keys.first() {
-                Some(key) => return Ok(key.to_owned()),
+                Some(key) => Ok(key.to_owned()),
                 None => Err(KeyManagerError::FailedToLoadKey),
             }
         } else {
