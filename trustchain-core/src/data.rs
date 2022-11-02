@@ -594,3 +594,28 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
 "##;
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_2_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw";
+
+/// Test credential: no issuer is present for the unit test
+pub const TEST_CREDENTIAL: &str = r##"{
+   "@context": [
+     "https://www.w3.org/2018/credentials/v1",
+     "https://www.w3.org/2018/credentials/examples/v1",
+     "https://w3id.org/citizenship/v1"
+   ],
+   "credentialSchema": {
+     "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
+     "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
+   },
+   "type": ["VerifiableCredential"],
+   "image": "some_base64_representation",
+   "credentialSubject": {
+     "givenName": "Jane",
+     "familyName": "Doe",
+     "degree": {
+       "type": "BachelorDegree",
+       "name": "Bachelor of Science and Arts",
+       "college": "College of Engineering"
+     }
+   }
+ }
+ "##;

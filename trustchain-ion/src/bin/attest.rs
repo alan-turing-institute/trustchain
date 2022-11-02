@@ -159,7 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(proof) = proof_result {
         patches.push(controller.add_proof_service(controller.did(), &proof));
     } else {
-        return Err(Box::new(proof_result.err().unwrap()));
+        return Err(proof_result.err().unwrap());
     }
 
     // TODO: handle the unwraps in 2.4 and 2.5

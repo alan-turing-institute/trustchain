@@ -23,6 +23,10 @@ path = "src/bin/resolve.rs"
 name = "attest"
 path = "src/bin/attest.rs"
 
+[[bin]]
+name = "vc"
+path = "src/bin/vc.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
@@ -55,6 +59,7 @@ async-trait = "0.1"
 
 # ssi = { version = "0.4", path = "../", default-features = false, features = ["http-did", "secp256k1"] }
 ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
+# ssi = { git = "ssh://git@github.com:alan-turing-institute/ssi.git", features = ["http-did", "secp256k1"] }
 serde_json = "1.0"
 canonical_json = "0.4.0"
 # lazy_static="1.4.0"

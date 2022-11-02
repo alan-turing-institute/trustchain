@@ -1,105 +1,131 @@
-use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use serde_json::to_string_pretty;
-use ssi::did::{VerificationMethod, VerificationMethodMap};
-use ssi::did_resolve::Metadata;
-use ssi::jwk::JWK;
-use ssi::jws::detached_verify;
-use ssi::one_or_many::OneOrMany;
-use std::fs::File;
-use trustchain_core::attestor::Attestor;
-use trustchain_core::key_manager::KeyManager;
-use trustchain_core::key_manager::KeyManagerError;
-use trustchain_core::utils::canonicalize;
+use ssi::ldp::now_ms;
+use std::convert::TryFrom;
+use trustchain_core::attestor::CredentialAttestor;
 use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::test_resolver;
-use trustchain_ion::KeyUtils;
 
-use ssi::vc::{Credential, Proof};
+use ssi::vc::{Credential, LinkedDataProofOptions, VCDateTime};
 
-// Mixture of EXAMPLE 24 and 34: https://www.w3.org/TR/vc-data-model/#dfn-verifiable-credentials
+// Linked @context provides a set of allowed fields for the
+// credentail
+// Provides detail "credentailSubject"
+// "https://www.w3.org/2018/credentials/examples/v1"
+// Provides image field "credentailSubject"
+// "https://w3id.org/citizenship/v1"
+
+// Other examples: https://www.w3.org/TR/vc-use-cases/
 const TEST_UNSIGNED_VC: &str = r##"{
-    "@context": [
-      "https://www.w3.org/2018/credentials/v1",
-      "https://www.w3.org/2018/credentials/examples/v1"
-    ],
-    "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-    "credentialSchema": {
-      "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
-      "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
-    },
-    "issuer": "did:example:Wz4eUg7SetGfaUVCn8U9d62oDYrUJLuUtcy619",
-    "credentialSubject": {
-      "givenName": "Jane",
-      "familyName": "Doe",
-      "image": "some_base64_image",
-      "degree": {
-        "type": "BachelorDegree",
-        "name": "Bachelor of Science and Arts",
-        "college": "College of Engineering"
-      }
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://www.w3.org/2018/credentials/examples/v1",
+    "https://w3id.org/citizenship/v1"
+  ],
+  "credentialSchema": {
+    "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
+    "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
+  },
+  "type": ["VerifiableCredential"],
+  "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+  "image": "some_base64_representation",
+  "credentialSubject": {
+    "givenName": "Jane",
+    "familyName": "Doe",
+    "degree": {
+      "type": "BachelorDegree",
+      "name": "Bachelor of Science and Arts",
+      "college": "College of Engineering"
     }
+  }
 }
 "##;
 
-fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
-    // Open the file
-    let file = File::open(&path);
-
-    // Read from the file and return
-    if let Ok(file) = file {
-        KeyUtils.read_keys_from(Box::new(file))
-    } else {
-        Err(KeyManagerError::FailedToLoadKey)
-        // panic!();
-    }
-}
-
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
 #[test]
-fn sign_vc() -> Result<(), Box<dyn std::error::Error>> {
+fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Set-up
-    let did = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+    let did = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
 
-    // Load keys from shared path
-    // let home = std::env::var("HOME")?;
-    // let signing_key_file = format!("{}/.trustchain/key_manager/{}/signing_key.json", home, did);
-    // let signing_key = read_from_specific_file(signing_key_file);
+    // Make resolver
+    let resolver = test_resolver("http://localhost:3000/");
 
     // 2. Load Attestor
     let attestor = IONAttestor::new(did);
 
     // 3. Read credential
-    let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC)?;
+    let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC)?;
 
-    // 4. Canonicalize and attest
-    let vc_canon = canonicalize(&vc)?;
+    // 4. Perform proof add and verify
+    resolver.runtime.block_on(async {
+        let _ldp_opts = LinkedDataProofOptions {
+            // The type of signature to be used can be specified.
+            // The signing key is used to determine the signature type.
+            // type_: Some("JsonWebSignature2020".to_string()),
+            // type_: Some("EcdsaSecp256k1Signature2019".to_string()),
+            ..LinkedDataProofOptions::default()
+        };
 
-    // 5. Get a detached JWS signature for VC
-    let proof = attestor.attest_jws(&vc_canon, None);
-    assert!(proof.is_ok());
+        // Set issuer to "None" to prevent check for resolved key match
+        // If it is the did, the resolver looks to match the pk to the
+        // signing key provided
+        // vc.issuer = None;
 
-    // Unwrap attestation proof
-    let proof = proof.unwrap();
+        // Generate proof:
+        // If the context does not have all fields it will fail
+        // as the JSONLD using Policy::Strict (when calling `sign_proof` and
+        // https://docs.rs/ssi/0.4.0/ssi/ldp/trait.LinkedDataDocument.html#tymethod.to_dataset_for_signing)
+        // Err(JSONLD(KeyExpansionFailed))
+        //
+        // The specific fn is in ssi::jsonld.rs
+        //   expand_json(..., lax=false, ...) -> fails (strict JSON-LD)
+        //   expand_json(..., lax=true, ...) -> passes (relaxed JSON-LD)
+        //
+        // The matched `@context` is necessary to parse successfully when strict.
 
-    // 6. Set proof property
-    vc.proof = Some(OneOrMany::One(Proof {
-        jws: Some(proof.clone()),
-        ..Default::default()
-    }));
+        // Generate a proof
+        // let proof = vc.generate_proof(&signing_key, &ldp_opts, &resolver).await;
 
-    // Print the VC with proof
-    println!("{}", &to_string_pretty(&vc).unwrap());
+        // Add proof to credential
+        // vc.add_proof(proof.unwrap());
 
-    // 7. Verify
-    let signing_pk = attestor.signing_pk(None)?;
+        // Use attest_credential method instead of generating and adding proof
+        let vc_with_proof = attestor
+            .attest_credential(&vc, None, &resolver)
+            .await
+            .unwrap();
 
-    // Check the signature is valid by passing in the payload and detached signature
-    let det_ver = detached_verify(
-        &proof,
-        ION::hash(vc_canon.as_bytes()).as_bytes(),
-        &signing_pk,
-    );
-    assert!(det_ver.is_ok());
+        // Print VC with proof
+        println!("{}", &to_string_pretty(&vc_with_proof).unwrap());
+
+        // Verify
+        let verification_result = vc_with_proof.verify(None, &resolver).await;
+
+        // Print verification result
+        println!(
+            "---\n> Verification (no modification):\n{}",
+            &to_string_pretty(&verification_result).unwrap()
+        );
+
+        assert!(verification_result.warnings.is_empty());
+        assert!(verification_result.errors.is_empty());
+
+        let mut vc_with_proof = vc_with_proof;
+        // Change credential to make signature invalid
+        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+
+        // Verify
+        let verification_result = vc_with_proof.verify(None, &resolver).await;
+
+        // Print verification result
+        println!(
+            "---\n> Verification (after modification):\n{}",
+            &to_string_pretty(&verification_result).unwrap()
+        );
+
+        // No warnings but signature errror
+        assert!(verification_result.warnings.is_empty());
+        assert!(!verification_result.errors.is_empty());
+    });
 
     Ok(())
 }
