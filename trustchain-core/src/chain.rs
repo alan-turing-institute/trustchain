@@ -1,7 +1,7 @@
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
 use crate::ROOT_EVENT_TIME;
-use ssi::did::{VerificationMethod, VerificationMethodMap};
+use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
 use ssi::{
@@ -105,17 +105,45 @@ pub struct DIDChain {
     level_vec: Vec<String>,
 }
 
+fn truncate(s: &str, max_chars: usize) -> String {
+    match s.char_indices().nth(max_chars) {
+        None => s.to_string(),
+        Some((idx, _)) => (s[..idx - 3].to_string() + "..."),
+    }
+}
+
+fn get_service_endpoint_string(chain: &DIDChain, did: &str) -> Option<String> {
+    if let Some((doc, _)) = chain.data(did) {
+        if let Some(Service {
+            service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(service_endpoint))),
+            ..
+        }) = doc.select_service("TrustchainID")
+        {
+            Some(service_endpoint.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 /// Struct for displaying DID in a box.
 struct PrettyDID {
     did: String,
-    is_root: bool,
+    level: usize,
+    endpoint: Option<String>,
 }
 
+/// Max width in chars for printing
+const MAX_WIDTH: usize = 79;
+
 impl PrettyDID {
-    fn new(did: &str, is_root: bool) -> Self {
+    fn new(did: &str, level: usize, endpoint: Option<String>) -> Self {
         Self {
             did: did.to_string(),
-            is_root,
+            level,
+            endpoint,
         }
     }
 }
@@ -123,21 +151,23 @@ impl PrettyDID {
 impl fmt::Display for PrettyDID {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
-        // "+---------+"
-        // "| did:... |"  ✓
-        // "+---------+"
-        let box_width = self.did.len() + 2;
+        // "+---------------+"
+        // "| level: ...    |"
+        // "| did: ...      |"  ✔
+        // "| endpoint: ... |"
+        // "+---------------+"
+        let box_width = format!(" DID: {} ", self.did).len().min(MAX_WIDTH);
+        let text_width = box_width - 2;
+        let level_string = truncate(&format!("Level: {}", self.level), text_width);
+        let did_string = truncate(&format!("DID: {}", self.did), text_width);
+        let endpoint_string = match &self.endpoint {
+            Some(s) => truncate(&format!("Endpoint: {}", s), text_width),
+            _ => truncate(&format!("Endpoint: {}", ""), text_width),
+        };
         writeln!(f, "+{}+", "-".repeat(box_width))?;
-        if self.is_root {
-            // write!(f, "|")?;
-            // let title = format!("🕑 Block Height: {} 🕑", ROOT_EVENT_TIME);
-            // let did_width = (self.did.len() + 4) / 2;
-            // let indent = did_width - title.len() / 2;
-            // let title = format!("{}{}", title, " ".repeat(indent+2));
-            // writeln!(f, "{}{}|", " ".repeat(indent), title)?;
-            // writeln!(f, "| : {}", )?;
-        }
-        writeln!(f, "| {} |  ✓", self.did)?;
+        writeln!(f, "| {0:<1$} |   ", level_string, text_width)?;
+        writeln!(f, "| {0:<1$} |  ✔", did_string, text_width)?;
+        writeln!(f, "| {0:<1$} |   ", endpoint_string, text_width)?;
         writeln!(f, "+{}+", "-".repeat(box_width))?;
         Ok(())
     }
@@ -146,32 +176,31 @@ impl fmt::Display for PrettyDID {
 impl fmt::Display for DIDChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
-        // "+---------+"
-        // "| did:... |"  ✓
-        // "+----------+"
-        //       ⛓
-        // "+---------+"
-        // "| did:... |"  ✓
-        // "+---------+"
+        // "+----------------+"
+        // "| PrettyDID: ... |"  ✓
+        // "+----------------+"
+        //        ⛓⛓⛓⛓
+        // "+----------------+"
+        // "| PrettyDID: ... |"  ✓
+        // "+----------------+"
         let title = "₿ DON'T TRUST, VERIFY! ₿";
-        let did_width = (self.root().len() + 4) / 2;
-        let indent = did_width - title.len() / 2;
-        writeln!(f, "{}{}\n", " ".repeat(indent), title)?;
+        let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
+        writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
         for (i, did) in self.level_vec.iter().enumerate() {
+            let service_endpoint_string = get_service_endpoint_string(self, did);
             if i == 0 {
-                writeln!(f, "ROOT: 🕑 Block Height {} 🕑", ROOT_EVENT_TIME)?;
-            } else {
-                writeln!(f, "Level {}", i)?;
+                writeln!(
+                    f,
+                    "{0:^1$}",
+                    format!("🕑 Block Height {0} 🕑", ROOT_EVENT_TIME),
+                    box_width
+                )?;
             }
-            write!(f, "{}", PrettyDID::new(did, i == 0))?;
-            let link_string = match did.len() {
-                x if x % 2 == 0 => "||",
-                _ => "⛓",
-            };
-            let link_width = (did.len() + 2) / 2;
+            write!(f, "{}", PrettyDID::new(did, i, service_endpoint_string))?;
+            let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
-                writeln!(f, "{}{}", " ".repeat(link_width), link_string)?;
-                writeln!(f, "{}{}", " ".repeat(link_width), link_string)?;
+                writeln!(f, "{0:^1$}", link_string, box_width)?;
+                writeln!(f, "{0:^1$}", link_string, box_width)?;
             }
         }
         Ok(())
@@ -627,6 +656,13 @@ mod tests {
         } else {
             panic!()
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
+        let target = test_chain().unwrap();
+        println!("{}", target);
         Ok(())
     }
 }
