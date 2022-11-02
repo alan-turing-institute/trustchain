@@ -2,8 +2,8 @@
 use clap::{arg, Arg, ArgAction, Command};
 use serde_json::to_string_pretty as to_json;
 use ssi::vc::{Credential, URI};
-use trustchain_core::attestor::CredentialAttestor;
-use trustchain_ion::{attestor::IONAttestor, test_resolver};
+use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_ion::{attestor::IONAttestor, test_resolver, verifier::IONVerifier};
 
 fn cli() -> Command {
     Command::new("vc")
@@ -33,7 +33,8 @@ fn cli() -> Command {
                         .long("verbose")
                         .action(ArgAction::SetTrue),
                 )
-                .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true)),
+                .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
         )
 }
 
@@ -63,16 +64,50 @@ fn main() {
         }
         Some(("verify", sub_matches)) => {
             let path = sub_matches.get_one::<String>("credential_file").unwrap();
+            let verbose = sub_matches.get_one::<bool>("verbose");
+            let root_event_time = match sub_matches.get_one::<u32>("root_event_time") {
+                Some(time) => *time,
+                None => ROOT_EVENT_TIME_2378493,
+            };
             let credential: Credential =
                 serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
             resolver.runtime.block_on(async {
                 let verify_result = credential.verify(None, &resolver).await;
                 if verify_result.errors.is_empty() {
-                    println!("Ok.")
+                    println!("Proof... Ok")
                 } else {
-                    println!("Invalid:\n{}", &to_json(&verify_result).unwrap());
+                    println!("Proof... Invalid\n{}", &to_json(&verify_result).unwrap());
                 }
             });
+
+            // Trustchain verify the issue
+            let verifier = IONVerifier::new(test_resolver("http://localhost:3000/"));
+
+            let issuer = match credential.issuer {
+                Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
+                _ => panic!("No issuer present in credential."),
+            };
+
+            let result = verifier.verify(&issuer, root_event_time);
+
+            match result {
+                Ok(chain) => {
+                    println!("Issuer: {}... Ok", issuer);
+                    if let Some(true) = verbose {
+                        let (_, doc, _) = resolver.resolve_as_result(&issuer).unwrap();
+                        println!("---");
+                        println!("Issuer DID doc:");
+                        println!("{}", &to_json(&doc.unwrap()).unwrap());
+                        println!("---");
+                        println!("Chain:");
+                        println!("{}", chain);
+                        println!("---");
+                    }
+                }
+                _ => {
+                    println!("Issuer: {}... invalid", issuer);
+                }
+            }
         }
         _ => panic!("Unrecognised subcommand."),
     }
