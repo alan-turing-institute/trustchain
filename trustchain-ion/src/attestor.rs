@@ -212,9 +212,9 @@ impl CredentialAttestor for IONAttestor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_resolver;
     use ssi::did::Document;
-
-    use trustchain_core::data::{TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
+    use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
     use trustchain_core::init;
 
     #[test]
@@ -279,6 +279,38 @@ mod tests {
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         assert_eq!(valid_decoded, doc_canon_hash);
+
+        Ok(())
+    }
+
+    #[test]
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Get resolver
+        let resolver = test_resolver("http://localhost:3000/");
+
+        // Set-up keys and attestor
+        let did = "did:example:test_attest_credential";
+        let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+        let target = IONAttestor::try_from(AttestorData::new(did.to_string(), keys))?;
+
+        // Load credential
+        let doc: Credential = serde_json::from_str(TEST_CREDENTIAL)?;
+
+        // async function run within runtime
+        resolver.runtime.block_on(async {
+            // Get credential with proof
+            let doc_with_proof = target
+                .attest_credential(&doc, None, &resolver)
+                .await
+                .unwrap();
+
+            // Assert credential has proof
+            assert!(doc_with_proof.proof.is_some());
+        });
 
         Ok(())
     }
