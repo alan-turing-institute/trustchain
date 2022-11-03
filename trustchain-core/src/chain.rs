@@ -1,6 +1,7 @@
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
 use crate::ROOT_EVENT_TIME;
+use serde::{Deserialize, Serialize};
 use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
@@ -96,7 +97,7 @@ fn extract_keys(doc: &Document) -> Vec<JWK> {
     public_keys
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DIDChain {
     // An map from DID strings to resolved tuples.
     did_map: HashMap<String, (Document, DocumentMetadata)>,
@@ -112,39 +113,56 @@ fn truncate(s: &str, max_chars: usize) -> String {
     }
 }
 
-fn get_service_endpoint_string(chain: &DIDChain, did: &str) -> Option<String> {
-    if let Some((doc, _)) = chain.data(did) {
-        if let Some(Service {
+fn get_service_endpoint_string(doc: &Document) -> Option<String> {
+    match doc.select_service("TrustchainID") {
+        Some(Service {
             service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(service_endpoint))),
             ..
-        }) = doc.select_service("TrustchainID")
-        {
-            Some(service_endpoint.to_string())
-        } else {
-            None
-        }
-    } else {
-        None
+        }) => Some(service_endpoint.to_string()),
+        _ => None,
     }
 }
 
 /// Struct for displaying DID in a box.
-struct PrettyDID {
+pub struct PrettyDID {
     did: String,
     level: usize,
     endpoint: Option<String>,
+    max_width: usize,
 }
 
 /// Max width in chars for printing
 const MAX_WIDTH: usize = 79;
 
 impl PrettyDID {
-    fn new(did: &str, level: usize, endpoint: Option<String>) -> Self {
+    pub fn new(doc: &Document, level: usize, max_width: usize) -> Self {
+        let endpoint = get_service_endpoint_string(doc);
         Self {
-            did: did.to_string(),
+            did: doc.id.to_string(),
             level,
             endpoint,
+            max_width,
         }
+    }
+    fn get_width(&self) -> usize {
+        format!(" DID: {} ", self.did).len().min(self.max_width)
+    }
+    fn get_text_width(&self) -> usize {
+        self.get_width() - 2
+    }
+    fn get_strings(&self) -> [String; 3] {
+        let text_width = self.get_text_width();
+        let level_string = truncate(&format!("Level: {}", self.level), text_width);
+        let did_string = truncate(&format!("DID: {}", self.did), text_width);
+        let endpoint_string = match &self.endpoint {
+            Some(s) => truncate(&format!("Endpoint: {}", s), text_width),
+            _ => truncate(&format!("Endpoint: {}", ""), text_width),
+        };
+        [level_string, did_string, endpoint_string]
+    }
+    pub fn to_node_string(&self) -> String {
+        let strings = self.get_strings();
+        strings.join("\n")
     }
 }
 
@@ -156,14 +174,9 @@ impl fmt::Display for PrettyDID {
         // "| did: ...      |"  ✔
         // "| endpoint: ... |"
         // "+---------------+"
-        let box_width = format!(" DID: {} ", self.did).len().min(MAX_WIDTH);
+        let box_width = self.get_width();
         let text_width = box_width - 2;
-        let level_string = truncate(&format!("Level: {}", self.level), text_width);
-        let did_string = truncate(&format!("DID: {}", self.did), text_width);
-        let endpoint_string = match &self.endpoint {
-            Some(s) => truncate(&format!("Endpoint: {}", s), text_width),
-            _ => truncate(&format!("Endpoint: {}", ""), text_width),
-        };
+        let [level_string, did_string, endpoint_string] = self.get_strings();
         writeln!(f, "+{}+", "-".repeat(box_width))?;
         writeln!(f, "| {0:<1$} |   ", level_string, text_width)?;
         writeln!(f, "| {0:<1$} |  ✔", did_string, text_width)?;
@@ -187,7 +200,7 @@ impl fmt::Display for DIDChain {
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
         for (i, did) in self.level_vec.iter().enumerate() {
-            let service_endpoint_string = get_service_endpoint_string(self, did);
+            let doc = &self.data(did).unwrap().0;
             if i == 0 {
                 writeln!(
                     f,
@@ -196,7 +209,7 @@ impl fmt::Display for DIDChain {
                     box_width
                 )?;
             }
-            write!(f, "{}", PrettyDID::new(did, i, service_endpoint_string))?;
+            write!(f, "{}", PrettyDID::new(doc, i, MAX_WIDTH))?;
             let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
                 writeln!(f, "{0:^1$}", link_string, box_width)?;
