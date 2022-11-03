@@ -1,10 +1,7 @@
 use crate::chain::{Chain, DIDChain, PrettyDID};
-use petgraph::adj::NodeIndex;
 use petgraph::dot::{Config, Dot};
-use petgraph::graph::{DiGraph, Node};
-use petgraph::prelude::DiGraphMap;
-use ssi::did::Document;
-use std::collections::{HashMap, HashSet};
+use petgraph::graph::DiGraph;
+use std::collections::HashMap;
 use std::fmt::Display;
 use thiserror::Error;
 
@@ -20,7 +17,6 @@ pub enum GraphError {
 /// Wrapper struct for a petgraph DiGraph of documents.
 #[derive(Debug)]
 struct TrustchainGraph {
-    // TODO: check this is correct type spec
     graph: DiGraph<String, String>,
 }
 
@@ -55,11 +51,12 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
                     ns
                 }
             };
+            // Add edge if not in graph
             if !graph.contains_edge(ns, nt) {
                 graph.extend_with_edges([(ns, nt, "".to_string())]);
             }
 
-            // Update udid and did
+            // Update did
             did = ddid.to_owned();
             level += 1;
         }
@@ -81,8 +78,9 @@ impl TrustchainGraph {
     }
 
     /// Outputs graph to graphviz format.
-    fn to_graphviz(&self) {
-        todo!()
+    fn to_dot(&self) -> String {
+        // Output the tree to `graphviz` `DOT` format
+        format!("{}", Dot::with_config(&self.graph, &[Config::EdgeNoLabel]))
     }
 
     /// Saves to a graphviz/dot file
@@ -94,7 +92,7 @@ impl TrustchainGraph {
 impl Display for TrustchainGraph {
     /// TODO: Implements diplay.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!();
+        writeln!(f, "{}", self.to_dot())?;
         Ok(())
     }
 }
@@ -102,37 +100,21 @@ impl Display for TrustchainGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{
-        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
-        TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
-        TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_SIDETREE_DOCUMENT,
-        TEST_SIDETREE_DOCUMENT_METADATA, TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF,
-        TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF, TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
-        TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER, TEST_TRUSTCHAIN_DOCUMENT,
-        TEST_TRUSTCHAIN_DOCUMENT_METADATA,
-    };
     // TODO: temporary public tests for test chain before test chain fixture available
     use crate::chain::tests::test_chain;
-    use crate::utils::canonicalize;
 
     #[test]
-    fn read_chains() {
-        // let doc1: Document = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT).unwrap();
-        // let doc2: Document = serde_json::from_str(TEST_TRUSTCHAIN_DOCUMENT).unwrap();
-        // let mut forest = Vec::new();
-        // forest.push(vec![doc1, doc2]);
+    fn test_read_chains() {
         let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
-        let graph = TrustchainGraph::new(&chains).unwrap();
-
-        // Output the tree to `graphviz` `DOT` format
-        let dot = Dot::with_config(
-            &graph.graph,
-            &[Config::GraphContentOnly, Config::EdgeNoLabel],
-        );
-        // let g: Graph = parse(
-        println!("{}", "DiGraph {".to_owned());
-        println!("{}", dot);
-        println!("{}", "}".to_owned());
+        let graph = TrustchainGraph::new(&chains);
+        assert!(graph.is_ok());
+    }
+    #[test]
+    fn test_to_dot() -> Result<(), GraphError> {
+        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
+        let graph = TrustchainGraph::new(&chains)?;
+        print!("{}", graph.to_dot());
+        Ok(())
     }
     // #[test]
     // fn invalid_not_a_tree() {
@@ -140,10 +122,6 @@ mod tests {
     // }
     // #[test]
     // fn valid_tree() {
-    //     todo!()
-    // }
-    // #[test]
-    // fn to_graphviz() {
     //     todo!()
     // }
     // #[test]
