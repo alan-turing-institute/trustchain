@@ -128,21 +128,24 @@ pub struct PrettyDID {
     did: String,
     level: usize,
     endpoint: Option<String>,
+    max_width: usize,
 }
 
 /// Max width in chars for printing
 const MAX_WIDTH: usize = 79;
 
 impl PrettyDID {
-    fn new(did: &str, level: usize, endpoint: Option<String>) -> Self {
+    pub fn new(doc: &Document, level: usize, max_width: usize) -> Self {
+        let endpoint = get_service_endpoint_string(doc);
         Self {
-            did: did.to_string(),
+            did: doc.id.to_string(),
             level,
             endpoint,
+            max_width,
         }
     }
     fn get_width(&self) -> usize {
-        format!(" DID: {} ", self.did).len().min(MAX_WIDTH)
+        format!(" DID: {} ", self.did).len().min(self.max_width)
     }
     fn get_text_width(&self) -> usize {
         self.get_width() - 2
@@ -160,18 +163,6 @@ impl PrettyDID {
     pub fn to_node_string(&self) -> String {
         let strings = self.get_strings();
         strings.join("\n")
-    }
-}
-
-impl From<(&Document, usize)> for PrettyDID {
-    fn from(doc_level_pair: (&Document, usize)) -> Self {
-        let did = doc_level_pair.0.id.clone();
-        let endpoint = get_service_endpoint_string(doc_level_pair.0);
-        Self {
-            did,
-            level: doc_level_pair.1,
-            endpoint,
-        }
     }
 }
 
@@ -209,10 +200,7 @@ impl fmt::Display for DIDChain {
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
         for (i, did) in self.level_vec.iter().enumerate() {
-            let service_endpoint_string = match self.data(did) {
-                Some((doc, _)) => get_service_endpoint_string(doc),
-                _ => None,
-            };
+            let doc = &self.data(did).unwrap().0;
             if i == 0 {
                 writeln!(
                     f,
@@ -221,7 +209,7 @@ impl fmt::Display for DIDChain {
                     box_width
                 )?;
             }
-            write!(f, "{}", PrettyDID::new(did, i, service_endpoint_string))?;
+            write!(f, "{}", PrettyDID::new(doc, i, MAX_WIDTH))?;
             let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
                 writeln!(f, "{0:^1$}", link_string, box_width)?;

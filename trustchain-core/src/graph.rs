@@ -25,6 +25,7 @@ struct TrustchainGraph {
 fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
     let mut nodes = HashMap::<String, petgraph::prelude::NodeIndex>::new();
     let mut graph = DiGraph::<String, String>::new();
+    const MAX_WIDTH: usize = 40;
     for chain in chains {
         let mut did = chain.root().to_owned();
         let mut level = 0;
@@ -34,7 +35,8 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
                 Some(&v) => v,
                 None => {
                     let pretty_ddid =
-                        PrettyDID::from((&chain.data(ddid).unwrap().0, level + 1)).to_node_string();
+                        PrettyDID::new(&chain.data(ddid).unwrap().0, level + 1, MAX_WIDTH)
+                            .to_node_string();
                     let nt = graph.add_node(pretty_ddid);
                     nodes.insert(ddid.to_owned(), nt);
                     nt
@@ -44,8 +46,8 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
             let ns = match nodes.get(&did) {
                 Some(&v) => v,
                 None => {
-                    let pretty_did =
-                        PrettyDID::from((&chain.data(&did).unwrap().0, level)).to_node_string();
+                    let pretty_did = PrettyDID::new(&chain.data(&did).unwrap().0, level, MAX_WIDTH)
+                        .to_node_string();
                     let ns = graph.add_node(pretty_did);
                     nodes.insert(did.to_owned(), ns);
                     ns
