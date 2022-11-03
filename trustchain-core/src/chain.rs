@@ -97,7 +97,7 @@ fn extract_keys(doc: &Document) -> Vec<JWK> {
     public_keys
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DIDChain {
     // An map from DID strings to resolved tuples.
     did_map: HashMap<String, (Document, DocumentMetadata)>,
@@ -416,7 +416,7 @@ impl Chain for DIDChain {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
     use crate::data::{
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
@@ -474,7 +474,7 @@ pub mod tests {
     }
 
     // Helper function returns a chain of three DIDs.
-    pub fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
+    fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
         let mut chain = DIDChain::empty();
 
         let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
