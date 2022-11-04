@@ -1,7 +1,9 @@
 use crate::{
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
     MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
     MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
 };
+use bitcoincore_rpc::RpcApi;
 use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
@@ -11,7 +13,7 @@ use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
 /// A transaction on the PoW ledger.
-type Transaction = (u32, u32);
+type TransactionIndex = (u32, u32);
 
 /// Struct for TrustchainVerifier
 pub struct IONVerifier<T>
@@ -31,7 +33,7 @@ where
     }
 
     /// Returns the ledger transaction representing the ION DID operation.
-    fn transaction(&self, did: &str) -> Result<Transaction, VerifierError> {
+    fn transaction_index(&self, did: &str) -> Result<TransactionIndex, VerifierError> {
         let suffix = get_did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database.
@@ -135,7 +137,7 @@ where
     T: Sync + Send + DIDResolver,
 {
     fn verified_block_height(&self, did: &str) -> Result<u32, VerifierError> {
-        let (block_height, _) = self.transaction(did)?;
+        let (block_height, _) = self.transaction_index(did)?;
         Ok(block_height)
     }
 
@@ -146,10 +148,26 @@ where
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
     }
+    fn block_height_to_unixtime(&self, block_height: u32) -> Result<u32, VerifierError> {
+        let rpc = bitcoincore_rpc::Client::new(
+            BITCOIN_CONNECTION_STRING,
+            bitcoincore_rpc::Auth::UserPass(
+                BITCOIN_RPC_USERNAME.to_string(),
+                BITCOIN_RPC_PASSWORD.to_string(),
+            ),
+        )
+        .unwrap();
+
+        let block_hash = rpc.get_block_hash(u64::from(block_height)).unwrap();
+        let block_header = rpc.get_block_header(&block_hash).unwrap();
+        Ok(block_header.time)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::verifier;
+
     use super::*;
     use ssi::did_resolve::HTTPDIDResolver;
 
@@ -166,20 +184,33 @@ mod tests {
 
         let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
 
-        let (block_height, transaction_index) = target.transaction(did).unwrap();
+        let (block_height, transaction_index) = target.transaction_index(did).unwrap();
 
         assert_eq!(block_height, 1902377);
         assert_eq!(transaction_index, 118);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let (block_height, transaction_index) = target.transaction(did).unwrap();
+        let (block_height, transaction_index) = target.transaction_index(did).unwrap();
 
         assert_eq!(block_height, 2377445);
         assert_eq!(transaction_index, 3);
 
         // Invalid DID
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-        let result = target.transaction(invalid_did);
+        let result = target.transaction_index(invalid_did);
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[ignore = "Requires connection to a Bitcoin core testnet node on http://localhost:18332"]
+    fn test_block_height_to_unixtime() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+        let block_height = 2377445;
+        let result = target.block_height_to_unixtime(block_height);
+        assert_eq!(result.unwrap(), 1666265405u32);
+        let block_height = 2378493;
+        let result = target.block_height_to_unixtime(block_height);
+        assert_eq!(result.unwrap(), 1666971942u32);
     }
 }
