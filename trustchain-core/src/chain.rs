@@ -1,6 +1,7 @@
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
-use crate::ROOT_EVENT_TIME;
+use crate::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
+use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
@@ -205,7 +206,10 @@ impl fmt::Display for DIDChain {
                 writeln!(
                     f,
                     "{0:^1$}",
-                    format!("🕑 Block Height {0} 🕑", ROOT_EVENT_TIME),
+                    format!(
+                        "🕑 Root timestamp: {0} 🕑",
+                        Utc.timestamp(ROOT_EVENT_TIME_2378493 as i64, 0)
+                    ),
                     box_width
                 )?;
             }

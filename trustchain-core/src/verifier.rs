@@ -48,10 +48,16 @@ pub enum VerifierError {
     /// Failed to get the block height for DID.
     #[error("Failed to get block height for DID: {0}")]
     FailureToGetBlockHeight(String),
+    /// Failed to get the block height for DID.
+    #[error("Failed to get unix time from block height: {0}")]
+    FailureToGetUnixTime(u32),
 }
 
 /// Verifier of root and downstream DIDs.
 pub trait Verifier<T: Sync + Send + DIDResolver> {
+    /// Converts block height to unixtime.
+    fn block_height_to_unixtime(&self, block_height: u32) -> Result<u32, VerifierError>;
+
     /// Verify a downstream DID by tracing its chain back to the root.
     fn verify(&self, did: &str, root_timestamp: u32) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
@@ -70,12 +76,19 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // TODO: use the Unix timestamp rather than the block height.
         let root = chain.root();
         if let Ok(block_height) = self.verified_block_height(root) {
-            if block_height != root_timestamp {
-                return Err(VerifierError::InvalidRoot(root.to_string()));
+            if let Ok(unixtime) = self.block_height_to_unixtime(block_height) {
+                if unixtime != root_timestamp {
+                    return Err(VerifierError::InvalidRoot(root.to_string()));
+                }
+            } else {
+                return Err(VerifierError::FailureToGetUnixTime(block_height));
             }
         } else {
             return Err(VerifierError::FailureToGetBlockHeight(root.to_owned()));
         }
+
+        // TODO: consider whether to set a root event time here for the chain.
+
         Ok(chain)
     }
 
