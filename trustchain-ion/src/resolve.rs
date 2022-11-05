@@ -1,4 +1,3 @@
-use clap::{arg, command, Arg, ArgAction};
 use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -7,28 +6,14 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 // Binary to resolve a passed DID from the command line.
-fn main() {
-    let matches = command!()
-        .arg(
-            Arg::new("verbose")
-                .short('v')
-                .long("verbose")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            arg!(-i --input <INPUT>)
-                .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
-                .required(false),
-        )
-        .get_matches();
-
+pub fn main_resolve(did: &str, verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
         "http://localhost:3000/",
     ))));
 
     // Get DID from clap
-    let did_to_resolve = matches.get_one::<String>("input").unwrap();
+    let did_to_resolve = did;
 
     // Result metadata, Document, Document metadata
     let result = resolver.resolve_as_result(did_to_resolve);
@@ -36,7 +21,7 @@ fn main() {
         Ok(x) => x,
         Err(e) => {
             eprintln!("{e}");
-            return;
+            return Err(Box::new(e));
         }
     };
 
@@ -61,4 +46,5 @@ fn main() {
         "{}",
         to_json(&result_meta_json).expect("Cannot convert to JSON.")
     );
+    Ok(())
 }

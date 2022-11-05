@@ -1,34 +1,17 @@
-use clap::{arg, command, Arg, ArgAction};
-use serde_json::to_string_pretty as to_json;
-use trustchain_core::Subject;
-use trustchain_core::TRUSTCHAIN_DATA;
-// use serde_json::{Map, Value};
-// use ssi::did_resolve::{DocumentMetadata, Metadata};
-use core::panic;
-// use ssi::one_or_many::OneOrMany;
-use std::convert::TryFrom;
-use std::path::Path;
-// use trustchain_core::data::TEST_SIGNING_KEYS;
-use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
-
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::{sidetree::SidetreeClient, ION};
-
-// use ssi::did::{Document, ServiceEndpoint};
-// use ssi::jwk::JWK;
-
-// use trustchain_core::attestor::Attestor;
+use serde_json::to_string_pretty as to_json;
+use std::convert::TryFrom;
+use std::path::Path;
 use trustchain_core::controller::Controller;
+use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
+use trustchain_core::Subject;
+use trustchain_core::TRUSTCHAIN_DATA;
 
+use crate::controller::IONController;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-// use trustchain_ion::attestor::IONAttestor;
-use trustchain_ion::controller::IONController;
-
-// use trustchain_ion::is_proof_in_doc_meta;
-
-// use trustchain_ion::{add_proof_service, is_commitment_key};
 
 /// Type aliases
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
@@ -55,34 +38,11 @@ pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 // Binary to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // CLI pass: verbose, did, controlled_did
-    let matches = command!()
-        .arg(
-            Arg::new("verbose")
-                .short('v')
-                .long("verbose")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            // arg!(-d --signer-did <DID>)
-            arg!(-d --did <DID>)
-                .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
-                .required(false),
-        )
-        .arg(
-            // arg!(-c --controller-did <CONTROLLED_DID>)
-            arg!(-c --controlled_did <CONTROLLED_DID>)
-                .default_value("did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg")
-                .required(false),
-        )
-        // TODO: add flag for overriding previous `next_update_key`
-        .get_matches();
-
-    // 1.0. Get the did to sign and controller to sign it
-    let did = matches.get_one::<String>("did").unwrap();
-    let controlled_did = matches.get_one::<String>("controlled_did").unwrap();
-
+pub fn main_attest(
+    did: &str,
+    controlled_did: &str,
+    verbose: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
     let controller = match IONController::new(did, controlled_did) {
         Ok(x) => x,
