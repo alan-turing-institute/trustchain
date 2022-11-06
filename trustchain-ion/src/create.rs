@@ -1,44 +1,26 @@
-use clap::{arg, command, Arg, ArgAction};
-use ssi::jwk::JWK;
-
+use crate::attestor::{AttestorData, IONAttestor};
+use crate::controller::{ControllerData, IONController};
+use crate::{KeyUtils, KEY_UTILS};
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
 use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
+use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::key_manager::KeyManager;
-use trustchain_ion::attestor::{AttestorData, IONAttestor};
-use trustchain_ion::controller::{ControllerData, IONController};
-use trustchain_ion::KeyUtils;
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // CLI args: verbose, file_path, did
-    let matches = command!()
-        // Verbose output
-        .arg(
-            Arg::new("verbose")
-                .short('v')
-                .long("verbose")
-                .action(ArgAction::SetTrue),
-        )
-        // File path to a document state to be used for new DID.
-        .arg(arg!(-f --file_path <FILE_PATH>).required(false))
-        // Controller DID can be passed, currently not used in this binary but
-        // required to make a IONController instance.
-        .arg(arg!(-d --did <DID>).required(false))
-        .get_matches();
-
-    let verbose = *matches.get_one::<bool>("verbose").unwrap();
-    let file_path = matches.get_one::<String>("file_path");
-
+pub fn main_create(
+    file_path: Option<&String>,
+    verbose: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Make keys for controlled DID
     //
     // 1.0 Generate random keys
-    let update_key = KeyUtils.generate_key();
-    let recovery_key = KeyUtils.generate_key();
+    let update_key = KEY_UTILS.generate_key();
+    let recovery_key = KEY_UTILS.generate_key();
 
     // 1.1 Validate keys
     ION::validate_key(&update_key).unwrap();
@@ -132,14 +114,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))?;
     }
 
-    // 4.2 Write controller data
-    let did = if let Some(did) = matches.get_one::<String>("did") {
-        did.to_string()
-    } else {
-        controlled_did.to_string()
-    };
+    // 4.2 Write controller data: did is arbitrarily set to contolled_did in creation
     IONController::try_from(ControllerData::new(
-        did,
+        controlled_did.to_string(),
         controlled_did.to_string(),
         update_key,
         recovery_key,
