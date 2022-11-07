@@ -30,7 +30,7 @@ fn cli() -> Command {
                 )
                 .subcommand(
                     Command::new("resolve")
-                        .about("Controller attests to a DID.")
+                        .about("Resolves a DID.")
                         .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 ),
