@@ -9,7 +9,7 @@ use thiserror::Error;
 use trustchain_core::key_manager::KeyManager;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
-/// Key utility struct
+/// Key utility struct and const instance
 pub struct KeyUtils;
 impl KeyManager for KeyUtils {}
 pub const KEY_UTILS: KeyUtils = KeyUtils;

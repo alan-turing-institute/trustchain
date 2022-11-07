@@ -11,10 +11,6 @@ crate-type = ["cdylib", "rlib"]
 name = "trustchain-cli"
 path = "src/bin/main.rs"
 
-[[bin]]
-name = "vc"
-path = "src/bin/vc.rs"
-
 [features]
 default = ["console_error_panic_hook"]
 
