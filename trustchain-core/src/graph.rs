@@ -16,7 +16,7 @@ pub enum GraphError {
 
 /// Wrapper struct for a petgraph DiGraph of documents.
 #[derive(Debug)]
-struct TrustchainGraph {
+pub struct TrustchainGraph {
     graph: DiGraph<String, String>,
 }
 
@@ -25,12 +25,28 @@ struct TrustchainGraph {
 fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
     let mut nodes = HashMap::<String, petgraph::prelude::NodeIndex>::new();
     let mut graph = DiGraph::<String, String>::new();
-    const MAX_WIDTH: usize = 40;
+    const MAX_WIDTH: usize = 35;
     for chain in chains {
         let mut did = chain.root().to_owned();
         let mut level = 0;
+        // Add source
+        let ns = match nodes.get(&did) {
+            Some(&v) => v,
+            None => {
+                let pretty_did =
+                    PrettyDID::new(&chain.data(&did).unwrap().0, level, MAX_WIDTH).to_node_string();
+                let ns = graph.add_node(pretty_did);
+                nodes.insert(did.to_owned(), ns);
+                ns
+            }
+        };
         while let Some(ddid) = chain.downstream(&did) {
-            // Add target
+            // Get source node
+            let ns = match nodes.get(&did) {
+                Some(&v) => v,
+                None => panic!(),
+            };
+            // Add or retrieve target
             let nt = match nodes.get(ddid) {
                 Some(&v) => v,
                 None => {
@@ -40,17 +56,6 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
                     let nt = graph.add_node(pretty_ddid);
                     nodes.insert(ddid.to_owned(), nt);
                     nt
-                }
-            };
-            // Add source
-            let ns = match nodes.get(&did) {
-                Some(&v) => v,
-                None => {
-                    let pretty_did = PrettyDID::new(&chain.data(&did).unwrap().0, level, MAX_WIDTH)
-                        .to_node_string();
-                    let ns = graph.add_node(pretty_did);
-                    nodes.insert(did.to_owned(), ns);
-                    ns
                 }
             };
             // Add edge if not in graph
@@ -74,19 +79,19 @@ impl From<Vec<DIDChain>> for TrustchainGraph {
 
 impl TrustchainGraph {
     /// Makes a new TrustchainGraph instance.
-    fn new(chains: &Vec<DIDChain>) -> Result<Self, GraphError> {
+    pub fn new(chains: &Vec<DIDChain>) -> Result<Self, GraphError> {
         let graph = read_chains(chains);
         Ok(Self { graph })
     }
 
     /// Outputs graph to graphviz format.
-    fn to_dot(&self) -> String {
+    pub fn to_dot(&self) -> String {
         // Output the tree to `graphviz` `DOT` format
         format!("{}", Dot::with_config(&self.graph, &[Config::EdgeNoLabel]))
     }
 
     /// Saves to a graphviz/dot file
-    fn save(&self) {
+    pub fn save(&self) {
         todo!()
     }
 }
