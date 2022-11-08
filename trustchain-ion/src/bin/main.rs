@@ -151,10 +151,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Ok(chain) => {
                             println!("Issuer: {}... Ok", issuer);
                             if let Some(true) = verbose {
-                                let (_, doc, _) = resolver.resolve_as_result(&issuer).unwrap();
+                                let (_, doc, doc_meta) =
+                                    resolver.resolve_as_result(&issuer).unwrap();
                                 println!("---");
                                 println!("Issuer DID doc:");
-                                println!("{}", &to_string_pretty(&doc.unwrap()).unwrap());
+                                println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
+                                println!("---");
+                                println!("Issuer DID doc metadata:");
+                                println!(
+                                    "{}",
+                                    &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                                );
                                 println!("---");
                                 println!("Chain:");
                                 println!("{}", chain);
