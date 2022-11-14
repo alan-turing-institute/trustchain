@@ -50,32 +50,20 @@ pub fn main_attest(
     // 1.3 Check whether a present `next_update_key` matches the update commitment
     // TODO: This step should be refactored into a general library functionality for
     // recovery keys too and use in other update processes.
-    // TODO: check next_update_key() returns an option
     if let Ok(Some(key)) = controller.next_update_key() {
         // Check whether the key matches the update commitment
         if controller.is_commitment_key(&doc_meta, &key, KeyType::NextUpdateKey) {
             // Set update_key as next_update_key (save to file, delete next_update_key)
-            // TODO: compelete; consider adding functionality directly to key_manager
-            // controller.apply_next_update_key()
-            controller
-                .apply_next_update_key(controller.controlled_did_suffix(), &key)
-                .unwrap();
+            controller.apply_next_update_key(controller.controlled_did_suffix(), &key)?;
         } else {
-            // update_commitment value is not related to next_update_key, don't continue
-            panic!();
+            panic!("'update_commitment' value is not compatible with 'next_update_key'.");
         }
     }
 
     // 2: Make required patches
     let mut patches: Vec<DIDStatePatch> = Vec::<DIDStatePatch>::new();
 
-    // 2.1 If Trustchain proof already present, add RemoveService patch, and remove
-    //     this service from Doc to be signed
-    // TODO: use fn from resolver (e.g. make it pub),
-
-    // TODO: this should not be in the sign, a proof should be removed when a content
-    // update is performed
-    // Check if proof in document metadata
+    // 2.1: Add RemoveService patch if Trustchain proof already present
     if controller.is_proof_in_doc_meta(&doc_meta) {
         patches.push(DIDStatePatch::RemoveServices {
             ids: vec!["trustchain-controller-proof".to_string()],
@@ -84,16 +72,11 @@ pub fn main_attest(
 
     // 2.2. Controller performs attestation to Document to generate proof data
     // Sign the document from the controller using the "Attestor" trait method
-    let proof_result = controller.to_attestor().attest(&doc, None);
+    let proof = controller.to_attestor().attest(&doc, None)?;
 
     // 2.3. Proof service is constructed from the proof data and make an AddService patch
-    if let Ok(proof) = proof_result {
-        patches.push(controller.add_proof_service(controller.did(), &proof));
-    } else {
-        return Err(Box::new(proof_result.err().unwrap()));
-    }
+    patches.push(controller.add_proof_service(controller.did(), &proof));
 
-    // TODO: handle the unwraps in 2.4 and 2.5
     // 2.4  Generate new update key
     controller.generate_next_update_key()?;
 
@@ -111,18 +94,13 @@ pub fn main_attest(
         &update_key.unwrap(),
         &PublicKeyJwk::try_from(next_update_pk).unwrap(),
         patches,
-    );
+    )?;
 
-    // 3. Either publish the update operation using the publisher or write to JSON file
-    //    and publish with `curl`.
-    let operation = Operation::Update(update_operation.unwrap());
+    // 3. Construct operation and save to file in operations path
+    // 3.1: Construct operation
+    let operation = Operation::Update(update_operation);
 
-    // TODO: perform publish with publisher
-
-    // 4. Once the operation is no longer queued (or wait until published?) commit the new_update_key to replace the previous
-    // TODO
-
-    // 4.1 Save operation to file
+    // 3.2: Save operation
     let path = get_operations_path()?;
     let path = path.join(format!(
         "attest_operation_{}.json",
