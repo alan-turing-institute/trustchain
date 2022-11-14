@@ -135,9 +135,7 @@ impl Controller for IONController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use trustchain_core::data::{
-        TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
-    };
+    use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
 
     use trustchain_core::utils::init;
 
