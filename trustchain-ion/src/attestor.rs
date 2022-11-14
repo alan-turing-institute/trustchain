@@ -115,24 +115,23 @@ impl Attestor for IONAttestor {
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
-        // TODO: should this be did
         let signing_key = match self.signing_key(key_id) {
             Ok(key) => key,
             Err(_) => {
-                if key_id.is_none() {
-                    return Err(AttestorError::NoSigningKey(doc.id.to_string()));
-                } else {
+                if let Some(key_id) = key_id {
                     return Err(AttestorError::NoSigningKeyWithId(
-                        doc.id.to_string(),
-                        key_id.unwrap().to_string(),
+                        self.did().to_string(),
+                        key_id.to_string(),
                     ));
+                } else {
+                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
                 }
             }
         };
         // Encode and sign
         match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
-            Err(e) => Err(AttestorError::SigningError(doc.id.clone(), e.to_string())),
+            Err(e) => Err(AttestorError::SigningError(doc.id, e.to_string())),
         }
     }
 }
