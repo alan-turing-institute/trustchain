@@ -4,11 +4,10 @@ use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
-use std::path::Path;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
+use trustchain_core::utils::get_operations_path;
 use trustchain_core::Subject;
-use trustchain_core::TRUSTCHAIN_DATA;
 
 use crate::controller::IONController;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -149,14 +148,8 @@ pub fn main_attest(
     // TODO
 
     // 4.1 Save operation to file
-    // Get environment for TRUSTCHAIN_DATA
-    let path: String = match std::env::var(TRUSTCHAIN_DATA) {
-        Ok(val) => val,
-        Err(_) => panic!(),
-    };
-
-    // Make directory name
-    let path = Path::new(path.as_str()).join("operations").join(format!(
+    let path = get_operations_path()?;
+    let path = path.join(format!(
         "attest_operation_{}.json",
         controller.controlled_did_suffix()
     ));

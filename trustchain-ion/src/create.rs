@@ -10,6 +10,7 @@ use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::key_manager::KeyManager;
+use trustchain_core::utils::get_operations_path;
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
 pub fn main_create(
@@ -123,14 +124,41 @@ pub fn main_create(
     ))?;
 
     // 4.2 Write create operation to push to ION server
-    // TODO: use publisher to push JSON directly to ION server
-    // if use_publisher {
-    // publisher.post(create_operation);
-    // }
+    let path = get_operations_path()?;
     std::fs::write(
-        format!("create_operation_{}.json", controlled_did_suffix),
+        path.join(format!("create_operation_{}.json", controlled_did_suffix)),
         to_json(&operation).unwrap(),
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use glob::glob;
+    use trustchain_core::utils::init;
+
+    #[test]
+    fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {
+        init();
+        // Run create
+        main_create(None, false)?;
+
+        // Try to read outputted create operation
+        let path = get_operations_path()?;
+        let pattern = path.join("create_operation_*.json");
+        let pattern = pattern.into_os_string().into_string().unwrap();
+        let paths = glob(pattern.as_str())?;
+        for (i, path) in paths.enumerate() {
+            if let Ok(path_buf) = path {
+                let operation_string = std::fs::read_to_string(path_buf)?;
+                let _operation: Operation = serde_json::from_str(&operation_string)?;
+                assert!(i < 1);
+            } else {
+                panic!("No path present.");
+            }
+        }
+        Ok(())
+    }
 }

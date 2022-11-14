@@ -3,7 +3,7 @@ use serde::Serialize;
 
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Once;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
@@ -15,6 +15,15 @@ pub fn init() {
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
     });
+}
+
+/// Gets the path for storing operations and creates directories if they do not exist.
+pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    // Make directory and operation file name
+    let path = Path::new(path.as_str()).join("operations");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
 }
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
