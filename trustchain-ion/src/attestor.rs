@@ -142,7 +142,7 @@ mod tests {
     use ssi::did::Document;
 
     use trustchain_core::data::{TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
-    use trustchain_core::init;
+    use trustchain_core::utils::init;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {

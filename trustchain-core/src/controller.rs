@@ -1,12 +1,7 @@
-use serde_json::Value;
-use ssi::did::Document;
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
-use thiserror::Error;
-
-use crate::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError};
-
-// use crate::key_manager::{read_recovery_key, read_update_key};
 use crate::attestor::Attestor;
+use crate::key_manager::KeyManagerError;
+use ssi::jwk::JWK;
+use thiserror::Error;
 
 /// An error relating to Trustchain controllers.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -27,10 +22,12 @@ pub trait Controller {
     fn controlled_did(&self) -> &str;
     fn controlled_did_suffix(&self) -> &str;
     fn to_attestor(&self) -> Box<dyn Attestor>;
-    fn update_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the update key for the loaded DID
-    fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError>; // Retrieve the next update key for the loaded DID
-    fn recovery_key(&self) -> Result<JWK, KeyManagerError>; // Retrieve the recovery key for the loaded DID
-                                                            // E.g JWT https://jwt.io/
+    /// Retrieves the update key.
+    fn update_key(&self) -> Result<JWK, KeyManagerError>;
+    /// Retrieves the next update key.
+    fn next_update_key(&self) -> Result<Option<JWK>, KeyManagerError>;
+    /// Retrieves the recovery key.
+    fn recovery_key(&self) -> Result<JWK, KeyManagerError>;
     fn generate_next_update_key(&self) -> Result<(), KeyManagerError>;
     // fn generate_recovery_key(&self);
     // fn update_subject(&self);
@@ -38,9 +35,4 @@ pub trait Controller {
 }
 
 #[cfg(test)]
-mod tests {
-    // use super::TrustchainController;
-    // use crate::controller::Controller;
-    // use super::*;
-    // use crate::key_manager::tests::{TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
-}
+mod tests {}

@@ -1,11 +1,8 @@
 use crate::attestor::IONAttestor;
-use serde_json::Value;
-use ssi::did::Document;
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::jwk::JWK;
 use std::convert::TryFrom;
-use thiserror::Error;
-use trustchain_core::attestor::{Attestor, AttestorError};
-use trustchain_core::controller::{Controller, ControllerError};
+use trustchain_core::attestor::Attestor;
+use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::{get_did_suffix, Subject};
 impl KeyManager for IONController {}
@@ -20,6 +17,7 @@ struct ControllerData {
 }
 
 impl ControllerData {
+    #![allow(dead_code)]
     fn new(did: String, controlled_did: String, update_key: JWK, recovery_key: JWK) -> Self {
         ControllerData {
             did,
@@ -74,13 +72,15 @@ impl IONController {
         })
     }
 
-    /// Assume that the document to be made into a ION DID is agreed
-    /// with subject (i.e. content is correct and subject has private key
-    /// for public key in doc). The function then converts the document into
-    /// a create operation that can be pushed to the ION server.
-    fn create_subject(doc: Document) -> IONController {
-        todo!()
-    }
+    // TODO: consider removing as create is externally to a controller.
+    //
+    // Assume that the document to be made into a ION DID is agreed
+    // with subject (i.e. content is correct and subject has private key
+    // for public key in doc). The function then converts the document into
+    // a create operation that can be pushed to the ION server.
+    // fn create_subject(doc: Document) -> IONController {
+    // todo!()
+    // }
 }
 
 impl Subject for IONController {
@@ -139,7 +139,7 @@ mod tests {
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
 
-    use trustchain_core::init;
+    use trustchain_core::utils::init;
 
     // TODO: move the update_key and recovery_key loads out as lazy_static!()
 
