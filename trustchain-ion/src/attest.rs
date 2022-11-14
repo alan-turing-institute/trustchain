@@ -1,7 +1,7 @@
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
-use did_ion::{sidetree::SidetreeClient, ION};
+use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
 use trustchain_core::controller::Controller;
@@ -10,30 +10,7 @@ use trustchain_core::utils::get_operations_path;
 use trustchain_core::Subject;
 
 use crate::controller::IONController;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-/// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-/// Check resolver implementation, get the proof service ID if single proof service present,
-/// Otherwise return nothing/error
-// fn get_proof_service_id(doc: &Document) -> Option<String> {
-// todo!()
-// }
-
-// {
-//    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-//    "method" : {
-//       "published" : true,
-//       "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
-//       "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
-//    },
-//    "proof" : {
-//       "id" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-//       "type" : "JsonWebSignature2020",
-//       "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
-//   }
-// }
+use crate::test_resolver;
 
 // Binary to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
@@ -58,9 +35,7 @@ pub fn main_attest(
 
     // 1.2. Resolve controlled_did document with Trustchain resolver
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-        "http://localhost:3000/",
-    ))));
+    let resolver = test_resolver("http://localhost:3000/");
 
     // Extract resolution items
     let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did) {

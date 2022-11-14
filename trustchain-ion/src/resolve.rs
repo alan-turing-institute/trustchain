@@ -1,9 +1,7 @@
 use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
+use crate::IONResolver;
 
 // Binary to resolve a passed DID from the command line.
 pub fn main_resolve(did: &str, _verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
