@@ -71,7 +71,7 @@ impl AttestorData {
 }
 
 impl TryFrom<AttestorData> for IONAttestor {
-    type Error = Box<dyn std::error::Error>;
+    type Error = KeyManagerError;
 
     fn try_from(data: AttestorData) -> Result<Self, Self::Error> {
         let subject = IONAttestor { did: data.did };
@@ -147,7 +147,6 @@ mod tests {
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
         init();
-        assert_eq!(0, 0);
         let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let did = "did:example:did_try_from";
         let did_suffix = "did_try_from";
