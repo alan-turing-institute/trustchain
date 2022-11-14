@@ -37,28 +37,23 @@ impl IONAttestor {
         // let keys = self.read_signing_keys(&self.did)?;
         let keys = self.signing_keys()?;
         // If no key_id is given, return the first available key.
-        if key_id.is_none() {
-            match keys.first() {
-                Some(key) => return Ok(key.to_owned()),
-                None => Err(KeyManagerError::FailedToLoadKey),
-            }
-        } else {
-            let key_id = key_id.unwrap();
+        if let Some(key_id) = key_id {
             // Iterate over the available keys.
             for key in keys.into_iter() {
                 // If the key has a key_id which matches the given key_id, return it.
-                // Otherwise continue.
-                match key.key_id {
-                    Some(ref this_key_id) => {
-                        if this_key_id == key_id {
-                            return Ok(key);
-                        }
+                if let Some(this_key_id) = &key.key_id {
+                    if this_key_id == key_id {
+                        return Ok(key);
                     }
-                    None => continue,
                 }
             }
             // If none of the keys has a matching key_id, the required key does not exist.
             Err(KeyManagerError::FailedToLoadKey)
+        } else {
+            match keys.first() {
+                Some(key) => Ok(key.to_owned()),
+                None => Err(KeyManagerError::FailedToLoadKey),
+            }
         }
     }
 }
@@ -216,6 +211,37 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn test_signing_key() {}
+    #[test]
+    fn test_signing_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
+        let did = "did:example:test_signing_key";
+
+        // Load keys
+        let mut keys: Vec<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+        // Attach key_id to keys
+        for (i, key) in keys.iter_mut().enumerate() {
+            if i == 0 {
+                key.key_id = Some(format!("{}", i));
+            }
+        }
+        let expected_key0 = keys[0].clone();
+        let keys = OneOrMany::Many(keys);
+        let target = IONAttestor::try_from(AttestorData::new(did.to_string(), keys))?;
+
+        let actual_key = target.signing_key(None)?;
+        assert_eq!(expected_key0, actual_key);
+
+        let actual_key = target.signing_key(Some("0"))?;
+        assert_eq!(expected_key0, actual_key);
+
+        let actual_key_res = target.signing_key(Some("1"));
+        let expected_res: Result<JWK, KeyManagerError> = Err(KeyManagerError::FailedToLoadKey);
+        assert_eq!(actual_key_res, expected_res);
+
+        Ok(())
+    }
 }
