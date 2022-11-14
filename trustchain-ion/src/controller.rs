@@ -229,11 +229,9 @@ impl IONController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json;
-    use ssi::did_resolve::DocumentMetadata;
-    use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
     use trustchain_core::data::{
-        TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_RECOVERY_KEY, TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_UPDATE_KEY,
     };
 
     use trustchain_core::utils::init;
