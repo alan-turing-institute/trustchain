@@ -1,9 +1,5 @@
-use crate::key_manager::{AttestorKeyManager, KeyManager, KeyManagerError};
 use crate::Subject;
 use ssi::did::Document;
-use ssi::jwk::JWK;
-use ssi::one_or_many::OneOrMany;
-use std::convert::From;
 use thiserror::Error;
 
 /// An error relating to a Trustchain Attestor.

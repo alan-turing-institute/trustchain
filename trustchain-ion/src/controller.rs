@@ -1,17 +1,15 @@
+use crate::TrustchainIONError;
 // use crate::subject::IONSubject;
 use crate::attestor::IONAttestor;
-use crate::TrustchainIONError;
-use did_ion::sidetree::Sidetree;
-use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry};
+use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidetree};
 use did_ion::ION;
 use serde_json::{Map, Value};
-use ssi::did::{Document, ServiceEndpoint};
+use ssi::did::ServiceEndpoint;
 use ssi::did_resolve::{DocumentMetadata, Metadata};
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::jwk::JWK;
 use std::convert::TryFrom;
-use thiserror::Error;
-use trustchain_core::attestor::{Attestor, AttestorError};
-use trustchain_core::controller::{Controller, ControllerError};
+use trustchain_core::attestor::Attestor;
+use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::{get_did_suffix, Subject};
 impl KeyManager for IONController {}
@@ -80,13 +78,15 @@ impl IONController {
         })
     }
 
-    /// Assume that the document to be made into a ION DID is agreed
-    /// with subject (i.e. content is correct and subject has private key
-    /// for public key in doc). The function then converts the document into
-    /// a create operation that can be pushed to the ION server.
-    fn create_subject(doc: Document) -> IONController {
-        todo!()
-    }
+    // TODO: consider removing as create is externally to a controller.
+    //
+    // Assume that the document to be made into a ION DID is agreed
+    // with subject (i.e. content is correct and subject has private key
+    // for public key in doc). The function then converts the document into
+    // a create operation that can be pushed to the ION server.
+    // fn create_subject(doc: Document) -> IONController {
+    // todo!()
+    // }
 }
 
 impl Subject for IONController {
@@ -235,7 +235,8 @@ mod tests {
     use trustchain_core::data::{
         TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
-    use trustchain_core::init;
+
+    use trustchain_core::utils::init;
 
     // TODO: move the update_key and recovery_key loads out as lazy_static!()
 
