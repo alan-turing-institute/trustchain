@@ -13,9 +13,6 @@
 //     IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
 // }
 
-use mockall::mock;
-use ssi::jwk::Params;
-use std::io::Read;
 use std::path::Path;
 use std::sync::Once;
 

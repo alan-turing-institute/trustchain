@@ -52,15 +52,10 @@ pub fn main_attest(
         }
     };
 
-    // TODO: testing print
-    // println!("===============");
-    // println!("{}", controller.did());
-    // println!("{}", controller.controlled_did());
-    // println!("{}", did);
-    // println!("{}", controlled_did);
-    // println!("{}", did_suffix);
-    // println!("{}", controlled_did_suffix);
-    // println!("===============");
+    if verbose {
+        println!("DID: {}", controller.did());
+        println!("Controlled DID: {}", controller.controlled_did());
+    }
 
     // 1.2. Resolve controlled_did document with Trustchain resolver
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
