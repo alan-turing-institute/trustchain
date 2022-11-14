@@ -6,7 +6,6 @@ use ssi::jwk::JWK;
 use crate::TRUSTCHAIN_DATA;
 use std::path::Path;
 use std::sync::Once;
-use tempfile;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
