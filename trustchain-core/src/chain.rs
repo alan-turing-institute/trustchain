@@ -197,9 +197,9 @@ impl fmt::Display for DIDChain {
         // "+----------------+"
         // "| PrettyDID: ... |"  ✓
         // "+----------------+"
-        let title = "₿ DON'T TRUST, VERIFY! ₿";
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
-        writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
+        // let title = "₿ DON'T TRUST, VERIFY! ₿";
+        // writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
             if i == 0 {
