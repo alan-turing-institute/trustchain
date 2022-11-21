@@ -39,6 +39,13 @@ fn cli() -> Command {
                         .about("Resolves a DID.")
                         .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
+                )
+                .subcommand(
+                    Command::new("verify")
+                        .about("Verifies a DID.")
+                        // TODO: consider vverbose for stepping through
+                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-d --did <DID>).required(true)),
                 ),
         )
         .subcommand(
