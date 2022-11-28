@@ -1,4 +1,4 @@
-use crate::Subject;
+use crate::subject::Subject;
 use ssi::did::Document;
 use thiserror::Error;
 

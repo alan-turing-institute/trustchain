@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::{get_did_suffix, Subject};
+use trustchain_core::{subject::Subject, utils::get_did_suffix};
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -86,9 +86,6 @@ impl IONController {
 impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
-    }
-    fn did_suffix(&self) -> &str {
-        get_did_suffix(&self.did)
     }
 }
 

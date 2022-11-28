@@ -4,12 +4,11 @@ use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
-use trustchain_core::get_did_suffix;
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
-    Subject,
+    subject::Subject,
 };
 
 pub struct IONAttestor {
@@ -90,9 +89,6 @@ impl TryFrom<AttestorData> for IONAttestor {
 impl Subject for IONAttestor {
     fn did(&self) -> &str {
         &self.did
-    }
-    fn did_suffix(&self) -> &str {
-        get_did_suffix(&self.did)
     }
 }
 
