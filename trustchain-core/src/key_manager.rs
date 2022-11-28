@@ -1,7 +1,6 @@
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
-use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -10,8 +9,10 @@ use thiserror::Error;
 use crate::TRUSTCHAIN_DATA;
 
 /// An error relating to Trustchain key management.
+// TODO: add documentation for each variant
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyManagerError {
+    /// Key does not exist.
     #[error("Key does not exist.")]
     FailedToLoadKey,
     #[error("Key could not be saved.")]
@@ -84,20 +85,6 @@ pub trait KeyManager {
     /// Generates a new cryptographic key.
     fn generate_key(&self) -> JWK {
         JWK::generate_secp256k1().expect("Could not generate key.")
-    }
-
-    /// Generates a set of update, recovery and signing keys.
-    // TODO: consider droppping this function as creating keys is easier one by one.
-    fn generate_keys(&self) -> HashMap<KeyType, OneOrMany<JWK>> {
-        let update_key = self.generate_key();
-        let recovery_key = self.generate_key();
-        let signing_key = self.generate_key();
-
-        let mut map = HashMap::new();
-        map.insert(KeyType::UpdateKey, OneOrMany::One(update_key));
-        map.insert(KeyType::RecoveryKey, OneOrMany::One(recovery_key));
-        map.insert(KeyType::SigningKey, OneOrMany::One(signing_key));
-        map
     }
 
     /// Reads a key of a given type.
@@ -247,6 +234,7 @@ pub trait KeyManager {
         }
     }
 
+    /// Removes file from disk for `key_type` of `did_suffix`.
     fn remove_keys(&self, did_suffix: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
         // Make path
         let path = &self.get_path(did_suffix, key_type, false)?;
@@ -293,16 +281,6 @@ pub mod tests {
             }
             _ => panic!(),
         }
-    }
-
-    #[test]
-    fn test_generate_keys() {
-        let target = TestKeyManager;
-        let result = target.generate_keys();
-        assert_eq!(result.len(), 3);
-        assert!(result.contains_key(&KeyType::UpdateKey));
-        assert!(result.contains_key(&KeyType::RecoveryKey));
-        assert!(result.contains_key(&KeyType::SigningKey));
     }
 
     // Mock the std::io::Read trait.
