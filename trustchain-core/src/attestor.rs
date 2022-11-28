@@ -24,8 +24,8 @@ pub enum AttestorError {
 
 /// An upstream entity that attests to a downstream DID.
 pub trait Attestor: Subject {
-    /// Attests to a DID Document. Subject attests to a did document by signing the document with (one of) its private signing key(s).
+    /// Attests to a DID Document. Subject attests to a DID document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
-    /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own did.
+    /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own DID.
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
 }
