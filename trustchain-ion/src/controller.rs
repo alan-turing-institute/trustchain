@@ -1,19 +1,17 @@
+use crate::TrustchainIONError;
 // use crate::subject::IONSubject;
 use crate::attestor::IONAttestor;
-use crate::TrustchainIONError;
-use did_ion::sidetree::Sidetree;
-use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry};
+use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidetree};
 use did_ion::ION;
 use serde_json::{Map, Value};
-use ssi::did::{Document, ServiceEndpoint};
+use ssi::did::ServiceEndpoint;
 use ssi::did_resolve::{DocumentMetadata, Metadata};
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
+use ssi::jwk::JWK;
 use std::convert::TryFrom;
-use thiserror::Error;
-use trustchain_core::attestor::{Attestor, AttestorError};
-use trustchain_core::controller::{Controller, ControllerError};
+use trustchain_core::attestor::Attestor;
+use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
-use trustchain_core::{get_did_suffix, Subject};
+use trustchain_core::subject::Subject;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -61,18 +59,14 @@ impl TryFrom<ControllerData> for IONController {
     }
 }
 
-/// Struct for common IONController.
+/// Struct for IONController.
 pub struct IONController {
     did: String,
     controlled_did: String,
-    // update_key: Option<JWK>,
-    // recovery_key: Option<JWK>,
-    // next_update_key: Option<JWK>,
 }
 
 impl IONController {
-    /// Construct a new IONController instance
-    /// from existing Subject and Controller DIDs.
+    /// Constructs a new IONController instance from existing Subject and Controller DIDs.
     pub fn new(did: &str, controlled_did: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             did: did.to_owned(),
@@ -80,31 +74,21 @@ impl IONController {
         })
     }
 
-    /// Assume that the document to be made into a ION DID is agreed
-    /// with subject (i.e. content is correct and subject has private key
-    /// for public key in doc). The function then converts the document into
-    /// a create operation that can be pushed to the ION server.
-    fn create_subject(doc: Document) -> IONController {
-        todo!()
-    }
+    // TODO: consider moving the create operation into this struct.
+    // fn create(doc: DocumentState) -> IONController {
+    //     todo!()
+    // }
 }
 
 impl Subject for IONController {
     fn did(&self) -> &str {
         &self.did
     }
-    fn did_suffix(&self) -> &str {
-        get_did_suffix(&self.did)
-    }
 }
 
 impl Controller for IONController {
     fn controlled_did(&self) -> &str {
         &self.controlled_did
-    }
-
-    fn controlled_did_suffix(&self) -> &str {
-        get_did_suffix(&self.controlled_did)
     }
 
     fn update_key(&self) -> Result<JWK, KeyManagerError> {
@@ -229,17 +213,13 @@ impl IONController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json;
-    use ssi::did_resolve::DocumentMetadata;
-    use trustchain_core::data::{TEST_RECOVERY_KEY, TEST_UPDATE_KEY};
     use trustchain_core::data::{
-        TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_RECOVERY_KEY, TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
+        TEST_UPDATE_KEY,
     };
-    use trustchain_core::init;
+    use trustchain_core::utils::init;
 
-    // TODO: move the update_key and recovery_key loads out as lazy_static!()
-
-    // Make a IONController using this test function
+    // Make an IONController using this test function
     fn test_controller(
         did: &str,
         controlled_did: &str,
@@ -257,7 +237,6 @@ mod tests {
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
         init();
-        assert_eq!(0, 0);
         let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
         let did = "did:example:did_try_from";

@@ -6,35 +6,9 @@ pub mod data;
 pub mod graph;
 pub mod key_manager;
 pub mod resolver;
+pub mod subject;
 pub mod utils;
 pub mod verifier;
-
-// use std::io::Read;
-use std::path::Path;
-use std::sync::Once;
-use tempfile;
-
-/// A DID Subject.
-pub trait Subject {
-    fn did(&self) -> &str;
-    fn did_suffix(&self) -> &str;
-}
-
-/// Returns the suffix of a short-form DID.
-pub fn get_did_suffix(did: &str) -> &str {
-    did.split(':').last().unwrap()
-}
-
-// Set-up tempdir and use as env var for TRUSTCHAIN_DATA
-// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-static INIT: Once = Once::new();
-pub fn init() {
-    INIT.call_once(|| {
-        // initialization code here
-        let tempdir = tempfile::tempdir().unwrap();
-        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-    });
-}
 
 // WASM
 use wasm_bindgen::prelude::*;

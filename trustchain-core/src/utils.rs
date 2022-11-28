@@ -4,9 +4,8 @@ use sha2::{Digest, Sha256};
 use ssi::jwk::JWK;
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Once;
-use tempfile;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
@@ -50,6 +49,20 @@ fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// [`DATA_ENCODING_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#data-encoding-scheme)
 fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
+}
+
+/// Gets the path for storing operations and creates directories if they do not exist.
+pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    // Make directory and operation file name
+    let path = Path::new(path.as_str()).join("operations");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
+}
+
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
 }
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)

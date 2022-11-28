@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let controlled_did = sub_matches.get_one::<String>("controlled_did").unwrap();
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let key_id = sub_matches
+                    let _key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
