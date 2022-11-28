@@ -1,9 +1,8 @@
-use std::convert::TryFrom;
-
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
+use std::convert::TryFrom;
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
@@ -11,6 +10,7 @@ use trustchain_core::{
     subject::Subject,
 };
 
+/// Struct for IONAttestor.
 pub struct IONAttestor {
     did: String,
 }
@@ -26,14 +26,13 @@ impl IONAttestor {
             did: did.to_owned(),
         }
     }
-
+    /// Gets the signing keys of the attestor.
     fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
         self.read_signing_keys(self.did_suffix())
     }
 
-    /// Get the Subject's signing key.
+    /// Gets the signing key with ID `key_id` of the attestor.
     fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        // let keys = self.read_signing_keys(&self.did)?;
         let keys = self.signing_keys()?;
         // If no key_id is given, return the first available key.
         if let Some(key_id) = key_id {
