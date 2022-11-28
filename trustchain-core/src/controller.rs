@@ -1,5 +1,6 @@
 use crate::attestor::Attestor;
 use crate::key_manager::KeyManagerError;
+use crate::utils::get_did_suffix;
 use ssi::jwk::JWK;
 use thiserror::Error;
 
@@ -22,7 +23,9 @@ pub trait Controller {
     /// Returns the DID controlled by this controller.
     fn controlled_did(&self) -> &str;
     /// Returns the suffix of the DID controlled by this controller.
-    fn controlled_did_suffix(&self) -> &str;
+    fn controlled_did_suffix(&self) -> &str {
+        get_did_suffix(self.controlled_did())
+    }
     /// Converts this controller into an attestor.
     fn to_attestor(&self) -> Box<dyn Attestor>;
     /// Retrieves the update key.
