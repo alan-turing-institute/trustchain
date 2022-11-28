@@ -327,3 +327,45 @@ pub const TEST_TRUSTCHAIN_DOCUMENT: &'static str = r##"
    ]
  }
 "##;
+
+pub const TEST_SIGNING_KEYS: &str = r##"[
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "aPNNzj64rnImzI60EP0iln_u5fyHZ1k47diqmlUrwXw",
+            "y": "fbfKhw08ZtGy9vbyJo6kiFohhGFIrnzZIUNDvEQeAYQ",
+            "d": "sfsIThyN_6EKPjhQasF8yR27-qlQPUTGiP4QtkPTKM8"
+        },
+        {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "gjk_d4WRM5hFD7tP8vvXhHgp0MQkKwFX0uAvyjNJQJg",
+            "y": "e5lq0RW41Y5MH1pOTm-3_18GcxKp1lO4SfbzApRaVtE",
+            "d": "U7pUq3BovVnYT1mi1lds60wbueUKb5GobV_WvjOuY14"
+        }
+    ]
+    "##;
+
+pub const TEST_UPDATE_KEY: &str = r##"{
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "2hm19BwmXmR8Vfuw2XbGrusm89Pg6dyExlzDfc-CiM8",
+        "y": "uFjW0fKdhHaY4c_5E9Wkk3cPi9sJ5rP3oyl1ssV_X6A",
+        "d": "Z2vJqNRjbWvJX2NzABKlHI2V00HWmV2KNI5P4mmxRbg"
+    }"##;
+
+pub const TEST_NEXT_UPDATE_KEY: &str = r##"{
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "hm_Pj46yibXbFNyARPXfOKIAEI_UKqfmZwzZDfbUSSk",
+        "y": "Djxgs6Ex71m6K0QCrn4l2naNo4F6IYXfu0LrBhW2RQU",
+        "d": "rAUu7DWaQ2ceSap_NzJNj1YOD2yP_bf1JqabuQJz6rc"
+    }"##;
+
+pub const TEST_RECOVERY_KEY: &str = r##"{
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "_Z1JRmGwvj0jIpDW-QF0dmQnAL8D_FuNg2WxF7uJSYo",
+        "y": "orKbmG6L6kRugAB2OWzWNgulXRfyOR06GTm353Er--c",
+        "d": "YobJpI7p7T5dfU0cDRE4SQwp0eOFR6LOGrsqZE1GG1A"
+    }"##;
