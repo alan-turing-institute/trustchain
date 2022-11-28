@@ -1,6 +1,6 @@
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, hash};
-use crate::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
+use crate::ROOT_EVENT_TIME_2378493;
 use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
@@ -340,7 +340,7 @@ impl Chain for DIDChain {
             let (udid_doc, _) = self.data(udid).unwrap();
 
             // Extract the controller proof from the document metadata.
-            let proof = get_proof(&did_doc_meta)?;
+            let proof = get_proof(did_doc_meta)?;
 
             // 1. Reconstruct the actual payload.
             let actual_payload = hash(&canonicalize(&did_doc).unwrap());
@@ -358,7 +358,7 @@ impl Chain for DIDChain {
 
             // 2. Check the keys
             // Get keys
-            let keys = extract_keys(&udid_doc);
+            let keys = extract_keys(udid_doc);
 
             // Check at least one key valid
             let mut one_valid_key = false;
@@ -537,13 +537,14 @@ mod tests {
     #[test]
     fn test_as_vec() {
         let target = test_chain().unwrap();
-        let mut expected_vec = Vec::new();
-        expected_vec
-            .push("did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string()); //ROOT DID
-        expected_vec
-            .push("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()); // LEVEL ONE DID
-        expected_vec
-            .push("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()); // LEVEL TWO DID
+        let expected_vec = vec![
+            //ROOT DID
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string(),
+            // LEVEL ONE DID
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string(),
+            // LEVEL TWO DID
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
+        ];
         assert_eq!(target.as_vec(), &expected_vec);
     }
 
