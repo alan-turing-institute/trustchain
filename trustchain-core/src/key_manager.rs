@@ -9,7 +9,6 @@ use thiserror::Error;
 use crate::TRUSTCHAIN_DATA;
 
 /// An error relating to Trustchain key management.
-// TODO: add documentation for each variant
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyManagerError {
     /// Key does not exist.
