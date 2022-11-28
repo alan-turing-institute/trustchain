@@ -268,7 +268,6 @@ pub mod tests {
     impl AttestorKeyManager for TestKeyManager {}
     impl ControllerKeyManager for TestKeyManager {}
 
-    /// Test for generating keys
     #[test]
     fn test_generate_key() {
         let target = TestKeyManager;
