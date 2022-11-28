@@ -15,19 +15,26 @@ pub enum KeyManagerError {
     /// Key does not exist.
     #[error("Key does not exist.")]
     FailedToLoadKey,
+    /// Key could not be saved.
     #[error("Key could not be saved.")]
     FailedToSaveKey,
+    /// Failed to read UTF-8 data.
     #[error("Failed to read UTF-8 data.")]
     FailedToReadUTF8,
+    /// Failed to parse JSON string to JWK.
     #[error("Failed to parse JSON string to JWK.")]
     FailedToParseJWK,
+    /// Failed to create path for DID keys during save.
     #[error("Failed to create path for DID keys during save.")]
     FailedToCreateDir,
+    /// Failed to remove key.
     #[error("Failed to remove key.")]
     FailedToRemoveKey,
-    #[error("No Trustchain data environment variable.")]
+    /// No TRUSTCHAIN_DATA environment variable.
+    #[error("No TRUSTCHAIN_DATA environment variable.")]
     TrustchainDataNotPresent,
-    #[error("Many keys when should be one.")]
+    /// Expected only one key but found many.
+    #[error("Expected only one key but found many.")]
     InvalidManyKeys,
 }
 
