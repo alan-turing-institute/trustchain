@@ -8,8 +8,8 @@ use futures::executor::block_on;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did_resolve::DIDResolver;
 use std::convert::TryFrom;
-use trustchain_core::get_did_suffix;
 use trustchain_core::resolver::Resolver;
+use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
 /// A transaction on the PoW ledger.

@@ -51,6 +51,11 @@ fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
 }
 
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
