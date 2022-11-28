@@ -6,8 +6,8 @@ use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
+use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
-use trustchain_core::Subject;
 
 use crate::controller::IONController;
 use crate::test_resolver;

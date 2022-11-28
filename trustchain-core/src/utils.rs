@@ -26,6 +26,11 @@ pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(path)
 }
 
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 #[allow(dead_code)]
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {

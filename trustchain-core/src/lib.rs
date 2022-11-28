@@ -4,18 +4,8 @@ pub mod controller;
 pub mod data;
 pub mod key_manager;
 pub mod resolver;
+pub mod subject;
 pub mod utils;
-
-/// A DID Subject.
-pub trait Subject {
-    fn did(&self) -> &str;
-    fn did_suffix(&self) -> &str;
-}
-
-/// Returns the suffix of a short-form DID.
-pub fn get_did_suffix(did: &str) -> &str {
-    did.split(':').last().unwrap()
-}
 
 // WASM
 use wasm_bindgen::prelude::*;
