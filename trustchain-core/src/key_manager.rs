@@ -405,14 +405,6 @@ pub mod tests {
         let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
         assert!(try_overwrite.is_ok());
 
-        // Failing overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
-        assert!(try_overwrite.is_err());
-
-        // Successful overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
-        assert!(try_overwrite.is_ok());
-
         Ok(())
     }
 
