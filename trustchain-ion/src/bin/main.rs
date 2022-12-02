@@ -1,6 +1,6 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
-use trustchain_ion::{attest::main_attest, create::main_create, resolve::main_resolve};
+use trustchain_ion::{attest::attest_operation, create::create_operation, resolve::main_resolve};
 
 fn cli() -> Command {
     Command::new("trustchain")
@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    main_create(file_path, verbose)?;
+                    create_operation(file_path, verbose)?;
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
-                    main_attest(did, controlled_did, verbose)?;
+                    attest_operation(did, controlled_did, verbose)?;
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();

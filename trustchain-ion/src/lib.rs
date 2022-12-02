@@ -18,7 +18,7 @@ pub const KEY_UTILS: KeyUtils = KeyUtils;
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Test resolver
-pub fn test_resolver(endpoint: &str) -> IONResolver {
+pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
     IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
 }
 

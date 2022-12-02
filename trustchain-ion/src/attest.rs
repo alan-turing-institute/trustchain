@@ -4,29 +4,25 @@ use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
+use trustchain_core::attestor::AttestorError;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
+use trustchain_core::resolver::ResolverError;
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
 
 use crate::controller::IONController;
-use crate::test_resolver;
+use crate::get_ion_resolver;
 
-// Binary to resolve a controlled DID, attest to its contents and perform an update
+// Function to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
-pub fn main_attest(
+pub fn attest_operation(
     did: &str,
     controlled_did: &str,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 1.1. Load controller from passed controlled_did to be signed and controller DID
-    let controller = match IONController::new(did, controlled_did) {
-        Ok(x) => x,
-        Err(e) => {
-            println!("{}", e);
-            return Err(e);
-        }
-    };
+    let controller = IONController::new(did, controlled_did)?;
 
     if verbose {
         println!("DID: {}", controller.did());
@@ -35,16 +31,18 @@ pub fn main_attest(
 
     // 1.2. Resolve controlled_did document with Trustchain resolver
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Extract resolution items
     let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did) {
         Ok((res, Some(doc), Some(doc_meta))) => (res, doc, doc_meta),
         Err(e) => {
-            println!("{}", e);
             return Err(Box::new(e));
         }
-        _ => panic!(),
+        _ => panic!(
+            "Unhandled resolution error encountered for DID: {}",
+            controlled_did
+        ),
     };
 
     // 1.3 Check whether a present `next_update_key` matches the update commitment
@@ -80,15 +78,14 @@ pub fn main_attest(
     // 2.4  Generate new update key
     controller.generate_next_update_key()?;
 
-    // Store update key
+    // 2.5 Get private update_key and public next_update_key
     let update_key = controller.update_key();
     let next_update_pk = match controller.next_update_key() {
         Ok(Some(key)) => key.to_public(),
-        _ => panic!(),
+        _ => panic!("'next_update_key' could not be loaded."),
     };
 
-    // 2.4. Create update operation including all patches constructed
-    // DIDSuffix gives the hased suffix data only from full string.
+    // 2.6 Create update operation including all patches constructed
     let update_operation = ION::update(
         DIDSuffix(controller.controlled_did_suffix().to_string()),
         &update_key.unwrap(),
@@ -97,10 +94,12 @@ pub fn main_attest(
     )?;
 
     // 3. Construct operation and save to file in operations path
-    // 3.1: Construct operation
+    // 3.1 Construct operation
     let operation = Operation::Update(update_operation);
 
-    // 3.2: Save operation
+    // 3.2 Save operation
+    // TODO: consider refactor into OperationManager trait (#48)
+    // operation_manager.save(operation, OperationType::Update)?;
     let path = get_operations_path()?;
     let path = path.join(format!(
         "attest_operation_{}.json",

@@ -13,7 +13,7 @@ use trustchain_core::key_manager::KeyManager;
 use trustchain_core::utils::get_operations_path;
 
 // Binary to make a new DID subject to be controlled and correspondong create operation.
-pub fn main_create(
+pub fn create_operation(
     file_path: Option<&String>,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -143,7 +143,7 @@ mod test {
     fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {
         init();
         // Run create
-        main_create(None, false)?;
+        create_operation(None, false)?;
 
         // Try to read outputted create operation
         let path = get_operations_path()?;

@@ -7,7 +7,7 @@ use ssi::one_or_many::OneOrMany;
 use std::fs::File;
 use trustchain_core::key_manager::KeyManager;
 use trustchain_core::key_manager::KeyManagerError;
-use trustchain_ion::test_resolver;
+use trustchain_ion::get_ion_resolver;
 use trustchain_ion::KeyUtils;
 
 fn read_from_specific_file(path: &str) -> Result<OneOrMany<JWK>, KeyManagerError> {
@@ -57,7 +57,7 @@ fn verify(did_suffix: &str, controlled_did_suffix: &str) -> Result<(), Box<dyn s
 
     // 2. Resolve controlled_did: doc, doc_meta
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Resolve DID Document & Metadata.
     let controlled_did = format!("did:ion:test:{}", &controlled_did_suffix);
