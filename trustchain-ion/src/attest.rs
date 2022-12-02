@@ -4,10 +4,8 @@ use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
-use trustchain_core::attestor::AttestorError;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
-use trustchain_core::resolver::ResolverError;
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
 
