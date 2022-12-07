@@ -23,13 +23,13 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("create")
                         .about("Creates a new controlled DID from a document state.")
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false)),
                 )
                 .subcommand(
                     Command::new("attest")
                         .about("Controller attests to a DID.")
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-c --controlled_did <CONTROLLED_DID>).required(true))
                         .arg(arg!(-k --key_id <KEY_ID>).required(false)),
@@ -37,14 +37,14 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("resolve")
                         .about("Resolves a DID.")
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
                         // TODO: consider vverbose for stepping through
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 ),
         )
@@ -58,7 +58,7 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("attest")
                         .about("Attests to a credential.")
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
@@ -66,8 +66,9 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a credential.")
-                        .arg(arg!(-v --verbose <VERBOSE>).action(ArgAction::SetTrue))
+                        .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -125,9 +126,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("verify", sub_matches)) => {
                     let path = sub_matches.get_one::<String>("credential_file").unwrap();
-                    let verbose = sub_matches.get_one::<bool>("verbose");
-                    let root_event_time = match sub_matches.get_one::<u32>("root_event_time") {
-                        Some(time) => *time,
+                    let verbose = sub_matches.get_one::<u8>("verbose");
+                    let signature_only = sub_matches.get_one::<bool>("signature_only");
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u32>().unwrap(),
                         None => ROOT_EVENT_TIME_2378493,
                     };
                     let credential: Credential =
@@ -144,6 +146,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     });
 
+                    // Return if only checking signature
+                    if let Some(true) = signature_only {
+                        return Ok(());
+                    }
+
                     // Trustchain verify the issued credential
                     let verifier = IONVerifier::new(test_resolver("http://localhost:3000/"));
 
@@ -157,22 +164,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match result {
                         Ok(chain) => {
                             println!("Issuer: {}... Ok", issuer);
-                            if let Some(true) = verbose {
-                                let (_, doc, doc_meta) =
-                                    resolver.resolve_as_result(&issuer).unwrap();
-                                println!("---");
-                                println!("Issuer DID doc:");
-                                println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
-                                println!("---");
-                                println!("Issuer DID doc metadata:");
-                                println!(
-                                    "{}",
-                                    &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
-                                );
-                                println!("---");
-                                println!("Chain:");
-                                println!("{}", chain);
-                                println!("---");
+                            if let Some(&verbose_count) = verbose {
+                                if verbose_count > 1 {
+                                    let (_, doc, doc_meta) =
+                                        resolver.resolve_as_result(&issuer).unwrap();
+                                    println!("---");
+                                    println!("Issuer DID doc:");
+                                    println!(
+                                        "{}",
+                                        &to_string_pretty(&doc.as_ref().unwrap()).unwrap()
+                                    );
+                                    println!("---");
+                                    println!("Issuer DID doc metadata:");
+                                    println!(
+                                        "{}",
+                                        &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                                    );
+                                }
+                                if verbose_count > 0 {
+                                    println!("---");
+                                    println!("Chain:");
+                                    println!("{}", chain);
+                                    println!("---");
+                                }
                             }
                         }
                         _ => {
