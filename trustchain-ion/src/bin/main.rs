@@ -137,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     resolver.runtime.block_on(async {
                         let verify_result = credential.verify(None, &resolver).await;
                         if verify_result.errors.is_empty() {
-                            println!("Proof... Ok")
+                            println!("Proof... ✅")
                         } else {
                             println!(
                                 "Proof... Invalid\n{}",
@@ -163,7 +163,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match result {
                         Ok(chain) => {
-                            println!("Issuer: {}... Ok", issuer);
+                            println!("Issuer: {}... ✅", issuer);
                             if let Some(&verbose_count) = verbose {
                                 if verbose_count > 1 {
                                     let (_, doc, doc_meta) =
@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                         _ => {
-                            println!("Issuer: {}... invalid", issuer);
+                            println!("Issuer: {}... ❌", issuer);
                         }
                     }
                 }
