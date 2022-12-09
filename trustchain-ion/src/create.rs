@@ -8,7 +8,6 @@ use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-// use trustchain_core::key_manager::KeyManager;
 use trustchain_core::utils::{generate_key, get_operations_path};
 
 /// Makes a new DID subject to be controlled with correspondong create operation written to file.
@@ -34,7 +33,7 @@ pub fn create_operation(
 
     // Create operation: Make the create patch from scratch or passed file
     let document_state: DocumentState = if let Some(file_path_data) = file_path {
-        // 1. Load document from file if passed
+        // Load document from file if passed
         let contents = std::fs::read_to_string(file_path_data)
             .expect("Should have been able to read the file");
 
