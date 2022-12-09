@@ -146,7 +146,7 @@ impl IONController {
         }
     }
 
-    /// Function to confirm whether a given key is the `commitment` in document metadata
+    /// Confirms whether a given key is the `commitment` in document metadata
     pub fn is_commitment_key(
         &self,
         doc_meta: &DocumentMetadata,
@@ -157,12 +157,14 @@ impl IONController {
             if let Ok(actual_commitment) = self.extract_commitment(doc_meta, key_type) {
                 actual_commitment == expected_commitment
             } else {
-                // TODO: handle error
-                panic!()
+                eprintln!("Unable to extract a commitment from document metadata.");
+                // Return false in this case as the key can't be a commitment
+                false
             }
         } else {
-            // TODO: handle error
-            panic!()
+            eprintln!("Unable to convert key to commitment.");
+            // Return false as no comparison possible
+            false
         }
     }
 
