@@ -41,7 +41,7 @@ pub fn create_operation(
         };
         (loaded_document_state, signing_key)
     } else {
-        // If no document passed, generate key
+        // If no document passed, generate key and empty document
         let signing_key = Some(generate_key());
         let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
         (
