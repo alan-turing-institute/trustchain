@@ -1,6 +1,5 @@
-use crate::TrustchainIONError;
-// use crate::subject::IONSubject;
 use crate::attestor::IONAttestor;
+use crate::TrustchainIONError;
 use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidetree};
 use did_ion::ION;
 use serde_json::{Map, Value};
@@ -132,7 +131,7 @@ impl IONController {
         }
     }
 
-    /// Function to return a patch for adding a proof service.
+    /// Returns a patch for adding a proof service.
     pub fn add_proof_service(&self, did: &str, proof: &str) -> DIDStatePatch {
         let mut obj: Map<String, Value> = Map::new();
         obj.insert("controller".to_string(), Value::from(did));
