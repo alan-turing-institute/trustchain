@@ -18,54 +18,49 @@ pub fn create_operation(
     // Generate random keys
     let update_key = generate_key();
     let recovery_key = generate_key();
-
-    // Validate keys
     ION::validate_key(&update_key).unwrap();
     ION::validate_key(&recovery_key).unwrap();
-
-    // Get PublicKeyJwk versions
     let update_pk = PublicKeyJwk::try_from(update_key.to_public()).unwrap();
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
-    // Signing key: optional variable to assign to if private signing key made for DID
-    // Typically only a self-controller will do this when they want to make themselves a subject at the same time as creating a DID to control
-    let mut signing_key: Option<JWK> = None;
-
     // Create operation: Make the create patch from scratch or passed file
-    let document_state: DocumentState = if let Some(file_path_data) = file_path {
+    let (document_state, signing_key) = if let Some(file_path_data) = file_path {
         // Load document from file if passed
         let contents = std::fs::read_to_string(file_path_data)
             .expect("Should have been able to read the file");
-
-        // Contents are a DocumentState
         let mut loaded_document_state: DocumentState = serde_json::from_str(&contents).unwrap();
-        // If no keys loaded
-        if loaded_document_state.public_keys.is_none() {
-            signing_key = Some(generate_key());
+
+        // If no keys loaded, generate a key
+        let signing_key: Option<JWK> = if loaded_document_state.public_keys.is_none() {
+            let signing_key = Some(generate_key());
             let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
             loaded_document_state.public_keys = Some(vec![public_key_entry.unwrap()]);
-        }
-        loaded_document_state
+            signing_key
+        } else {
+            None
+        };
+        (loaded_document_state, signing_key)
     } else {
         // If no document passed, generate key
-        signing_key = Some(generate_key());
+        let signing_key = Some(generate_key());
         let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
-        // TODO
-        DocumentState {
-            public_keys: Some(vec![public_key_entry.unwrap()]),
-            services: None,
-        }
+        (
+            DocumentState {
+                public_keys: Some(vec![public_key_entry.unwrap()]),
+                services: None,
+            },
+            signing_key,
+        )
     };
 
-    // Make vec of patches from document state
     let patches = vec![DIDStatePatch::Replace {
         document: document_state,
     }];
 
-    // Make the create operation from pathces
+    // Make the create operation from patches
     let operation = ION::create_existing(&update_pk, &recovery_pk, patches).unwrap();
 
-    // Verify the operation enum
+    // Verify operation
     let partially_verified_create_operation = operation.clone().partial_verify::<ION>();
     if verbose {
         println!(
@@ -74,13 +69,11 @@ pub fn create_operation(
         );
     }
 
-    // Get the data of the operation enum
     let create_operation = match operation.clone() {
         Operation::Create(x) => Some(x),
         _ => None,
     };
 
-    // Print JSON operation
     if verbose {
         println!("Create operation:");
         println!("{}", to_json(&create_operation).unwrap());
@@ -101,7 +94,6 @@ pub fn create_operation(
         println!("Controlled DID (long-form) : {:?}", controlled_did_long);
     }
 
-    // Write to file
     // If a signing key has been made, IONAttestor needs to be saved
     if let Some(signing_key) = signing_key {
         IONAttestor::try_from(AttestorData::new(
@@ -110,7 +102,7 @@ pub fn create_operation(
         ))?;
     }
 
-    // Write controller data: did is arbitrarily set to contolled_did in creation
+    // Write controller data: DID is arbitrarily set to contolled_did in creation
     IONController::try_from(ControllerData::new(
         controlled_did.to_string(),
         controlled_did.to_string(),
