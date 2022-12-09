@@ -197,10 +197,6 @@ impl IONController {
 
     /// Converts a given JWK into a commitment.
     fn key_to_commitment(&self, next_update_key: &JWK) -> Result<String, TrustchainIONError> {
-        // https://docs.rs/did-ion/latest/src/did_ion/sidetree.rs.html#L214
-        // 1. Convert next_update_key to public key (pk)
-        // 2. Get commitment value from the pk
-        // 3. Return value
         match &PublicKeyJwk::try_from(next_update_key.to_public()) {
             Ok(pk_jwk) => match ION::commitment_scheme(pk_jwk) {
                 Ok(commitment) => Ok(commitment),
