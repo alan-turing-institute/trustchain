@@ -354,7 +354,6 @@ mod tests {
 
     #[test]
     fn test_add_proof_service() -> Result<(), Box<dyn std::error::Error>> {
-        // TODO: consider whether more checks than just successful call required
         init();
         let did = "did:example:did_add_proof_service";
         let controlled_did = "did:example:controlled_add_proof_service";
