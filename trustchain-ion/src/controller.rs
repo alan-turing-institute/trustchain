@@ -11,6 +11,7 @@ use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::subject::Subject;
+use trustchain_core::utils::generate_key;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -101,7 +102,7 @@ impl Controller for IONController {
     }
 
     fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
-        let key = self.generate_key();
+        let key = generate_key();
         self.save_key(
             self.controlled_did_suffix(),
             KeyType::NextUpdateKey,

@@ -1,5 +1,6 @@
 //! Utils module.
 use serde::Serialize;
+use ssi::jwk::JWK;
 
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
@@ -37,6 +38,11 @@ pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_js
     serde_jcs::to_string(value)
 }
 
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    JWK::generate_secp256k1().expect("Could not generate key.")
+}
+
 #[allow(dead_code)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -47,4 +53,22 @@ pub fn set_panic_hook() {
     // https://github.com/rustwasm/console_error_panic_hook#readme
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_key() {
+        let result = generate_key();
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match result.params {
+            ssi::jwk::Params::EC(ecparams) => {
+                assert_eq!(ecparams.curve, Some(String::from("secp256k1")))
+            }
+            _ => panic!(),
+        }
+    }
 }
