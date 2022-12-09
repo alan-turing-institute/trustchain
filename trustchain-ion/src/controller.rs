@@ -125,7 +125,7 @@ impl IONController {
     /// Checks whether there is a proof field in document metadata.
     pub fn is_proof_in_doc_meta(&self, doc_meta: &DocumentMetadata) -> bool {
         if let Some(property_set) = doc_meta.property_set.as_ref() {
-            property_set.contains_key(&"proof".to_string())
+            property_set.contains_key("proof")
         } else {
             false
         }
@@ -175,7 +175,7 @@ impl IONController {
         key_type: KeyType,
     ) -> Result<String, TrustchainIONError> {
         if let Some(property_set) = doc_meta.property_set.as_ref() {
-            if let Some(Metadata::Map(method)) = property_set.get(&"method".to_string()) {
+            if let Some(Metadata::Map(method)) = property_set.get("method") {
                 let k = match key_type {
                     KeyType::UpdateKey => "updateCommitment",
                     KeyType::NextUpdateKey => "updateCommitment",
@@ -358,8 +358,8 @@ mod tests {
         let did = "did:example:did_add_proof_service";
         let controlled_did = "did:example:controlled_add_proof_service";
         let controller = test_controller(did, controlled_did)?;
-        let proof = "test_proof_information".to_string();
-        let _ = controller.add_proof_service(controlled_did, &proof);
+        let proof = "test_proof_information";
+        let _ = controller.add_proof_service(controlled_did, proof);
         Ok(())
     }
 }
