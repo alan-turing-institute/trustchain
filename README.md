@@ -41,7 +41,7 @@ To include integration tests, which will fail unless a running ION node is reach
 cargo test -- --include-ignored
 ```
 
-## Usage Guide
+## Usage Guide
 
 ```
 trustchain-cli did
