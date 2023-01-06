@@ -36,18 +36,33 @@ pub enum VerifierError {
     /// Chain verification failed.
     #[error("Chain verification failed: {0}.")]
     InvalidChain(String),
-    /// Failure to get DID operation.
+    /// Failed to get DID operation.
     #[error("Error getting {0} DID operation: {1}")]
     FailureToGetDIDOperation(String, String),
+    /// Invalid block hash.
+    #[error("Invalid block hash: {0}")]
+    InvalidBlockHash(String),
     /// Invalid block height.
     #[error("Invalid block height: {0}")]
     InvalidBlockHeight(i32),
     /// Invalid transaction index.
     #[error("Invalid transaction index: {0}")]
     InvalidTransactionIndex(i32),
+    /// Failed to get the block hash for DID.
+    #[error("Failed to get block hash for DID: {0}")]
+    FailureToGetBlockHash(String),
     /// Failed to get the block height for DID.
     #[error("Failed to get block height for DID: {0}")]
     FailureToGetBlockHeight(String),
+    /// Failure of API call to PoW ledger client.
+    #[error("Failed API call to PoW ledger client: {0}")]
+    LedgerClientError(String),
+    /// Detected multiple ION OP_RETURN scripts.
+    #[error("Detected multiple ION OP_RETURN scripts in tx: {0}")]
+    AmbigousOpReturnData(String),
+    /// No ION OP_RETURN script was found.
+    #[error("No ION OP_RETURN script was found in tx: {0}")]
+    NoIonOpReturnScript(String),
 }
 
 /// Verifier of root and downstream DIDs.
@@ -67,23 +82,36 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         };
 
         // Verify the root timestamp.
-        // TODO: use the Unix timestamp rather than the block height.
         let root = chain.root();
-        if let Ok(block_height) = self.verified_block_height(root) {
-            if block_height != root_timestamp {
-                return Err(VerifierError::InvalidRoot(root.to_string()));
+        match self.verified_timestamp(root) {
+            Ok(timestamp) => {
+                if timestamp == root_timestamp {
+                    Ok(chain)
+                } else {
+                    Err(VerifierError::InvalidRoot(root.to_string()))
+                }
             }
-        } else {
-            return Err(VerifierError::FailureToGetBlockHeight(root.to_owned()));
+            Err(e) => Err(e),
         }
-        Ok(chain)
     }
 
-    /// Get the verified block height for a DID.
-    fn verified_block_height(&self, did: &str) -> Result<u32, VerifierError>;
+    /// Get the verified block hash for a DID.
+    /// This is the hash of the PoW block (header) that has been verified
+    /// to contain the most recent DID operation for the given DID.
+    fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError>;
+
     /// Get the verified timestamp for a DID as a Unix time.
-    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError>;
-    // /// Get the resolver used for DID verification.
+    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError> {
+        match self.verified_block_hash(did) {
+            Ok(block_hash) => self.block_hash_to_unix_time(&block_hash),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Map a block hash to a Unix time.
+    fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError>;
+
+    /// Get the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;
 }
 
