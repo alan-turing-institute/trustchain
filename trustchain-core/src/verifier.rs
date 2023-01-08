@@ -37,8 +37,14 @@ pub enum VerifierError {
     #[error("Chain verification failed: {0}.")]
     InvalidChain(String),
     /// Failed to get DID operation.
-    #[error("Error getting {0} DID operation: {1}")]
-    FailureToGetDIDOperation(String, String),
+    #[error("Error getting {0} DID operation.")]
+    FailureToGetDIDOperation(String),
+    /// Failed to get DID content.
+    #[error("Error getting {0} DID content.")]
+    FailureToGetDIDContent(String),
+    /// Failed to recognise/handle DID content.
+    #[error("Unrecognised DID content found at: {0}")]
+    UnrecognisedDidContent(String),
     /// Invalid block hash.
     #[error("Invalid block hash: {0}")]
     InvalidBlockHash(String),
@@ -57,12 +63,15 @@ pub enum VerifierError {
     /// Failure of API call to PoW ledger client.
     #[error("Failed API call to PoW ledger client: {0}")]
     LedgerClientError(String),
-    /// Detected multiple ION OP_RETURN scripts.
-    #[error("Detected multiple ION OP_RETURN scripts in tx: {0}")]
-    AmbigousOpReturnData(String),
-    /// No ION OP_RETURN script was found.
-    #[error("No ION OP_RETURN script was found in tx: {0}")]
-    NoIonOpReturnScript(String),
+    /// Detected multiple DID content identifiers.
+    #[error("Detected multiple DID content identifiers in tx: {0}")]
+    MultipleDIDContentIdentifiers(String),
+    /// No DID content identifier was found.
+    #[error("No DID content identifier was found in tx: {0}")]
+    NoDIDContentIdentifier(String),
+    /// Failed verification of DID-related content hash.
+    #[error("Content hash {0} does not match expected: {1}")]
+    FailedContentHashVerification(String, String),
 }
 
 /// Verifier of root and downstream DIDs.

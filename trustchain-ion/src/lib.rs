@@ -2,6 +2,17 @@ pub mod attestor;
 pub mod controller;
 pub mod verifier;
 
+// DID
+pub const DID_DELIMITER: &str = ":";
+
+// ION
+pub const ION_METHOD: &str = "ion";
+pub const ION_OPERATION_COUNT_DELIMITER: &str = ".";
+pub const PROVISIONAL_INDEX_FILE_URI_KEY: &str = "provisionalIndexFileUri";
+pub const CHUNK_FILE_URI_KEY: &str = "chunkFileUri";
+pub const CHUNKS_KEY: &str = "chunks";
+pub const DELTAS_KEY: &str = "deltas";
+
 // MongoDB
 pub const MONGO_CONNECTION_STRING: &str = "mongodb://localhost:27017/";
 pub const MONGO_DATABASE_ION_TESTNET_CORE: &str = "ion-testnet-core";
