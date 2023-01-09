@@ -2,6 +2,7 @@ pub mod attest;
 pub mod attestor;
 pub mod controller;
 pub mod create;
+pub mod data;
 pub mod resolve;
 pub mod verifier;
 use did_ion::{sidetree::SidetreeClient, ION};

@@ -314,15 +314,6 @@ where
         return Ok(cid.to_string());
     }
 
-    /// Gets DID Document content from IPFS and verifies that the given
-    /// transacton contains a commitment to the content.
-    fn verified_content(&self, tx: &Transaction) -> Result<Value, VerifierError> {
-        // TODO: fn verified_content(&self, tx: &Transaction) -> Result<DocumentState, VerifierError> {
-        let ipfs_cid = &self.op_return_cid(&tx)?;
-        let content_json = &self.unwrap_ion_content(ipfs_cid);
-        return self.unwrap_ion_content(ipfs_cid);
-    }
-
     /// Unwraps the ION DID content associated with an IPFS content identifier.
     fn unwrap_ion_content(&self, cid: &str) -> Result<Value, VerifierError> {
         let ipfs_json = match self.query_ipfs(cid) {
@@ -378,7 +369,7 @@ where
     }
 
     /// Extracts public keys and endpoints from ION chunk file JSON.
-    fn extract_did_content(&self, chunk_file_json: Value) -> Result<DocumentState, VerifierError> {
+    fn extract_did_content(&self, chunk_file_json: &Value) -> Result<DocumentState, VerifierError> {
         let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
         let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
         if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
@@ -429,6 +420,14 @@ where
             public_keys,
             services,
         });
+    }
+
+    /// Gets DID Document content from IPFS and verifies that
+    /// the given transacton contains a commitment to the content.
+    fn verified_content(&self, tx: &Transaction) -> Result<DocumentState, VerifierError> {
+        let ipfs_cid = &self.op_return_cid(&tx)?;
+        let content_json = &self.unwrap_ion_content(ipfs_cid)?;
+        return self.extract_did_content(content_json);
     }
 }
 
@@ -667,21 +666,14 @@ mod tests {
         assert!(target.ion_file_type(&bad_json_chunks).is_none());
     }
 
-    // TODO: MAKE THIS THE TEST OF unwrap_content():
     #[test]
-    #[ignore = "Integration test requires Bitcoin RPC"]
-    fn test_verified_content() {
+    #[ignore = "Integration test requires IPFS"]
+    fn test_unwrap_ion_content() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
-        // Block 2377445
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        let tx_locator = (block_hash, 3); // block hash & transaction index
-        let tx = target.transaction(tx_locator).unwrap();
-
-        let actual = target.verified_content(&tx).unwrap();
+        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let actual = target.unwrap_ion_content(cid).unwrap();
 
         // Check that the content is the chunk file JSON (with top-level key "deltas").
         assert!(actual.get(DELTAS_KEY).is_some());
@@ -719,19 +711,13 @@ mod tests {
         let target = IONVerifier::new(resolver);
 
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-
-        // println!("{}", chunk_file_json);
-
-        let result = target.extract_did_content(chunk_file_json).unwrap();
+        let result = target.extract_did_content(&chunk_file_json).unwrap();
 
         // Expect three public keys and three service endpoints.
         let public_keys = result.public_keys.unwrap();
         let services = result.services.unwrap();
         assert_eq!(public_keys.len(), 3);
         assert_eq!(services.len(), 3);
-
-        // OLD:
-        // assert!(matches!(&services.first().unwrap().service_endpoint, ServiceEndpoint::URI {..}));
 
         // Check each public key entry in the content.
         for (i, public_key_entry) in public_keys.iter().enumerate() {
@@ -815,5 +801,25 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin RPC & IPFS"]
+    fn test_verified_content() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+
+        // Block 2377445
+        let block_hash =
+            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                .unwrap();
+        let tx_locator = (block_hash, 3); // block hash & transaction index
+        let tx = target.transaction(tx_locator).unwrap();
+
+        let result = target.verified_content(&tx).unwrap();
+
+        // Expect three public keys and three service endpoints.
+        assert_eq!(result.public_keys.unwrap().len(), 3);
+        assert_eq!(result.services.unwrap().len(), 3);
     }
 }
