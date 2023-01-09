@@ -106,6 +106,7 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
+        // Consider using ResolutionInputMetadata to optionally not perform transform.
         // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
     }

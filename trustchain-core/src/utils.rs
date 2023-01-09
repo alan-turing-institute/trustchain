@@ -4,9 +4,8 @@ use sha2::{Digest, Sha256};
 use ssi::jwk::JWK;
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Once;
-use tempfile;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
@@ -17,6 +16,20 @@ pub fn init() {
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
     });
+}
+
+/// Gets the path for storing operations and creates directories if they do not exist.
+pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    // Make directory and operation file name
+    let path = Path::new(path.as_str()).join("operations");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
+}
+
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
 }
 
 /// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html
@@ -50,11 +63,15 @@ fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// [`DATA_ENCODING_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#data-encoding-scheme)
 fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
-}
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
+}
+
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    JWK::generate_secp256k1().expect("Could not generate key.")
 }
 
 /// [`HASH_PROTOCOL`](https://identity.foundation/sidetree/spec/v1.0.0/#hash-protocol)
@@ -90,7 +107,6 @@ pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> 
 /// Extracts and decodes the payload from the JWT.
 pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
-}
 
 #[allow(dead_code)]
 pub fn set_panic_hook() {
@@ -110,6 +126,18 @@ mod tests {
     use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
     use serde_json::to_string_pretty as to_json;
     use ssi::did::Document;
+
+    #[test]
+    fn test_generate_key() {
+        let result = generate_key();
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match result.params {
+            ssi::jwk::Params::EC(ecparams) => {
+                assert_eq!(ecparams.curve, Some(String::from("secp256k1")))
+            }
+            _ => panic!(),
+        }
 
     #[test]
     fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {

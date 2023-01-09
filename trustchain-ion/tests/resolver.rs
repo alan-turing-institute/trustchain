@@ -2,16 +2,7 @@ use core::panic;
 
 use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
-
-use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
+use trustchain_ion::get_ion_resolver;
 
 #[test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
@@ -21,7 +12,7 @@ fn trustchain_resolution() {
     let did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Resolve DID Document & Metadata.
     let result = resolver.resolve_as_result(did);

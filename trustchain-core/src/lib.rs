@@ -6,7 +6,8 @@ pub mod data;
 pub mod graph;
 pub mod key_manager;
 pub mod resolver;
-mod utils;
+pub mod subject;
+pub mod utils;
 pub mod verifier;
 
 // use std::io::Read;

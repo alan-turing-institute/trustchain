@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-pub const TEST_SIDETREE_DOCUMENT: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -49,7 +49,7 @@ pub const TEST_SIDETREE_DOCUMENT: &'static str = r##"
 }
 "##;
 
-pub const TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -104,7 +104,7 @@ pub const TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF: &'static str = r##"
 }
 "##;
 
-pub const TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -151,7 +151,7 @@ pub const TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF: &'static str = r##"
 }
 "##;
 
-pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -209,24 +209,30 @@ pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_PROOF: &'static str = r##"
 }
 "##;
 
-pub const TEST_SIDETREE_DOCUMENT_METADATA: &'static str = r##"
+// Previous versions that don't match example keys, to remove:
+// "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
+// "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+pub const TEST_SIDETREE_DOCUMENT_METADATA: &str = r##"
 {
    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
    "method" : {
       "published" : true,
-      "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
-      "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+      "recoveryCommitment" : "EiDZpHjQ5x7aRRqv6aUtmOdHsxWktAm1kU1IZl1w7iexsw",
+      "updateCommitment" : "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew"
    }
 }
 "##;
 
-pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &'static str = r##"
+// Previous versions that don't match example keys, to remove:
+// "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
+// "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &str = r##"
 {
    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
    "method" : {
       "published" : true,
-      "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
-      "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
+      "recoveryCommitment" : "EiDZpHjQ5x7aRRqv6aUtmOdHsxWktAm1kU1IZl1w7iexsw",
+      "updateCommitment" : "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew"
    },
    "proof" : {
       "id" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
@@ -236,7 +242,7 @@ pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &'static str = r##"
 }
 "##;
 
-pub const TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
+pub const TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -287,7 +293,7 @@ pub const TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER: &'static str = r##"
  }
 "##;
 
-pub const TEST_TRUSTCHAIN_DOCUMENT: &'static str = r##"
+pub const TEST_TRUSTCHAIN_DOCUMENT: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -558,19 +564,6 @@ pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r##"
 }
 "##;
 
-/// Root JWK public key
-pub const TEST_ROOT_JWK_PK: &str = r##"
-{
-   "kty": "EC",
-   "crv": "secp256k1",
-   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
-   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-}
-"##;
-
-/// Proof value from metadata
-pub const TEST_ROOT_PLUS_1_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g";
-
 pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
 {
    "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
@@ -586,5 +579,19 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
    }
 }
 "##;
+
+/// Root JWK public key
+pub const TEST_ROOT_JWK_PK: &str = r##"
+{
+   "kty": "EC",
+   "crv": "secp256k1",
+   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+}
+"##;
+
+/// Proof value from metadata
+pub const TEST_ROOT_PLUS_1_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g";
+
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_2_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw";
