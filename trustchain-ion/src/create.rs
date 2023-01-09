@@ -24,32 +24,32 @@ pub fn create_operation(
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
     // Create operation: Make the create patch from scratch or passed file
-    let (document_state, signing_key) = if let Some(file_path_data) = file_path {
+    let (document_state, generated_signing_key) = if let Some(file_path_data) = file_path {
         // Load document from file if passed
         let contents = std::fs::read_to_string(file_path_data)
             .expect("Should have been able to read the file");
         let mut loaded_document_state: DocumentState = serde_json::from_str(&contents).unwrap();
 
         // If no keys loaded, generate a key
-        let signing_key: Option<JWK> = if loaded_document_state.public_keys.is_none() {
-            let signing_key = Some(generate_key());
-            let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+        let generated_signing_key: Option<JWK> = if loaded_document_state.public_keys.is_none() {
+            let generated_signing_key = Some(generate_key());
+            let public_key_entry = PublicKeyEntry::try_from(generated_signing_key.clone().unwrap());
             loaded_document_state.public_keys = Some(vec![public_key_entry.unwrap()]);
-            signing_key
+            generated_signing_key
         } else {
             None
         };
-        (loaded_document_state, signing_key)
+        (loaded_document_state, generated_signing_key)
     } else {
         // If no document passed, generate key and empty document
-        let signing_key = Some(generate_key());
-        let public_key_entry = PublicKeyEntry::try_from(signing_key.clone().unwrap());
+        let generated_signing_key = Some(generate_key());
+        let public_key_entry = PublicKeyEntry::try_from(generated_signing_key.clone().unwrap());
         (
             DocumentState {
                 public_keys: Some(vec![public_key_entry.unwrap()]),
                 services: None,
             },
-            signing_key,
+            generated_signing_key,
         )
     };
 
@@ -94,8 +94,8 @@ pub fn create_operation(
         println!("Controlled DID (long-form) : {:?}", controlled_did_long);
     }
 
-    // If a signing key has been made, IONAttestor needs to be saved
-    if let Some(signing_key) = signing_key {
+    // If a signing key has been generated, IONAttestor needs to be saved
+    if let Some(signing_key) = generated_signing_key {
         IONAttestor::try_from(AttestorData::new(
             controlled_did.to_string(),
             OneOrMany::One(signing_key),
