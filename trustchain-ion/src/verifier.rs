@@ -18,10 +18,10 @@ use ipfs_api_backend_actix::IpfsClient;
 use ipfs_hasher::IpfsHasher;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
+use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
-use std::fmt::format;
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::did_suffix;
@@ -429,6 +429,21 @@ where
         let content_json = &self.unwrap_ion_content(ipfs_cid)?;
         return self.extract_did_content(content_json);
     }
+
+    /// Resolve the given DID to obtain the DID Document.
+    fn resolve_did_doc(&self, did: &str) -> Result<Document, VerifierError> {
+        let (_, doc, _) = match self.resolver.resolve_as_result(did) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Failed to resolve DID: {e}");
+                return Err(VerifierError::DIDResolutionError(did.to_string()));
+            }
+        };
+        match doc {
+            Some(x) => return Ok(x),
+            None => return Err(VerifierError::DIDResolutionError(did.to_string())),
+        }
+    }
 }
 
 impl<T> Verifier<T> for IONVerifier<T>
@@ -450,14 +465,12 @@ where
         // attempting to reconstruct the exact DID Document and hashing it.
 
         // Query_ipfs to get the ION chunkFile content (containing public keys & endpoints).
-        let verified_content = &self.verified_content(&tx);
+        let verified_content = self.verified_content(&tx);
+
+        // Resolve the DID Document.
+        let expected_content = self.resolve_did_doc(&did);
 
         todo!();
-
-        // Handle the chunkFile (i.e. extract the public keys - "publicKeyJwk" elements -
-        // and API endpoints - "serviceEndpoint" elements).
-
-        // Query ION to get the DID Document content.
 
         // Extract the public keys & service endpoints from the DID Document. These are the expected values.
 
