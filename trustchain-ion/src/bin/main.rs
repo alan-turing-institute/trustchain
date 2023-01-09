@@ -1,6 +1,11 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
-use trustchain_ion::{attest::attest_operation, create::create_operation, resolve::main_resolve};
+use std::fs::File;
+use trustchain_ion::{
+    attest::attest_operation,
+    create::{create_operation, read_doc_state_from},
+    resolve::main_resolve,
+};
 
 fn cli() -> Command {
     Command::new("trustchain")
@@ -46,7 +51,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    create_operation(file_path, verbose)?;
+
+                    // Read doc state from file path
+                    let doc_state = if let Some(file_path) = file_path {
+                        let f = File::open(file_path)?;
+                        let doc_state = read_doc_state_from(f)?;
+                        Some(doc_state)
+                    } else {
+                        None
+                    };
+
+                    // Read from the file path to a "Reader"
+                    create_operation(doc_state, verbose)?;
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
