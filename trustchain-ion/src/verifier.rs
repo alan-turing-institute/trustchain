@@ -9,6 +9,7 @@ use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::{BlockHash, Txid};
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
+use did_ion::sidetree::DocumentState;
 use flate2::read::GzDecoder;
 use futures::executor::block_on;
 use futures::TryStreamExt;
@@ -18,6 +19,7 @@ use ipfs_hasher::IpfsHasher;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
+use ssi::jwk::JWK;
 use std::convert::TryFrom;
 use std::io::Read;
 use std::str::FromStr;
@@ -314,7 +316,9 @@ where
     /// Gets DID Document content from IPFS and verifies that the given
     /// transacton contains a commitment to the content.
     fn verified_content(&self, tx: &Transaction) -> Result<Value, VerifierError> {
+        // TODO: fn verified_content(&self, tx: &Transaction) -> Result<DocumentState, VerifierError> {
         let ipfs_cid = &self.op_return_cid(&tx)?;
+        let content_json = &self.unwrap_ion_content(ipfs_cid);
         return self.unwrap_ion_content(ipfs_cid);
     }
 
@@ -349,7 +353,7 @@ where
                 IonFileType::ChunkFile => return Ok(ipfs_json),
             }
         } else {
-            return Err(VerifierError::UnrecognisedDidContent(cid.to_string()));
+            return Err(VerifierError::UnrecognisedDIDContent(cid.to_string()));
         }
     }
 
@@ -370,6 +374,11 @@ where
         } else {
             return None;
         }
+    }
+
+    /// Extracts public keys and endpoints from ION chunk file JSON.
+    fn extract_did_content(&self, chunk_file_json: Value) -> Result<DocumentState, VerifierError> {
+        todo!()
     }
 }
 
@@ -441,6 +450,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
+    use crate::data::TEST_CHUNK_FILE_CONTENT;
     use bitcoin::Block;
     use ssi::did_resolve::HTTPDIDResolver;
 
@@ -606,6 +616,7 @@ mod tests {
         assert!(target.ion_file_type(&bad_json_chunks).is_none());
     }
 
+    // TODO: MAKE THIS THE TEST OF unwrap_content():
     #[test]
     #[ignore = "Integration test requires Bitcoin RPC"]
     fn test_verified_content() {
@@ -649,5 +660,24 @@ mod tests {
             .get("document")
             .unwrap();
         assert!(doc.get("publicKeys").is_some());
+    }
+
+    #[test]
+    fn test_extract_did_content() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+
+        let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+
+        // TODO.
+        // let result = target.extract_did_content(chunk_file_json).unwrap();
+
+        // // Expect three public keys and three API endpoints.
+        // assert_eq!(result.public_keys.len(), 3);
+        // assert_eq!(result.endpoints.len(), 3);
+
+        // let expected_first_x = "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso";
+        // let expected_first_y = "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE";
+        // assert_eq!(result.public_keys.first().equals_public());
     }
 }

@@ -44,7 +44,10 @@ pub enum VerifierError {
     FailureToGetDIDContent(String),
     /// Failed to recognise/handle DID content.
     #[error("Unrecognised DID content found at: {0}")]
-    UnrecognisedDidContent(String),
+    UnrecognisedDIDContent(String),
+    /// Failed to read/parse DID content.
+    #[error("Error reading DID content found at: {0}")]
+    FailureToReadDIDContent(String),
     /// Invalid block hash.
     #[error("Invalid block hash: {0}")]
     InvalidBlockHash(String),
