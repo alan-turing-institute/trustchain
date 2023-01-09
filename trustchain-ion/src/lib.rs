@@ -6,7 +6,6 @@ pub mod create;
 pub mod resolve;
 use did_ion::{sidetree::SidetreeClient, ION};
 use thiserror::Error;
-use trustchain_core::key_manager::KeyManager;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 /// Type alias
