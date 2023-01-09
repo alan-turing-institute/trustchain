@@ -25,3 +25,6 @@ outputs/
 
 # VS code
 .vscode
+
+# .trustchain directory
+.trustchain/
