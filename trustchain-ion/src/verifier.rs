@@ -9,7 +9,7 @@ use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::{BlockHash, Txid};
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
-use did_ion::sidetree::DocumentState;
+use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
 use flate2::read::GzDecoder;
 use futures::executor::block_on;
 use futures::TryStreamExt;
@@ -21,6 +21,7 @@ use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
+use std::fmt::format;
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::did_suffix;
@@ -378,7 +379,56 @@ where
 
     /// Extracts public keys and endpoints from ION chunk file JSON.
     fn extract_did_content(&self, chunk_file_json: Value) -> Result<DocumentState, VerifierError> {
-        todo!()
+        let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
+        let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
+        if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
+            let deltas_json_vec = match deltas_json_array {
+                Value::Array(vec) => vec,
+                _ => {
+                    return Err(VerifierError::UnhandledDIDContent(format!(
+                        "{:?}",
+                        deltas_json_array
+                    )))
+                }
+            };
+
+            for delta_json in deltas_json_vec {
+                let delta: Delta = match serde_json::from_value(delta_json.to_owned()) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
+                        return Err(VerifierError::FailureToParseDIDContent());
+                    }
+                };
+                for patch in delta.patches {
+                    match patch {
+                        did_ion::sidetree::DIDStatePatch::Replace { document } => {
+                            if let Some(mut pub_keys) = document.public_keys {
+                                pub_key_entries.append(&mut pub_keys);
+                            }
+                            if let Some(mut services) = document.services {
+                                service_endpoints.append(&mut services);
+                            }
+                        }
+                        _ => {
+                            return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch)))
+                        }
+                    }
+                }
+            }
+        }
+        let public_keys = match pub_key_entries.is_empty() {
+            true => None,
+            false => Some(pub_key_entries),
+        };
+        let services = match service_endpoints.is_empty() {
+            true => None,
+            false => Some(service_endpoints),
+        };
+        return Ok(DocumentState {
+            public_keys,
+            services,
+        });
     }
 }
 
@@ -452,7 +502,8 @@ mod tests {
     use super::*;
     use crate::data::TEST_CHUNK_FILE_CONTENT;
     use bitcoin::Block;
-    use ssi::did_resolve::HTTPDIDResolver;
+    use did_ion::sidetree::PublicKey;
+    use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params};
 
     // Helper function for generating a HTTP resolver for tests only.
     fn get_http_resolver() -> HTTPDIDResolver {
@@ -669,15 +720,100 @@ mod tests {
 
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
 
-        // TODO.
-        // let result = target.extract_did_content(chunk_file_json).unwrap();
+        // println!("{}", chunk_file_json);
 
-        // // Expect three public keys and three API endpoints.
-        // assert_eq!(result.public_keys.len(), 3);
-        // assert_eq!(result.endpoints.len(), 3);
+        let result = target.extract_did_content(chunk_file_json).unwrap();
 
-        // let expected_first_x = "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso";
-        // let expected_first_y = "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE";
-        // assert_eq!(result.public_keys.first().equals_public());
+        // Expect three public keys and three service endpoints.
+        let public_keys = result.public_keys.unwrap();
+        let services = result.services.unwrap();
+        assert_eq!(public_keys.len(), 3);
+        assert_eq!(services.len(), 3);
+
+        // OLD:
+        // assert!(matches!(&services.first().unwrap().service_endpoint, ServiceEndpoint::URI {..}));
+
+        // Check each public key entry in the content.
+        for (i, public_key_entry) in public_keys.iter().enumerate() {
+            assert!(matches!(
+                public_key_entry.public_key,
+                PublicKey::PublicKeyJwk { .. }
+            ));
+            let pub_key_jwk = match &public_key_entry.public_key {
+                PublicKey::PublicKeyJwk(x) => x,
+                _ => panic!(), // Unreachable.
+            };
+            let jwk = JWK::try_from(pub_key_jwk.to_owned()).unwrap();
+            assert!(matches!(&jwk.params, Params::EC { .. }));
+            let ec_params = match jwk.params {
+                Params::EC(x) => x,
+                _ => panic!(), // Unreachable.
+            };
+            assert!(ec_params.x_coordinate.is_some());
+            assert!(ec_params.y_coordinate.is_some());
+            if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
+                // Check the x & y public key coordinates.
+                if i == 0 {
+                    assert_eq!(
+                        serde_json::to_string(x).unwrap(),
+                        "\"7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso\""
+                    );
+                    assert_eq!(
+                        serde_json::to_string(y).unwrap(),
+                        "\"kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE\""
+                    );
+                }
+                if i == 1 {
+                    assert_eq!(
+                        serde_json::to_string(x).unwrap(),
+                        "\"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU\""
+                    );
+                    assert_eq!(
+                        serde_json::to_string(y).unwrap(),
+                        "\"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0\""
+                    );
+                }
+                if i == 2 {
+                    assert_eq!(
+                        serde_json::to_string(x).unwrap(),
+                        "\"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4\""
+                    );
+                    assert_eq!(
+                        serde_json::to_string(y).unwrap(),
+                        "\"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY\""
+                    );
+                }
+            } else {
+                panic!() // Unreachable.
+            }
+        }
+
+        // Check each service endpoint in the content.
+        for (i, service_endpoint_entry) in services.iter().enumerate() {
+            assert!(matches!(
+                service_endpoint_entry.service_endpoint,
+                ServiceEndpoint::URI { .. }
+            ));
+            let uri = match &service_endpoint_entry.service_endpoint {
+                ServiceEndpoint::URI(x) => x,
+                _ => panic!(), // Unreachable.
+            };
+            // Check the URIs.
+            if i == 0 {
+                assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
+            }
+            if i == 1 {
+                assert_eq!(
+                    uri,
+                    "https://identity.foundation/ion/trustchain-root-plus-1"
+                );
+            }
+            if i == 2 {
+                assert_eq!(
+                    uri,
+                    "https://identity.foundation/ion/trustchain-root-plus-2"
+                );
+            }
+        }
     }
 }

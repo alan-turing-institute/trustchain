@@ -45,9 +45,12 @@ pub enum VerifierError {
     /// Failed to recognise/handle DID content.
     #[error("Unrecognised DID content found at: {0}")]
     UnrecognisedDIDContent(String),
-    /// Failed to read/parse DID content.
+    /// Failed to read DID content.
     #[error("Error reading DID content found at: {0}")]
     FailureToReadDIDContent(String),
+    /// Failed to parse DID content.
+    #[error("Error parsing DID content.")]
+    FailureToParseDIDContent(),
     /// Invalid block hash.
     #[error("Invalid block hash: {0}")]
     InvalidBlockHash(String),
@@ -75,6 +78,9 @@ pub enum VerifierError {
     /// Failed verification of DID-related content hash.
     #[error("Content hash {0} does not match expected: {1}")]
     FailedContentHashVerification(String, String),
+    /// Unhandled DID content.
+    #[error("Unhandled DID content: {0}")]
+    UnhandledDIDContent(String),
 }
 
 /// Verifier of root and downstream DIDs.
