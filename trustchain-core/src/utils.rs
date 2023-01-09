@@ -63,6 +63,7 @@ fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// [`DATA_ENCODING_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#data-encoding-scheme)
 fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
+}
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
@@ -107,6 +108,7 @@ pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> 
 /// Extracts and decodes the payload from the JWT.
 pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
+}
 
 #[allow(dead_code)]
 pub fn set_panic_hook() {
@@ -138,6 +140,7 @@ mod tests {
             }
             _ => panic!(),
         }
+    }
 
     #[test]
     fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {
