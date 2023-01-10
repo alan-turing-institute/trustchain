@@ -473,6 +473,10 @@ where
 
         // TODO NEXT: TEST & IMPLEMENT THE HasKeys & HasEndpoints TRAITS IN utils.rs
 
+        // ##### ARRRGGGH!!! IMP TODO!!:
+        // THOSE 3 PATCHES (in the test fixture) ARE FOR DIFFERENT DIDs!!!!!
+        // WE NEED TO TAKE INTO ACCOUNT THE UpdateCommitment, CHECK IT'S VALID AND ONLY CONSIDER THAT PATCH!!!
+
         // Check each expected key is found in the vector of verified keys.
         if let Some(expected_keys) = expected_content.get_keys() {
             if let Some(verified_keys) = verified_content.get_keys() {
@@ -494,6 +498,7 @@ where
                 }
             }
         }
+
         // If they do, this branch of verification is complete!
         todo!();
 
@@ -530,7 +535,9 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::data::TEST_CHUNK_FILE_CONTENT;
+    use crate::data::{
+        TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+    };
     use bitcoin::Block;
     use did_ion::sidetree::PublicKey;
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params};
@@ -566,6 +573,16 @@ mod tests {
                 .unwrap();
         assert_eq!(block_hash, expected_block_hash);
         assert_eq!(transaction_index, 3);
+
+        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+        let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
+
+        // Block 2377339
+        let expected_block_hash =
+            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 10);
 
         // Invalid DID
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
@@ -660,6 +677,24 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
+        let json_core_index: Value = serde_json::from_str(TEST_CORE_INDEX_FILE_CONTENT).unwrap();
+        let json_prov_index: Value =
+            serde_json::from_str(TEST_PROVISIONAL_INDEX_FILE_CONTENT).unwrap();
+        let json_chunks: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+
+        assert_eq!(
+            target.ion_file_type(&json_core_index).unwrap(),
+            IonFileType::CoreIndexFile
+        );
+        assert_eq!(
+            target.ion_file_type(&json_prov_index).unwrap(),
+            IonFileType::ProvisionalIndexFile
+        );
+        assert_eq!(
+            target.ion_file_type(&json_chunks).unwrap(),
+            IonFileType::ChunkFile
+        );
+        // Test with different sample files.
         let json_str_core_index = r#"{"operations":{"create":[{"suffixData":{"deltaHash":"EiC6lxYLAjrwBjEz_uNT2ht5WCmt2fo2EZqxUvGBic-7OQ","recoveryCommitment":"EiA2PI72Nx4NncDCIXSQhX8eMJF-1JSiqk2Z9aOcfn3Y3w"}}]},"provisionalIndexFileUri":"QmPPTCygrc9fdtdbHWvKvvR8nVmfHa8KJ7BCd1mdMKC2WK"}"#;
         let json_str_prov_index =
             r#"{"chunks":[{"chunkFileUri":"QmS7wMGjVW7hQ3SUpQyD8oqV7XFdupYgZ5W9UWFbPGHNXK"}]}"#;
