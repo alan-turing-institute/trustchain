@@ -43,7 +43,7 @@ impl HasKeys for DocumentState {
                         }
                     }
                     PublicKey::PublicKeyMultibase(_) => {
-                        eprintln!("PublicKeyMultibase not handled.");
+                        eprintln!("PublicKey::PublicKeyMultibase not handled.");
                         return None;
                     }
                 }
@@ -61,7 +61,25 @@ impl HasEndpoints for Document {
 
 impl HasEndpoints for DocumentState {
     fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
-        todo!()
+        let service_endpoint_entries: Vec<ServiceEndpointEntry> = match &self.services {
+            Some(x) => x.to_vec(),
+            None => {
+                eprintln!("No service endpoints found in DocumentState.");
+                return None;
+            }
+        };
+        let service_endpoints: Vec<ServiceEndpoint> = service_endpoint_entries
+            .iter()
+            .filter_map(|entry| {
+                if let ServiceEndpoint::URI(_) = entry.service_endpoint {
+                    return Some(entry.service_endpoint.to_owned());
+                } else {
+                    eprintln!("ServiceEndpoint::Map not handled.");
+                    return None;
+                }
+            })
+            .collect();
+        return Some(service_endpoints);
     }
 }
 
@@ -79,6 +97,25 @@ mod tests {
 
         let result = doc_state.get_keys();
         assert!(result.is_some());
+        assert_eq!(result.unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_get_endpoints_from_document_state() {
+        let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+        let doc_state = extract_did_content(&chunk_file_json).unwrap();
+
+        let result = doc_state.get_endpoints();
+        assert!(&result.is_some());
+        for (i, endpoint) in result.as_ref().unwrap().iter().enumerate() {
+            if let ServiceEndpoint::URI(uri) = endpoint {
+                if i == 0 {
+                    assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
+                }
+            } else {
+                panic!();
+            }
+        }
         assert_eq!(result.unwrap().len(), 3);
     }
 }
