@@ -1,3 +1,4 @@
+use crate::utils::{HasEndpoints, HasKeys};
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
     CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
@@ -368,66 +369,12 @@ where
         }
     }
 
-    /// Extracts public keys and endpoints from ION chunk file JSON.
-    fn extract_did_content(&self, chunk_file_json: &Value) -> Result<DocumentState, VerifierError> {
-        let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
-        let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
-        if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
-            let deltas_json_vec = match deltas_json_array {
-                Value::Array(vec) => vec,
-                _ => {
-                    return Err(VerifierError::UnhandledDIDContent(format!(
-                        "{:?}",
-                        deltas_json_array
-                    )))
-                }
-            };
-
-            for delta_json in deltas_json_vec {
-                let delta: Delta = match serde_json::from_value(delta_json.to_owned()) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
-                        return Err(VerifierError::FailureToParseDIDContent());
-                    }
-                };
-                for patch in delta.patches {
-                    match patch {
-                        did_ion::sidetree::DIDStatePatch::Replace { document } => {
-                            if let Some(mut pub_keys) = document.public_keys {
-                                pub_key_entries.append(&mut pub_keys);
-                            }
-                            if let Some(mut services) = document.services {
-                                service_endpoints.append(&mut services);
-                            }
-                        }
-                        _ => {
-                            return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch)))
-                        }
-                    }
-                }
-            }
-        }
-        let public_keys = match pub_key_entries.is_empty() {
-            true => None,
-            false => Some(pub_key_entries),
-        };
-        let services = match service_endpoints.is_empty() {
-            true => None,
-            false => Some(service_endpoints),
-        };
-        return Ok(DocumentState {
-            public_keys,
-            services,
-        });
-    }
-
     /// Gets DID Document content from IPFS and verifies that
     /// the given transacton contains a commitment to the content.
     fn verified_content(&self, tx: &Transaction) -> Result<DocumentState, VerifierError> {
         let ipfs_cid = &self.op_return_cid(&tx)?;
         let content_json = &self.unwrap_ion_content(ipfs_cid)?;
-        return self.extract_did_content(content_json);
+        return extract_did_content(content_json);
     }
 
     /// Resolve the given DID to obtain the DID Document.
@@ -444,6 +391,58 @@ where
             None => return Err(VerifierError::DIDResolutionError(did.to_string())),
         }
     }
+}
+
+/// Extracts public keys and endpoints from ION chunk file JSON.
+pub fn extract_did_content(chunk_file_json: &Value) -> Result<DocumentState, VerifierError> {
+    let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
+    let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
+    if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
+        let deltas_json_vec = match deltas_json_array {
+            Value::Array(vec) => vec,
+            _ => {
+                return Err(VerifierError::UnhandledDIDContent(format!(
+                    "{:?}",
+                    deltas_json_array
+                )))
+            }
+        };
+
+        for delta_json in deltas_json_vec {
+            let delta: Delta = match serde_json::from_value(delta_json.to_owned()) {
+                Ok(x) => x,
+                Err(e) => {
+                    eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
+                    return Err(VerifierError::FailureToParseDIDContent());
+                }
+            };
+            for patch in delta.patches {
+                match patch {
+                    did_ion::sidetree::DIDStatePatch::Replace { document } => {
+                        if let Some(mut pub_keys) = document.public_keys {
+                            pub_key_entries.append(&mut pub_keys);
+                        }
+                        if let Some(mut services) = document.services {
+                            service_endpoints.append(&mut services);
+                        }
+                    }
+                    _ => return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch))),
+                }
+            }
+        }
+    }
+    let public_keys = match pub_key_entries.is_empty() {
+        true => None,
+        false => Some(pub_key_entries),
+    };
+    let services = match service_endpoints.is_empty() {
+        true => None,
+        false => Some(service_endpoints),
+    };
+    return Ok(DocumentState {
+        public_keys,
+        services,
+    });
 }
 
 impl<T> Verifier<T> for IONVerifier<T>
@@ -464,20 +463,39 @@ where
         // IMP NOTE: Do this by checking each pub key and service endpoint one by one, rather than
         // attempting to reconstruct the exact DID Document and hashing it.
 
-        // Query_ipfs to get the ION chunkFile content (containing public keys & endpoints).
-        let verified_content = self.verified_content(&tx);
+        // Query_ipfs to get the ION chunkFile content to get the verified public keys & endpoints.
+        let verified_content = self.verified_content(&tx)?;
+        // let verified_keys = verified_content.get_keys();
+        let verified_endpoints = verified_content.get_endpoints();
 
-        // Resolve the DID Document.
-        let expected_content = self.resolve_did_doc(&did);
+        // Resolve the DID Document to get the expected public keys & endpoints.
+        let expected_content: Document = self.resolve_did_doc(&did)?;
 
+        // TODO NEXT: TEST & IMPLEMENT THE HasKeys & HasEndpoints TRAITS IN utils.rs
+
+        // Check each expected key is found in the vector of verified keys.
+        if let Some(expected_keys) = expected_content.get_keys() {
+            if let Some(verified_keys) = verified_content.get_keys() {
+                if !expected_keys.iter().all(|key| verified_keys.contains(key)) {
+                    return Err(VerifierError::KeyNotFoundInVerifiedContent(did.to_string()));
+                }
+            }
+        }
+        // Check each expected endpoint is found in the vector of verified endpoints.
+        if let Some(expected_endpoints) = expected_content.get_endpoints() {
+            if let Some(verified_endpoints) = verified_content.get_endpoints() {
+                if !expected_endpoints
+                    .iter()
+                    .all(|uri| verified_endpoints.contains(uri))
+                {
+                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                        did.to_string(),
+                    ));
+                }
+            }
+        }
+        // If they do, this branch of verification is complete!
         todo!();
-
-        // Extract the public keys & service endpoints from the DID Document. These are the expected values.
-
-        // Iterate over the set of expected public keys and check that each is actually found in the chunk file.
-        // Repeat for the service endpoints.
-
-        // If they do, this branch of verification is complete.
 
         // 2. Verify that the Bitcoin transaction is in the block (via a Merkle proof).
     }
@@ -724,7 +742,7 @@ mod tests {
         let target = IONVerifier::new(resolver);
 
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let result = target.extract_did_content(&chunk_file_json).unwrap();
+        let result = extract_did_content(&chunk_file_json).unwrap();
 
         // Expect three public keys and three service endpoints.
         let public_keys = result.public_keys.unwrap();

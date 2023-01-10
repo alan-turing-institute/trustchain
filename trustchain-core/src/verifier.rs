@@ -84,6 +84,12 @@ pub enum VerifierError {
     /// Failed to resolve DID for verification.
     #[error("Failed to resolve DID: {0}")]
     DIDResolutionError(String),
+    /// Failed to find expected key in verified DID content.
+    #[error("Key not found in verified content for DID: {0}")]
+    KeyNotFoundInVerifiedContent(String),
+    /// Failed to find expected service endpoint in verified DID content.
+    #[error("Endpoint not found in verified content for DID: {0}")]
+    EndpointNotFoundInVerifiedContent(String),
 }
 
 /// Verifier of root and downstream DIDs.
