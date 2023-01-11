@@ -39,6 +39,7 @@ pub const PROVISIONAL_INDEX_FILE_URI_KEY: &str = "provisionalIndexFileUri";
 pub const CHUNK_FILE_URI_KEY: &str = "chunkFileUri";
 pub const CHUNKS_KEY: &str = "chunks";
 pub const DELTAS_KEY: &str = "deltas";
+pub const UPDATE_COMMITMENT_KEY: &str = "updateCommitment";
 
 // MongoDB
 pub const MONGO_CONNECTION_STRING: &str = "mongodb://localhost:27017/";

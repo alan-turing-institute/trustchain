@@ -4,7 +4,7 @@ use crate::{
     CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
     MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
     MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
-    PROVISIONAL_INDEX_FILE_URI_KEY,
+    PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::{BlockHash, Txid};
@@ -20,7 +20,7 @@ use ipfs_hasher::IpfsHasher;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use ssi::did::Document;
-use ssi::did_resolve::DIDResolver;
+use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
 use std::io::Read;
@@ -88,7 +88,7 @@ where
     fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
         let suffix = did_suffix(did);
         self.resolver().runtime.block_on(async {
-            // Query the database.
+            // Query the database for a bson::Document.
             let doc = match block_on(Self::query_mongo(suffix)) {
                 Ok(x) => x,
                 Err(e) => {
@@ -369,65 +369,109 @@ where
         }
     }
 
-    /// Gets DID Document content from IPFS and verifies that
-    /// the given transacton contains a commitment to the content.
-    fn verified_content(&self, tx: &Transaction) -> Result<DocumentState, VerifierError> {
+    /// Gets DID Document content from IPFS committed to by the given transaction and update commitment.
+    fn verified_content(
+        &self,
+        tx: &Transaction,
+        update_commitment: &str,
+    ) -> Result<DocumentState, VerifierError> {
         let ipfs_cid = &self.op_return_cid(&tx)?;
         let content_json = &self.unwrap_ion_content(ipfs_cid)?;
-        return extract_did_content(content_json);
+        let deltas = content_deltas(content_json)?;
+        return extract_doc_state(deltas, update_commitment);
     }
 
-    /// Resolve the given DID to obtain the DID Document.
-    fn resolve_did_doc(&self, did: &str) -> Result<Document, VerifierError> {
-        let (_, doc, _) = match self.resolver.resolve_as_result(did) {
-            Ok(x) => x,
+    /// Resolve the given DID to obtain the DID Document and Update Commitment.
+    fn resolve_did(&self, did: &str) -> Result<(Document, String), VerifierError> {
+        let (doc, doc_meta) = match self.resolver.resolve_as_result(did) {
+            Ok((x, y, z)) => {
+                if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
+                    (doc, doc_meta)
+                } else {
+                    eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
+                    return Err(VerifierError::DIDResolutionError(did.to_string()));
+                }
+            }
             Err(e) => {
-                eprintln!("Failed to resolve DID: {e}");
+                eprintln!("Failed to resolve DID: {}", e);
                 return Err(VerifierError::DIDResolutionError(did.to_string()));
             }
         };
-        match doc {
-            Some(x) => return Ok(x),
-            None => return Err(VerifierError::DIDResolutionError(did.to_string())),
+        // Extract the Update Commitment from the DID Document Metadata.
+        if let Some(property_set) = doc_meta.property_set {
+            if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
+                if let Metadata::String(value) = metadata {
+                    return Ok((doc, value.to_string()));
+                } else {
+                    eprintln!("Update Commitment not a String value for DID: {}", did);
+                    return Err(VerifierError::DIDResolutionError(did.to_string()));
+                }
+            } else {
+                eprintln!(
+                    "Missing Update Commitment in DocumentMetadata for DID: {}",
+                    did
+                );
+                return Err(VerifierError::DIDResolutionError(did.to_string()));
+            }
+        } else {
+            eprintln!("Missing Property Set in DocumentMetadata for DID: {}", did);
+            return Err(VerifierError::DIDResolutionError(did.to_string()));
         }
     }
 }
 
-/// Extracts public keys and endpoints from ION chunk file JSON.
-pub fn extract_did_content(chunk_file_json: &Value) -> Result<DocumentState, VerifierError> {
-    let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
-    let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
+/// Converts DID content from a chunk file into a vector of Delta objects.
+pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierError> {
     if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
-        let deltas_json_vec = match deltas_json_array {
-            Value::Array(vec) => vec,
+        let deltas: Vec<Delta> = match deltas_json_array {
+            Value::Array(vec) => vec
+                .iter()
+                .filter_map(
+                    |value| match serde_json::from_value::<Delta>(value.to_owned()) {
+                        Ok(x) => Some(x),
+                        Err(e) => {
+                            eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
+                            None
+                        }
+                    },
+                )
+                .collect(),
             _ => {
-                return Err(VerifierError::UnhandledDIDContent(format!(
-                    "{:?}",
-                    deltas_json_array
-                )))
+                eprintln!("Chunk file content 'deltas' not Value::Array type.");
+                return Err(VerifierError::FailureToParseDIDContent());
             }
         };
+        return Ok(deltas);
+    } else {
+        eprintln!("Key '{}' not found in chunk file content.", DELTAS_KEY);
+        return Err(VerifierError::FailureToParseDIDContent());
+    }
+}
 
-        for delta_json in deltas_json_vec {
-            let delta: Delta = match serde_json::from_value(delta_json.to_owned()) {
-                Ok(x) => x,
-                Err(e) => {
-                    eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
-                    return Err(VerifierError::FailureToParseDIDContent());
-                }
-            };
-            for patch in delta.patches {
-                match patch {
-                    did_ion::sidetree::DIDStatePatch::Replace { document } => {
-                        if let Some(mut pub_keys) = document.public_keys {
-                            pub_key_entries.append(&mut pub_keys);
-                        }
-                        if let Some(mut services) = document.services {
-                            service_endpoints.append(&mut services);
-                        }
+/// Extracts public keys and endpoints from "deltas" with matching update commitment.
+pub fn extract_doc_state(
+    deltas: Vec<Delta>,
+    update_commitment: &str,
+) -> Result<DocumentState, VerifierError> {
+    let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
+    let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
+
+    for delta in deltas {
+        // Ignore deltas whose update commitment does not match.
+        if delta.update_commitment != update_commitment {
+            continue;
+        }
+        for patch in delta.patches {
+            match patch {
+                did_ion::sidetree::DIDStatePatch::Replace { document } => {
+                    if let Some(mut pub_keys) = document.public_keys {
+                        pub_key_entries.append(&mut pub_keys);
                     }
-                    _ => return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch))),
+                    if let Some(mut services) = document.services {
+                        service_endpoints.append(&mut services);
+                    }
                 }
+                _ => return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch))),
             }
         }
     }
@@ -450,6 +494,11 @@ where
     T: Sync + Send + DIDResolver,
 {
     fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError> {
+        // Resolve the DID Document to get the expected public keys & endpoints,
+        // and the update commitment needed to differentiate between patches in
+        // the patches found in the chunk file retrieved from IPFS.
+        let (expected_content, update_commitment) = self.resolve_did(&did)?;
+
         let tx_locator = self.locate_transaction(did)?;
         let tx = self.transaction(tx_locator)?;
 
@@ -464,18 +513,11 @@ where
         // attempting to reconstruct the exact DID Document and hashing it.
 
         // Query_ipfs to get the ION chunkFile content to get the verified public keys & endpoints.
-        let verified_content = self.verified_content(&tx)?;
+        let verified_content = self.verified_content(&tx, &update_commitment)?;
         // let verified_keys = verified_content.get_keys();
-        let verified_endpoints = verified_content.get_endpoints();
-
-        // Resolve the DID Document to get the expected public keys & endpoints.
-        let expected_content: Document = self.resolve_did_doc(&did)?;
+        // let verified_endpoints = verified_content.get_endpoints();
 
         // TODO NEXT: TEST & IMPLEMENT THE HasKeys & HasEndpoints TRAITS IN utils.rs
-
-        // ##### ARRRGGGH!!! IMP TODO!!:
-        // THOSE 3 PATCHES (in the test fixture) ARE FOR DIFFERENT DIDs!!!!!
-        // WE NEED TO TAKE INTO ACCOUNT THE UpdateCommitment, CHECK IT'S VALID AND ONLY CONSIDER THAT PATCH!!!
 
         // Check each expected key is found in the vector of verified keys.
         if let Some(expected_keys) = expected_content.get_keys() {
@@ -538,7 +580,6 @@ mod tests {
     use crate::data::{
         TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
     };
-    use bitcoin::Block;
     use did_ion::sidetree::PublicKey;
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params};
 
@@ -554,9 +595,7 @@ mod tests {
         let target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-
         let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
-
         // Block 1902377
         let expected_block_hash =
             BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
@@ -566,7 +605,6 @@ mod tests {
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
-
         // Block 2377445
         let expected_block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
@@ -576,7 +614,6 @@ mod tests {
 
         let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
         let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
-
         // Block 2377339
         let expected_block_hash =
             BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
@@ -772,101 +809,59 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_did_content() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
+    fn test_extract_doc_state() {
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let result = extract_did_content(&chunk_file_json).unwrap();
+        let deltas = content_deltas(&chunk_file_json).unwrap();
+        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
+        let result = extract_doc_state(deltas, update_commitment).unwrap();
 
-        // Expect three public keys and three service endpoints.
+        // Expect one public key and one service endpoint (for the given
+        // update_commitment - there are three in the chunk file JSON).
         let public_keys = result.public_keys.unwrap();
         let services = result.services.unwrap();
-        assert_eq!(public_keys.len(), 3);
-        assert_eq!(services.len(), 3);
+        assert_eq!(public_keys.len(), 1);
+        assert_eq!(services.len(), 1);
 
-        // Check each public key entry in the content.
-        for (i, public_key_entry) in public_keys.iter().enumerate() {
-            assert!(matches!(
-                public_key_entry.public_key,
-                PublicKey::PublicKeyJwk { .. }
-            ));
-            let pub_key_jwk = match &public_key_entry.public_key {
-                PublicKey::PublicKeyJwk(x) => x,
-                _ => panic!(), // Unreachable.
-            };
-            let jwk = JWK::try_from(pub_key_jwk.to_owned()).unwrap();
-            assert!(matches!(&jwk.params, Params::EC { .. }));
-            let ec_params = match jwk.params {
-                Params::EC(x) => x,
-                _ => panic!(), // Unreachable.
-            };
-            assert!(ec_params.x_coordinate.is_some());
-            assert!(ec_params.y_coordinate.is_some());
-            if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
-                // Check the x & y public key coordinates.
-                if i == 0 {
-                    assert_eq!(
-                        serde_json::to_string(x).unwrap(),
-                        "\"7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso\""
-                    );
-                    assert_eq!(
-                        serde_json::to_string(y).unwrap(),
-                        "\"kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE\""
-                    );
-                }
-                if i == 1 {
-                    assert_eq!(
-                        serde_json::to_string(x).unwrap(),
-                        "\"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU\""
-                    );
-                    assert_eq!(
-                        serde_json::to_string(y).unwrap(),
-                        "\"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0\""
-                    );
-                }
-                if i == 2 {
-                    assert_eq!(
-                        serde_json::to_string(x).unwrap(),
-                        "\"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4\""
-                    );
-                    assert_eq!(
-                        serde_json::to_string(y).unwrap(),
-                        "\"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY\""
-                    );
-                }
-            } else {
-                panic!() // Unreachable.
-            }
-        }
+        // Check the public key entry in the content.
+        assert!(matches!(
+            public_keys.first().unwrap().public_key,
+            PublicKey::PublicKeyJwk { .. }
+        ));
+        let pub_key_jwk = match &public_keys.first().unwrap().public_key {
+            PublicKey::PublicKeyJwk(x) => x,
+            _ => panic!(), // Unreachable.
+        };
+        let jwk = JWK::try_from(pub_key_jwk.to_owned()).unwrap();
+        assert!(matches!(&jwk.params, Params::EC { .. }));
 
-        // Check each service endpoint in the content.
-        for (i, service_endpoint_entry) in services.iter().enumerate() {
-            assert!(matches!(
-                service_endpoint_entry.service_endpoint,
-                ServiceEndpoint::URI { .. }
-            ));
-            let uri = match &service_endpoint_entry.service_endpoint {
-                ServiceEndpoint::URI(x) => x,
-                _ => panic!(), // Unreachable.
-            };
-            // Check the URIs.
-            if i == 0 {
-                assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
-            }
-            if i == 1 {
-                assert_eq!(
-                    uri,
-                    "https://identity.foundation/ion/trustchain-root-plus-1"
-                );
-            }
-            if i == 2 {
-                assert_eq!(
-                    uri,
-                    "https://identity.foundation/ion/trustchain-root-plus-2"
-                );
-            }
-        }
+        let ec_params = match jwk.params {
+            Params::EC(x) => x,
+            _ => panic!(), // Unreachable.
+        };
+        assert!(ec_params.x_coordinate.is_some());
+        assert!(ec_params.y_coordinate.is_some());
+        if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
+            assert_eq!(
+                serde_json::to_string(x).unwrap(),
+                "\"7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso\""
+            );
+            assert_eq!(
+                serde_json::to_string(y).unwrap(),
+                "\"kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE\""
+            );
+        };
+
+        // Check the service endpoint entry in the content.
+        assert!(matches!(
+            services.first().unwrap().service_endpoint,
+            ServiceEndpoint::URI { .. }
+        ));
+        let uri = match &services.first().unwrap().service_endpoint {
+            ServiceEndpoint::URI(x) => x,
+            _ => panic!(), // Unreachable.
+        };
+        // Check the URI.
+        assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
     }
 
     #[test]
@@ -875,17 +870,30 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
+        // Test with the transaction committing to DID:
+        // did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg
+
         // Block 2377445
         let block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
                 .unwrap();
         let tx_locator = (block_hash, 3); // block hash & transaction index
         let tx = target.transaction(tx_locator).unwrap();
+        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
 
-        let result = target.verified_content(&tx).unwrap();
+        let result = target.verified_content(&tx, update_commitment).unwrap();
 
-        // Expect three public keys and three service endpoints.
-        assert_eq!(result.public_keys.unwrap().len(), 3);
-        assert_eq!(result.services.unwrap().len(), 3);
+        // Expect one public key and one service endpoint.
+        assert_eq!(result.public_keys.as_ref().unwrap().len(), 1);
+        assert_eq!(result.services.as_ref().unwrap().len(), 1);
+
+        // Check the endpoint (pub_key checked in test_extract_doc_state).
+        if let ServiceEndpoint::URI(uri) =
+            &result.services.unwrap().first().unwrap().service_endpoint
+        {
+            assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
+        } else {
+            panic!();
+        }
     }
 }

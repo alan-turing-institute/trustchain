@@ -8,18 +8,77 @@
 // 3. chunkFile
 //
 // The samples contain content associated with the following DIDs:
-// ROOT DID:    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
-// ROOT+1 DID:  "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
-// ROOT+2 DID:  "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+// ROOT DID:    did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg
+// ROOT+1 DID:  did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A
+// ROOT+2 DID:  did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q
 //
 // The OP_RETURN data for the create operation is:
 // ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97
 //
 // The Bitcoin transaction containing this OP_RETURN data has TxID:
 // 9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
+// and is the index with index 3 in the block with hash:
+// 000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
 //
 // The IPFS CID (for the coreIndexFile) is:
 // QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97
+//
+// The DID Document and Document Metadata are:
+// Document:
+// {
+//   "@context": [
+//     "https://www.w3.org/ns/did/v1",
+//     {
+//       "@base": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+//     }
+//   ],
+//   "id": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+//   "verificationMethod": [
+//     {
+//       "id": "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es",
+//       "type": "JsonWebSignature2020",
+//       "controller": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+//       "publicKeyJwk": {
+//         "kty": "EC",
+//         "crv": "secp256k1",
+//         "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+//         "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+//       }
+//     }
+//   ],
+//   "authentication": [
+//     "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+//   ],
+//   "assertionMethod": [
+//     "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+//   ],
+//   "keyAgreement": [
+//     "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+//   ],
+//   "capabilityInvocation": [
+//     "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+//   ],
+//   "capabilityDelegation": [
+//     "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+//   ],
+//   "service": [
+//     {
+//       "id": "#TrustchainID",
+//       "type": "Identity",
+//       "serviceEndpoint": "https://identity.foundation/ion/trustchain-root"
+//     }
+//   ]
+// }
+// ---
+// Document metadata:
+// {
+//   "method": {
+//     "recoveryCommitment": "EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w",
+//     "published": true,
+//     "updateCommitment": "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"
+//   },
+//   "canonicalId": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+// }
 
 // Sample ION coreIndexFile content (see https://identity.foundation/sidetree/spec/#core-index-file).
 pub const TEST_CORE_INDEX_FILE_CONTENT: &'static str = r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs","operations":{"create":[{"suffixData":{"deltaHash":"EiBkAX9y-Ts_siMzTzkfAzPKPIIbB033PlF0RlvF97ydJg","recoveryCommitment":"EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w"}},{"suffixData":{"deltaHash":"EiBBkv0j587BDSTjJtIv2DJFOOHk662n9Uoh1vtBaY3JKA","recoveryCommitment":"EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg"}},{"suffixData":{"deltaHash":"EiDTaFAO_ae63J4LMApAM-9VAo8ng58TTp2K-2r1nek6lQ","recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA"}}]}}"#;

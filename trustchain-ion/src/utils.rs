@@ -1,7 +1,7 @@
 //! Utils module.
 use std::convert::TryFrom;
 
-use did_ion::sidetree::{Delta, DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
+use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
 use ssi::did::{Document, ServiceEndpoint};
 use ssi::jwk::JWK;
 
@@ -86,36 +86,47 @@ impl HasEndpoints for DocumentState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::TEST_CHUNK_FILE_CONTENT;
-    use crate::verifier::extract_did_content;
+    use crate::verifier::extract_doc_state;
+    use crate::{data::TEST_CHUNK_FILE_CONTENT, verifier::content_deltas};
     use serde_json::Value;
+    use trustchain_core::data::TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF;
+
+    #[test]
+    fn test_get_keys_from_document() {
+        let doc_str = TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF;
+        // TODO.
+    }
 
     #[test]
     fn test_get_keys_from_document_state() {
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let doc_state = extract_did_content(&chunk_file_json).unwrap();
+        let deltas = &content_deltas(&chunk_file_json).unwrap();
+        let deltas = content_deltas(&chunk_file_json).unwrap();
+        let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
+        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
         let result = doc_state.get_keys();
         assert!(result.is_some());
-        assert_eq!(result.unwrap().len(), 3);
+        assert_eq!(result.unwrap().len(), 1);
     }
 
     #[test]
     fn test_get_endpoints_from_document_state() {
         let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let doc_state = extract_did_content(&chunk_file_json).unwrap();
+        let deltas = &content_deltas(&chunk_file_json).unwrap();
+        let deltas = content_deltas(&chunk_file_json).unwrap();
+        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
+        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
         let result = doc_state.get_endpoints();
         assert!(&result.is_some());
-        for (i, endpoint) in result.as_ref().unwrap().iter().enumerate() {
-            if let ServiceEndpoint::URI(uri) = endpoint {
-                if i == 0 {
-                    assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
-                }
-            } else {
-                panic!();
-            }
-        }
-        assert_eq!(result.unwrap().len(), 3);
+        let result = result.unwrap();
+        assert_eq!(&result.len(), &1);
+        let uri = match result.first().unwrap() {
+            ServiceEndpoint::URI(x) => x,
+            _ => panic!(),
+        };
+
+        assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
     }
 }
