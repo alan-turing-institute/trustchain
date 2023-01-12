@@ -456,11 +456,27 @@ pub fn extract_doc_state(
     let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
     let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
 
+    // Include a check that there is at most one matching update commitment in the "deltas".
+    // This catches an edge case where the same update commitment could (technically)
+    // be reused across different DID operations. This would be bad practice, but is
+    // possible. Currently we return an error in this (unlikely) case. A better fix
+    // would be to handle the edge case by deriving the DID itself by hashing the delta
+    // to find the "deltaHash" recorded in the coreIndexFile, then hashing the corresponding
+    // "suffixData", to obtain the DID itself.
+    let mut matched_update_commitment = false;
     for delta in deltas {
         // Ignore deltas whose update commitment does not match.
         if delta.update_commitment != update_commitment {
             continue;
         }
+        // Check that at most one matching update commitment is found in the "deltas".
+        if matched_update_commitment {
+            eprintln!("Unexpected error: duplicate update commitments found in chunk file deltas.");
+            return Err(VerifierError::DuplicateDIDUpdateCommitments(
+                update_commitment.to_string(),
+            ));
+        }
+        matched_update_commitment = true;
         for patch in delta.patches {
             match patch {
                 did_ion::sidetree::DIDStatePatch::Replace { document } => {

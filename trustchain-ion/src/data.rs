@@ -17,7 +17,7 @@
 //
 // The Bitcoin transaction containing this OP_RETURN data has TxID:
 // 9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
-// and is the index with index 3 in the block with hash:
+// and is the transaction with index 3 in the block with hash:
 // 000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
 //
 // The IPFS CID (for the coreIndexFile) is:

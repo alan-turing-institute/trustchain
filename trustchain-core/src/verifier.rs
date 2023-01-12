@@ -90,6 +90,9 @@ pub enum VerifierError {
     /// Failed to find expected service endpoint in verified DID content.
     #[error("Endpoint not found in verified content for DID: {0}")]
     EndpointNotFoundInVerifiedContent(String),
+    /// Found duplicate update commitments in different DID operations.
+    #[error("Duplicate update commitments: {0}")]
+    DuplicateDIDUpdateCommitments(String),
 }
 
 /// Verifier of root and downstream DIDs.
