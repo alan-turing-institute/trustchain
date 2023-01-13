@@ -2,4 +2,6 @@
 members = [
     "trustchain-core",
     "trustchain-ion",
+    "trustchain-issuer-backend",
+    # "trustchain-issuer-frontend",
 ]
