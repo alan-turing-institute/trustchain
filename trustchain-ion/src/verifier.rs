@@ -7,7 +7,10 @@ use crate::{
     PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
+use bitcoin::consensus::Encodable;
 use bitcoin::hash_types::{BlockHash, Txid};
+use bitcoin::hashes::sha256d;
+use bitcoin::MerkleBlock;
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
@@ -571,14 +574,69 @@ where
         }
         // If these checks pass, this branch of verification is complete.
 
+        // TODO: add a test where one of the above checks fails.
+        // TODO: refactor the following into smaller functions.
+
         // 2. Verify that the Bitcoin transaction is in the block (via a Merkle proof).
 
-        // TODO FROM HERE!
-        todo!();
+        // Get a Merkle proof for the Bitcoin transaction *directly from Bitcoin Core*.
+        let tx_out_proof = self
+            .rpc_client
+            .get_tx_out_proof(&[tx.txid()], Some(&tx_locator.0))
+            .unwrap();
+        let merkle_block: MerkleBlock = bitcoin::consensus::deserialize(&tx_out_proof).unwrap();
 
-        // Return the block hash as a string.
+        // Check that the transaction ID of interest is contained in the PartialMerkleTree.
+        // These next steps are key as they prove that the transaction obtained earlier (from which
+        // the OP_RETURN data was extracted and verified) is contained in the MerkleBlock.
+        let merkle_block_hashes: Vec<String> = merkle_block
+            .txn
+            .hashes()
+            .iter()
+            .map(|hash| hash.to_string())
+            .collect();
+        if !merkle_block_hashes.contains(&tx.txid().to_string()) {
+            return Err(VerifierError::FailedTransactionTimestampVerification(
+                tx.txid().to_string(),
+            ));
+        }
+
+        // Traverse the PartialMerkleTree to obtain the Merkle root.
+        let merkle_root = match merkle_block.txn.extract_matches(&mut vec![], &mut vec![]) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!(
+                    "Failed to obtain Merkle root from PartialMerkleTree: {:?}",
+                    e
+                );
+                return Err(VerifierError::FailedTransactionTimestampVerification(
+                    tx.txid().to_string(),
+                ));
+            }
+        };
+
+        // Check the Merkle root matches that in the MerkleBlock.
+        if !merkle_root.eq(&merkle_block.header.merkle_root) {
+            eprintln!(
+                "Merkle roots do not match: {}, {}",
+                merkle_root, &merkle_block.header.merkle_root
+            );
+            return Err(VerifierError::FailedTransactionTimestampVerification(
+                tx.txid().to_string(),
+            ));
+        }
+
+        // Check the MerkleBlock hash matches the block hash obtained earlier from MongoDB.
+        // IMP TODO: ideally we should now hash the merkle_block header to obtain the block hash.
+        // For now, we'll use the hash inside the MerkleBlock data structure.
         let (block_hash, _) = tx_locator;
-        Ok(block_hash.to_string())
+        if !merkle_block.header.block_hash().eq(&block_hash) {
+            return Err(VerifierError::FailedProofOfWorkHashVerification(
+                block_hash.to_string(),
+                merkle_block.header.block_hash().to_string(),
+            ));
+        }
+        return Ok(block_hash.to_string());
     }
 
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError> {

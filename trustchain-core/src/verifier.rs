@@ -93,6 +93,12 @@ pub enum VerifierError {
     /// Found duplicate update commitments in different DID operations.
     #[error("Duplicate update commitments: {0}")]
     DuplicateDIDUpdateCommitments(String),
+    /// Failed to verify Proof of Work hashes.
+    #[error("Proof of Work hashes do not match: {0}, {1}")]
+    FailedProofOfWorkHashVerification(String, String),
+    /// Failed to verify transaction timestamp.
+    #[error("Timestamp verification failed for transaction: {0}")]
+    FailedTransactionTimestampVerification(String),
 }
 
 /// Verifier of root and downstream DIDs.
@@ -140,6 +146,11 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Map a block hash to a Unix time.
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError>;
+
+    // TODO: add new method `verify_bundle()` which takes a VerificationBundle struct.
+    // This will require another method: `verify_block_hash` which takes a hash (as
+    // a String) and returns the corresponding block header, having checked that the
+    // hashes match (otherwise returns an error).
 
     /// Get the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;
