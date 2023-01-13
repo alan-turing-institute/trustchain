@@ -1,12 +1,8 @@
 //! Utils module.
-use std::convert::TryFrom;
-use std::iter;
-use std::vec::IntoIter;
-
 use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
-use ssi::one_or_many::OneOrMany;
+use std::convert::TryFrom;
 
 pub trait HasKeys {
     fn get_keys(&self) -> Option<Vec<JWK>>;

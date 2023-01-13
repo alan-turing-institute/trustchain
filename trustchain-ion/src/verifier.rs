@@ -2,7 +2,7 @@ use crate::utils::{HasEndpoints, HasKeys};
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
     CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
-    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
+    METHOD_KEY, MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
     MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
     PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
 };
@@ -352,8 +352,6 @@ where
 
     /// Determines the type of ION file found in a given JSON object.
     fn ion_file_type(&self, json: &Value) -> Option<IonFileType> {
-        println!("{}", json.to_string());
-
         if let Some(_) = json.get(PROVISIONAL_INDEX_FILE_URI_KEY) {
             return Some(IonFileType::CoreIndexFile);
         } else if let Some(chunks_array) = json.get(CHUNKS_KEY) {
@@ -397,24 +395,42 @@ where
                 return Err(VerifierError::DIDResolutionError(did.to_string()));
             }
         };
+
         // Extract the Update Commitment from the DID Document Metadata.
         if let Some(property_set) = doc_meta.property_set {
-            if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
-                if let Metadata::String(value) = metadata {
-                    return Ok((doc, value.to_string()));
+            // if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
+            if let Some(method_metadata) = property_set.get(METHOD_KEY) {
+                let method_map = match method_metadata {
+                    Metadata::Map(x) => x,
+                    _ => {
+                        eprintln!("Unhandled Metadata variant. Expected Map.");
+                        return Err(VerifierError::DIDResolutionError(did.to_string()));
+                    }
+                };
+                if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
+                    match uc_metadata {
+                        Metadata::String(uc) => return Ok((doc, uc.to_string())),
+                        _ => {
+                            eprintln!("Unhandled Metadata variant. Expected String.");
+                            return Err(VerifierError::DIDResolutionError(did.to_string()));
+                        }
+                    }
                 } else {
-                    eprintln!("Update Commitment not a String value for DID: {}", did);
+                    eprintln!(
+                        "Missing '{}' key in DocumentMetadata {} value for DID: {}",
+                        UPDATE_COMMITMENT_KEY, METHOD_KEY, did
+                    );
                     return Err(VerifierError::DIDResolutionError(did.to_string()));
                 }
             } else {
                 eprintln!(
-                    "Missing Update Commitment in DocumentMetadata for DID: {}",
-                    did
+                    "Missing '{}' key in DocumentMetadata for DID: {}",
+                    METHOD_KEY, did
                 );
                 return Err(VerifierError::DIDResolutionError(did.to_string()));
             }
         } else {
-            eprintln!("Missing Property Set in DocumentMetadata for DID: {}", did);
+            eprintln!("Missing property set in DocumentMetadata for DID: {}", did);
             return Err(VerifierError::DIDResolutionError(did.to_string()));
         }
     }
@@ -525,15 +541,12 @@ where
         //      See Branch 2 at https://hackmd.io/Dgoof7eZS6ysXuM6CUbCVQ#Branch-2-Verify-the-Bitcoin-transaction
 
         // 1. Verify that the DID Document was committed to by the Bitcoin transaction.
-        // IMP NOTE: Do this by checking each pub key and service endpoint one by one, rather than
-        // attempting to reconstruct the exact DID Document and hashing it.
+        // Note: Do this by checking each pub key and service endpoint one by one,
+        // rather than attempting to reconstruct the exact DID Document and hashing it.
 
-        // Query_ipfs to get the ION chunkFile content to get the verified public keys & endpoints.
+        // Query_ipfs to get the ION chunkFile content to get the verified public
+        // keys & endpoints for the DID identified by the update commitment.
         let verified_content = self.verified_content(&tx, &update_commitment)?;
-        // let verified_keys = verified_content.get_keys();
-        // let verified_endpoints = verified_content.get_endpoints();
-
-        // TODO NEXT: TEST & IMPLEMENT THE HasKeys & HasEndpoints TRAITS IN utils.rs
 
         // Check each expected key is found in the vector of verified keys.
         if let Some(expected_keys) = expected_content.get_keys() {
@@ -556,11 +569,16 @@ where
                 }
             }
         }
-
-        // If they do, this branch of verification is complete!
-        todo!();
+        // If these checks pass, this branch of verification is complete.
 
         // 2. Verify that the Bitcoin transaction is in the block (via a Merkle proof).
+
+        // TODO FROM HERE!
+        todo!();
+
+        // Return the block hash as a string.
+        let (block_hash, _) = tx_locator;
+        Ok(block_hash.to_string())
     }
 
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError> {
@@ -593,13 +611,22 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::data::{
-        TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+    use crate::{
+        data::{
+            TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT,
+            TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+        },
+        IONResolver,
     };
-    use did_ion::sidetree::PublicKey;
+    use did_ion::{
+        sidetree::{PublicKey, SidetreeClient},
+        ION,
+    };
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params};
 
-    // Helper function for generating a HTTP resolver for tests only.
+    // Helper function for generating a placeholder HTTP resolver for tests only.
+    // Note that this resolver will *not* succeed at resolving DIDs. For that, a
+    // SidetreeClient is needed.
     fn get_http_resolver() -> HTTPDIDResolver {
         HTTPDIDResolver::new("http://localhost:3000/")
     }
@@ -878,6 +905,26 @@ mod tests {
         };
         // Check the URI.
         assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
+    }
+
+    #[test]
+    #[ignore = "Integration test requires ION"]
+    fn test_resolve_did() {
+        // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
+        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
+            "http://localhost:3000/",
+        ))));
+        let target = IONVerifier::new(resolver);
+
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let result = target.resolve_did(did);
+
+        assert!(result.is_ok());
+        let (_, update_commitment) = result.unwrap();
+        assert_eq!(
+            update_commitment,
+            "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"
+        );
     }
 
     #[test]

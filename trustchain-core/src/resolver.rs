@@ -225,6 +225,10 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
+                    let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
+                    if did_res_meta_error == eof_err_msg {
+                        eprintln!("HINT: If using HTTP for resolution, ensure a valid client is in use.");
+                    }
                     panic!();
                 }
             } else {

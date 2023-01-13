@@ -31,7 +31,6 @@ fn trustchain_verification() {
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = test_resolver("http://localhost:3000/");
-
     let verifier = IONVerifier::new(resolver);
     for did in dids {
         // TODO.
@@ -43,4 +42,20 @@ fn trustchain_verification() {
         // );
         // assert!(result.is_ok());
     }
+}
+
+#[test]
+#[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
+fn test_verified_block_hash() {
+    let resolver = test_resolver("http://localhost:3000/");
+    let target = IONVerifier::new(resolver);
+
+    let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+    let result = target.verified_block_hash(did);
+
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f"
+    );
 }
