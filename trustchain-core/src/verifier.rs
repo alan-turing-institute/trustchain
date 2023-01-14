@@ -1,18 +1,6 @@
 use crate::chain::{Chain, DIDChain};
-use crate::resolver::{Resolver, ResolverError};
-use crate::utils::canonicalize;
-use crate::{controller, ROOT_EVENT_TIME};
-use serde_json::to_string_pretty as to_json;
-use ssi::did::{VerificationMethod, VerificationMethodMap};
-use ssi::did_resolve::Metadata;
-use ssi::did_resolve::ResolutionMetadata;
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
-use ssi::one_or_many::OneOrMany;
-use ssi::{
-    did::Document,
-    did_resolve::{DIDResolver, DocumentMetadata},
-    ldp::JsonWebSignature2020,
-};
+use crate::resolver::Resolver;
+use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.
@@ -99,11 +87,14 @@ pub enum VerifierError {
     /// Failed to verify transaction timestamp.
     #[error("Timestamp verification failed for transaction: {0}")]
     FailedTransactionTimestampVerification(String),
+    /// Invalid IteratedCommitment.
+    #[error("Invalid IteratedCommitment")]
+    InvalidIteratedCommitment,
 }
 
 /// Verifier of root and downstream DIDs.
 pub trait Verifier<T: Sync + Send + DIDResolver> {
-    /// Verify a downstream DID by tracing its chain back to the root.
+    /// Verifies a downstream DID by tracing its chain back to the root.
     fn verify(&self, did: &str, root_timestamp: u32) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
         let chain = match DIDChain::new(did, self.resolver()) {
@@ -131,7 +122,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         }
     }
 
-    /// Get the verified block hash for a DID.
+    /// Gets the verified block hash for a DID.
     /// This is the hash of the PoW block (header) that has been verified
     /// to contain the most recent DID operation for the given DID.
     fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError>;
@@ -144,16 +135,63 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         }
     }
 
-    /// Map a block hash to a Unix time.
+    /// Maps a block hash to a Unix time.
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError>;
 
-    // TODO: add new method `verify_bundle()` which takes a VerificationBundle struct.
-    // This will require another method: `verify_block_hash` which takes a hash (as
-    // a String) and returns the corresponding block header, having checked that the
-    // hashes match (otherwise returns an error).
-
-    /// Get the resolver used for DID verification.
+    /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;
+}
+
+pub trait Commitment {
+    /// Gets the commitment target.
+    fn target(&self) -> &[u8];
+    /// Gets the hasher (function).
+    fn hasher(&self) -> dyn FnOnce();
+    /// Gets the candidate data.
+    fn candidate_data(&self) -> &[u8];
+    // Decodes the candidate data.
+    fn decode_candidate_data(&self) -> serde_json::Value;
+    /// Gets the expected data.
+    fn expected_data(&self) -> serde_json::Value;
+    /// Runs the commitment verification process.
+    fn verify(&self) -> Result<(), VerifierError>;
+}
+
+pub trait IteratedCommitment {
+    /// Gets the sequence of commitments.
+    fn commitments(&self) -> Vec<Box<dyn Commitment>>;
+
+    /// Verifies that the seqence of commitments is valid.
+    fn verify_sequence(&self) -> Result<(), VerifierError> {
+        // Check that the  target in the n'th commitment is identical to
+        // the expected data in the (n+1)'th commitment.
+        let mut target = Vec::<u8>::new();
+        for commitment in self.commitments() {
+            if target.len() == 0 {
+                continue;
+            }
+
+            if let serde_json::Value::String(expected) = commitment.expected_data() {
+                if !expected.as_bytes().eq(&target) {
+                    eprintln!("Invalid target/expected data sequence.");
+                    return Err(VerifierError::InvalidIteratedCommitment);
+                }
+            } else {
+                eprintln!("Unhandled serde_json::Value variant. Expected String.");
+                return Err(VerifierError::InvalidIteratedCommitment);
+            }
+            let target = commitment.target();
+        }
+        Ok(())
+    }
+
+    /// Runs the verification process over the sequence of commitments.
+    fn verify(&self) -> Result<(), VerifierError> {
+        for commitment in self.commitments() {
+            commitment.verify();
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
