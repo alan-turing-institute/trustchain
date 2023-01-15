@@ -1,4 +1,6 @@
 //! Utils module.
+use bitcoin::{BlockHash, Transaction};
+use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
 use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
@@ -6,6 +8,8 @@ use ipfs_api_backend_actix::IpfsClient;
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
+
+use crate::{BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME};
 
 pub trait HasKeys {
     fn get_keys(&self) -> Option<Vec<JWK>>;
@@ -117,6 +121,36 @@ impl HasEndpoints for DocumentState {
     }
 }
 
+/// Gets the Bitcoin transaction at the given location via an RPC client.
+pub fn transaction(
+    block_hash: &BlockHash,
+    tx_index: u32,
+    rpc_client: Option<bitcoincore_rpc::Client>,
+) -> Result<Transaction, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    let client = match rpc_client {
+        Some(x) => x,
+        None => {
+            bitcoincore_rpc::Client::new(
+                BITCOIN_CONNECTION_STRING,
+                bitcoincore_rpc::Auth::UserPass(
+                    BITCOIN_RPC_USERNAME.to_string(),
+                    BITCOIN_RPC_PASSWORD.to_string(),
+                ),
+            )
+            .unwrap()
+            // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
+        }
+    };
+    match client.get_block(&block_hash) {
+        Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
+        Err(e) => {
+            eprintln!("Error getting Bitcoin block: {}", e);
+            Err(Box::new(e))
+        }
+    }
+}
+
 #[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
@@ -144,13 +178,17 @@ pub async fn query_ipfs(
 #[cfg(test)]
 mod tests {
     use core::panic;
+    use std::io::Read;
+    use std::str::FromStr;
 
     use super::*;
     use crate::data::{
         TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS, TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES,
     };
     use crate::verifier::extract_doc_state;
+    use crate::PROVISIONAL_INDEX_FILE_URI_KEY;
     use crate::{data::TEST_CHUNK_FILE_CONTENT, verifier::content_deltas};
+    use flate2::read::GzDecoder;
     use serde_json::Value;
     use ssi::jwk::Params;
     use trustchain_core::data::{
@@ -300,5 +338,59 @@ mod tests {
         assert!(&result.is_some());
         let result = result.unwrap();
         assert_eq!(&result.len(), &2);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires IPFS"]
+    fn test_query_ipfs() {
+        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+
+        let result = match query_ipfs(cid, None) {
+            Ok(x) => x,
+            Err(e) => panic!(),
+        };
+
+        // Decompress the content and deserialise to JSON.
+        let mut decoder = GzDecoder::new(&result[..]);
+        let mut ipfs_content_str = String::new();
+        let actual: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => match serde_json::from_str(&ipfs_content_str) {
+                Ok(value) => value,
+                Err(e) => {
+                    panic!()
+                }
+            },
+            Err(e) => {
+                panic!()
+            }
+        };
+
+        // The CID is the address of a core index file, so the JSON result
+        // contains the key "provisionalIndexFileUri".
+        assert!(actual.get(PROVISIONAL_INDEX_FILE_URI_KEY).is_some());
+
+        // Expect an invalid CID to fail.
+        let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        assert!(query_ipfs(cid, None).is_err());
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_transaction() {
+        // Get the Bitcoin transaction.
+        let block_hash =
+            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                .unwrap();
+        let result = transaction(&block_hash, 3, None);
+
+        assert!(result.is_ok());
+        let tx = result.unwrap();
+
+        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_eq!(tx.txid().to_string(), expected);
+
+        // Expect a different transaction ID to fail.
+        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_ne!(tx.txid().to_string(), not_expected);
     }
 }

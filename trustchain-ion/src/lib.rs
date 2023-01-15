@@ -43,6 +43,9 @@ pub const DELTAS_KEY: &str = "deltas";
 pub const UPDATE_COMMITMENT_KEY: &str = "updateCommitment";
 pub const METHOD_KEY: &str = "method";
 
+// IPFS
+pub const CID_KEY: &str = "cid";
+
 // MongoDB
 pub const MONGO_CONNECTION_STRING: &str = "mongodb://localhost:27017/";
 pub const MONGO_DATABASE_ION_TESTNET_CORE: &str = "ion-testnet-core";

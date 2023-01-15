@@ -11,10 +11,13 @@ pub enum CommitmentError {
     /// Data decoding error.
     #[error("Data decoding error.")]
     DataDecodingError,
-    /// Failed hash verification
+    /// Failed to compute hash.
+    #[error("Failed to compute hash.")]
+    FailedToComputeHash,
+    /// Failed hash verification.
     #[error("Failed hash verification. Computed hash not equal to target.")]
     FailedHashVerification,
-    /// Failed content verification
+    /// Failed content verification.
     #[error("Failed content verification. Expected data not found in candidate.")]
     FailedContentVerification,
 }
@@ -24,7 +27,7 @@ pub trait Commitment {
     /// Gets the commitment target.
     fn target(&self) -> &str;
     /// Gets the hasher (function).
-    fn hasher(&self) -> Box<dyn Fn(&[u8]) -> String>;
+    fn hasher(&self) -> Box<dyn Fn(&[u8]) -> Result<String, CommitmentError>>;
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
     // Decodes the candidate data.
@@ -35,7 +38,7 @@ pub trait Commitment {
     /// Verifies that the hash of the candidate data matches the target.
     fn verify_target(&self) -> Result<(), CommitmentError> {
         // Call the hasher (closure) on the candidate data.
-        let hash = self.hasher()(self.candidate_data());
+        let hash = self.hasher()(self.candidate_data())?;
         // Compare the computed hash to the target.
         if hash.ne(self.target()) {
             return Err(CommitmentError::FailedHashVerification);
