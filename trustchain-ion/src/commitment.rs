@@ -1,10 +1,7 @@
 use flate2::read::GzDecoder;
-use futures::TryStreamExt;
-use ipfs_api::IpfsApi;
-use ipfs_api_backend_actix::IpfsClient;
 use ipfs_hasher::IpfsHasher;
 use std::io::Read;
-use trustchain_core::verifier::{Commitment, VerifierError};
+use trustchain_core::commitment::{Commitment, CommitmentError};
 
 pub struct IpfsCommitment {
     target: String,
@@ -36,7 +33,7 @@ impl Commitment for IpfsCommitment {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, VerifierError> {
+    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
         let mut decoder = GzDecoder::new(self.candidate_data());
         let mut ipfs_content_str = String::new();
         match decoder.read_to_string(&mut ipfs_content_str) {
@@ -45,13 +42,13 @@ impl Commitment for IpfsCommitment {
                     Ok(value) => return Ok(value),
                     Err(e) => {
                         eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                        return Err(VerifierError::DataDecodingError);
+                        return Err(CommitmentError::DataDecodingError);
                     }
                 };
             }
             Err(e) => {
                 eprintln!("Error decoding IPFS content: {}", e);
-                return Err(VerifierError::DataDecodingError);
+                return Err(CommitmentError::DataDecodingError);
             }
         }
     }
@@ -61,30 +58,11 @@ impl Commitment for IpfsCommitment {
     }
 }
 
-#[actix_rt::main]
-async fn query_ipfs(cid: &str, client: Option<IpfsClient>) -> Result<Vec<u8>, VerifierError> {
-    let client = match client {
-        Some(x) => x,
-        None => IpfsClient::default(),
-    };
-    match client
-        .cat(cid)
-        .map_ok(|chunk| chunk.to_vec())
-        .try_concat()
-        .await
-    {
-        Ok(res) => Ok(res),
-        Err(e) => {
-            eprintln!("Error querying IPFS: {}", e);
-            return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
     use super::*;
+    use crate::utils::query_ipfs;
 
     #[test]
     #[ignore = "Integration test requires IPFS"]
@@ -95,8 +73,17 @@ mod tests {
         let expected_data =
             r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let expected_data = serde_json::from_str(expected_data).unwrap();
-        let commitment = IpfsCommitment::new(cid.to_string(), candidate_data, expected_data);
+        let commitment =
+            IpfsCommitment::new(cid.to_string(), candidate_data.clone(), expected_data);
 
         assert!(commitment.verify().is_ok());
+
+        // We do *not* expect to find a different provisionalIndexFileUri.
+        let expected_data =
+            r#"{"provisionalIndexFileUri":"PmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
+        let expected_data = serde_json::from_str(expected_data).unwrap();
+        let commitment = IpfsCommitment::new(cid.to_string(), candidate_data, expected_data);
+
+        assert!(commitment.verify().is_err());
     }
 }

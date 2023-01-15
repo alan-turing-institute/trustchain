@@ -22,13 +22,12 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
-use trustchain_core::verifier::{Commitment, Verifier, VerifierError};
+use trustchain_core::verifier::{Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).

@@ -1,5 +1,8 @@
 //! Utils module.
 use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
+use futures::TryStreamExt;
+use ipfs_api::IpfsApi;
+use ipfs_api_backend_actix::IpfsClient;
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
@@ -111,6 +114,30 @@ impl HasEndpoints for DocumentState {
             .map(|entry| entry.service_endpoint.to_owned())
             .collect();
         return Some(service_endpoints);
+    }
+}
+
+#[actix_rt::main]
+pub async fn query_ipfs(
+    cid: &str,
+    client: Option<IpfsClient>,
+) -> Result<Vec<u8>, Box<ipfs_api_backend_actix::Error>> {
+    // Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let client = match client {
+        Some(x) => x,
+        None => IpfsClient::default(),
+    };
+    match client
+        .cat(cid)
+        .map_ok(|chunk| chunk.to_vec())
+        .try_concat()
+        .await
+    {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            eprintln!("Error querying IPFS: {}", e);
+            return Err(Box::new(e));
+        }
     }
 }
 

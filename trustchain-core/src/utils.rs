@@ -110,6 +110,67 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
+/// Tests whether one JSON object contains all the elements of another.
+pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value) -> bool {
+    match expected {
+        serde_json::Value::Null => return true,
+        serde_json::Value::Bool(x) => {
+            if let serde_json::Value::Bool(y) = candidate {
+                return x == y;
+            } else {
+                return false;
+            }
+        }
+        serde_json::Value::Number(x) => {
+            if let serde_json::Value::Number(y) = candidate {
+                return x == y;
+            } else {
+                return false;
+            }
+        }
+        serde_json::Value::String(x) => {
+            if let serde_json::Value::String(y) = candidate {
+                return x == y;
+            } else {
+                return false;
+            }
+        }
+        serde_json::Value::Array(expected_vec) => {
+            if let serde_json::Value::Array(candidate_vec) = candidate {
+                // Check each element of the (expected) vector is contained in the
+                // candidate vector, ignoring order.
+                for exp in expected_vec {
+                    if !candidate_vec.iter().any(|cand| json_contains(cand, exp)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+        serde_json::Value::Object(expected_map) => {
+            if let serde_json::Value::Object(candidate_map) = candidate {
+                // Check each element of the (expected) map is contained in the
+                // candidate vector.
+                for exp_key in expected_map.keys() {
+                    if !candidate_map.contains_key(exp_key) {
+                        return false;
+                    }
+                    let expected_value = expected_map.get(exp_key).unwrap();
+                    let candidate_value = candidate_map.get(exp_key).unwrap();
+                    if !json_contains(candidate_value, expected_value) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -125,7 +186,10 @@ pub fn set_panic_hook() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
+    use crate::data::{
+        TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT,
+        TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS,
+    };
     use serde_json::to_string_pretty as to_json;
     use ssi::did::Document;
 
@@ -160,5 +224,117 @@ mod tests {
         let expected_hash = decode(jwt)?;
         assert_eq!(expected_hash, actual_hash);
         Ok(())
+    }
+
+    #[test]
+    fn test_json_contains() {
+        let cand_str = r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs","operations":{"create":[{"suffixData":{"deltaHash":"EiBkAX9y-Ts_siMzTzkfAzPKPIIbB033PlF0RlvF97ydJg","recoveryCommitment":"EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w"}},{"suffixData":{"deltaHash":"EiBBkv0j587BDSTjJtIv2DJFOOHk662n9Uoh1vtBaY3JKA","recoveryCommitment":"EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg"}},{"suffixData":{"deltaHash":"EiDTaFAO_ae63J4LMApAM-9VAo8ng58TTp2K-2r1nek6lQ","recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA"}}]}}"#;
+        let candidate: serde_json::Value = serde_json::from_str(cand_str).unwrap();
+
+        let exp_str =
+            r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(json_contains(&candidate, &expected));
+
+        // Test with different key.
+        let exp_str =
+            r#"{"provisionalIndeXFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(!json_contains(&candidate, &expected));
+
+        // Test with different value.
+        let exp_str =
+            r#"{"provisionalIndexFileUri":"PmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(!json_contains(&candidate, &expected));
+
+        // Test with JSON arrays.
+        let candidate: serde_json::Value =
+            serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+
+        // Same elements but different order:
+        let exp_str = r##"{"verificationMethod" : [
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+                "publicKeyJwk" : {
+                   "crv": "secp256k1",
+                   "kty": "EC",
+                   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+                },
+                "type" : "JsonWebSignature2020"
+            },
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+                "publicKeyJwk" : {
+                   "crv" : "secp256k1",
+                   "kty" : "EC",
+                   "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                   "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+                },
+                "type" : "JsonWebSignature2020"
+            }]
+        }"##;
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(json_contains(&candidate, &expected));
+
+        // Different nested key:
+        let exp_str = r##"{"verificationMethod" : [
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+                "publicKeyJwk" : {
+                    "crv": "secp256k1",
+                    "kty": "EC",
+                    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                    "z": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+                },
+                "type" : "JsonWebSignature2020"
+            },
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+                "publicKeyJwk" : {
+                    "crv" : "secp256k1",
+                    "kty" : "EC",
+                    "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                    "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+                },
+                "type" : "JsonWebSignature2020"
+            }]
+        }"##;
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(!json_contains(&candidate, &expected));
+
+        // Different nested value:
+        let exp_str = r##"{"verificationMethod" : [
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+                "publicKeyJwk" : {
+                    "crv": "secp256k1",
+                    "kty": "EC",
+                    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                    "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+                },
+                "type" : "JsonWebSignature2020"
+            },
+            {
+                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+                "publicKeyJwk" : {
+                    "crv" : "secp256k1",
+                    "kty" : "EC",
+                    "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                    "y" : "YcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+                },
+                "type" : "JsonWebSignature2020"
+            }]
+        }"##;
+
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(!json_contains(&candidate, &expected));
     }
 }
