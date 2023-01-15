@@ -87,9 +87,17 @@ pub enum VerifierError {
     /// Failed to verify transaction timestamp.
     #[error("Timestamp verification failed for transaction: {0}")]
     FailedTransactionTimestampVerification(String),
+
+    /// Refactorign from here.
     /// Invalid IteratedCommitment.
     #[error("Invalid IteratedCommitment")]
     InvalidIteratedCommitment,
+    /// Data decoding error.
+    #[error("Data decoding error.")]
+    DataDecodingError,
+    /// Failed hash verification
+    #[error("Failed hash verification. Computed hash not equal to target.")]
+    FailedHashVerification,
 }
 
 /// Verifier of root and downstream DIDs.
@@ -144,17 +152,38 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
 pub trait Commitment {
     /// Gets the commitment target.
-    fn target(&self) -> &[u8];
+    fn target(&self) -> &str;
     /// Gets the hasher (function).
-    fn hasher(&self) -> dyn FnOnce();
+    fn hasher(&self) -> Box<dyn Fn(&[u8]) -> String>;
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
     // Decodes the candidate data.
-    fn decode_candidate_data(&self) -> serde_json::Value;
+    fn decode_candidate_data(&self) -> Result<serde_json::Value, VerifierError>;
     /// Gets the expected data.
-    fn expected_data(&self) -> serde_json::Value;
-    /// Runs the commitment verification process.
-    fn verify(&self) -> Result<(), VerifierError>;
+    fn expected_data(&self) -> &serde_json::Value;
+
+    /// Verifies that the hash of the candidate data matches the target.
+    fn verify_target(&self) -> Result<(), VerifierError> {
+        // Call the hasher (closure) on the candidate data.
+        let hash = self.hasher()(self.candidate_data());
+        // Compare the computed hash to the target.
+        if hash.ne(self.target()) {
+            return Err(VerifierError::FailedHashVerification);
+        }
+        Ok(())
+    }
+
+    /// Verifies that the expected data is found in the candidate data.
+    fn verify_content(&self) -> Result<(), VerifierError> {
+        todo!();
+    }
+
+    /// Verifies the commitment.
+    fn verify(&self) -> Result<(), VerifierError> {
+        let _ = &self.verify_content()?;
+        let _ = &self.verify_target()?;
+        Ok(())
+    }
 }
 
 pub trait IteratedCommitment {

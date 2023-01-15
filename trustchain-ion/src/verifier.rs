@@ -7,10 +7,8 @@ use crate::{
     PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
-use bitcoin::consensus::Encodable;
-use bitcoin::hash_types::{BlockHash, Txid};
-use bitcoin::hashes::sha256d;
-use bitcoin::MerkleBlock;
+use bitcoin::hash_types::BlockHash;
+use bitcoin::{MerkleBlock, Txid};
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
@@ -24,13 +22,13 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
-use ssi::jwk::JWK;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
-use trustchain_core::verifier::{Verifier, VerifierError};
+use trustchain_core::verifier::{Commitment, Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
@@ -44,7 +42,7 @@ enum IonFileType {
     ChunkFile,
 }
 
-/// Struct for TrustchainVerifier
+/// Struct for Trustchain Verifier implementation via the ION DID method.
 pub struct IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
@@ -437,6 +435,15 @@ where
             return Err(VerifierError::DIDResolutionError(did.to_string()));
         }
     }
+
+    //
+    // Refactoring based on the Commitment trait, for the VerificationBundle:
+    //
+
+    // /// Constructs the ION chunk file commitment.
+    // fn chunk_file_commitment(&self) -> Box<dyn Commitment> {
+
+    // }
 }
 
 /// Converts DID content from a chunk file into a vector of Delta objects.
@@ -680,7 +687,9 @@ mod tests {
         sidetree::{PublicKey, SidetreeClient},
         ION,
     };
-    use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params};
+    use ssi::{
+        did::ServiceEndpoint, did_resolve::HTTPDIDResolver, hash::sha256, jwk::Params, jwk::JWK,
+    };
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
     // Note that this resolver will *not* succeed at resolving DIDs. For that, a
