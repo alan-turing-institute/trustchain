@@ -1,18 +1,6 @@
 use crate::chain::{Chain, DIDChain};
-use crate::resolver::{Resolver, ResolverError};
-use crate::utils::canonicalize;
-use crate::{controller, ROOT_EVENT_TIME};
-use serde_json::to_string_pretty as to_json;
-use ssi::did::{VerificationMethod, VerificationMethodMap};
-use ssi::did_resolve::Metadata;
-use ssi::did_resolve::ResolutionMetadata;
-use ssi::jwk::{Base64urlUInt, ECParams, Params, JWK};
-use ssi::one_or_many::OneOrMany;
-use ssi::{
-    did::Document,
-    did_resolve::{DIDResolver, DocumentMetadata},
-    ldp::JsonWebSignature2020,
-};
+use crate::resolver::Resolver;
+use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.

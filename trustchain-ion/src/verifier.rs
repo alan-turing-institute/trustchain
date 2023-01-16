@@ -141,7 +141,7 @@ where
         Ok(block_height)
     }
 
-    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError> {
+    fn verified_timestamp(&self, _did: &str) -> Result<u32, VerifierError> {
         todo!()
     }
 
@@ -166,8 +166,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::verifier;
-
     use super::*;
     use ssi::did_resolve::HTTPDIDResolver;
 

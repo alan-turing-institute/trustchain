@@ -126,7 +126,6 @@ pub fn set_panic_hook() {
 mod tests {
     use super::*;
     use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
-    use serde_json::to_string_pretty as to_json;
     use ssi::did::Document;
 
     #[test]
