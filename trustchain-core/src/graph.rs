@@ -30,16 +30,15 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
         let mut did = chain.root().to_owned();
         let mut level = 0;
         // Add source
-        let ns = match nodes.get(&did) {
-            Some(&v) => v,
+        match nodes.get(&did) {
+            Some(_) => (),
             None => {
                 let pretty_did =
                     PrettyDID::new(&chain.data(&did).unwrap().0, level, MAX_WIDTH).to_node_string();
                 let ns = graph.add_node(pretty_did);
                 nodes.insert(did.to_owned(), ns);
-                ns
             }
-        };
+        }
         while let Some(ddid) = chain.downstream(&did) {
             // Get source node
             let ns = match nodes.get(&did) {
