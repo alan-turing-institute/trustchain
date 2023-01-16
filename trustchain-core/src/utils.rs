@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use ssi::jwk::JWK;
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Once;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
@@ -49,6 +49,15 @@ fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// [`DATA_ENCODING_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#data-encoding-scheme)
 fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
+}
+
+/// Gets the path for storing operations and creates directories if they do not exist.
+pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    // Make directory and operation file name
+    let path = Path::new(path.as_str()).join("operations");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
 }
 
 /// Returns the suffix of a short-form DID.
@@ -96,6 +105,11 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    JWK::generate_secp256k1().expect("Could not generate key.")
+}
+
 #[allow(dead_code)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -133,5 +147,18 @@ mod tests {
         let expected_hash = decode(jwt)?;
         assert_eq!(expected_hash, actual_hash);
         Ok(())
+    }
+
+    #[test]
+    fn test_generate_key() {
+        let result = generate_key();
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match result.params {
+            ssi::jwk::Params::EC(ecparams) => {
+                assert_eq!(ecparams.curve, Some(String::from("secp256k1")))
+            }
+            _ => panic!(),
+        }
     }
 }
