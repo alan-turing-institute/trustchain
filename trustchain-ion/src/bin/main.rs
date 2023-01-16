@@ -2,10 +2,15 @@
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
 use ssi::vc::{Credential, URI};
+use std::fs::File;
 use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
-    attest::main_attest, attestor::IONAttestor, create::main_create, resolve::main_resolve,
-    test_resolver, verifier::IONVerifier,
+    attest::attest_operation,
+    attestor::IONAttestor,
+    create::{create_operation, read_doc_state_from},
+    get_ion_resolver,
+    resolve::main_resolve,
+    verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -83,7 +88,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    main_create(file_path, verbose)?;
+
+                    // Read doc state from file path
+                    let doc_state = if let Some(file_path) = file_path {
+                        let f = File::open(file_path)?;
+                        let doc_state = read_doc_state_from(f)?;
+                        Some(doc_state)
+                    } else {
+                        None
+                    };
+
+                    // Read from the file path to a "Reader"
+                    create_operation(doc_state, verbose)?;
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -93,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
-                    main_attest(did, controlled_did, verbose)?;
+                    attest_operation(did, controlled_did, verbose)?;
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -104,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Some(("vc", sub_matches)) => {
-            let resolver = test_resolver("http://localhost:3000/");
+            let resolver = get_ion_resolver("http://localhost:3000/");
             match sub_matches.subcommand() {
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -152,7 +168,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // Trustchain verify the issued credential
-                    let verifier = IONVerifier::new(test_resolver("http://localhost:3000/"));
+                    let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,

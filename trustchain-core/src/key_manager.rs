@@ -88,11 +88,6 @@ pub trait AttestorKeyManager: KeyManager {
 }
 
 pub trait KeyManager {
-    /// Generates a new cryptographic key.
-    fn generate_key(&self) -> JWK {
-        JWK::generate_secp256k1().expect("Could not generate key.")
-    }
-
     /// Reads a key of a given type.
     fn read_key(
         &self,
@@ -263,7 +258,7 @@ pub mod tests {
     use crate::data::{
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
-    use crate::utils::init;
+    use crate::utils::{generate_key, init};
     use mockall::mock;
     use ssi::jwk::Params;
     use std::io::Read;
@@ -276,8 +271,7 @@ pub mod tests {
 
     #[test]
     fn test_generate_key() {
-        let target = TestKeyManager;
-        let result = target.generate_key();
+        let result = generate_key();
 
         // Check for the expected elliptic curve (used by ION to generate keys).
         match result.params {
@@ -396,14 +390,6 @@ pub mod tests {
         target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true)?;
 
         assert!(target.keys_exist(did_suffix, &KeyType::UpdateKey));
-
-        // Failing overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
-        assert!(try_overwrite.is_err());
-
-        // Successful overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
-        assert!(try_overwrite.is_ok());
 
         // Failing overwrite
         let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
