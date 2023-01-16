@@ -104,36 +104,28 @@ impl Display for TrustchainGraph {
 
 #[cfg(test)]
 mod tests {
-    use crate::TRUSTCHAIN_DATA;
-
     use super::*;
-    use std::path::Path;
-
-    fn get_test_did_chains() -> Result<Vec<DIDChain>, Box<dyn std::error::Error>> {
-        let root_path = std::env::var(TRUSTCHAIN_DATA).unwrap();
-        let read_file = std::fs::read_to_string(
-            Path::new(&root_path)
-                .join("resources")
-                .join("test")
-                .join("test_did_chains.json"),
-        )?;
-        let did_chains: Vec<DIDChain> = serde_json::from_str(read_file.as_str())?;
-        Ok(did_chains)
-    }
+    use crate::chain::tests::test_chain;
 
     #[test]
-    fn test_read_chains() {
-        let chains = get_test_did_chains().unwrap();
+    fn test_read_chains() -> Result<(), GraphError> {
+        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
         let graph = TrustchainGraph::new(&chains);
         assert!(graph.is_ok());
+        if let Ok(graph) = graph {
+            assert_eq!(graph.graph.node_count(), 3);
+            assert_eq!(graph.graph.edge_count(), 2);
+        }
+        Ok(())
     }
     #[test]
     fn test_to_dot() -> Result<(), GraphError> {
-        let chains = get_test_did_chains().unwrap();
+        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
         let graph = TrustchainGraph::new(&chains)?;
         print!("{}", graph.to_dot());
         Ok(())
     }
+    // TODO: determine whether the below commented out tests are still required
     // #[test]
     // fn invalid_not_a_tree() {
     //     todo!()
