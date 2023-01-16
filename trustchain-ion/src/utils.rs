@@ -121,42 +121,14 @@ impl HasEndpoints for DocumentState {
     }
 }
 
-/// Gets the Bitcoin transaction at the given location via an RPC client.
-pub fn transaction(
-    block_hash: &BlockHash,
-    tx_index: u32,
-    rpc_client: Option<bitcoincore_rpc::Client>,
-) -> Result<Transaction, Box<dyn std::error::Error>> {
-    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    let client = match rpc_client {
-        Some(x) => x,
-        None => {
-            bitcoincore_rpc::Client::new(
-                BITCOIN_CONNECTION_STRING,
-                bitcoincore_rpc::Auth::UserPass(
-                    BITCOIN_RPC_USERNAME.to_string(),
-                    BITCOIN_RPC_PASSWORD.to_string(),
-                ),
-            )
-            .unwrap()
-            // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
-        }
-    };
-    match client.get_block(&block_hash) {
-        Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
-        Err(e) => {
-            eprintln!("Error getting Bitcoin block: {}", e);
-            Err(Box::new(e))
-        }
-    }
-}
-
 #[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
     client: Option<IpfsClient>,
 ) -> Result<Vec<u8>, Box<ipfs_api_backend_actix::Error>> {
-    // Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // TODO: this client must be configured to connect to the endpoint
+    // specified as "ipfsHttpApiEndpointUri" in the ION config file
+    // named "testnet-core-config.json" (or "mainnet-core-config.json").
     let client = match client {
         Some(x) => x,
         None => IpfsClient::default(),
@@ -372,25 +344,5 @@ mod tests {
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         assert!(query_ipfs(cid, None).is_err());
-    }
-
-    #[test]
-    #[ignore = "Integration test requires Bitcoin"]
-    fn test_transaction() {
-        // Get the Bitcoin transaction.
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        let result = transaction(&block_hash, 3, None);
-
-        assert!(result.is_ok());
-        let tx = result.unwrap();
-
-        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.txid().to_string(), expected);
-
-        // Expect a different transaction ID to fail.
-        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_ne!(tx.txid().to_string(), not_expected);
     }
 }

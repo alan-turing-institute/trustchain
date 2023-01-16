@@ -112,60 +112,57 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
 
 /// Tests whether one JSON object contains all the elements of another.
 pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value) -> bool {
-    match expected {
-        serde_json::Value::Null => return true,
-        serde_json::Value::Bool(x) => {
-            if let serde_json::Value::Bool(y) = candidate {
-                return x == y;
-            } else {
-                return false;
-            }
-        }
-        serde_json::Value::Number(x) => {
-            if let serde_json::Value::Number(y) = candidate {
-                return x == y;
-            } else {
-                return false;
-            }
-        }
-        serde_json::Value::String(x) => {
-            if let serde_json::Value::String(y) = candidate {
-                return x == y;
-            } else {
-                return false;
-            }
-        }
-        serde_json::Value::Array(expected_vec) => {
-            if let serde_json::Value::Array(candidate_vec) = candidate {
-                // Check each element of the (expected) vector is contained in the
-                // candidate vector, ignoring order.
-                for exp in expected_vec {
-                    if !candidate_vec.iter().any(|cand| json_contains(cand, exp)) {
-                        return false;
+    match candidate {
+        serde_json::Value::Null => matches!(expected, serde_json::Value::Null),
+        serde_json::Value::Bool(x) => match expected {
+            serde_json::Value::Bool(y) => x == y,
+            _ => false,
+        },
+        serde_json::Value::Number(x) => match expected {
+            serde_json::Value::Number(y) => x == y,
+            _ => false,
+        },
+        serde_json::Value::String(x) => match expected {
+            serde_json::Value::String(y) => x == y,
+            _ => false,
+        },
+        serde_json::Value::Array(cand_vec) => {
+            match expected {
+                serde_json::Value::Object(_) => false,
+                serde_json::Value::Array(exp_vec) => {
+                    // If both expected and candidate are Array type, check each element of
+                    // the expected vector is contained in the candidate vector, ignoring order.
+                    for exp in exp_vec {
+                        if !cand_vec.iter().any(|cand| json_contains(cand, exp)) {
+                            return false;
+                        }
                     }
+                    return true;
                 }
-                return true;
-            } else {
-                return false;
+                _ => {
+                    // If expected is a scalar type and candidate is an Array, check
+                    // if any value in the candidate matches the expected one.
+                    return cand_vec.iter().any(|value| json_contains(value, expected));
+                }
             }
         }
-        serde_json::Value::Object(expected_map) => {
-            if let serde_json::Value::Object(candidate_map) = candidate {
-                // Check each element of the (expected) map is contained in the
-                // candidate vector.
-                for exp_key in expected_map.keys() {
-                    if !candidate_map.contains_key(exp_key) {
-                        return false;
+        serde_json::Value::Object(cand_map) => {
+            match expected {
+                serde_json::Value::Object(exp_map) => {
+                    // Check each element of the expected map is contained in the candidate map.
+                    for exp_key in exp_map.keys() {
+                        if !cand_map.contains_key(exp_key) {
+                            return false;
+                        }
+                        let exp_value = exp_map.get(exp_key).unwrap();
+                        let cand_value = cand_map.get(exp_key).unwrap();
+                        if !json_contains(cand_value, exp_value) {
+                            return false;
+                        }
                     }
-                    let expected_value = expected_map.get(exp_key).unwrap();
-                    let candidate_value = candidate_map.get(exp_key).unwrap();
-                    if !json_contains(candidate_value, expected_value) {
-                        return false;
-                    }
+                    true
                 }
-                return true;
-            } else {
-                return false;
+                _ => false,
             }
         }
     }
@@ -228,6 +225,7 @@ mod tests {
 
     #[test]
     fn test_json_contains() {
+        // Test with a JSON map.
         let cand_str = r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs","operations":{"create":[{"suffixData":{"deltaHash":"EiBkAX9y-Ts_siMzTzkfAzPKPIIbB033PlF0RlvF97ydJg","recoveryCommitment":"EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w"}},{"suffixData":{"deltaHash":"EiBBkv0j587BDSTjJtIv2DJFOOHk662n9Uoh1vtBaY3JKA","recoveryCommitment":"EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg"}},{"suffixData":{"deltaHash":"EiDTaFAO_ae63J4LMApAM-9VAo8ng58TTp2K-2r1nek6lQ","recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA"}}]}}"#;
         let candidate: serde_json::Value = serde_json::from_str(cand_str).unwrap();
 
@@ -236,19 +234,27 @@ mod tests {
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));
 
-        // Test with different key.
+        // Different key.
         let exp_str =
             r#"{"provisionalIndeXFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(!json_contains(&candidate, &expected));
 
-        // Test with different value.
+        // Different value.
         let exp_str =
             r#"{"provisionalIndexFileUri":"PmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(!json_contains(&candidate, &expected));
 
-        // Test with JSON arrays.
+        // Test with a JSON array.
+        let array_vec = vec!["x".to_string(), "y".to_string(), "z".to_string()];
+        let candidate = serde_json::json!(array_vec);
+        assert!(json_contains(&candidate, &serde_json::json!("x")));
+        assert!(json_contains(&candidate, &serde_json::json!("y")));
+        assert!(json_contains(&candidate, &serde_json::json!("z")));
+        assert!(!json_contains(&candidate, &serde_json::json!("X")));
+
+        // Test with a JSON map containing a JSON array.
         let candidate: serde_json::Value =
             serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
 

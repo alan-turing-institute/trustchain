@@ -19,6 +19,8 @@
 // 9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
 // and is the transaction with index 3 in the block with hash:
 // 000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+// The transaction Merkle root for that block is:
+// 7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69
 //
 // The IPFS CID (for the coreIndexFile) is:
 // QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97

@@ -445,6 +445,69 @@ where
     // }
 }
 
+// TODO: check where these config parameters (username & password) are configured
+// in ION and use the same config file.
+/// Gets a Bitcoin RPC client instance.
+pub fn rpc_client() -> bitcoincore_rpc::Client {
+    bitcoincore_rpc::Client::new(
+        BITCOIN_CONNECTION_STRING,
+        bitcoincore_rpc::Auth::UserPass(
+            BITCOIN_RPC_USERNAME.to_string(),
+            BITCOIN_RPC_PASSWORD.to_string(),
+        ),
+    )
+    .unwrap()
+    // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
+}
+
+/// Gets the Bitcoin transaction at the given location via an RPC client.
+pub fn transaction(
+    block_hash: &BlockHash,
+    tx_index: u32,
+    rpc_client: Option<bitcoincore_rpc::Client>,
+) -> Result<Transaction, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    let client = match rpc_client {
+        Some(x) => x,
+        None => crate::verifier::rpc_client(),
+    };
+    match client.get_block(&block_hash) {
+        Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
+        Err(e) => {
+            eprintln!("Error getting Bitcoin block via RPC: {}", e);
+            Err(Box::new(e))
+        }
+    }
+}
+
+/// Gets a Merkle proof for the given transaction.
+pub fn merkle_proof(
+    tx: Transaction,
+    block_hash: &BlockHash,
+    rpc_client: Option<bitcoincore_rpc::Client>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    let client = match rpc_client {
+        Some(x) => x,
+        None => crate::verifier::rpc_client(),
+    };
+    match client.get_tx_out_proof(&[tx.txid()], Some(&block_hash)) {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            eprintln!("Error getting Merkle proof via RPC: {}", e);
+            Err(Box::new(e))
+        }
+    }
+    // OLD (we no longer deserialise here):
+    // match bitcoin::consensus::deserialize(&tx_out_proof) {
+    //     Ok(x) => Ok(x),
+    //     Err(e) => {
+    //         eprintln!("Error deserialising Merklel proof: {}", e);
+    //         Err(Box::new(e))
+    //     }
+    // }
+}
+
 /// Converts DID content from a chunk file into a vector of Delta objects.
 pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierError> {
     if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
@@ -737,25 +800,26 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin RPC"]
+    #[ignore = "Integration test requires Bitcoin"]
     fn test_transaction() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        // let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
+        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
         let block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
                 .unwrap();
-        let tx_locator = (block_hash, 3); // block hash & transaction index
+        let tx_index = 3;
+        let result = transaction(&block_hash, tx_index, None);
 
-        // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
-        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
-        let txid_str = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        let txid_hash = bitcoin::hashes::sha256d::Hash::from_str(txid_str).unwrap();
-        let expected = Txid::from_hash(txid_hash);
-        let result = target.transaction(tx_locator);
         assert!(result.is_ok());
-        assert_eq!(expected, result.unwrap().txid());
+        let tx = result.unwrap();
+
+        // Expected transaction ID:
+        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_eq!(tx.txid().to_string(), expected);
+
+        // Expect a different transaction ID to fail.
+        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_ne!(tx.txid().to_string(), not_expected);
     }
 
     #[test]
@@ -800,23 +864,24 @@ mod tests {
         assert_eq!(expected, actual);
     }
 
-    #[test]
-    #[ignore = "Integration test requires IPFS"]
-    fn test_query_ipfs() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+    // Moved to utils.rs:
+    // #[test]
+    // #[ignore = "Integration test requires IPFS"]
+    // fn test_query_ipfs() {
+    //     let resolver = Resolver::new(get_http_resolver());
+    //     let target = IONVerifier::new(resolver);
 
-        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+    //     let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
-        let actual = match target.query_ipfs(cid) {
-            Ok(x) => x,
-            Err(e) => panic!(),
-        };
+    //     let actual = match target.query_ipfs(cid) {
+    //         Ok(x) => x,
+    //         Err(e) => panic!(),
+    //     };
 
-        // The CID is the address of a core index file, so the JSON result
-        // contains the key "provisionalIndexFileUri".
-        assert!(actual.get(PROVISIONAL_INDEX_FILE_URI_KEY).is_some());
-    }
+    //     // The CID is the address of a core index file, so the JSON result
+    //     // contains the key "provisionalIndexFileUri".
+    //     assert!(actual.get(PROVISIONAL_INDEX_FILE_URI_KEY).is_some());
+    // }
 
     #[test]
     fn test_ion_file_type() {

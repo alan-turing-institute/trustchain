@@ -69,12 +69,12 @@ pub trait Commitment {
     }
 }
 
-pub trait IteratedCommitment {
+pub trait IteratedCommitment: Commitment {
     /// Gets the sequence of commitments.
     fn commitments(&self) -> Vec<Box<dyn Commitment>>;
 
-    /// Verifies that the seqence of commitments is valid.
-    fn verify_sequence(&self) -> Result<(), CommitmentError> {
+    /// Checks that the seqence of commitments is valid.
+    fn validate_sequence(&self) -> Result<(), CommitmentError> {
         // Check that the  target in the n'th commitment is identical to
         // the expected data in the (n+1)'th commitment.
         let mut target = Vec::<u8>::new();
@@ -92,15 +92,16 @@ pub trait IteratedCommitment {
                 eprintln!("Unhandled serde_json::Value variant. Expected String.");
                 return Err(CommitmentError::InvalidIteratedCommitment);
             }
-            let target = commitment.target();
+            target = commitment.target().into();
         }
         Ok(())
     }
 
     /// Runs the verification process over the sequence of commitments.
     fn verify(&self) -> Result<(), CommitmentError> {
+        let _ = self.validate_sequence();
         for commitment in self.commitments() {
-            commitment.verify();
+            commitment.verify()?;
         }
         Ok(())
     }
