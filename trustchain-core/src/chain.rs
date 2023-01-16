@@ -110,7 +110,7 @@ pub struct DIDChain {
 fn truncate(s: &str, max_chars: usize) -> String {
     match s.char_indices().nth(max_chars) {
         None => s.to_string(),
-        Some((idx, _)) => (s[..idx - 3].to_string() + "..."),
+        Some((idx, _)) => s[..idx - 3].to_string() + "...",
     }
 }
 
@@ -408,7 +408,7 @@ impl Chain for DIDChain {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::data::{
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
@@ -466,7 +466,7 @@ mod tests {
     }
 
     // Helper function returns a chain of three DIDs.
-    fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
+    pub fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
         let mut chain = DIDChain::empty();
 
         let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;

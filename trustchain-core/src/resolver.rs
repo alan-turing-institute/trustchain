@@ -106,7 +106,7 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // TODO: condition on ResolutionInputMetadata to optionally not perform transform.
+        // Consider using ResolutionInputMetadata to optionally not perform transform.
         // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
     }
@@ -189,17 +189,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID as a `Result` type.
-    pub fn resolve_as_result(
-        &self,
-        did: &str,
-    ) -> Result<
-        (
-            ResolutionMetadata,
-            Option<Document>,
-            Option<DocumentMetadata>,
-        ),
-        ResolverError,
-    > {
+    pub fn resolve_as_result(&self, did: &str) -> ResolverResult {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
             let (did_res_meta, did_doc, did_doc_meta) =

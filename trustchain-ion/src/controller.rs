@@ -1,6 +1,5 @@
-use crate::TrustchainIONError;
-// use crate::subject::IONSubject;
 use crate::attestor::IONAttestor;
+use crate::TrustchainIONError;
 use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidetree};
 use did_ion::ION;
 use serde_json::{Map, Value};
@@ -12,6 +11,7 @@ use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::subject::Subject;
+use trustchain_core::utils::generate_key;
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -102,7 +102,7 @@ impl Controller for IONController {
     }
 
     fn generate_next_update_key(&self) -> Result<(), KeyManagerError> {
-        let key = self.generate_key();
+        let key = generate_key();
         self.save_key(
             self.controlled_did_suffix(),
             KeyType::NextUpdateKey,
@@ -126,13 +126,13 @@ impl IONController {
     /// Checks whether there is a proof field in document metadata.
     pub fn is_proof_in_doc_meta(&self, doc_meta: &DocumentMetadata) -> bool {
         if let Some(property_set) = doc_meta.property_set.as_ref() {
-            property_set.contains_key(&"proof".to_string())
+            property_set.contains_key("proof")
         } else {
             false
         }
     }
 
-    /// Function to return a patch for adding a proof service.
+    /// Returns a patch for adding a proof service.
     pub fn add_proof_service(&self, did: &str, proof: &str) -> DIDStatePatch {
         let mut obj: Map<String, Value> = Map::new();
         obj.insert("controller".to_string(), Value::from(did));
@@ -147,7 +147,7 @@ impl IONController {
         }
     }
 
-    /// Function to confirm whether a given key is the `commitment` in document metadata
+    /// Confirms whether a given key is the `commitment` in document metadata
     pub fn is_commitment_key(
         &self,
         doc_meta: &DocumentMetadata,
@@ -158,12 +158,14 @@ impl IONController {
             if let Ok(actual_commitment) = self.extract_commitment(doc_meta, key_type) {
                 actual_commitment == expected_commitment
             } else {
-                // TODO: handle error
-                panic!()
+                eprintln!("Unable to extract a commitment from document metadata.");
+                // Return false in this case as the key can't be a commitment
+                false
             }
         } else {
-            // TODO: handle error
-            panic!()
+            eprintln!("Unable to convert key to commitment.");
+            // Return false as no comparison possible
+            false
         }
     }
 
@@ -174,7 +176,7 @@ impl IONController {
         key_type: KeyType,
     ) -> Result<String, TrustchainIONError> {
         if let Some(property_set) = doc_meta.property_set.as_ref() {
-            if let Some(Metadata::Map(method)) = property_set.get(&"method".to_string()) {
+            if let Some(Metadata::Map(method)) = property_set.get("method") {
                 let k = match key_type {
                     KeyType::UpdateKey => "updateCommitment",
                     KeyType::NextUpdateKey => "updateCommitment",
@@ -196,10 +198,6 @@ impl IONController {
 
     /// Converts a given JWK into a commitment.
     fn key_to_commitment(&self, next_update_key: &JWK) -> Result<String, TrustchainIONError> {
-        // https://docs.rs/did-ion/latest/src/did_ion/sidetree.rs.html#L214
-        // 1. Convert next_update_key to public key (pk)
-        // 2. Get commitment value from the pk
-        // 3. Return value
         match &PublicKeyJwk::try_from(next_update_key.to_public()) {
             Ok(pk_jwk) => match ION::commitment_scheme(pk_jwk) {
                 Ok(commitment) => Ok(commitment),
@@ -357,13 +355,12 @@ mod tests {
 
     #[test]
     fn test_add_proof_service() -> Result<(), Box<dyn std::error::Error>> {
-        // TODO: consider whether more checks than just successful call required
         init();
         let did = "did:example:did_add_proof_service";
         let controlled_did = "did:example:controlled_add_proof_service";
         let controller = test_controller(did, controlled_did)?;
-        let proof = "test_proof_information".to_string();
-        let _ = controller.add_proof_service(controlled_did, &proof);
+        let proof = "test_proof_information";
+        let _ = controller.add_proof_service(controlled_did, proof);
         Ok(())
     }
 }

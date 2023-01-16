@@ -3,7 +3,7 @@ use ssi::ldp::now_ms;
 use std::convert::TryFrom;
 use trustchain_core::attestor::CredentialAttestor;
 use trustchain_ion::attestor::IONAttestor;
-use trustchain_ion::test_resolver;
+use trustchain_ion::get_ion_resolver;
 
 use ssi::vc::{Credential, LinkedDataProofOptions, VCDateTime};
 
@@ -47,7 +47,7 @@ fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
     let did = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
 
     // Make resolver
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     // 2. Load Attestor
     let attestor = IONAttestor::new(did);
