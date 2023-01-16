@@ -18,24 +18,14 @@ pub fn init() {
     });
 }
 
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_PREFIX: &[u8] = &[0x12];
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_SIZE: &[u8] = &[0x20];
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209
-/// Combination of [hash_protocol] and [hash_algorithm]
-///
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209).
 /// Returns multihash prefix and hash.
 ///
 /// Default implementation: SHA-256 (`sha2-256`)
-///
-/// [hash_protocol] and [hash_algorithm] must correspond, and their default implementations
-/// call this function ([hash_protocol_algorithm]). Implementers are therefore encouraged to
-/// overwrite this function ([hash_protocol_algorithm]) rather than those ([hash_protocol] and
-/// [hash_algorithm]).
-///
-/// [hash_protocol]: Self::hash_protocol
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
 fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -70,18 +60,13 @@ pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_js
     serde_jcs::to_string(value)
 }
 
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 /// [`HASH_PROTOCOL`](https://identity.foundation/sidetree/spec/v1.0.0/#hash-protocol)
-///
-/// This should be implemented using [hash_algorithm].
 ///
 /// Default implementation calls [hash_protocol_algorithm] and returns the concatenation of the
 /// prefix and hash.
 ///
-/// This function must correspond with [hash_algorithm]. To ensure that correspondence,
-/// implementers may want to override [hash_protocol_algorithm] instead of this function.
-///
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
+/// [hash_protocol_algorithm]: hash_protocol_algorithm
 fn hash_protocol(data: &[u8]) -> Vec<u8> {
     let (prefix, hash) = hash_protocol_algorithm(data);
     [prefix, hash].concat()
@@ -117,7 +102,7 @@ pub fn set_panic_hook() {
     // we will get better error messages if our code ever panics.
     //
     // For more details see
-    // https://github.com/rustwasm/console_error_panic_hook#readme
+    // <https://github.com/rustwasm/console_error_panic_hook#readme>
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }
