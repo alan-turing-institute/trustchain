@@ -8,7 +8,7 @@ use crate::{
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
-use bitcoin::{MerkleBlock, Txid};
+use bitcoin::{BlockHeader, MerkleBlock, Txid};
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
@@ -498,14 +498,24 @@ pub fn merkle_proof(
             Err(Box::new(e))
         }
     }
-    // OLD (we no longer deserialise here):
-    // match bitcoin::consensus::deserialize(&tx_out_proof) {
-    //     Ok(x) => Ok(x),
-    //     Err(e) => {
-    //         eprintln!("Error deserialising Merklel proof: {}", e);
-    //         Err(Box::new(e))
-    //     }
-    // }
+}
+
+pub fn block_header(
+    block_hash: &BlockHash,
+    rpc_client: Option<bitcoincore_rpc::Client>,
+) -> Result<BlockHeader, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    let client = match rpc_client {
+        Some(x) => x,
+        None => crate::verifier::rpc_client(),
+    };
+    match client.get_block_header(&block_hash) {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            eprintln!("Error getting block header via RPC: {}", e);
+            Err(Box::new(e))
+        }
+    }
 }
 
 /// Converts DID content from a chunk file into a vector of Delta objects.

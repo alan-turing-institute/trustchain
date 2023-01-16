@@ -1,5 +1,6 @@
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::util::psbt::serialize::Serialize;
+use bitcoin::BlockHeader;
 use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
 use flate2::read::GzDecoder;
@@ -252,7 +253,71 @@ impl Commitment for MerkleRootCommitment {
     }
 }
 
-// // TODO.
+/// A Commitment whose target is the PoW hash of a Bitcoin block.
+pub struct BlockHashCommitment {
+    target: String,
+    candidate_data: Vec<u8>,
+    expected_data: serde_json::Value,
+}
+
+impl BlockHashCommitment {
+    pub fn new(target: String, candidate_data: Vec<u8>, expected_data: serde_json::Value) -> Self {
+        Self {
+            target,
+            candidate_data,
+            expected_data,
+        }
+    }
+}
+
+impl Commitment for BlockHashCommitment {
+    fn target(&self) -> &str {
+        &self.target
+    }
+
+    fn hasher(&self) -> Box<dyn Fn(&[u8]) -> Result<String, CommitmentError>> {
+        // Candidate data is a block header containing the Merkle root of the transaction tree.
+        Box::new(move |x| {
+            let block_header: BlockHeader = match bitcoin::consensus::deserialize(&x) {
+                Ok(bh) => bh,
+                Err(e) => {
+                    eprintln!("Failed to deserialise BlockHeader: {:?}", e);
+                    return Err(CommitmentError::FailedToComputeHash);
+                }
+            };
+            // TODO: Here we are relying on the rust-bitcoin crate to compute the block hash.
+            // Ideally we should compute the double SHA256 hash of the block header (bytes) directly.
+            // This would also avoid the deserialisation.
+            Ok(block_header.block_hash().to_string())
+        })
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        &self.candidate_data
+    }
+
+    /// Deserialises the candidate data into a Block header (as JSON).
+    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
+        let bytes = self.candidate_data();
+        let block_header: BlockHeader = match bitcoin::consensus::deserialize(&bytes) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Failed to deserialise BlockHeader: {:?}", e);
+                return Err(CommitmentError::FailedToComputeHash);
+            }
+        };
+
+        // Convert to a JSON value.
+        Ok(serde_json::json!(block_header))
+    }
+
+    fn expected_data(&self) -> &serde_json::Value {
+        &self.expected_data
+    }
+}
+
+// // TODO: implement an IteratedCommitment with a constructor method from_bundle()
+//
 // /// Represents a commitment to a DID by a Bitcoin block hash.
 // pub struct DIDCommitment {
 
@@ -271,8 +336,8 @@ mod tests {
     use super::*;
     use crate::{
         utils::query_ipfs,
-        verifier::{merkle_proof, transaction},
-        CID_KEY, TXID_KEY,
+        verifier::{block_header, merkle_proof, transaction},
+        CID_KEY, MERKLE_ROOT_KEY, TXID_KEY,
     };
 
     #[test]
@@ -325,6 +390,7 @@ mod tests {
         let cid_str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid_str);
         let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+
         let candidate_data = Serialize::serialize(&tx);
         let commitment = TxCommitment::new(
             txid.to_string(),
@@ -343,17 +409,12 @@ mod tests {
         assert!(commitment.verify().is_err());
 
         // We do *not* expect to find a different IPFS CID.
-        let expected_str = format!(
-            r#"{{"{}":"PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97"}}"#,
-            CID_KEY
-        );
-        let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+        let bad_cid_str = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
+        let bad_expected_data: serde_json::Value = serde_json::from_str(&bad_expected_str).unwrap();
         let candidate_data = Serialize::serialize(&tx);
-        let commitment = TxCommitment::new(
-            txid.to_string(),
-            candidate_data.clone(),
-            expected_data.clone(),
-        );
+        let commitment =
+            TxCommitment::new(txid.to_string(), candidate_data.clone(), bad_expected_data);
 
         assert!(commitment.verify().is_err());
     }
@@ -399,6 +460,51 @@ mod tests {
         let bad_txid_str = "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         let bad_expected_data = serde_json::json!(bad_txid_str);
         let commitment = MerkleRootCommitment::new(
+            target.to_string(),
+            candidate_data.clone(),
+            bad_expected_data.clone(),
+        );
+        assert!(commitment.verify().is_err());
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin Core"]
+    fn test_block_hash_commitment() {
+        // The commitment target is the block hash.
+        let target = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        let block_hash = BlockHash::from_str(target).unwrap();
+
+        // We expect to find the Merkle root in the block header.
+        // For the testnet block at height 2377445, the Merkle root is:
+        let merkle_root_str = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+        let expected_str = format!(r#"{{"{}":"{}"}}"#, MERKLE_ROOT_KEY, merkle_root_str);
+        let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+
+        // The candidate data is the serialized block header.
+        let block_header = block_header(&block_hash, None).unwrap();
+        let candidate_data = bitcoin::consensus::serialize(&block_header);
+
+        let commitment = BlockHashCommitment::new(
+            target.to_string(),
+            candidate_data.clone(),
+            expected_data.clone(),
+        );
+        assert!(commitment.verify().is_ok());
+
+        // We do *not* expect a different target to succeed.
+        let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        let commitment = BlockHashCommitment::new(
+            bad_target.to_string(),
+            candidate_data.clone(),
+            expected_data.clone(),
+        );
+        assert!(commitment.verify().is_err());
+
+        // We do *not* expect to find a different Merkle root.
+        let bad_merkle_root_str =
+            "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+        let bad_expected_data = serde_json::json!(bad_merkle_root_str);
+        let commitment = BlockHashCommitment::new(
             target.to_string(),
             candidate_data.clone(),
             bad_expected_data.clone(),
