@@ -8,17 +8,7 @@ use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use std::io::Read;
 use trustchain_core::utils::{generate_key, get_operations_path};
-
-/// Returns a deserialized document state from a reader.
-pub fn read_doc_state_from<T>(reader: T) -> Result<DocumentState, Box<dyn std::error::Error>>
-where
-    T: Read,
-{
-    let doc_state: DocumentState = serde_json::from_reader(reader)?;
-    Ok(doc_state)
-}
 
 /// Makes a new DID subject to be controlled with correspondong create operation written to file.
 pub fn create_operation(
@@ -172,7 +162,7 @@ mod test {
         create_operation(None, false)?;
 
         // 2. Run create with a document state passed
-        let doc_state = read_doc_state_from(TEST_DOC_STATE.as_bytes())?;
+        let doc_state: DocumentState = serde_json::from_reader(TEST_DOC_STATE.as_bytes())?;
         create_operation(Some(doc_state), false)?;
 
         // Try to read outputted create operations and  check they deserialize
