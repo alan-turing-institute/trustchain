@@ -1,10 +1,4 @@
-use core::panic;
-
-use ssi::did_resolve::Metadata;
-use ssi::one_or_many::OneOrMany;
-
 use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 // Type aliases
