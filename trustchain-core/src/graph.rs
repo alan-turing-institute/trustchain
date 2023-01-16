@@ -21,7 +21,7 @@ pub struct TrustchainGraph {
 }
 
 /// Read chains from a vector and return a DiGraph.
-/// See: https://docs.rs/petgraph/latest/petgraph/graph/struct.Graph.html
+/// See: <https://docs.rs/petgraph/latest/petgraph/graph/struct.Graph.html>
 fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
     let mut nodes = HashMap::<String, petgraph::prelude::NodeIndex>::new();
     let mut graph = DiGraph::<String, String>::new();
