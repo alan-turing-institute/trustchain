@@ -8,6 +8,7 @@ use ipfs_api_backend_actix::IpfsClient;
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
+use std::error::Error;
 
 use crate::{BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME};
 
@@ -145,6 +146,17 @@ pub async fn query_ipfs(
             return Err(Box::new(e));
         }
     }
+}
+
+pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
+    let mut bytes = hex::decode(hex)?;
+    bytes.reverse();
+    Ok(hex::encode(bytes))
+}
+
+pub fn int_to_little_endian_hex(int: &u32) -> String {
+    let hex = format!("{:x}", int);
+    reverse_endianness(&hex).unwrap()
 }
 
 #[cfg(test)]

@@ -30,7 +30,8 @@ pub trait Commitment {
     fn hasher(&self) -> Box<dyn Fn(&[u8]) -> Result<String, CommitmentError>>;
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
-    // Decodes the candidate data.
+    // TODO: change the return type here to Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>>
+    /// Decodes the candidate data.
     fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError>;
     /// Gets the expected data.
     fn expected_data(&self) -> &serde_json::Value;

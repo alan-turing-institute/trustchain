@@ -1,13 +1,20 @@
 use bitcoin::util::psbt::serialize::Deserialize;
-use bitcoin::util::psbt::serialize::Serialize;
 use bitcoin::BlockHeader;
 use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
 use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
+use std::collections::HashMap;
 use std::io::Read;
 use trustchain_core::commitment::{Commitment, CommitmentError};
 
+use crate::utils::reverse_endianness;
+use crate::BITS_KEY;
+use crate::HASH_PREV_BLOCK_KEY;
+use crate::MERKLE_ROOT_KEY;
+use crate::NONCE_KEY;
+use crate::TIMESTAMP_KEY;
+use crate::VERSION_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
 /// A Commitment whose target is an IPFS content identifier (CID).
@@ -276,19 +283,15 @@ impl Commitment for BlockHashCommitment {
     }
 
     fn hasher(&self) -> Box<dyn Fn(&[u8]) -> Result<String, CommitmentError>> {
-        // Candidate data is a block header containing the Merkle root of the transaction tree.
+        // Candidate data the block header bytes.
         Box::new(move |x| {
-            let block_header: BlockHeader = match bitcoin::consensus::deserialize(&x) {
-                Ok(bh) => bh,
-                Err(e) => {
-                    eprintln!("Failed to deserialise BlockHeader: {:?}", e);
-                    return Err(CommitmentError::FailedToComputeHash);
-                }
-            };
-            // TODO: Here we are relying on the rust-bitcoin crate to compute the block hash.
-            // Ideally we should compute the double SHA256 hash of the block header (bytes) directly.
-            // This would also avoid the deserialisation.
-            Ok(block_header.block_hash().to_string())
+            // Bitcoin block hash is a double SHA256 hash of the block header.
+            // We use a generic SHA256 library to avoid trust in rust-bitcoin.
+            let hash1_hex = sha256::digest(&*x);
+            let hash1_bytes = hex::decode(hash1_hex).unwrap();
+            let hash2_hex = sha256::digest(&*hash1_bytes);
+            // For leading (not trailing) zeros, convert the hex to big-endian.
+            Ok(reverse_endianness(&hash2_hex).unwrap())
         })
     }
 
@@ -298,17 +301,31 @@ impl Commitment for BlockHashCommitment {
 
     /// Deserialises the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
-        let bytes = self.candidate_data();
-        let block_header: BlockHeader = match bitcoin::consensus::deserialize(&bytes) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to deserialise BlockHeader: {:?}", e);
-                return Err(CommitmentError::FailedToComputeHash);
-            }
+        // Candidate data the block header bytes (containing the Merkle root of the transaction tree).
+        // Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
+        let header_bytes = self.candidate_data();
+        if header_bytes.len() != 80 {
+            eprintln!("Invalid candidate data. Bitcoin block header must be 80 bytes.");
+            return Err(CommitmentError::DataDecodingError);
         };
+        // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
+        let version = reverse_endianness(&hex::encode(&header_bytes[0..4])).unwrap();
+        let hash_prev_block = reverse_endianness(&hex::encode(&header_bytes[4..36])).unwrap();
+        let merkle_root = reverse_endianness(&hex::encode(&header_bytes[36..68])).unwrap();
+        let timestamp = reverse_endianness(&hex::encode(&header_bytes[68..72])).unwrap();
+        let bits = reverse_endianness(&hex::encode(&header_bytes[72..76])).unwrap();
+        let nonce = reverse_endianness(&hex::encode(&header_bytes[76..])).unwrap();
 
-        // Convert to a JSON value.
-        Ok(serde_json::json!(block_header))
+        // Convert to JSON.
+        let mut map = HashMap::new();
+        map.insert(VERSION_KEY, version);
+        map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
+        map.insert(MERKLE_ROOT_KEY, merkle_root);
+        map.insert(TIMESTAMP_KEY, timestamp);
+        map.insert(BITS_KEY, bits);
+        map.insert(NONCE_KEY, nonce);
+
+        Ok(serde_json::json!(map))
     }
 
     fn expected_data(&self) -> &serde_json::Value {
@@ -331,13 +348,14 @@ mod tests {
 
     use std::str::FromStr;
 
-    use bitcoin::{consensus::serialize, BlockHash};
+    use bitcoin::util::psbt::serialize::Serialize;
+    use bitcoin::BlockHash;
 
     use super::*;
     use crate::{
         utils::query_ipfs,
         verifier::{block_header, merkle_proof, transaction},
-        CID_KEY, MERKLE_ROOT_KEY, TXID_KEY,
+        CID_KEY, MERKLE_ROOT_KEY,
     };
 
     #[test]

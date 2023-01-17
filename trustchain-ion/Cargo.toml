@@ -65,6 +65,8 @@ ipfs-hasher = "0.13.0"
 flate2 = "1.0.24"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"
+sha256 = "1.1.1"
+hex = "0.4.3"
 
 [target.'cfg(target_os = "android")'.dependencies.reqwest]
 version = "0.11"

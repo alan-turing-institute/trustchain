@@ -57,6 +57,12 @@ pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
 // Bitcoin (TESTNET PORT: 18332!)
 pub const TXID_KEY: &str = "txid";
 pub const MERKLE_ROOT_KEY: &str = "merkle_root";
+pub const VERSION_KEY: &str = "version";
+pub const HASH_PREV_BLOCK_KEY: &str = "hash_prev_block";
+pub const TIMESTAMP_KEY: &str = "timestamp";
+pub const BITS_KEY: &str = "bits";
+pub const NONCE_KEY: &str = "nonce";
+
 pub const BITCOIN_CONNECTION_STRING: &str = "http://localhost:18332";
 pub const BITCOIN_RPC_USERNAME: &str = "admin";
 pub const BITCOIN_RPC_PASSWORD: &str = "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow=";
