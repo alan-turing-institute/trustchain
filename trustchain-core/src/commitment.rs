@@ -30,9 +30,10 @@ pub trait Commitment {
     fn hasher(&self) -> Box<dyn Fn(&[u8]) -> Result<String, CommitmentError>>;
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
-    // TODO: change the return type here to Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>>
-    /// Decodes the candidate data.
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError>;
+    /// Candidate data decoder (function).
+    fn decode_candidate_data(
+        &self,
+    ) -> Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>>;
     /// Gets the expected data.
     fn expected_data(&self) -> &serde_json::Value;
 
@@ -49,13 +50,15 @@ pub trait Commitment {
 
     /// Verifies that the expected data is found in the candidate data.
     fn verify_content(&self) -> Result<(), CommitmentError> {
-        let candidate_data = match self.decode_candidate_data() {
+        // Get the decoded candidate data.
+        let candidate_data = match self.decode_candidate_data()(self.candidate_data()) {
             Ok(x) => x,
             Err(e) => {
                 eprintln!("Failed to verify content. Data decoding error: {}", e);
                 return Err(CommitmentError::DataDecodingError);
             }
         };
+        // Verify the content.
         if !json_contains(&candidate_data, &self.expected_data()) {
             return Err(CommitmentError::FailedContentVerification);
         }

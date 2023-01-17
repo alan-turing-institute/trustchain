@@ -48,24 +48,28 @@ impl Commitment for IpfsCommitment {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
-        let mut decoder = GzDecoder::new(self.candidate_data());
-        let mut ipfs_content_str = String::new();
-        match decoder.read_to_string(&mut ipfs_content_str) {
-            Ok(_) => {
-                match serde_json::from_str(&ipfs_content_str) {
-                    Ok(value) => return Ok(value),
-                    Err(e) => {
-                        eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                        return Err(CommitmentError::DataDecodingError);
-                    }
-                };
+    fn decode_candidate_data(
+        &self,
+    ) -> Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>> {
+        Box::new(move |x| {
+            let mut decoder = GzDecoder::new(x);
+            let mut ipfs_content_str = String::new();
+            match decoder.read_to_string(&mut ipfs_content_str) {
+                Ok(_) => {
+                    match serde_json::from_str(&ipfs_content_str) {
+                        Ok(value) => return Ok(value),
+                        Err(e) => {
+                            eprintln!("Error deserialising IPFS content to JSON: {}", e);
+                            return Err(CommitmentError::DataDecodingError);
+                        }
+                    };
+                }
+                Err(e) => {
+                    eprintln!("Error decoding IPFS content: {}", e);
+                    return Err(CommitmentError::DataDecodingError);
+                }
             }
-            Err(e) => {
-                eprintln!("Error decoding IPFS content: {}", e);
-                return Err(CommitmentError::DataDecodingError);
-            }
-        }
+        })
     }
 
     fn expected_data(&self) -> &serde_json::Value {
@@ -115,66 +119,69 @@ impl Commitment for TxCommitment {
 
     /// Deserialises the candidate data into a Bitcoin transaction, then
     /// extracts and returns the IPFS content identifier in the OP_RETURN data.
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
-        // Deserialise the transaction from the candidate data.
-        let bytes = self.candidate_data();
-        let tx: Transaction = match Deserialize::deserialize(bytes) {
-            Ok(tx) => tx,
-            Err(e) => {
-                eprintln!("Failed to deserialise transaction: {}", e);
-                return Err(CommitmentError::FailedToComputeHash);
-            }
-        };
-        // Extract the OP_RETURN data from the transaction.
-        let tx_out_vec = &tx.output;
-        // Get the output scripts that contain an OP_RETURN.
-        let op_return_scripts: Vec<&Script> = tx_out_vec
-            .iter()
-            .filter_map(|x| match x.script_pubkey.is_op_return() {
-                true => Some(&x.script_pubkey),
-                false => None,
-            })
-            .collect();
+    fn decode_candidate_data(
+        &self,
+    ) -> Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>> {
+        Box::new(move |x| {
+            // Deserialise the transaction from the candidate data.
+            let tx: Transaction = match Deserialize::deserialize(x) {
+                Ok(tx) => tx,
+                Err(e) => {
+                    eprintln!("Failed to deserialise transaction: {}", e);
+                    return Err(CommitmentError::FailedToComputeHash);
+                }
+            };
+            // Extract the OP_RETURN data from the transaction.
+            let tx_out_vec = &tx.output;
+            // Get the output scripts that contain an OP_RETURN.
+            let op_return_scripts: Vec<&Script> = tx_out_vec
+                .iter()
+                .filter_map(|x| match x.script_pubkey.is_op_return() {
+                    true => Some(&x.script_pubkey),
+                    false => None,
+                })
+                .collect();
 
-        // Iterate over the OP_RETURN scripts. Extract any that contain the
-        // substring 'ion:' and raise an error unless precisely one such script exists.
-        let mut op_return_data = "";
-        let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
-        for script in &op_return_scripts {
-            match std::str::from_utf8(&script.as_ref()) {
-                Ok(op_return_str) => match op_return_str.find(&ion_substr) {
-                    Some(i) => {
-                        if op_return_data.len() == 0 {
-                            op_return_data = &op_return_str[i..] // Trim any leading characters.
-                        } else {
-                            // Raise an error if multiple ION OP_RETURN scripts are found.
-                            eprintln!("Error: multiple ION OP_RETURN scripts found.");
-                            return Err(CommitmentError::DataDecodingError);
+            // Iterate over the OP_RETURN scripts. Extract any that contain the
+            // substring 'ion:' and raise an error unless precisely one such script exists.
+            let mut op_return_data = "";
+            let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
+            for script in &op_return_scripts {
+                match std::str::from_utf8(&script.as_ref()) {
+                    Ok(op_return_str) => match op_return_str.find(&ion_substr) {
+                        Some(i) => {
+                            if op_return_data.len() == 0 {
+                                op_return_data = &op_return_str[i..] // Trim any leading characters.
+                            } else {
+                                // Raise an error if multiple ION OP_RETURN scripts are found.
+                                eprintln!("Error: multiple ION OP_RETURN scripts found.");
+                                return Err(CommitmentError::DataDecodingError);
+                            }
                         }
-                    }
-                    // Ignore the script if the 'ion:' substring is not found.
-                    None => continue,
-                },
-                // Ignore the script if it cannot be converted to UTF-8.
-                Err(_) => continue,
+                        // Ignore the script if the 'ion:' substring is not found.
+                        None => continue,
+                    },
+                    // Ignore the script if it cannot be converted to UTF-8.
+                    Err(_) => continue,
+                }
             }
-        }
-        if op_return_data.len() == 0 {
-            eprintln!("Error: no ION OP_RETURN script found.");
-            return Err(CommitmentError::DataDecodingError);
-        }
-        // Extract the IPFS content identifier from the ION OP_RETURN data.
-        let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
-        let (_, cid) = operation_count_plus_cid
-            .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
-            .unwrap();
-        let cid_json_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid);
-        if let Ok(value) = serde_json::from_str(&cid_json_str) {
-            Ok(value)
-        } else {
-            eprintln!("Error: failed to construct candidate data JSON from IPFS CID.");
-            Err(CommitmentError::DataDecodingError)
-        }
+            if op_return_data.len() == 0 {
+                eprintln!("Error: no ION OP_RETURN script found.");
+                return Err(CommitmentError::DataDecodingError);
+            }
+            // Extract the IPFS content identifier from the ION OP_RETURN data.
+            let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
+            let (_, cid) = operation_count_plus_cid
+                .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
+                .unwrap();
+            let cid_json_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid);
+            if let Ok(value) = serde_json::from_str(&cid_json_str) {
+                Ok(value)
+            } else {
+                eprintln!("Error: failed to construct candidate data JSON from IPFS CID.");
+                Err(CommitmentError::DataDecodingError)
+            }
+        })
     }
 
     fn expected_data(&self) -> &serde_json::Value {
@@ -233,26 +240,28 @@ impl Commitment for MerkleRootCommitment {
     }
 
     /// Deserialises the candidate data into a Merkle proof.
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
-        let bytes = self.candidate_data();
-        let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(&bytes) {
-            Ok(mb) => mb,
-            Err(e) => {
-                eprintln!("Failed to deserialise MerkleBlock: {:?}", e);
-                return Err(CommitmentError::DataDecodingError);
-            }
-        };
+    fn decode_candidate_data(
+        &self,
+    ) -> Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>> {
+        Box::new(move |x| {
+            let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
+                Ok(mb) => mb,
+                Err(e) => {
+                    eprintln!("Failed to deserialise MerkleBlock: {:?}", e);
+                    return Err(CommitmentError::DataDecodingError);
+                }
+            };
+            // Get the hashes in the Merkle proof as a vector of strings.
+            let hashes_vec: Vec<String> = merkle_block
+                .txn
+                .hashes()
+                .iter()
+                .map(|x| x.to_string())
+                .collect();
 
-        // Get the hashes in the Merkle proof as a vector of strings.
-        let hashes_vec: Vec<String> = merkle_block
-            .txn
-            .hashes()
-            .iter()
-            .map(|x| x.to_string())
-            .collect();
-
-        // Convert to a JSON value.
-        Ok(serde_json::json!(hashes_vec))
+            // Convert to a JSON value.
+            Ok(serde_json::json!(hashes_vec))
+        })
     }
 
     fn expected_data(&self) -> &serde_json::Value {
@@ -300,32 +309,36 @@ impl Commitment for BlockHashCommitment {
     }
 
     /// Deserialises the candidate data into a Block header (as JSON).
-    fn decode_candidate_data(&self) -> Result<serde_json::Value, CommitmentError> {
-        // Candidate data the block header bytes (containing the Merkle root of the transaction tree).
-        // Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
-        let header_bytes = self.candidate_data();
-        if header_bytes.len() != 80 {
-            eprintln!("Invalid candidate data. Bitcoin block header must be 80 bytes.");
-            return Err(CommitmentError::DataDecodingError);
-        };
-        // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
-        let version = reverse_endianness(&hex::encode(&header_bytes[0..4])).unwrap();
-        let hash_prev_block = reverse_endianness(&hex::encode(&header_bytes[4..36])).unwrap();
-        let merkle_root = reverse_endianness(&hex::encode(&header_bytes[36..68])).unwrap();
-        let timestamp = reverse_endianness(&hex::encode(&header_bytes[68..72])).unwrap();
-        let bits = reverse_endianness(&hex::encode(&header_bytes[72..76])).unwrap();
-        let nonce = reverse_endianness(&hex::encode(&header_bytes[76..])).unwrap();
+    fn decode_candidate_data(
+        &self,
+    ) -> Box<dyn Fn(&[u8]) -> Result<serde_json::Value, CommitmentError>> {
+        Box::new(move |x| {
+            // Candidate data the block header bytes (containing the Merkle root of the transaction tree).
+            // Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
+            // let header_bytes = self.candidate_data();
+            if x.len() != 80 {
+                eprintln!("Invalid candidate data. Bitcoin block header must be 80 bytes.");
+                return Err(CommitmentError::DataDecodingError);
+            };
+            // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
+            let version = reverse_endianness(&hex::encode(&x[0..4])).unwrap();
+            let hash_prev_block = reverse_endianness(&hex::encode(&x[4..36])).unwrap();
+            let merkle_root = reverse_endianness(&hex::encode(&x[36..68])).unwrap();
+            let timestamp = reverse_endianness(&hex::encode(&x[68..72])).unwrap();
+            let bits = reverse_endianness(&hex::encode(&x[72..76])).unwrap();
+            let nonce = reverse_endianness(&hex::encode(&x[76..])).unwrap();
 
-        // Convert to JSON.
-        let mut map = HashMap::new();
-        map.insert(VERSION_KEY, version);
-        map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
-        map.insert(MERKLE_ROOT_KEY, merkle_root);
-        map.insert(TIMESTAMP_KEY, timestamp);
-        map.insert(BITS_KEY, bits);
-        map.insert(NONCE_KEY, nonce);
+            // Convert to JSON.
+            let mut map = HashMap::new();
+            map.insert(VERSION_KEY, version);
+            map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
+            map.insert(MERKLE_ROOT_KEY, merkle_root);
+            map.insert(TIMESTAMP_KEY, timestamp);
+            map.insert(BITS_KEY, bits);
+            map.insert(NONCE_KEY, nonce);
 
-        Ok(serde_json::json!(map))
+            Ok(serde_json::json!(map))
+        })
     }
 
     fn expected_data(&self) -> &serde_json::Value {
