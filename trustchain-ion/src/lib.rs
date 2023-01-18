@@ -42,6 +42,8 @@ pub const CHUNKS_KEY: &str = "chunks";
 pub const DELTAS_KEY: &str = "deltas";
 pub const UPDATE_COMMITMENT_KEY: &str = "updateCommitment";
 pub const METHOD_KEY: &str = "method";
+pub const VERIFICATION_METHOD_KEY: &str = "verificationMethod";
+pub const SERVICE_KEY: &str = "service";
 
 // IPFS
 pub const CID_KEY: &str = "cid";

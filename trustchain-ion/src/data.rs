@@ -25,7 +25,8 @@
 // The IPFS CID (for the coreIndexFile) is:
 // QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97
 //
-// The DID Document and Document Metadata are:
+// The DID Document and Document Metadata are test fixtures in trustchain-core
+// named TEST_ROOT_DOCUMENT and TEST_ROOT_DOCUMENT_METADATA. They are as follows:
 // Document:
 // {
 //   "@context": [

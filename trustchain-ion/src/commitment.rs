@@ -3,20 +3,21 @@ use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
 use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
+use serde_json::{json, Map};
 use ssi::did::Document;
 use std::collections::HashMap;
 use std::io::Read;
-use trustchain_core::commitment::IterableCommitment;
 use trustchain_core::commitment::TrivialCommitment;
 use trustchain_core::commitment::{Commitment, CommitmentError};
+use trustchain_core::commitment::{IterableCommitment, IteratedCommitment};
 
 use crate::utils::reverse_endianness;
-use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
 use crate::MERKLE_ROOT_KEY;
 use crate::NONCE_KEY;
 use crate::TIMESTAMP_KEY;
 use crate::VERSION_KEY;
+use crate::{BITS_KEY, SERVICE_KEY, VERIFICATION_METHOD_KEY};
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
 /// A TrivialCommitment whose hash is an IPFS content identifier (CID).
@@ -44,6 +45,7 @@ impl TrivialCommitment for TrivialIpfsCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         |x| {
+            // Convert the Gzipped IPFS file (bytes) to a JSON Value.
             let mut decoder = GzDecoder::new(x);
             let mut ipfs_content_str = String::new();
             match decoder.read_to_string(&mut ipfs_content_str) {
@@ -62,6 +64,10 @@ impl TrivialCommitment for TrivialIpfsCommitment {
                 }
             }
         }
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(IpfsCommitment::new(*self, expected_data))
     }
 }
 
@@ -94,6 +100,10 @@ impl TrivialCommitment for IpfsCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(*self)
     }
 }
 
@@ -198,6 +208,10 @@ impl TrivialCommitment for TrivialTxCommitment {
             }
         }
     }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(TxCommitment::new(*self, expected_data))
+    }
 }
 
 /// A Commitment whose hash is a Bitcoin transaction ID.
@@ -226,6 +240,10 @@ impl TrivialCommitment for TxCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(*self)
     }
 }
 
@@ -298,6 +316,10 @@ impl TrivialCommitment for TrivialMerkleRootCommitment {
             Ok(serde_json::json!(hashes_vec))
         }
     }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(MerkleRootCommitment::new(*self, expected_data))
+    }
 }
 
 /// A Commitment whose hash is the root of a Merkle tree of Bitcoin transaction IDs.
@@ -329,6 +351,10 @@ impl TrivialCommitment for MerkleRootCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(*self)
     }
 }
 
@@ -372,6 +398,10 @@ impl TrivialCommitment for TrivialBlockHashCommitment {
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         |x| decode_block_header(&x)
     }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(BlockHashCommitment::new(*self, expected_data))
+    }
 }
 
 /// A Commitment whose hash is the root of a Merkle tree of Bitcoin transaction IDs.
@@ -403,6 +433,10 @@ impl TrivialCommitment for BlockHashCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(*self)
     }
 }
 
@@ -444,67 +478,70 @@ pub fn decode_block_header(bytes: &[u8]) -> Result<serde_json::Value, Commitment
 /// An iterated commitment to ION DID Document data.
 pub struct IONCommitment {
     did_doc: Document,
-    block_hash: String,
-    commitments: Vec<Box<dyn Commitment>>,
+    iterated_commitment: IteratedCommitment,
 }
 
-// impl IONCommitment {
-//     pub fn new(
-//         did_doc: Document,
-//         block_hash: String,
-//         chunk_file: Vec<u8>,
-//         provisional_index_file: Vec<u8>,
-//         core_index_file: Vec<u8>,
-//         transaction: Vec<u8>,
-//         merkle_proof: Vec<u8>,
-//         block_header: Vec<u8>,
-//     ) -> Result<Self, CommitmentError> {
+impl IONCommitment {
+    pub fn new(
+        did_doc: Document,
+        chunk_file: Vec<u8>,
+        provisional_index_file: Vec<u8>,
+        core_index_file: Vec<u8>,
+        transaction: Vec<u8>,
+        merkle_proof: Vec<u8>,
+        block_header: Vec<u8>,
+    ) -> Result<Self, CommitmentError> {
+        // Construct the first Commitment, followed by a sequence of TrivialCommitments.
 
-//         let block_hash_commitment = BlockHashCommitment::new(
-//             block_hash,
-//             block_header,
-//             decode_block_header(&block_header)?
-//         );
-//         let merkle_root_commitment = MerkleRootCommitment
-//         // let chunk_file_commitment = IpfsCommitment::new(
-//         //     IpfsCommitment::hasher(&self)
-//         // );
+        // Discard all except the verificationMethod and services elements.
+        let did_doc_map = json!(&did_doc).as_object().unwrap().clone();
+        let filtered_doc_map: Map<String, serde_json::Value> = did_doc_map
+            .into_iter()
+            .filter(|(key, _value)| key.eq(&VERIFICATION_METHOD_KEY) || key.eq(&SERVICE_KEY))
+            .collect();
+        let expected_data = json!(&filtered_doc_map);
 
-//         let mut commitments = Vec::<Box<dyn Commitment>>::new();
-//         commitments.push(Box::new(block_hash_commitment));
-//         commitments.push(Self::merkle_proof_commitment());
-//         commitments.push(Self::tx_commitment());
-//         commitments.push(Self::core_index_file_commitment());
-//         commitments.push(Self::provisional_index_file_commitment());
-//         commitments.push(Self::chunk_file_commitment());
-//         // Reverse the vector to bring the DID Document content verification to the front.
-//         commitments.reverse();
+        let chunk_file_commitment = IpfsCommitment::new(
+            TrivialIpfsCommitment {
+                candidate_data: chunk_file,
+            },
+            expected_data,
+        );
+        let prov_index_file_commitment = TrivialIpfsCommitment {
+            candidate_data: provisional_index_file,
+        };
+        let core_index_file_commitment = TrivialIpfsCommitment {
+            candidate_data: core_index_file,
+        };
+        let tx_commitment = TrivialTxCommitment {
+            candidate_data: transaction,
+        };
+        let merkle_root_commitment = TrivialMerkleRootCommitment {
+            candidate_data: merkle_proof,
+        };
+        let block_hash_commitment = TrivialBlockHashCommitment {
+            candidate_data: block_header,
+        };
 
-//         Self {
-//             did_doc,
-//             block_hash,
-//             commitments,
-//         }
-//     }
+        let mut iterated_commitment = IteratedCommitment::new(Box::new(chunk_file_commitment));
+        iterated_commitment.append(Box::new(prov_index_file_commitment));
+        iterated_commitment.append(Box::new(core_index_file_commitment));
+        iterated_commitment.append(Box::new(tx_commitment));
+        iterated_commitment.append(Box::new(merkle_root_commitment));
+        iterated_commitment.append(Box::new(block_hash_commitment));
 
-// fn chunk_file_commitment(target: String, , did_doc: Document) -> IpfsCommitment {
+        Ok(Self {
+            did_doc,
+            iterated_commitment,
+        })
+    }
 
-// }
-
-// // ...
-
-// fn block_hash_commitment(block_hash: String, block_header: Vec<u8>, merkle_root) -> BlockHashCommitment {
-
-// }
-
-// }
-
-// impl IterableCommitment for IONCommitment {
-//     fn commitments(&self) -> Vec<Box<dyn Commitment>> {
-//         self.commitments
-//     }
-
-// }
+    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        // Delegate verification to the iterated commitment (as a Commitment).
+        Commitment::verify(&self.iterated_commitment, target)?;
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -513,12 +550,13 @@ mod tests {
 
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
+    use trustchain_core::data::TEST_ROOT_DOCUMENT;
 
     use super::*;
     use crate::{
         utils::query_ipfs,
         verifier::{block_header, merkle_proof, transaction},
-        CID_KEY, MERKLE_ROOT_KEY,
+        CID_KEY, MERKLE_ROOT_KEY, SERVICE_KEY,
     };
 
     #[test]
@@ -693,5 +731,62 @@ mod tests {
             Err(CommitmentError::FailedContentVerification) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
+    }
+
+    #[test]
+    #[ignore = "Integration test requires IPFS and Bitcoin Core"]
+    fn test_ion_commitment() {
+        let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
+
+        let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
+        let chunk_file = query_ipfs(chunk_file_cid, None).unwrap();
+
+        let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
+        let prov_index_file = query_ipfs(prov_index_file_cid, None).unwrap();
+
+        let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let core_index_file = query_ipfs(core_index_file_cid, None).unwrap();
+
+        let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+        let tx_index = 3;
+        let tx = transaction(&block_hash, tx_index, None).unwrap();
+        let transaction = Serialize::serialize(&tx);
+
+        let merkle_proof = merkle_proof(tx, &block_hash, None).unwrap();
+
+        let block_header = block_header(&block_hash, None).unwrap();
+        let block_header = bitcoin::consensus::serialize(&block_header);
+
+        let commitment = IONCommitment::new(
+            did_doc,
+            chunk_file,
+            prov_index_file,
+            core_index_file,
+            transaction,
+            merkle_proof,
+            block_header,
+        )
+        .unwrap();
+
+        let expected_data = commitment.iterated_commitment.expected_data();
+
+        // The expected data contains public keys and service endpoints.
+        match expected_data {
+            serde_json::Value::Object(map) => {
+                assert!(map.contains_key(VERIFICATION_METHOD_KEY));
+                assert!(map.contains_key(SERVICE_KEY));
+            }
+            _ => panic!("Expected JSON Map."),
+        }
+
+        let target = block_hash_str;
+
+        match commitment.verify(target) {
+            Ok(_) => todo!(),
+            Err(e) => println!("{:?}", e),
+        }
+
+        assert!(commitment.verify(target).is_ok());
     }
 }

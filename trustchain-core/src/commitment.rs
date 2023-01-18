@@ -1,3 +1,4 @@
+use serde_json::json;
 use thiserror::Error;
 
 use crate::utils::json_contains;
@@ -32,6 +33,13 @@ pub trait TrivialCommitment {
         // Call the hasher on the candidate data.
         self.hasher()(self.candidate_data())
     }
+    /// The data content that the hash verifiably commits to.
+    fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
+        self.decode_candidate_data()(self.candidate_data())
+    }
+    // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
+    /// Convert this TrivialCommitment to a Commitment.
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment>;
 }
 
 /// A cryptographic commitment with expected data content.
@@ -71,48 +79,105 @@ pub trait Commitment: TrivialCommitment {
 
 /// A sequence of commitments in which the target in the n'th commitment
 /// is identical to the expected data in the (n+1)'th commitment
-pub trait IterableCommitment {
+pub trait IterableCommitment: Commitment {
     /// Gets the sequence of commitments.
-    fn commitments(&self) -> Vec<Box<dyn Commitment>>;
+    fn commitments(&self) -> &Vec<Box<dyn Commitment>>;
+
+    /// Gets the sequence of commitments as a mutable reference.
+    fn mut_commitments(&mut self) -> &mut Vec<Box<dyn Commitment>>;
+
     /// Appends a TrivialCommitment to extend this IterableCommitment.
+    ///
+    /// The appended commitment must be endowed with expected data identical
+    /// to the hash of this commitment, so the resulting iterable
+    /// commitment is itself a commitment to the same expected data.
     fn append(
-        &self,
+        &mut self,
         trivial_commitment: Box<dyn TrivialCommitment>,
-    ) -> Result<Box<dyn IterableCommitment>, CommitmentError>;
+    ) -> Result<(), CommitmentError>;
+}
 
-    // /// Checks that the seqence of commitments is valid.
-    // fn validate_sequence(&self) -> Result<(), CommitmentError> {
-    //     // Check that the  target in the n'th commitment is identical to
-    //     // the expected data in the (n+1)'th commitment.
-    //     let mut target = Vec::<u8>::new();
-    //     for commitment in self.commitments() {
-    //         if target.len() == 0 {
-    //             continue;
-    //         }
+/// An iterated commitment in which the hash of the n'th commitment
+/// is identical to the expected data in the (n+1)'th commitment.
+pub struct IteratedCommitment {
+    commitments: Vec<Box<dyn Commitment>>,
+}
 
-    //         if let serde_json::Value::String(expected) = commitment.expected_data() {
-    //             if !expected.as_bytes().eq(&target) {
-    //                 eprintln!("Invalid target/expected data sequence.");
-    //                 return Err(CommitmentError::InvalidIteratedCommitment);
-    //             }
-    //         } else {
-    //             eprintln!("Unhandled serde_json::Value variant. Expected String.");
-    //             return Err(CommitmentError::InvalidIteratedCommitment);
-    //         }
-    //         // OLD (TODO...)
-    //         // target = commitment.target().into();
+impl IteratedCommitment {
+    pub fn new(commitment: Box<dyn Commitment>) -> Self {
+        let mut commitments = Vec::new();
+        commitments.push(commitment);
+        Self { commitments }
+    }
+}
 
-    //     }
-    //     Ok(())
-    // }
-
-    /// Runs the verification process over the sequence of commitments.
-    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
-        // let _ = self.validate_sequence(); OLD
-        let mut current_target = target;
-        for commitment in self.commitments() {
-            commitment.verify(current_target)?;
+impl TrivialCommitment for IteratedCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+        // TODO: Compose the hasher functions in the sequence of commitments.
+        // Unclear how to compose the function pointers (some approaches only work on closures).
+        // If this were implemented there would be no need to implement verify for IteratedCommitment.
+        |_| {
+            eprintln!(
+                "Composed hasher not implemented for IteratedCommitment. Call verify directly."
+            );
+            Err(CommitmentError::FailedToComputeHash)
         }
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        // Use as_ref to avoid consuming the Some() value from first().
+        &self.commitments.first().as_ref().unwrap().candidate_data()
+    }
+
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        self.commitments().first().unwrap().decode_candidate_data()
+    }
+
+    fn hash(&self) -> Result<String, CommitmentError> {
+        // The hash of the iterated commitment is that of the last in the sequence.
+        self.commitments.last().as_ref().unwrap().hash()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        self
+    }
+}
+
+impl Commitment for IteratedCommitment {
+    fn expected_data(&self) -> &serde_json::Value {
+        // The iterated commitment commits to the expected data in the first of the
+        // sequence of commitments. Must cast here to avoid infinite recursion.
+        let first_commitment: &Box<dyn Commitment> = **&self.commitments.first().as_ref().unwrap();
+        &first_commitment.expected_data()
+    }
+
+    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        for commitment in self.commitments() {
+            Commitment::verify(commitment.as_ref(), target)?;
+        }
+        Ok(())
+    }
+}
+
+impl IterableCommitment for IteratedCommitment {
+    fn commitments(&self) -> &Vec<Box<dyn Commitment>> {
+        &self.commitments
+    }
+
+    fn mut_commitments(&mut self) -> &mut Vec<Box<dyn Commitment>> {
+        &mut self.commitments
+    }
+
+    fn append(
+        &mut self,
+        trivial_commitment: Box<dyn TrivialCommitment>,
+    ) -> Result<(), CommitmentError> {
+        // Set the expected data in the appended commitment to be the hash of this commitment.
+        // This ensures that the composition still commits to the expected data.
+        let expected_data = json!(self.hash()?);
+        let new_commitment = trivial_commitment.to_commitment(expected_data);
+        let commitments: &mut Vec<Box<dyn Commitment>> = self.commitments.as_mut();
+        commitments.push(new_commitment);
         Ok(())
     }
 }
