@@ -1,10 +1,11 @@
-use crate::utils::{HasEndpoints, HasKeys};
+use crate::utils::{reverse_endianness, HasEndpoints, HasKeys};
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
-    CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
-    METHOD_KEY, MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
-    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
-    PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, CHUNKS_KEY,
+    CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, HASH_PREV_BLOCK_KEY, ION_METHOD,
+    ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY, METHOD_KEY, MONGO_COLLECTION_OPERATIONS,
+    MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE,
+    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, PROVISIONAL_INDEX_FILE_URI_KEY,
+    TIMESTAMP_KEY, UPDATE_COMMITMENT_KEY, VERSION_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -22,6 +23,7 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::Read;
 use std::str::FromStr;
@@ -445,10 +447,10 @@ where
     // }
 }
 
-// TODO: check where these config parameters (username & password) are configured
-// in ION and use the same config file.
 /// Gets a Bitcoin RPC client instance.
 pub fn rpc_client() -> bitcoincore_rpc::Client {
+    // TODO: check where these config parameters (username & password)
+    // are configured in ION and use the same config file.
     bitcoincore_rpc::Client::new(
         BITCOIN_CONNECTION_STRING,
         bitcoincore_rpc::Auth::UserPass(
@@ -460,7 +462,7 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
 }
 
-/// Gets the Bitcoin transaction at the given location via an RPC client.
+/// Gets the Bitcoin transaction at the given location via the RPC API.
 pub fn transaction(
     block_hash: &BlockHash,
     tx_index: u32,
@@ -480,7 +482,7 @@ pub fn transaction(
     }
 }
 
-/// Gets a Merkle proof for the given transaction.
+/// Gets a Merkle proof for the given transaction via the RPC API.
 pub fn merkle_proof(
     tx: Transaction,
     block_hash: &BlockHash,
@@ -500,6 +502,7 @@ pub fn merkle_proof(
     }
 }
 
+/// Gets a Bitcoin block header via the RPC API.
 pub fn block_header(
     block_hash: &BlockHash,
     rpc_client: Option<bitcoincore_rpc::Client>,
