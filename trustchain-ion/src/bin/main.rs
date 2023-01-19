@@ -75,7 +75,7 @@ fn cli() -> Command {
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
@@ -132,7 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .map(|string| string.as_str());
                     let mut credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
-                            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
                         } else {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
@@ -148,7 +148,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     });
                 }
                 Some(("verify", sub_matches)) => {
-                    let path = sub_matches.get_one::<String>("credential_file").unwrap();
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
@@ -156,7 +155,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None => ROOT_EVENT_TIME_2378493,
                     };
                     let credential: Credential =
-                        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
                     resolver.runtime.block_on(async {
                         let verify_result = credential.verify(None, &resolver).await;
                         if verify_result.errors.is_empty() {
