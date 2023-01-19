@@ -153,7 +153,11 @@ impl Commitment for IteratedCommitment {
         &first_commitment.expected_data()
     }
 
+    /// Verifies an IteratedCommitment by verifying each of its constituent commitments.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        // Verify the content.
+        let _ = &self.verify_content()?;
+        // Verify each commitment in the sequence.
         let commitments = self.commitments();
         if commitments.len() == 0 {
             return Err(CommitmentError::EmptyIteratedCommitment);
