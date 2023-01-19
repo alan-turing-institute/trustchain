@@ -3,7 +3,7 @@ use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
 use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
-use serde_json::{json, Map};
+use serde_json::json;
 use ssi::did::Document;
 use std::collections::HashMap;
 use std::io::Read;
@@ -530,11 +530,11 @@ impl IONCommitment {
         // knows how to convert itself to the correct Commitment type.
         // This explains why the TrivialCommitment trait is necessary.
         let mut iterated_commitment = IteratedCommitment::new(Box::new(chunk_file_commitment));
-        iterated_commitment.append(Box::new(prov_index_file_commitment));
-        iterated_commitment.append(Box::new(core_index_file_commitment));
-        iterated_commitment.append(Box::new(tx_commitment));
-        iterated_commitment.append(Box::new(merkle_root_commitment));
-        iterated_commitment.append(Box::new(block_hash_commitment));
+        iterated_commitment.append(Box::new(prov_index_file_commitment))?;
+        iterated_commitment.append(Box::new(core_index_file_commitment))?;
+        iterated_commitment.append(Box::new(tx_commitment))?;
+        iterated_commitment.append(Box::new(merkle_root_commitment))?;
+        iterated_commitment.append(Box::new(block_hash_commitment))?;
 
         Ok(Self {
             did_doc,
