@@ -14,9 +14,12 @@ use std::process::{Command, Stdio};
 use uuid::Uuid;
 
 /// Server localhost address
-const HOST: &str = "http://127.0.0.1:8081";
+// const HOST: &str = "http://127.0.0.1:8081";
 /// Android server localhost address
-// const HOST: &str = "http://10.0.2.2:8081";
+const HOST: &str = "http://10.0.2.2:8081";
+
+/// Example VP request used by demo.spruceid.com
+const EXAMPLE_VP_REQUEST: &str = r#"{ "type": "VerifiablePresentationRequest", "query": [ { "type": "QueryByExample", "credentialQuery": { "reason": "Sign in", "example": { "@context": [ "https:\/\/www.w3.org\/2018\/credentials\/v1" ], "type": "VerifiableCredential" } } } ], "challenge": "4f34494e-43d4-4e08-8b72-d634650daf44", "domain": "demo.spruceid.com" }"#;
 
 // Process sketch:
 // 1. User visits "credentials/" page and is displayed a QR code of a URI (with UUID) to send GET request to
@@ -36,20 +39,9 @@ pub fn image_to_base64_string(image: &DynamicImage) -> String {
     std::str::from_utf8(&buf).unwrap().to_string()
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct MyParams {
-    name: String,
-}
-
-/// Simple handle POST request (see [examples](https://github.com/actix/examples/blob/master/forms/form/src/main.rs))
-async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResult<HttpResponse> {
-    // Generate a UUID
-    // let id = Uuid::new_v4().to_string().replace("-", "");
-    let id = Uuid::new_v4().to_string();
-
-    // Generate a QR code for server address and combination of name and UUID
-    let address_str = format!("{HOST}/vc/{id}");
-    let code = QrCode::new(address_str.as_bytes()).unwrap();
+pub fn str_to_qr_code_html(s: &str) -> String {
+    // Make QR code
+    let code = QrCode::new(s.as_bytes()).unwrap();
 
     // Render the bits into an image.
     let image = DynamicImage::ImageLuma8(code.render::<Luma<u8>>().build());
@@ -64,15 +56,32 @@ async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResult<H
         </head>
         <body>
             <div>
-            <a href={address_str}>
+            <a href={s}>
                 <img src={image_str} />
             </div>
         </body>
         </html>"
     );
+    html
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MyParams {
+    name: String,
+}
+
+/// Simple handle POST request (see [examples](https://github.com/actix/examples/blob/master/forms/form/src/main.rs))
+async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResult<HttpResponse> {
+    // Generate a UUID
+    let id = Uuid::new_v4().to_string();
+
+    // Generate a QR code for server address and combination of name and UUID
+    let address_str = format!("{HOST}/vc/issuer/{id}");
 
     // Respond with the QR code as a png embedded in html
-    Ok(HttpResponse::Ok().content_type("text/html").body(html))
+    Ok(HttpResponse::Ok()
+        .content_type("text/html")
+        .body(str_to_qr_code_html(&address_str)))
 }
 
 async fn index() -> ActixResult<HttpResponse> {
@@ -91,13 +100,43 @@ async fn greet(name: web::Path<String>) -> impl Responder {
     format!("Hello {name}!")
 }
 
+async fn vp_offer_address() -> ActixResult<HttpResponse> {
+    // Generate a QR code for server address and combination of name and UUID
+    let address_str = format!("{HOST}/vc/verifier");
+
+    // Respond with the QR code as a png embedded in html
+    Ok(HttpResponse::Ok()
+        .content_type("text/html")
+        .body(str_to_qr_code_html(&address_str)))
+}
+
+/// API endpoint taking the UUID of a VC. Response is the VC JSON.
+// TODO: identify how to handle multiple string variables
+#[get("/vc/verifier")]
+async fn get_vp_offer() -> impl Responder {
+    // Return the presentation request
+    EXAMPLE_VP_REQUEST
+}
+
+#[post("/vc/verifier")]
+async fn post_request_verifier(info: web::Json<Credential>) -> impl Responder {
+    println!(
+        "RECEIVED CREDENTIAL AT PRESENTATION:\n{}",
+        serde_json::to_string_pretty(&info).unwrap().to_string()
+    );
+    // TODO: check whether a specific response body is required
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body("Received!")
+}
+
 fn handle_get_vc(id: &str) -> String {
     generate_vc(true, None, id)
 }
 
 /// API endpoint taking the UUID of a VC. Response is the VC JSON.
 // TODO: identify how to handle multiple string variables
-#[get("/vc/{id}")]
+#[get("/vc/issuer/{id}")]
 async fn get_vc_offer(id: web::Path<String>) -> impl Responder {
     handle_get_vc(&id)
 }
@@ -107,7 +146,7 @@ struct VcInfo {
     subject_id: String,
 }
 
-#[post("/vc/{id}")]
+#[post("/vc/issuer/{id}")]
 async fn post_request(info: web::Json<VcInfo>, id: web::Path<String>) -> impl Responder {
     println!("I received this VC info: {:?}", info);
     let data = handle_post_vc(info.subject_id.as_str(), &id.to_string());
@@ -123,6 +162,9 @@ fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
 }
 
 /// Converts a credential into an offer
+fn credential_to_offer(credential: &str) -> String {
+    todo!()
+}
 
 /// Generates a VC (prototype uses const DID and const credential file)
 fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str) -> String {
@@ -226,6 +268,9 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/").route(web::get().to(index)))
             .service(web::resource("/issuer").route(web::get().to(issuer)))
             .service(web::resource("/issuer/post1").route(web::post().to(handle_issuer_post_start)))
+            .service(web::resource("/verifier").route(web::get().to(vp_offer_address)))
+            .service(get_vp_offer)
+            .service(post_request_verifier)
     })
     .bind(("127.0.0.1", 8081))?
     .run()
