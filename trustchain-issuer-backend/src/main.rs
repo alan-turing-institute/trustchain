@@ -125,6 +125,7 @@ async fn post_request_verifier(info: web::Json<Credential>) -> impl Responder {
         serde_json::to_string_pretty(&info).unwrap().to_string()
     );
     // TODO: check whether a specific response body is required
+    // See [here](https://w3c-ccg.github.io/vc-api/#prove-presentation)
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body("Received!")
