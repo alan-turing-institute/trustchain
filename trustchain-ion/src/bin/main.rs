@@ -2,7 +2,10 @@
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
 use ssi::vc::{Credential, URI};
-use std::fs::File;
+use std::{
+    fs::File,
+    io::{stdin, BufReader},
+};
 use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation,
@@ -65,7 +68,7 @@ fn cli() -> Command {
                         .about("Attests to a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
                 .subcommand(
@@ -124,12 +127,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             match sub_matches.subcommand() {
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let path = sub_matches.get_one::<String>("credential_file").unwrap();
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     let mut credential: Credential =
-                        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
                     credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
                     let attestor = IONAttestor::new(did);
                     resolver.runtime.block_on(async {
