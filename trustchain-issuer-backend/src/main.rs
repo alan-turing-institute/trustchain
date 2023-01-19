@@ -166,6 +166,11 @@ fn credential_to_offer(credential: &str) -> String {
     todo!()
 }
 
+/// Verifies a received credential
+fn verify_vc(credential: &web::Json<Credential>) -> String {
+    todo!()
+}
+
 /// Generates a VC (prototype uses const DID and const credential file)
 fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str) -> String {
     let command_str = format!("trustchain-cli vc attest --did did:ion:test:EiBYdto2LQd_uAj_EXEoxP_KbLmZzwe1E-vXp8ZsMv1Gpg");
