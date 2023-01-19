@@ -1,7 +1,7 @@
 use serde_json::json;
 use thiserror::Error;
 
-use crate::utils::json_contains;
+use crate::utils::{json_contains, type_of};
 
 /// An error relating to Commitment verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -14,10 +14,13 @@ pub enum CommitmentError {
     FailedToComputeHash,
     /// Failed hash verification.
     #[error("Failed hash verification. Computed hash not equal to target.")]
-    FailedHashVerification,
+    FailedHashVerification(String),
     /// Failed content verification.
     #[error("Failed content verification. Expected data not found in candidate.")]
-    FailedContentVerification,
+    FailedContentVerification(String),
+    /// Empty iterated commitment.
+    #[error("Failed verification. Empty iterated commitment.")]
+    EmptyIteratedCommitment,
 }
 
 /// A cryptographic commitment with no expected data content.
@@ -57,9 +60,10 @@ pub trait Commitment: TrivialCommitment {
                 return Err(CommitmentError::DataDecodingError);
             }
         };
+
         // Verify the content.
         if !json_contains(&candidate_data, &self.expected_data()) {
-            return Err(CommitmentError::FailedContentVerification);
+            return Err(CommitmentError::FailedContentVerification(type_of(&self)));
         }
         Ok(())
     }
@@ -71,7 +75,7 @@ pub trait Commitment: TrivialCommitment {
         // Verify the target by comparing with the computed hash.
         let hash = self.hash()?;
         if hash.ne(target) {
-            return Err(CommitmentError::FailedHashVerification);
+            return Err(CommitmentError::FailedHashVerification(type_of(&self)));
         }
         Ok(())
     }
@@ -117,9 +121,7 @@ impl TrivialCommitment for IteratedCommitment {
         // Unclear how to compose the function pointers (some approaches only work on closures).
         // If this were implemented there would be no need to implement verify for IteratedCommitment.
         |_| {
-            eprintln!(
-                "Composed hasher not implemented for IteratedCommitment. Call verify directly."
-            );
+            eprintln!("Composed hasher not implemented. Call verify directly.");
             Err(CommitmentError::FailedToComputeHash)
         }
     }
@@ -152,9 +154,28 @@ impl Commitment for IteratedCommitment {
     }
 
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
-        for commitment in self.commitments() {
-            Commitment::verify(commitment.as_ref(), target)?;
+        let commitments = self.commitments();
+        if commitments.len() == 0 {
+            return Err(CommitmentError::EmptyIteratedCommitment);
         }
+        let mut it = self.commitments().iter();
+        let mut commitment = it.next().unwrap();
+        let mut this_target = "";
+
+        while let Some(&next) = it.next().as_ref() {
+            // The target for the current commitment is the expected data of the next one.
+            this_target = match next.expected_data() {
+                serde_json::Value::String(x) => x,
+                _ => {
+                    eprintln!("Unhandled JSON Value variant. Expected String.");
+                    return Err(CommitmentError::DataDecodingError);
+                }
+            };
+            commitment.verify(this_target)?;
+            commitment = next;
+        }
+        // Verify the last commitment in the sequence against the given target.
+        commitment.verify(target)?;
         Ok(())
     }
 }

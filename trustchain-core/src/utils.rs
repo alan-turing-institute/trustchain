@@ -7,6 +7,11 @@ use crate::TRUSTCHAIN_DATA;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
+// Get the type of an object as a String. For diagnostic purposes (debugging) only.
+pub fn type_of<T>(_: &T) -> String {
+    std::any::type_name::<T>().to_string()
+}
+
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 static INIT: Once = Once::new();
@@ -112,6 +117,15 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
 
 /// Tests whether one JSON object contains all the elements of another.
 pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value) -> bool {
+    // If the expected Value is an array, recursively check each element.
+    match expected {
+        serde_json::Value::Array(exp_vec) => {
+            return exp_vec
+                .iter()
+                .all(|exp_value| json_contains(candidate, exp_value))
+        }
+        _ => (),
+    }
     match candidate {
         serde_json::Value::Null => matches!(expected, serde_json::Value::Null),
         serde_json::Value::Bool(x) => match expected {
@@ -128,20 +142,17 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
         },
         serde_json::Value::Array(cand_vec) => {
             match expected {
-                serde_json::Value::Object(_) => false,
-                serde_json::Value::Array(exp_vec) => {
-                    // If both expected and candidate are Array type, check each element of
-                    // the expected vector is contained in the candidate vector, ignoring order.
-                    for exp in exp_vec {
-                        if !cand_vec.iter().any(|cand| json_contains(cand, exp)) {
-                            return false;
-                        }
+                serde_json::Value::Object(_) => {
+                    // If the candidate is an array and the expected is a Map, check each element
+                    // of the candidate array to see if the map is found inside any of them.
+                    if cand_vec.iter().any(|cand| json_contains(cand, expected)) {
+                        return true;
                     }
-                    return true;
+                    return false;
                 }
                 _ => {
-                    // If expected is a scalar type and candidate is an Array, check
-                    // if any value in the candidate matches the expected one.
+                    // If the candidate is an Array and the expected is a scalar,
+                    // check if any value in the candidate contains the expected one.
                     return cand_vec.iter().any(|value| json_contains(value, expected));
                 }
             }
@@ -149,9 +160,34 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
         serde_json::Value::Object(cand_map) => {
             match expected {
                 serde_json::Value::Object(exp_map) => {
-                    // Check each element of the expected map is contained in the candidate map.
+                    // If both candidate and expected are Maps, check each element
+                    // of the expected map is contained in the candidate map.
                     for exp_key in exp_map.keys() {
                         if !cand_map.contains_key(exp_key) {
+                            // If the key is not found but the Value is itself a Map or Vector, recurse.
+                            if cand_map.keys().any(|cand_key| {
+                                if matches!(
+                                    cand_map.get(cand_key).unwrap(),
+                                    serde_json::Value::Object(..)
+                                ) {
+                                    return json_contains(
+                                        cand_map.get(cand_key).unwrap(),
+                                        expected,
+                                    );
+                                }
+                                if matches!(
+                                    cand_map.get(cand_key).unwrap(),
+                                    serde_json::Value::Array(..)
+                                ) {
+                                    return json_contains(
+                                        cand_map.get(cand_key).unwrap(),
+                                        expected,
+                                    );
+                                }
+                                return false;
+                            }) {
+                                return true;
+                            };
                             return false;
                         }
                         let exp_value = exp_map.get(exp_key).unwrap();
@@ -162,7 +198,13 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
                     }
                     true
                 }
-                _ => false,
+                _ => {
+                    // If the candidate is a Map and the expected is
+                    // a scalar, check each value inside the candidate map.
+                    return cand_map
+                        .values()
+                        .any(|cand_value| json_contains(cand_value, expected));
+                }
             }
         }
     }
@@ -342,5 +384,16 @@ mod tests {
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(!json_contains(&candidate, &expected));
+
+        // Entire expected object nested:
+        let exp_str = r##"{"publicKeyJwk" : {
+            "crv": "secp256k1",
+            "kty": "EC",
+            "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+            "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+        }}"##;
+
+        let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
+        assert!(json_contains(&candidate, &expected));
     }
 }
