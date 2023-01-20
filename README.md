@@ -2,9 +2,9 @@
 
 This repo hosts the development for prototype tools that provide the functionality required for **Trustchain**.
 
-Trustchain is a decentralised approach to publik key infrastructure, with applications in digital identities. In particular, it builds on the W3C standards for [decentralised identifiers (DID)](https://www.w3.org/TR/did-core/) and [verififiable credentials (VC)](https://www.w3.org/TR/did-core/). 
+Trustchain is a decentralised approach to publik key infrastructure, with applications in digital identities. In particular, it builds on the W3C standards for [decentralised identifiers (DID)](https://www.w3.org/TR/did-core/) and [verififiable credentials (VC)](https://www.w3.org/TR/did-core/).
 
-These two standards are already closely linked: Verifying a VC involves performing the verification method specified in the DID document using verification material contained in the same DID document. For example, the verification material may be a public key, in which case the verification method is to use the key to verify a digital signature contained in the VC. 
+These two standards are already closely linked: Verifying a VC involves performing the verification method specified in the DID document using verification material contained in the same DID document. For example, the verification material may be a public key, in which case the verification method is to use the key to verify a digital signature contained in the VC.
 
 Trustchain aims to combine the two standards to create DIDs which are themselves verifiable credentials. In doing so, verifiable **downstream DIDs** (dDIDs) can be constructed, which are signed by an entity represented in an **upstream DID** (uDID). dDIDs are essential building blocks to create a chain of trusted DIDs.
 
@@ -38,7 +38,11 @@ git clone https://github.com/alan-turing-institute/trustchain.git
 cd trustchain
 cargo build
 ```
-You can run tests with:
+Install the Trustchain CLI with:
+```shell
+cargo install --path trustchain-ion
+```
+Run tests:
 ```
 cargo test
 ```
@@ -48,43 +52,17 @@ cargo test -- --include-ignored
 ```
 
 ## Usage Guide
-
+Once installed, the CLI is callable as:
 ```
-trustchain-cli did
-trustchain-cli vc
-trustchain-cli -h, --help
-
-trustchain-cli vc attest
-trustchain-cli vc verify
-trustchain-cli vc -h, --help
-
-trustchain-cli vc attest [OPTIONS] --did <DID> --credential_file <CREDENTIAL FILE>
-
-trustchain-cli vc attest -v, --verbose
-trustchain-cli vc attest -d, --did <DID>
-trustchain-cli vc attest -f, --credential_file <CREDENTIAL FILE> --key_id <KEY_ID>
-trustchain-cli vc attest -h, --help
-
-
-trustchain-cli vc verify [OPTIONS] --credential_file <CREDENTIAL FILE>
-
-trustchain-cli vc verify -v, --verbose
-trustchain-cli vc verify -f, --credential_file <CREDENTIAL FILE>
-trustchain-cli vc verify -s, --signature_only
-trustchain-cli vc verify -t, --root_event_time
-trustchain-cli vc verify -h, --help
-
+trustchain-cli --help
 ```
-
-
+DID subcommands are available with:
 ```
-trustchain-cli vc attest -f [filename].jsonld --did did:ion:[identity] > vc.jsonld
+truscthain-cli did --help
 ```
-
+Verifiable credential are available with:
 ```
-trustchain-cli vc verify --credential_file vc.jsonld
-
-trustchain-cli vc verify --credential_file vc.jsonld --verbose
+trustchain-cli vc --help
 ```
 
 ## License & disclaimer
