@@ -1,4 +1,4 @@
-use crate::graph::PrettyDID;
+use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
 use crate::ROOT_EVENT_TIME_2378493;
