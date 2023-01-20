@@ -11,7 +11,6 @@ pub enum GraphError {
     /// Constructed graph is not a tree.
     #[error("Graph is not a tree.")]
     NotATree,
-    // TODO add error types
 }
 
 /// Wrapper struct for a petgraph DiGraph of documents.

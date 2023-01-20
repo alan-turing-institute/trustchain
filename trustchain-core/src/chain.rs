@@ -98,6 +98,7 @@ fn extract_keys(doc: &Document) -> Vec<JWK> {
     public_keys
 }
 
+/// A struct for a chain of DIDs.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DIDChain {
     // An map from DID strings to resolved tuples.
@@ -124,7 +125,7 @@ fn get_service_endpoint_string(doc: &Document) -> Option<String> {
     }
 }
 
-/// Struct for displaying DID in a box.
+/// A struct for displaying a DID in a box.
 pub struct PrettyDID {
     did: String,
     level: usize,
