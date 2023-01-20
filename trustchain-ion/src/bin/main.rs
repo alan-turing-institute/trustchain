@@ -9,8 +9,10 @@ use trustchain_ion::{
 };
 
 fn cli() -> Command {
-    Command::new("trustchain")
-        .about("Trustchain CLI")
+    Command::new("Trustchain CLI")
+        .about(format!("Trustchain CLI v{}\n\nTrustchain command line interface for decentralised public key infrastructure.", env!("CARGO_PKG_VERSION")))
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
