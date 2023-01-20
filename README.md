@@ -49,15 +49,15 @@ cargo test -- --include-ignored
 ```
 
 ## Usage Guide
-Once installed, the CLI is callable as:
+Once installed, the CLI is callable with:
 ```
 trustchain-cli --help
 ```
-DID subcommands are available with:
+DID subcommands:
 ```
 truscthain-cli did --help
 ```
-Verifiable credential are available with:
+Verifiable credential subcommands:
 ```
 trustchain-cli vc --help
 ```
