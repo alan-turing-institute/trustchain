@@ -1,11 +1,10 @@
+use crate::graph::PrettyDID;
 use crate::resolver::Resolver;
-use crate::utils::{canonicalize, decode, decode_verify, hash};
+use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
 use crate::ROOT_EVENT_TIME_2378493;
 use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
-use ssi::jwk::JWK;
 use ssi::{
     did::Document,
     did_resolve::{DIDResolver, DocumentMetadata},
@@ -18,10 +17,10 @@ use thiserror::Error;
 /// An error relating to a DID chain.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChainError {
-    // #[error("Invalid data. Failed to prepend DID: {0}.")]
-    // PrependFailed(String),
+    /// Resolution of DID failed.
     #[error("Failed to resolve DID: {0}.")]
     ResolutionFailure(String),
+    /// Multiple controllers for a DID.
     #[error("Found multiple controllers in DID: {0}.")]
     MultipleControllers(String),
     /// No proof value present.
@@ -37,8 +36,6 @@ pub enum ChainError {
 
 /// A chain of DIDs.
 pub trait Chain {
-    // /// Constructs a new DID chain.
-    // fn new<T: DIDResolver + Sync + Send>(did: &str, resolver: &Resolver<T>) -> Result<Box<Self>, ChainError>;
     /// Returns the length of the DID chain.
     fn len(&self) -> usize;
     /// Returns the level of the given DID in the chain.
@@ -79,24 +76,8 @@ fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
     }
 }
 
-/// Extracts vec of public keys from a doc.
-fn extract_keys(doc: &Document) -> Vec<JWK> {
-    let mut public_keys: Vec<JWK> = Vec::new();
-    if let Some(verification_methods) = doc.verification_method.as_ref() {
-        for verification_method in verification_methods {
-            if let VerificationMethod::Map(VerificationMethodMap {
-                public_key_jwk: Some(key),
-                ..
-            }) = verification_method
-            {
-                public_keys.push(key.clone());
-            } else {
-                continue;
-            }
-        }
-    }
-    public_keys
-}
+/// Max width in chars for printing
+const MAX_WIDTH: usize = 79;
 
 /// A struct for a chain of DIDs.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -106,86 +87,6 @@ pub struct DIDChain {
 
     // Vector to keep track of the level of each DID.
     level_vec: Vec<String>,
-}
-
-fn truncate(s: &str, max_chars: usize) -> String {
-    match s.char_indices().nth(max_chars) {
-        None => s.to_string(),
-        Some((idx, _)) => s[..idx - 3].to_string() + "...",
-    }
-}
-
-fn get_service_endpoint_string(doc: &Document) -> Option<String> {
-    match doc.select_service("TrustchainID") {
-        Some(Service {
-            service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(service_endpoint))),
-            ..
-        }) => Some(service_endpoint.to_string()),
-        _ => None,
-    }
-}
-
-/// A struct for displaying a DID in a box.
-pub struct PrettyDID {
-    did: String,
-    level: usize,
-    endpoint: Option<String>,
-    max_width: usize,
-}
-
-/// Max width in chars for printing
-const MAX_WIDTH: usize = 79;
-
-impl PrettyDID {
-    pub fn new(doc: &Document, level: usize, max_width: usize) -> Self {
-        let endpoint = get_service_endpoint_string(doc);
-        Self {
-            did: doc.id.to_string(),
-            level,
-            endpoint,
-            max_width,
-        }
-    }
-    fn get_width(&self) -> usize {
-        format!(" DID: {} ", self.did).len().min(self.max_width)
-    }
-    fn get_text_width(&self) -> usize {
-        self.get_width() - 2
-    }
-    fn get_strings(&self) -> [String; 3] {
-        let text_width = self.get_text_width();
-        let level_string = truncate(&format!("Level: {}", self.level), text_width);
-        let did_string = truncate(&format!("DID: {}", self.did), text_width);
-        let endpoint_string = match &self.endpoint {
-            Some(s) => truncate(&format!("Endpoint: {}", s), text_width),
-            _ => truncate(&format!("Endpoint: {}", ""), text_width),
-        };
-        [level_string, did_string, endpoint_string]
-    }
-    pub fn to_node_string(&self) -> String {
-        let strings = self.get_strings();
-        strings.join("\n")
-    }
-}
-
-impl fmt::Display for PrettyDID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Style:
-        // "+---------------+"
-        // "| level: ...    |"
-        // "| did: ...      |"  ✔
-        // "| endpoint: ... |"
-        // "+---------------+"
-        let box_width = self.get_width();
-        let text_width = box_width - 2;
-        let [level_string, did_string, endpoint_string] = self.get_strings();
-        writeln!(f, "+{}+", "-".repeat(box_width))?;
-        writeln!(f, "| {0:<1$} |   ", level_string, text_width)?;
-        writeln!(f, "| {0:<1$} |  ✔", did_string, text_width)?;
-        writeln!(f, "| {0:<1$} |   ", endpoint_string, text_width)?;
-        writeln!(f, "+{}+", "-".repeat(box_width))?;
-        Ok(())
-    }
 }
 
 impl fmt::Display for DIDChain {
@@ -410,6 +311,8 @@ impl Chain for DIDChain {
 
 #[cfg(test)]
 pub mod tests {
+    use ssi::jwk::JWK;
+
     use super::*;
     use crate::data::{
         TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,

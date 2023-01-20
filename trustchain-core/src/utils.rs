@@ -1,9 +1,9 @@
 //! Utils module.
+use crate::TRUSTCHAIN_DATA;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use ssi::did::{Document, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
-// use std::io::Read;
-use crate::TRUSTCHAIN_DATA;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
@@ -16,6 +16,25 @@ pub fn init() {
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
     });
+}
+
+/// Extracts a vec of public keys from a DID document.
+pub fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
 }
 
 /// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
