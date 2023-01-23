@@ -1,4 +1,7 @@
+use std::convert::TryInto;
+
 use crate::chain::{Chain, DIDChain};
+use crate::commitment::{Commitment, CommitmentError, IterableCommitment, IteratedCommitment};
 use crate::resolver::Resolver;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
@@ -87,6 +90,9 @@ pub enum VerifierError {
     /// Failed to verify transaction timestamp.
     #[error("Timestamp verification failed for transaction: {0}")]
     FailedTransactionTimestampVerification(String),
+    /// Failed block hash verification.
+    #[error("Block hash verification failed for DID: {0}.")]
+    FailedBlockHashVerification(String),
 }
 
 /// Verifier of root and downstream DIDs.
@@ -122,7 +128,20 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Gets the verified block hash for a DID.
     /// This is the hash of the PoW block (header) that has been verified
     /// to contain the most recent DID operation for the given DID.
-    fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError>;
+    fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError> {
+        let candidate_hash = self.block_hash(did);
+        let commitment = self.commitment(did)?;
+        match commitment.verify(candidate_hash) {
+            Ok(_) => Ok(candidate_hash.to_string()),
+            Err(e) => {
+                eprintln!(
+                    "Hash {} verification failed for DID: {}",
+                    candidate_hash, did
+                );
+                Err(VerifierError::FailedBlockHashVerification(did.to_string()))
+            }
+        }
+    }
 
     /// Get the verified timestamp for a DID as a Unix time.
     fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError> {
@@ -134,6 +153,12 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Maps a block hash to a Unix time.
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError>;
+
+    /// Gets a block hash (proof-of-work) Commitment for the given DID.
+    fn commitment(&self, did: &str) -> Result<Box<dyn Commitment>, VerifierError>;
+
+    /// Gets the *unverified* block hash for a given DID.
+    fn block_hash(&self, did: &str) -> &str;
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

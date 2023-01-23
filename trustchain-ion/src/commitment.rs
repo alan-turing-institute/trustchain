@@ -3,7 +3,7 @@ use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
 use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
-use serde_json::{json, Map};
+use serde_json::json;
 use ssi::did::Document;
 use std::collections::HashMap;
 use std::io::Read;
@@ -11,13 +11,13 @@ use trustchain_core::commitment::TrivialCommitment;
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{IterableCommitment, IteratedCommitment};
 
-use crate::utils::reverse_endianness;
+use crate::utils::{reverse_endianness, HasEndpoints, HasKeys};
+use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
 use crate::MERKLE_ROOT_KEY;
 use crate::NONCE_KEY;
 use crate::TIMESTAMP_KEY;
 use crate::VERSION_KEY;
-use crate::{BITS_KEY, SERVICE_KEY, VERIFICATION_METHOD_KEY};
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
 /// A TrivialCommitment whose hash is an IPFS content identifier (CID).
@@ -89,6 +89,7 @@ impl IpfsCommitment {
     }
 }
 
+// TODO: write a macro for this boilerplate (repeated for each type of Commitment).
 impl TrivialCommitment for IpfsCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         self.trivial_commitment.hasher()
@@ -153,7 +154,7 @@ impl TrivialCommitment for TrivialTxCommitment {
                 Ok(tx) => tx,
                 Err(e) => {
                     eprintln!("Failed to deserialise transaction: {}", e);
-                    return Err(CommitmentError::FailedToComputeHash);
+                    return Err(CommitmentError::DataDecodingError);
                 }
             };
             // Extract the OP_RETURN data from the transaction.
@@ -491,16 +492,18 @@ impl IONCommitment {
         merkle_proof: Vec<u8>,
         block_header: Vec<u8>,
     ) -> Result<Self, CommitmentError> {
+        // Extract the public keys and endpoints as the expected data.
+        let keys = match did_doc.get_keys() {
+            Some(x) => x,
+            None => vec![],
+        };
+        let endpoints = match did_doc.get_endpoints() {
+            Some(x) => x,
+            None => vec![],
+        };
+        let expected_data = json!([keys, endpoints]);
+
         // Construct the first Commitment, followed by a sequence of TrivialCommitments.
-
-        // Discard all except the verificationMethod and services elements.
-        let did_doc_map = json!(&did_doc).as_object().unwrap().clone();
-        let filtered_doc_map: Map<String, serde_json::Value> = did_doc_map
-            .into_iter()
-            .filter(|(key, _value)| key.eq(&VERIFICATION_METHOD_KEY) || key.eq(&SERVICE_KEY))
-            .collect();
-        let expected_data = json!(&filtered_doc_map);
-
         let chunk_file_commitment = IpfsCommitment::new(
             TrivialIpfsCommitment {
                 candidate_data: chunk_file,
@@ -523,12 +526,15 @@ impl IONCommitment {
             candidate_data: block_header,
         };
 
+        // The following construction is only possible because each TrivialCommitment
+        // knows how to convert itself to the correct Commitment type.
+        // This explains why the TrivialCommitment trait is necessary.
         let mut iterated_commitment = IteratedCommitment::new(Box::new(chunk_file_commitment));
-        iterated_commitment.append(Box::new(prov_index_file_commitment));
-        iterated_commitment.append(Box::new(core_index_file_commitment));
-        iterated_commitment.append(Box::new(tx_commitment));
-        iterated_commitment.append(Box::new(merkle_root_commitment));
-        iterated_commitment.append(Box::new(block_hash_commitment));
+        iterated_commitment.append(Box::new(prov_index_file_commitment))?;
+        iterated_commitment.append(Box::new(core_index_file_commitment))?;
+        iterated_commitment.append(Box::new(tx_commitment))?;
+        iterated_commitment.append(Box::new(merkle_root_commitment))?;
+        iterated_commitment.append(Box::new(block_hash_commitment))?;
 
         Ok(Self {
             did_doc,
@@ -550,7 +556,7 @@ mod tests {
 
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
-    use trustchain_core::data::TEST_ROOT_DOCUMENT;
+    use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
     use crate::{
@@ -577,7 +583,7 @@ mod tests {
         let bad_target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J98";
         assert!(commitment.verify(bad_target).is_err());
         match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification) => (),
+            Err(CommitmentError::FailedHashVerification(..)) => (),
             _ => panic!("Expected FailedHashVerification error."),
         }
 
@@ -590,7 +596,7 @@ mod tests {
             IpfsCommitment::new(TrivialIpfsCommitment { candidate_data }, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification) => (),
+            Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
     }
@@ -618,7 +624,7 @@ mod tests {
         let bad_target = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         assert!(commitment.verify(bad_target).is_err());
         match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification) => (),
+            Err(CommitmentError::FailedHashVerification(..)) => (),
             _ => panic!("Expected FailedHashVerification error."),
         };
 
@@ -631,7 +637,7 @@ mod tests {
             TxCommitment::new(TrivialTxCommitment { candidate_data }, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification) => (),
+            Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
     }
@@ -668,7 +674,7 @@ mod tests {
         let bad_target = "8dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         assert!(commitment.verify(bad_target).is_err());
         match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification) => (),
+            Err(CommitmentError::FailedHashVerification(..)) => (),
             _ => panic!("Expected FailedHashVerification error."),
         };
 
@@ -682,7 +688,7 @@ mod tests {
         );
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification) => (),
+            Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
     }
@@ -713,7 +719,7 @@ mod tests {
         let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         assert!(commitment.verify(bad_target).is_err());
         match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification) => (),
+            Err(CommitmentError::FailedHashVerification(..)) => (),
             _ => panic!("Expected FailedHashVerification error."),
         };
 
@@ -728,7 +734,7 @@ mod tests {
         );
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification) => (),
+            Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
     }
@@ -773,20 +779,104 @@ mod tests {
 
         // The expected data contains public keys and service endpoints.
         match expected_data {
-            serde_json::Value::Object(map) => {
-                assert!(map.contains_key(VERIFICATION_METHOD_KEY));
-                assert!(map.contains_key(SERVICE_KEY));
+            serde_json::Value::Array(arr) => {
+                assert_eq!(arr.len(), 2);
             }
-            _ => panic!("Expected JSON Map."),
+            _ => panic!("Expected JSON Array."),
         }
 
-        let target = block_hash_str;
+        // Check each individual commitment.
+        let commitments = commitment.iterated_commitment.commitments();
 
-        match commitment.verify(target) {
-            Ok(_) => todo!(),
-            Err(e) => println!("{:?}", e),
-        }
+        // The first one commits to the chunk file CID and is expected
+        // to contain the same data as the iterated commitment.
+        let chunk_file_commitment = commitments.get(0).unwrap();
+        assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
+        assert_eq!(&expected_data, &chunk_file_commitment.expected_data());
 
-        assert!(commitment.verify(target).is_ok());
+        // Verify the chunk file commitment.
+        assert!(&chunk_file_commitment.verify(chunk_file_cid).is_ok());
+
+        // The second one commits to the provisional index file CID
+        // and is expected to contain the chunk file CID.
+        let prov_index_file_commitment = commitments.get(1).unwrap();
+        assert_eq!(
+            prov_index_file_commitment.hash().unwrap(),
+            prov_index_file_cid
+        );
+        assert!(json_contains(
+            &json!(chunk_file_cid),
+            &prov_index_file_commitment.expected_data()
+        ));
+
+        // Verify the provisional index file commitment.
+        assert!(&prov_index_file_commitment
+            .verify(prov_index_file_cid)
+            .is_ok());
+
+        // The third one commits to the core index file CID
+        // and is expected to contain the provision index file CID.
+        let core_index_file_commitment = commitments.get(2).unwrap();
+        assert_eq!(
+            core_index_file_commitment.hash().unwrap(),
+            core_index_file_cid
+        );
+        assert!(json_contains(
+            &json!(prov_index_file_cid),
+            &core_index_file_commitment.expected_data()
+        ));
+
+        // Verify the core index file commitment.
+        assert!(&core_index_file_commitment
+            .verify(core_index_file_cid)
+            .is_ok());
+
+        // The fourth one commits to the Bitcoin transaction ID
+        // and is expected to contain the core index file CID.
+        let tx_commitment = commitments.get(3).unwrap();
+        let tx_id = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_eq!(tx_commitment.hash().unwrap(), tx_id);
+        assert!(json_contains(
+            &json!(core_index_file_cid),
+            &tx_commitment.expected_data()
+        ));
+
+        // Verify the transaction ID commitment.
+        assert!(&tx_commitment.verify(tx_id).is_ok());
+
+        // The fifth one commits to the Merkle root in the block header
+        // and is expected to contain the Bitcoin transaction ID.
+        let merkle_root_commitment = commitments.get(4).unwrap();
+        let merkle_root = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+        assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
+        assert!(json_contains(
+            &json!(tx_id),
+            &merkle_root_commitment.expected_data()
+        ));
+
+        // Verify the Merkle root commitment.
+        assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+        // Finally, the sixth one commits to the block hash (PoW)
+        // and is expected to contain the Merkle root.
+        let block_hash_commitment = commitments.get(5).unwrap();
+        assert_eq!(block_hash_commitment.hash().unwrap(), block_hash_str);
+        assert!(json_contains(
+            &json!(merkle_root),
+            &block_hash_commitment.expected_data()
+        ));
+
+        // Verify the Merkle root commitment.
+        assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+        // Verify the iterated commitment content (i.e. the expected_data).
+        assert!(commitment.iterated_commitment.verify_content().is_ok());
+        assert!(commitment
+            .iterated_commitment
+            .verify(&block_hash_str)
+            .is_ok());
+
+        // Verify the IONCommitment itself.
+        assert!(commitment.verify(&block_hash_str).is_ok());
     }
 }

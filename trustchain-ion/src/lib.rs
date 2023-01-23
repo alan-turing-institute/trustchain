@@ -19,7 +19,7 @@ pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
     IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
 }
 
-/// An error relating for rustchain-ion crate.
+/// An error relating for Trustchain-ion crate.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TrustchainIONError {
     #[error("Key cannot be converted to commmitment value.")]
@@ -28,6 +28,23 @@ pub enum TrustchainIONError {
     FailedToExtractCommitment,
     #[error("Incorrect key type is provided.")]
     IncorrectKeyType,
+}
+
+/// An error relating to a MongoDB query.
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TrustchainMongodbError {
+    #[error("Query returned None.")]
+    QueryReturnedNone,
+    #[error("Query returned Error.")]
+    QueryReturnedError(String),
+}
+
+/// An error relating to an IPFS query.
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TrustchainIpfsError {
+    /// Failed to decode IPFS data.
+    #[error("Failed to decode IPFS data.")]
+    DataDecodingError,
 }
 
 // DID

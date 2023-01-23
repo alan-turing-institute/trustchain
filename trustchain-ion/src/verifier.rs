@@ -1,4 +1,6 @@
-use crate::utils::{reverse_endianness, HasEndpoints, HasKeys};
+use crate::utils::{
+    decode_ipfs_content, query_ipfs, query_mongodb, reverse_endianness, HasEndpoints, HasKeys,
+};
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, CHUNKS_KEY,
     CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, HASH_PREV_BLOCK_KEY, ION_METHOD,
@@ -9,7 +11,7 @@ use crate::{
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
-use bitcoin::{BlockHeader, MerkleBlock, Txid};
+use bitcoin::{BlockHeader, MerkleBlock};
 use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
@@ -23,11 +25,11 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
 use serde::{Deserialize, Serialize}
 use ssi::did::Document;
-use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
-use std::collections::HashMap;
+use ssi::did_resolve::{DIDResolver, Metadata};
 use std::convert::TryFrom;
 use std::io::Read;
-use std::str::{FromStr, Bytes};
+use std::str::FromStr;
+use trustchain_core::commitment::Commitment;
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
@@ -89,9 +91,9 @@ where
         // TODO: this client must be configured to connect to the endpoint
         // specified as "ipfsHttpApiEndpointUri" in the ION config file
         // named "testnet-core-config.json" (or "mainnet-core-config.json").
+        // Similar for the MongoDB client.
         let ipfs_client = IpfsClient::default();
         let ipfs_hasher = IpfsHasher::default();
-
         Self {
             resolver,
             rpc_client,
@@ -106,7 +108,8 @@ where
         let suffix = did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database for a bson::Document.
-            let doc = match block_on(Self::query_mongo(suffix)) {
+            // let doc = match block_on(Self::query_mongo(suffix)) {
+            let doc = match block_on(query_mongodb(suffix, None)) {
                 Ok(x) => x,
                 Err(e) => {
                     eprintln!("Error querying MongoDB: {}", e);
@@ -169,96 +172,6 @@ where
 
             Ok((block_hash, tx_index))
         })
-    }
-
-    // TODO: try making this a method and re-using the same client (struct member) each time.
-    /// Queries the ION MongoDB for a DID operation.
-    async fn query_mongo(did: &str) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
-        let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
-        let client = Client::with_options(client_options)?;
-
-        // let doc: mongodb::bson::Document = client
-        let query_result = client
-            .database(MONGO_DATABASE_ION_TESTNET_CORE)
-            .collection(MONGO_COLLECTION_OPERATIONS)
-            .find_one(
-                doc! {
-                    MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
-                    MONGO_FILTER_DID_SUFFIX : did
-                },
-                None,
-            )
-            .await;
-        match query_result {
-            Ok(Some(doc)) => Ok(doc),
-            Err(e) => {
-                eprintln!("Error querying MongoDB: {}", e);
-                return Err(Box::new(VerifierError::FailureToGetDIDOperation(
-                    did.to_owned(),
-                )));
-            }
-            _ => {
-                return Err(Box::new(VerifierError::FailureToGetDIDOperation(
-                    did.to_owned(),
-                )))
-            }
-        }
-    }
-
-    /// Queries IPFS for the given content identifier (CID) to retrieve the content
-    /// (as bytes), hashes the content and checks that the hash matches the CID,
-    /// decompresses the content, converts it to a UTF-8 string and then to JSON.
-    ///
-    /// By checking that the hash of the content is identical to the CID, this method
-    /// verifies that the content itself must have been used to originally construct the CID.
-    ///
-    /// ## Errors
-    ///  - `VerifierError::FailureToGetDIDContent` if the IPFS query fails, or the decoding or JSON serialisation fails
-    ///  - `VerifierError::FailedContentHashVerification` if the content hash is not identical to the CID
-    #[actix_rt::main]
-    async fn query_ipfs(&self, cid: &str) -> Result<Value, VerifierError> {
-        let ipfs_file = match self
-            .ipfs_client
-            .cat(cid)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await
-        {
-            Ok(res) => res,
-            Err(e) => {
-                eprintln!("Error querying IPFS: {}", e);
-                return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-            }
-        };
-
-        // Verify the content hash. This verifies that the content returned by this
-        // method must have been used to construct the content identifier (CID).
-        let ipfs_hash = self.ipfs_hasher.compute(&ipfs_file);
-        if ipfs_hash.ne(cid) {
-            return Err(VerifierError::FailedContentHashVerification(
-                ipfs_hash,
-                cid.to_string(),
-            ));
-        }
-
-        // Decompress the content and deserialise to JSON.
-        let mut decoder = GzDecoder::new(&ipfs_file[..]);
-        let mut ipfs_content_str = String::new();
-        match decoder.read_to_string(&mut ipfs_content_str) {
-            Ok(_) => {
-                match serde_json::from_str(&ipfs_content_str) {
-                    Ok(value) => return Ok(value),
-                    Err(e) => {
-                        eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                        return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-                    }
-                };
-            }
-            Err(e) => {
-                eprintln!("Error decoding IPFS content: {}", e);
-                return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-            }
-        }
     }
 
     /// Gets the Bitcoin transaction at the given location.
@@ -334,10 +247,17 @@ where
 
     /// Unwraps the ION DID content associated with an IPFS content identifier.
     fn unwrap_ion_content(&self, cid: &str) -> Result<Value, VerifierError> {
-        let ipfs_json = match self.query_ipfs(cid) {
+        let ipfs_file = match query_ipfs(cid, None) {
             Ok(x) => x,
             Err(e) => {
-                eprintln!("Error querying IPFS: {}", e);
+                eprintln!("Error querying IPFS for CID {}: {}", cid, e);
+                return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
+            }
+        };
+        let ipfs_json = match decode_ipfs_content(ipfs_file) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Error decoding IPFS data for CID {}: {}", cid, e);
                 return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
             }
         };
@@ -396,7 +316,7 @@ where
         return extract_doc_state(deltas, update_commitment);
     }
 
-    /// Resolve the given DID to obtain the DID Document and Update Commitment.
+    /// Resolves the given DID to obtain the DID Document and Update Commitment.
     fn resolve_did(&self, did: &str) -> Result<(Document, String), VerifierError> {
         let (doc, doc_meta) = match self.resolver.resolve_as_result(did) {
             Ok((x, y, z)) => {
@@ -451,15 +371,6 @@ where
             return Err(VerifierError::DIDResolutionError(did.to_string()));
         }
     }
-
-    //
-    // Refactoring based on the Commitment trait, for the VerificationBundle:
-    //
-
-    // /// Constructs the ION chunk file commitment.
-    // fn chunk_file_commitment(&self) -> Box<dyn Commitment> {
-
-    // }
 }
 
 /// Gets a Bitcoin RPC client instance.
@@ -625,7 +536,19 @@ impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
 {
+    // TODO NEXT: This method is now implemented as a default in the trait.
+    // Remove this implementation and instead implement the block_hash() and commitment() methods.
     fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError> {
+        // TODO NEXT:
+        // Major refactor to simplify the verification process, which should be:
+        // 1. gather all relevant data (inc. DID Document) to construct a VerificationBundle.
+        // 2. store it in a struct field of type Option<VerificationBundle>.
+        // 3. add a method to impl VerificationBundle:
+        //  pub fn as_commitment(&self) -> IONCommitment
+        // 4. re-implement this method (i.e. `verified_block_hash`), which performs those
+        // first three steps then gets the block hash for the target (from the local node,
+        // whether full or SPV), verifies the IONCommitment against this target and returns the block hash.
+
         // Resolve the DID Document to get the expected public keys & endpoints,
         // and the update commitment needed to differentiate between patches in
         // the patches found in the chunk file retrieved from IPFS.
@@ -634,7 +557,7 @@ where
         let tx_locator = self.locate_transaction(did)?;
         let tx = self.transaction(tx_locator)?;
 
-        // TODO: Need to perform 2 verifications:
+        // Perform 2 verifications:
         // 1. verify that the transaction commits to the expected DID data
         //      See Branch 1 at https://hackmd.io/Dgoof7eZS6ysXuM6CUbCVQ#Branch-1-Verify-the-IPFS-data
         // 2. verify that the transaction really is in the block (via Merkle proof)
@@ -759,6 +682,14 @@ where
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
     }
+
+    fn commitment(&self, did: &str) -> Result<Box<dyn Commitment>, VerifierError> {
+        todo!()
+    }
+
+    fn block_hash(&self, did: &str) -> &str {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -777,9 +708,7 @@ mod tests {
         sidetree::{PublicKey, SidetreeClient},
         ION,
     };
-    use ssi::{
-        did::ServiceEndpoint, did_resolve::HTTPDIDResolver, hash::sha256, jwk::Params, jwk::JWK,
-    };
+    use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
     // Note that this resolver will *not* succeed at resolving DIDs. For that, a

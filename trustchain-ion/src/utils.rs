@@ -2,15 +2,24 @@
 use bitcoin::{BlockHash, Transaction};
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
+use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
+use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
 use std::error::Error;
+use std::io::Read;
+use trustchain_core::verifier::VerifierError;
 
-use crate::{BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME};
+use crate::{
+    TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD,
+    BITCOIN_RPC_USERNAME, MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING,
+    MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX,
+    MONGO_FILTER_TYPE,
+};
 
 pub trait HasKeys {
     fn get_keys(&self) -> Option<Vec<JWK>>;
@@ -122,6 +131,16 @@ impl HasEndpoints for DocumentState {
     }
 }
 
+/// Queries IPFS for the given content identifier (CID) to retrieve the content
+/// (as bytes), hashes the content and checks that the hash matches the CID,
+/// decompresses the content, converts it to a UTF-8 string and then to JSON.
+///
+/// By checking that the hash of the content is identical to the CID, this method
+/// verifies that the content itself must have been used to originally construct the CID.
+///
+/// ## Errors
+///  - `VerifierError::FailureToGetDIDContent` if the IPFS query fails, or the decoding or JSON serialisation fails
+///  - `VerifierError::FailedContentHashVerification` if the content hash is not identical to the CID
 #[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
@@ -144,6 +163,73 @@ pub async fn query_ipfs(
         Err(e) => {
             eprintln!("Error querying IPFS: {}", e);
             return Err(Box::new(e));
+        }
+    }
+}
+
+/// Decodes an IPFS file.
+pub fn decode_ipfs_content(ipfs_file: Vec<u8>) -> Result<serde_json::Value, TrustchainIpfsError> {
+    // Decompress the content and deserialise to JSON.
+    let mut decoder = GzDecoder::new(&ipfs_file[..]);
+    let mut ipfs_content_str = String::new();
+    match decoder.read_to_string(&mut ipfs_content_str) {
+        Ok(_) => {
+            match serde_json::from_str(&ipfs_content_str) {
+                Ok(value) => return Ok(value),
+                Err(e) => {
+                    eprintln!("Error deserialising IPFS content to JSON: {}", e);
+                    return Err(TrustchainIpfsError::DataDecodingError);
+                }
+            };
+        }
+        Err(e) => {
+            eprintln!("Error decoding IPFS content: {}", e);
+            return Err(TrustchainIpfsError::DataDecodingError);
+        }
+    }
+}
+
+/// Queries the ION MongoDB for a DID operation.
+pub async fn query_mongodb(
+    did: &str,
+    client: Option<mongodb::Client>,
+) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
+    // TODO: this client must be configured to connect to the endpoint
+    // specified as "TODO!" in the ION config file
+    // named "testnet-core-config.json" (or "mainnet-core-config.json").
+    let client = match client {
+        Some(x) => x,
+        None => {
+            let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
+            mongodb::Client::with_options(client_options)?
+        }
+    };
+
+    // MOST IMP TODO: try other queries (different to .find_one()) to see whether
+    // a fuller collection of DID operations can be obtained (e.g. both create and updates).
+    let query_result: Result<std::option::Option<mongodb::bson::Document>, mongodb::error::Error> =
+        client
+            .database(MONGO_DATABASE_ION_TESTNET_CORE)
+            .collection(MONGO_COLLECTION_OPERATIONS)
+            .find_one(
+                doc! {
+                    MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                    MONGO_FILTER_DID_SUFFIX : did
+                },
+                None,
+            )
+            .await;
+    match query_result {
+        Ok(Some(doc)) => Ok(doc),
+        Ok(None) => {
+            eprintln!("Error querying MongoDB. None returned");
+            Err(Box::new(TrustchainMongodbError::QueryReturnedNone))
+        }
+        Err(e) => {
+            eprintln!("Error querying MongoDB: {}", e);
+            Err(Box::new(TrustchainMongodbError::QueryReturnedError(
+                e.to_string(),
+            )))
         }
     }
 }
@@ -173,12 +259,14 @@ mod tests {
     use crate::PROVISIONAL_INDEX_FILE_URI_KEY;
     use crate::{data::TEST_CHUNK_FILE_CONTENT, verifier::content_deltas};
     use flate2::read::GzDecoder;
+    use futures::executor::block_on;
     use serde_json::Value;
     use ssi::jwk::Params;
     use trustchain_core::data::{
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
         TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
     };
+    use trustchain_core::did_suffix;
 
     #[test]
     fn test_get_keys_from_document() {
@@ -356,5 +444,24 @@ mod tests {
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         assert!(query_ipfs(cid, None).is_err());
+    }
+
+    #[test]
+    #[ignore = "Integration test requires MongoDB"]
+    fn test_query_mongodb() {
+        let did = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let suffix = did_suffix(did);
+        // Make runtime
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        runtime.block_on(async {
+            let doc = block_on(query_mongodb(suffix, None)).unwrap();
+
+            let block_height: i32 = doc.get_i32("txnTime").unwrap();
+            assert_eq!(block_height, 2377445);
+        });
     }
 }
