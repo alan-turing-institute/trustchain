@@ -1,18 +1,10 @@
 use crate::qrcode::str_to_qr_code_html;
-use crate::HOST;
+use crate::vc::generate_vc;
+use crate::{EXAMPLE_VP_REQUEST, HOST};
 use actix_web::Result as ActixResult;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-use base64::engine::general_purpose;
-use base64::write::EncoderWriter;
-use image::{DynamicImage, ImageOutputFormat};
-use image::{EncodableLayout, Luma};
-use qrcode::QrCode;
+use actix_web::{get, post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string_pretty, Map, Value};
-use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
-use std::io::Write;
-use std::process::{Command, Stdio};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -59,4 +51,61 @@ pub async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResu
     Ok(HttpResponse::Ok()
         .content_type("text/html")
         .body(str_to_qr_code_html(&address_str)))
+}
+
+#[get("/hello/{name}")]
+async fn greet(name: web::Path<String>) -> impl Responder {
+    format!("Hello {name}!")
+}
+
+/// API endpoint taking the UUID of a VC. Response is the VC JSON.
+// TODO: identify how to handle multiple string variables
+#[get("/vc/verifier")]
+async fn get_vp_offer() -> impl Responder {
+    // Return the presentation request
+    EXAMPLE_VP_REQUEST
+}
+
+#[post("/vc/verifier")]
+async fn post_request_verifier(info: web::Json<Credential>) -> impl Responder {
+    println!(
+        "RECEIVED CREDENTIAL AT PRESENTATION:\n{}",
+        serde_json::to_string_pretty(&info).unwrap().to_string()
+    );
+    // TODO: check whether a specific response body is required
+    // See [here](https://w3c-ccg.github.io/vc-api/#prove-presentation)
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body("Received!")
+}
+
+fn handle_get_vc(id: &str) -> String {
+    generate_vc(true, None, id)
+}
+
+/// API endpoint taking the UUID of a VC. Response is the VC JSON.
+// TODO: identify how to handle multiple string variables
+#[get("/vc/issuer/{id}")]
+async fn get_vc_offer(id: web::Path<String>) -> impl Responder {
+    handle_get_vc(&id)
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+struct VcInfo {
+    subject_id: String,
+}
+
+#[post("/vc/issuer/{id}")]
+async fn post_request(info: web::Json<VcInfo>, id: web::Path<String>) -> impl Responder {
+    println!("I received this VC info: {:?}", info);
+    let data = handle_post_vc(info.subject_id.as_str(), &id.to_string());
+    HttpResponse::Ok()
+        .insert_header(("Content-Type", "application/ld+json"))
+        .keep_alive()
+        // .append_header(("Transfer-Encoding", "chunked"))
+        .body(data)
+}
+
+fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
+    generate_vc(false, Some(subject_id), credential_id)
 }

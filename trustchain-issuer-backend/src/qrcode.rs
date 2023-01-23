@@ -1,17 +1,8 @@
-use actix_web::Result as ActixResult;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use base64::engine::general_purpose;
 use base64::write::EncoderWriter;
+use image::Luma;
 use image::{DynamicImage, ImageOutputFormat};
-use image::{EncodableLayout, Luma};
 use qrcode::QrCode;
-use serde::{Deserialize, Serialize};
-use serde_json::{to_string_pretty, Map, Value};
-use ssi::one_or_many::OneOrMany;
-use ssi::vc::Credential;
-use std::io::Write;
-use std::process::{Command, Stdio};
-use uuid::Uuid;
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {
     let mut buf = Vec::new();

@@ -1,5 +1,6 @@
 pub mod handlers;
 pub mod qrcode;
+pub mod vc;
 
 /// Server localhost address
 pub const HOST: &str = "http://127.0.0.1:8081";
