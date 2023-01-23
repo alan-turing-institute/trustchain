@@ -16,7 +16,7 @@ pub async fn index() -> ActixResult<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(
-            std::fs::read_to_string(format!("{}/static/front.html", env!("CARGO_MANIFEST_DIR")))
+            std::fs::read_to_string(format!("{}/static/index.html", env!("CARGO_MANIFEST_DIR")))
                 .unwrap(),
         ))
 }
