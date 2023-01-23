@@ -36,7 +36,7 @@ pub async fn vp_offer_address() -> ActixResult<HttpResponse> {
     // Respond with the QR code as a png embedded in html
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(str_to_qr_code_html(&address_str)))
+        .body(str_to_qr_code_html(&address_str, "Verifier")))
 }
 
 /// Simple handle POST request (see [examples](https://github.com/actix/examples/blob/master/forms/form/src/main.rs))
@@ -50,7 +50,7 @@ pub async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResu
     // Respond with the QR code as a png embedded in html
     Ok(HttpResponse::Ok()
         .content_type("text/html")
-        .body(str_to_qr_code_html(&address_str)))
+        .body(str_to_qr_code_html(&address_str, "Issuer")))
 }
 
 #[get("/hello/{name}")]

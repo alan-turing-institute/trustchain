@@ -13,9 +13,9 @@ pub fn image_to_base64_string(image: &DynamicImage) -> String {
     std::str::from_utf8(&buf).unwrap().to_string()
 }
 
-pub fn str_to_qr_code_html(s: &str) -> String {
+pub fn str_to_qr_code_html(url: &str, title: &str) -> String {
     // Make QR code
-    let code = QrCode::new(s.as_bytes()).unwrap();
+    let code = QrCode::new(url.as_bytes()).unwrap();
 
     // Render the bits into an image.
     let image = DynamicImage::ImageLuma8(code.render::<Luma<u8>>().build());
@@ -26,11 +26,11 @@ pub fn str_to_qr_code_html(s: &str) -> String {
         <html>
             <head>
             <meta charset=utf-8>
-            <title>Forms</title>
+            <title>{title}</title>
         </head>
         <body>
             <div>
-            <a href={s}>
+            <a href={url}>
                 <img src={image_str} />
             </div>
         </body>
