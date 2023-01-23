@@ -193,7 +193,7 @@ mod tests {
     fn test_read_chains_with_cycle() {
         let chains = vec![test_chain(false).unwrap(), test_chain(true).unwrap()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
-        assert!(graph.is_err());
+        assert!(matches!(graph, Err(GraphError::ContainsCycle)));
     }
     #[test]
     fn test_to_dot() -> Result<(), GraphError> {
