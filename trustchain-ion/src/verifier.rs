@@ -23,6 +23,7 @@ use ipfs_api_backend_actix::IpfsClient;
 use ipfs_hasher::IpfsHasher;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde_json::Value;
+use serde::{Deserialize, Serialize}
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, Metadata};
 use std::convert::TryFrom;
@@ -43,6 +44,20 @@ enum IonFileType {
     CoreIndexFile,
     ProvisionalIndexFile,
     ChunkFile,
+}
+
+
+/// Struct for Trustchain verification bundle implementation
+#[derive(Serialize, Deserialize)]
+pub struct VerificationBundle {
+    did_doc: Document,             // DID Document
+    did_doc_meta: Metadata,        // DID Document Metadata
+    transaction: Vec<u8>, // Bitcoin Transaction (the one that anchors the DID operation in the blockchain)
+    core_index_file: Vec<u8>,   // ION coreIndexFile (JSON)
+    provisional_index_file: Vec<u8>,   // ION provisionalIndexFile (JSON)
+    chunk_file: Vec<u8>,       // ION chunkFile (JSON)
+    merkle_block: Vec<u8>,
+    block_header: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)       
 }
 
 /// Struct for Trustchain Verifier implementation via the ION DID method.
@@ -1031,5 +1046,20 @@ mod tests {
         } else {
             panic!();
         }
+    }
+
+    #[test]
+    fn test_verification_bundle_serialize(){
+        // let verification_bundle = VerificationBundle();
+        // Tests: 1. is valid json
+        panic!();
+        
+    }
+
+    #[test]
+    fn test_verification_bundle_deserialize(){
+        // Tests: assert individual elements of struct
+        panic!();
+        
     }
 }
