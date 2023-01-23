@@ -27,6 +27,6 @@ fn trustchain_graph() {
         chains.push(chain);
     }
 
-    let graph = TrustchainGraph::new(&chains, 30).unwrap();
-    println!("{}", graph.to_dot());
+    let graph = TrustchainGraph::new(&chains, 50).unwrap();
+    println!("{}", graph);
 }
