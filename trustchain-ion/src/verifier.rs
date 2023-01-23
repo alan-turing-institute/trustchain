@@ -22,8 +22,8 @@ use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
 use ipfs_hasher::IpfsHasher;
 use mongodb::{bson::doc, options::ClientOptions, Client};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde::{Deserialize, Serialize}
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, Metadata};
 use std::convert::TryFrom;
@@ -46,18 +46,17 @@ enum IonFileType {
     ChunkFile,
 }
 
-
 /// Struct for Trustchain verification bundle implementation
 #[derive(Serialize, Deserialize)]
 pub struct VerificationBundle {
-    did_doc: Document,             // DID Document
-    did_doc_meta: Metadata,        // DID Document Metadata
+    did_doc: Document,               // DID Document
+    did_doc_meta: Metadata,          // DID Document Metadata
     transaction: Vec<u8>, // Bitcoin Transaction (the one that anchors the DID operation in the blockchain)
-    core_index_file: Vec<u8>,   // ION coreIndexFile (JSON)
-    provisional_index_file: Vec<u8>,   // ION provisionalIndexFile (JSON)
-    chunk_file: Vec<u8>,       // ION chunkFile (JSON)
+    core_index_file: Vec<u8>, // ION coreIndexFile (JSON)
+    provisional_index_file: Vec<u8>, // ION provisionalIndexFile (JSON)
+    chunk_file: Vec<u8>,  // ION chunkFile (JSON)
     merkle_block: Vec<u8>,
-    block_header: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)       
+    block_header: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)
 }
 
 /// Struct for Trustchain Verifier implementation via the ION DID method.
@@ -700,7 +699,7 @@ mod tests {
     use crate::{
         data::{
             TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT,
-            TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+            TEST_PROVISIONAL_INDEX_FILE_CONTENT, TEST_TRANSACTION_HEX,
         },
         IONResolver,
     };
@@ -1049,17 +1048,49 @@ mod tests {
     }
 
     #[test]
-    fn test_verification_bundle_serialize(){
+    fn test_verification_bundle_serialize() {
         // let verification_bundle = VerificationBundle();
         // Tests: 1. is valid json
         panic!();
-        
     }
 
     #[test]
-    fn test_verification_bundle_deserialize(){
+    fn test_verification_bundle_deserialize() {
         // Tests: assert individual elements of struct
         panic!();
-        
+    }
+
+    #[test]
+    fn test_chunk_file_deserialize() {
+        todo!()
+    }
+
+    #[test]
+    fn test_prov_index_file_deserialize() {
+        todo!()
+    }
+
+    #[test]
+    fn test_core_index_file_deserialize() {
+        todo!()
+    }
+
+    #[test]
+    fn test_tx_deserialize() {
+        let bytes = hex::decode(TEST_TRANSACTION_HEX).unwrap();
+        let tx: Transaction =
+            bitcoin::util::psbt::serialize::Deserialize::deserialize(&bytes).unwrap();
+        let expected_txid = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        assert_eq!(tx.txid().to_string(), expected_txid);
+    }
+
+    #[test]
+    fn test_merkle_block_deserialize() {
+        todo!()
+    }
+
+    #[test]
+    fn test_block_header_deserialize() {
+        todo!()
     }
 }
