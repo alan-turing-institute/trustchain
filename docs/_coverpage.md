@@ -2,8 +2,8 @@
 
 > Decentralised public key infrastructure.
 
-<img height="25" hspace="0"/>
+<img height="10vh" hspace="0"/>
 
-<img src="turing.svg" height="100" />
+<img src="turing.svg" height="25vh" />
 
 <small> Made with docsify </small>
