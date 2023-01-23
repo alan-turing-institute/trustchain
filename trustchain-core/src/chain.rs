@@ -93,11 +93,11 @@ impl fmt::Display for DIDChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
         // "+----------------+"
-        // "| PrettyDID: ... |"  ✓
+        // "| PrettyDID: ... |"  ✅
         // "+----------------+"
         //        ⛓⛓⛓⛓
         // "+----------------+"
-        // "| PrettyDID: ... |"  ✓
+        // "| PrettyDID: ... |"  ✅
         // "+----------------+"
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         for (i, did) in self.level_vec.iter().enumerate() {

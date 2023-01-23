@@ -69,7 +69,7 @@ impl fmt::Display for PrettyDID {
         // Style:
         // "+---------------+"
         // "| level: ...    |"
-        // "| did: ...      |"  ✔
+        // "| did: ...      |"  ✅
         // "| endpoint: ... |"
         // "+---------------+"
         let box_width = self.get_width();
@@ -77,7 +77,7 @@ impl fmt::Display for PrettyDID {
         let [level_string, did_string, endpoint_string] = self.get_strings();
         writeln!(f, "+{}+", "-".repeat(box_width))?;
         writeln!(f, "| {0:<1$} |   ", level_string, text_width)?;
-        writeln!(f, "| {0:<1$} |  ✔", did_string, text_width)?;
+        writeln!(f, "| {0:<1$} |  ✅", did_string, text_width)?;
         writeln!(f, "| {0:<1$} |   ", endpoint_string, text_width)?;
         writeln!(f, "+{}+", "-".repeat(box_width))?;
         Ok(())
