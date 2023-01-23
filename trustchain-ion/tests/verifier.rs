@@ -1,15 +1,6 @@
-use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
-
 use trustchain_core::verifier::Verifier;
 use trustchain_core::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
+use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 #[test]
@@ -24,7 +15,7 @@ fn trustchain_verification() {
     ];
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     let verifier = IONVerifier::new(resolver);
 

@@ -3,7 +3,7 @@ pub mod attestor;
 pub mod chain;
 pub mod controller;
 pub mod data;
-pub mod graph;
+pub mod display;
 pub mod key_manager;
 pub mod resolver;
 pub mod subject;
