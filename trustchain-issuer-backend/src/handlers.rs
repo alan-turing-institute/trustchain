@@ -29,7 +29,7 @@ pub async fn issuer() -> ActixResult<HttpResponse> {
         ))
 }
 
-pub async fn vp_offer_address() -> ActixResult<HttpResponse> {
+pub async fn get_verifier_qrcode() -> ActixResult<HttpResponse> {
     // Generate a QR code for server address and combination of name and UUID
     let address_str = format!("{HOST}/vc/verifier");
 
@@ -40,7 +40,7 @@ pub async fn vp_offer_address() -> ActixResult<HttpResponse> {
 }
 
 /// Simple handle POST request (see [examples](https://github.com/actix/examples/blob/master/forms/form/src/main.rs))
-pub async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResult<HttpResponse> {
+pub async fn get_issuer_qrcode(_params: web::Form<MyParams>) -> ActixResult<HttpResponse> {
     // Generate a UUID
     let id = Uuid::new_v4().to_string();
 
@@ -53,24 +53,19 @@ pub async fn handle_issuer_post_start(_params: web::Form<MyParams>) -> ActixResu
         .body(str_to_qr_code_html(&address_str, "Issuer")))
 }
 
-#[get("/hello/{name}")]
-async fn greet(name: web::Path<String>) -> impl Responder {
-    format!("Hello {name}!")
-}
-
 /// API endpoint taking the UUID of a VC. Response is the VC JSON.
 // TODO: identify how to handle multiple string variables
 #[get("/vc/verifier")]
-async fn get_vp_offer() -> impl Responder {
+async fn get_verifier() -> impl Responder {
     // Return the presentation request
     EXAMPLE_VP_REQUEST
 }
 
 #[post("/vc/verifier")]
-async fn post_request_verifier(info: web::Json<Credential>) -> impl Responder {
+async fn post_verifier(info: web::Json<Credential>) -> impl Responder {
     println!(
         "RECEIVED CREDENTIAL AT PRESENTATION:\n{}",
-        serde_json::to_string_pretty(&info).unwrap().to_string()
+        serde_json::to_string_pretty(&info).unwrap()
     );
     // TODO: check whether a specific response body is required
     // See [here](https://w3c-ccg.github.io/vc-api/#prove-presentation)
@@ -79,14 +74,9 @@ async fn post_request_verifier(info: web::Json<Credential>) -> impl Responder {
         .body("Received!")
 }
 
-fn handle_get_vc(id: &str) -> String {
-    generate_vc(true, None, id)
-}
-
 /// API endpoint taking the UUID of a VC. Response is the VC JSON.
-// TODO: identify how to handle multiple string variables
 #[get("/vc/issuer/{id}")]
-async fn get_vc_offer(id: web::Path<String>) -> impl Responder {
+async fn get_issuer(id: web::Path<String>) -> impl Responder {
     handle_get_vc(&id)
 }
 
@@ -96,7 +86,7 @@ struct VcInfo {
 }
 
 #[post("/vc/issuer/{id}")]
-async fn post_request(info: web::Json<VcInfo>, id: web::Path<String>) -> impl Responder {
+async fn post_issuer(info: web::Json<VcInfo>, id: web::Path<String>) -> impl Responder {
     println!("I received this VC info: {:?}", info);
     let data = handle_post_vc(info.subject_id.as_str(), &id.to_string());
     HttpResponse::Ok()
@@ -104,6 +94,10 @@ async fn post_request(info: web::Json<VcInfo>, id: web::Path<String>) -> impl Re
         .keep_alive()
         // .append_header(("Transfer-Encoding", "chunked"))
         .body(data)
+}
+
+fn handle_get_vc(id: &str) -> String {
+    generate_vc(true, None, id)
 }
 
 fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
