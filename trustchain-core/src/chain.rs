@@ -52,8 +52,8 @@ pub trait Chain {
     fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
-    /// Return view of chain in correct order
-    fn as_vec(&self) -> &Vec<String>;
+    /// Returns a vector of DID strings ordered by the level in the chain, starting at the root (level 0).
+    fn level_vec(&self) -> &Vec<String>;
 }
 
 /// Gets proof from DocumentMetadata.
@@ -188,7 +188,7 @@ impl DIDChain {
 }
 
 impl Chain for DIDChain {
-    fn as_vec(&self) -> &Vec<String> {
+    fn level_vec(&self) -> &Vec<String> {
         &self.level_vec
     }
 
@@ -452,7 +452,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_as_vec() {
+    fn test_level_vec() {
         let target = test_chain(false).unwrap();
         let expected_vec = vec![
             // ROOT DID
@@ -462,7 +462,7 @@ pub mod tests {
             // LEVEL TWO DID
             "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
         ];
-        assert_eq!(target.as_vec(), &expected_vec);
+        assert_eq!(target.level_vec(), &expected_vec);
     }
 
     #[test]
