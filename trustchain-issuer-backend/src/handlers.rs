@@ -103,3 +103,25 @@ fn handle_get_vc(id: &str) -> String {
 fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
     generate_vc(false, Some(subject_id), credential_id)
 }
+
+#[get("/did/resolve/{did}")]
+async fn get_did(did: web::Path<String>) -> impl Responder {
+    println!("RECEIVED DID TO RESOLVE:\n{}", did.clone().as_str());
+
+    let RESOLVED = format!(
+        "{{ \"type\": \"MyDID\", \"did\": [ {{ \"id\": \"{}\"}} ]}}",
+        did
+    );
+
+    println!("RETURNING:\n{}", RESOLVED.clone());
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(RESOLVED.clone())
+}
+
+#[get("/did/verify/{did}")]
+async fn get_chain(did: web::Path<String>) -> impl Responder {
+    // return chain
+    todo!();
+    HttpResponse::Ok()
+}
