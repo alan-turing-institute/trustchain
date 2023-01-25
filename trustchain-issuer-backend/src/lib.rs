@@ -1,3 +1,4 @@
+pub mod data;
 pub mod handlers;
 pub mod qrcode;
 pub mod vc;

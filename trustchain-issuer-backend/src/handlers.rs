@@ -1,10 +1,13 @@
+use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
 use crate::vc::generate_vc;
 use crate::{EXAMPLE_VP_REQUEST, HOST};
 use actix_web::Result as ActixResult;
 use actix_web::{get, post, web, HttpResponse, Responder};
+use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::vc::Credential;
+use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -105,23 +108,30 @@ fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
 }
 
 #[get("/did/resolve/{did}")]
-async fn get_did(did: web::Path<String>) -> impl Responder {
-    println!("RECEIVED DID TO RESOLVE:\n{}", did.clone().as_str());
-
-    let RESOLVED = format!(
-        "{{ \"type\": \"MyDID\", \"did\": [ {{ \"id\": \"{}\"}} ]}}",
-        did
+async fn get_did_resolve(did: web::Path<String>) -> impl Responder {
+    info!("Received DID to resolve: {}", did.as_str());
+    // Currently just returns a static string for initial testing
+    let resolved_json = format!(
+        "{{
+            \"resolution_metadata\": {{}},
+            \"document\": {TEST_ROOT_PLUS_2_DOCUMENT},
+            \"document_metadata\": {TEST_ROOT_PLUS_2_DOCUMENT_METADATA}
+        }}"
     );
 
-    println!("RETURNING:\n{}", RESOLVED.clone());
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(RESOLVED.clone())
+        .body(resolved_json)
 }
 
 #[get("/did/verify/{did}")]
-async fn get_chain(did: web::Path<String>) -> impl Responder {
-    // return chain
-    todo!();
+async fn get_did_verify(did: web::Path<String>) -> impl Responder {
+    info!("Received DID to verify: {}", did.as_str());
+
+    // Currently just returns a static string for initial testing
+    let verified_json = TEST_CHAIN;
+
     HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(verified_json)
 }

@@ -27,8 +27,8 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::post_issuer)
             .service(handlers::get_verifier)
             .service(handlers::post_verifier)
-            .service(handlers::get_did)
-            .service(handlers::get_chain)
+            .service(handlers::get_did_resolve)
+            .service(handlers::get_did_verify)
     })
     .bind(("127.0.0.1", 8081))?
     .run()
