@@ -81,6 +81,7 @@ pub trait Commitment: TrivialCommitment {
     }
 }
 
+// TODO: extend the Iterable trait here.
 /// A sequence of commitments in which the target in the n'th commitment
 /// is identical to the expected data in the (n+1)'th commitment
 pub trait IterableCommitment: Commitment {

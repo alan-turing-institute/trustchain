@@ -75,6 +75,9 @@ pub enum VerifierError {
     /// Failed to resolve DID for verification.
     #[error("Failed to resolve DID: {0}")]
     DIDResolutionError(String),
+    /// Failed to parse DID Document metadata.
+    #[error("Failed to parse DID Document metadata.")]
+    DIDMetadataError,
     /// Failed to find expected key in verified DID content.
     #[error("Key not found in verified content for DID: {0}")]
     KeyNotFoundInVerifiedContent(String),
@@ -93,6 +96,12 @@ pub enum VerifierError {
     /// Failed block hash verification.
     #[error("Block hash verification failed for DID: {0}.")]
     FailedBlockHashVerification(String),
+    /// Failed DID timestamp verification.
+    #[error("Timestamp verification failed for DID: {0}.")]
+    TimestampVerificationError(String),
+    /// Failed to fetch verification material.
+    #[error("Failed to fetch verification material.")]
+    FailureToFetchVerificationMaterial,
 }
 
 /// Verifier of root and downstream DIDs.

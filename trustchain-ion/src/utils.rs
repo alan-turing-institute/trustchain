@@ -144,15 +144,12 @@ impl HasEndpoints for DocumentState {
 #[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
-    client: Option<IpfsClient>,
+    client: &IpfsClient,
 ) -> Result<Vec<u8>, Box<ipfs_api_backend_actix::Error>> {
+    // If necessary, construct an IPFS client.
     // TODO: this client must be configured to connect to the endpoint
     // specified as "ipfsHttpApiEndpointUri" in the ION config file
     // named "testnet-core-config.json" (or "mainnet-core-config.json").
-    let client = match client {
-        Some(x) => x,
-        None => IpfsClient::default(),
-    };
     match client
         .cat(cid)
         .map_ok(|chunk| chunk.to_vec())
@@ -168,7 +165,7 @@ pub async fn query_ipfs(
 }
 
 /// Decodes an IPFS file.
-pub fn decode_ipfs_content(ipfs_file: Vec<u8>) -> Result<serde_json::Value, TrustchainIpfsError> {
+pub fn decode_ipfs_content(ipfs_file: &Vec<u8>) -> Result<serde_json::Value, TrustchainIpfsError> {
     // Decompress the content and deserialise to JSON.
     let mut decoder = GzDecoder::new(&ipfs_file[..]);
     let mut ipfs_content_str = String::new();
@@ -194,6 +191,7 @@ pub async fn query_mongodb(
     did: &str,
     client: Option<mongodb::Client>,
 ) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
+    // If necessary, construct a MongoDB client.
     // TODO: this client must be configured to connect to the endpoint
     // specified as "TODO!" in the ION config file
     // named "testnet-core-config.json" (or "mainnet-core-config.json").
@@ -417,7 +415,8 @@ mod tests {
     fn test_query_ipfs() {
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
-        let result = match query_ipfs(cid, None) {
+        let ipfs_client = IpfsClient::default();
+        let result = match query_ipfs(cid, &ipfs_client) {
             Ok(x) => x,
             Err(e) => panic!(),
         };
@@ -443,7 +442,7 @@ mod tests {
 
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        assert!(query_ipfs(cid, None).is_err());
+        assert!(query_ipfs(cid, &ipfs_client).is_err());
     }
 
     #[test]

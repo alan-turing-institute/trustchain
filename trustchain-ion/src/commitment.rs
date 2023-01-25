@@ -45,6 +45,15 @@ impl TrivialCommitment for TrivialIpfsCommitment {
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         |x| {
+            // TODO: in the case of the chunk file we must restrict attention to paraticular deltas/patches,
+            // e.g. using the updateCommitment. So we'll need a different ChunkFileCommitment struct with a
+            // different decode_candidate_data() method. To avoid code repetition, we should make
+            // TrivialIpfsCommitment into a trait (extending TrivialCommitment) with default implementations
+            // for the methods implemented here (and similarly for IpfsCommitment). Then have an
+            // IndexFileCommitment struct for the core & prov index file commitments that just implement the
+            // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
+
+            // TODO: use the helper function `decode_ipfs_content` in utils.rs.
             // Convert the Gzipped IPFS file (bytes) to a JSON Value.
             let mut decoder = GzDecoder::new(x);
             let mut ipfs_content_str = String::new();
@@ -556,6 +565,7 @@ mod tests {
 
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
+    use ipfs_api_backend_actix::IpfsClient;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
@@ -569,7 +579,10 @@ mod tests {
     #[ignore = "Integration test requires IPFS"]
     fn test_ipfs_commitment() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let candidate_data_ = query_ipfs(target, None).unwrap();
+
+        let ipfs_client = IpfsClient::default();
+
+        let candidate_data_ = query_ipfs(target, &ipfs_client).unwrap();
         let candidate_data = candidate_data_.clone();
         // In the core index file we expect to find the provisionalIndexFileUri.
         let expected_data =
@@ -661,7 +674,7 @@ mod tests {
         let tx = transaction(&block_hash, tx_index, None).unwrap();
 
         // The candidate data is a serialized Merkle proof.
-        let candidate_data_ = merkle_proof(tx, &block_hash, None).unwrap();
+        let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
         let candidate_data = candidate_data_.clone();
 
         let commitment = MerkleRootCommitment::new(
@@ -744,14 +757,16 @@ mod tests {
     fn test_ion_commitment() {
         let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 
+        let ipfs_client = IpfsClient::default();
+
         let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
-        let chunk_file = query_ipfs(chunk_file_cid, None).unwrap();
+        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).unwrap();
 
         let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
-        let prov_index_file = query_ipfs(prov_index_file_cid, None).unwrap();
+        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).unwrap();
 
         let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let core_index_file = query_ipfs(core_index_file_cid, None).unwrap();
+        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).unwrap();
 
         let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
@@ -759,7 +774,7 @@ mod tests {
         let tx = transaction(&block_hash, tx_index, None).unwrap();
         let transaction = Serialize::serialize(&tx);
 
-        let merkle_proof = merkle_proof(tx, &block_hash, None).unwrap();
+        let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
 
         let block_header = block_header(&block_hash, None).unwrap();
         let block_header = bitcoin::consensus::serialize(&block_header);

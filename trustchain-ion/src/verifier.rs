@@ -1,3 +1,4 @@
+use crate::commitment::IONCommitment;
 use crate::utils::{
     decode_ipfs_content, query_ipfs, query_mongodb, reverse_endianness, HasEndpoints, HasKeys,
 };
@@ -25,17 +26,18 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did::Document;
-use ssi::did_resolve::{DIDResolver, Metadata};
+use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::Read;
 use std::str::FromStr;
-use trustchain_core::commitment::Commitment;
+use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
 
-/// Locator for a transaction on the PoW ledger, given by the pair:
-/// (block_hash, tx_index_within_block).
+// /// Locator for a transaction on the PoW ledger, given by the pair:
+// /// (block_hash, tx_index_within_block).
 type TransactionLocator = (BlockHash, u32);
 
 /// Enum to distinguish ION file types.
@@ -46,17 +48,41 @@ enum IonFileType {
     ChunkFile,
 }
 
-/// Struct for Trustchain verification bundle implementation
+/// Data bundle for DID timestamp verification.
 #[derive(Serialize, Deserialize)]
 pub struct VerificationBundle {
     did_doc: Document,               // DID Document
-    did_doc_meta: Metadata,          // DID Document Metadata
+    did_doc_meta: DocumentMetadata,  // DID Document Metadata
+    chunk_file: Vec<u8>,             // ION chunkFile
+    provisional_index_file: Vec<u8>, // ION provisionalIndexFile
+    core_index_file: Vec<u8>,        // ION coreIndexFile
     transaction: Vec<u8>, // Bitcoin Transaction (the one that anchors the DID operation in the blockchain)
-    core_index_file: Vec<u8>, // ION coreIndexFile (JSON)
-    provisional_index_file: Vec<u8>, // ION provisionalIndexFile (JSON)
-    chunk_file: Vec<u8>,  // ION chunkFile (JSON)
-    merkle_block: Vec<u8>,
-    block_header: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)
+    merkle_block: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)
+    block_header: Vec<u8>, // Bitcoin block header
+}
+
+impl VerificationBundle {
+    pub fn new(
+        did_doc: Document,
+        did_doc_meta: DocumentMetadata,
+        chunk_file: Vec<u8>,
+        provisional_index_file: Vec<u8>,
+        core_index_file: Vec<u8>,
+        transaction: Vec<u8>,
+        merkle_block: Vec<u8>,
+        block_header: Vec<u8>,
+    ) -> Self {
+        Self {
+            did_doc,
+            did_doc_meta,
+            chunk_file,
+            provisional_index_file,
+            core_index_file,
+            transaction,
+            merkle_block,
+            block_header,
+        }
+    }
 }
 
 /// Struct for Trustchain Verifier implementation via the ION DID method.
@@ -68,6 +94,7 @@ where
     rpc_client: bitcoincore_rpc::Client,
     ipfs_client: IpfsClient,
     ipfs_hasher: IpfsHasher,
+    bundles: HashMap<String, VerificationBundle>,
 }
 
 impl<T> IONVerifier<T>
@@ -93,12 +120,185 @@ where
         // Similar for the MongoDB client.
         let ipfs_client = IpfsClient::default();
         let ipfs_hasher = IpfsHasher::default();
+        let bundles = HashMap::new();
         Self {
             resolver,
             rpc_client,
             ipfs_client,
             ipfs_hasher,
+            bundles,
         }
+    }
+
+    pub fn bundles(&self) -> &HashMap<String, VerificationBundle> {
+        &self.bundles
+    }
+
+    /// Returns a DID verification bundle.
+    pub fn verification_bundle(&mut self, did: &str) -> Result<&VerificationBundle, VerifierError> {
+        // Fetch (and store) the bundle if it isn't already avaialable.
+        if !self.bundles.contains_key(did) {
+            self.fetch_bundle(did)?;
+        }
+        Ok(self.bundles.get(did).unwrap())
+    }
+
+    /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
+    pub fn fetch_bundle(&mut self, did: &str) -> Result<(), VerifierError> {
+        let (did_doc, did_doc_meta) = self.resolve_did(did)?;
+        let (block_hash, tx_index) = self.locate_transaction(did)?;
+        let tx = self.fetch_transaction(&block_hash, tx_index)?;
+        let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
+        let cid = self.op_return_cid(&tx)?;
+        let core_index_file = self.fetch_core_index_file(&cid)?;
+        let provisional_index_file = self.fetch_prov_index_file(&core_index_file)?;
+        let chunk_file = self.fetch_chunk_file(&provisional_index_file, &did_doc_meta)?;
+        let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
+        let block_header = self.fetch_block_header(&block_hash)?;
+        // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
+
+        let bundle = VerificationBundle::new(
+            did_doc,
+            did_doc_meta,
+            chunk_file,
+            provisional_index_file,
+            core_index_file,
+            transaction,
+            merkle_block,
+            block_header,
+        );
+        // Insert the bundle into the HashMap of bundles, keyed by the DID.
+        let _ = &self.bundles.insert(did.to_string(), bundle);
+        Ok(())
+    }
+
+    fn fetch_transaction(
+        &self,
+        block_hash: &BlockHash,
+        tx_index: u32,
+    ) -> Result<Transaction, VerifierError> {
+        match transaction(block_hash, tx_index, Some(&self.rpc_client)) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                eprintln!("Failed to fetch transaction: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        }
+    }
+
+    fn fetch_core_index_file(&self, cid: &str) -> Result<Vec<u8>, VerifierError> {
+        match query_ipfs(cid, &self.ipfs_client) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                eprintln!("Failed to fetch ION core index file: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        }
+    }
+
+    fn fetch_prov_index_file(&self, core_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
+        let content = match decode_ipfs_content(core_index_file) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Failed to decode ION core index file: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+        let cid = match content.get(PROVISIONAL_INDEX_FILE_URI_KEY) {
+            Some(value) => value.as_str().unwrap(),
+            None => {
+                eprintln!(
+                    "Failed to find key {} in ION index file content.",
+                    PROVISIONAL_INDEX_FILE_URI_KEY
+                );
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+        match query_ipfs(cid, &self.ipfs_client) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                eprintln!("Failed to fetch ION provisional index file: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        }
+    }
+
+    fn fetch_chunk_file(
+        &self,
+        prov_index_file: &Vec<u8>,
+        did_doc_meta: &DocumentMetadata,
+    ) -> Result<Vec<u8>, VerifierError> {
+        // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
+        let content = match decode_ipfs_content(prov_index_file) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Failed to decode ION provisional index file: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+        // Look inside the "chunks" element.
+        let content = match content.get(CHUNKS_KEY) {
+            Some(x) => x,
+            None => {
+                eprintln!(
+                    "Expected key {} not found in ION provisional index file.",
+                    CHUNKS_KEY
+                );
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+
+        // In the current version of the Sidetree protocol, a single chunk
+        // entry must be present in the chunks array (see
+        // https://identity.foundation/sidetree/spec/#provisional-index-file).
+        // So here we only need to consider the first entry in the content.
+        // This may need to be updated in future to accommodate changes to the Sidetre protocol.
+        let cid = match content[0].get(CHUNK_FILE_URI_KEY) {
+            Some(value) => value.as_str().unwrap(),
+            None => {
+                eprintln!(
+                    "Expected key {} not found in ION provisional index file.",
+                    CHUNK_FILE_URI_KEY
+                );
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+        match query_ipfs(cid, &self.ipfs_client) {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                eprintln!("Failed to fetch ION provisional index file: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        }
+    }
+
+    /// Fetches a Merkle proof directly from a Bitcoin node.
+    fn fetch_merkle_block(
+        &self,
+        block_hash: &BlockHash,
+        tx: &Transaction,
+    ) -> Result<Vec<u8>, VerifierError> {
+        match self
+            .rpc_client
+            .get_tx_out_proof(&[tx.txid()], Some(block_hash))
+        {
+            Ok(x) => Ok(x),
+            Err(e) => {
+                eprintln!("Failed to fetch Merkle proof via RPC: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        }
+    }
+
+    fn fetch_block_header(&self, block_hash: &BlockHash) -> Result<Vec<u8>, VerifierError> {
+        let block_header = match block_header(block_hash, Some(&self.rpc_client)) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("Failed to fetch Bitcoin block header via RPC: {}", e);
+                return Err(VerifierError::FailureToFetchVerificationMaterial);
+            }
+        };
+        Ok(bitcoin::consensus::serialize(&block_header))
     }
 
     /// Returns the location on the ledger of the transaction embedding
@@ -245,15 +445,19 @@ where
     }
 
     /// Unwraps the ION DID content associated with an IPFS content identifier.
-    fn unwrap_ion_content(&self, cid: &str) -> Result<Value, VerifierError> {
-        let ipfs_file = match query_ipfs(cid, None) {
+    fn unwrap_ion_content(
+        &self,
+        cid: &str,
+        ipfs_client: &IpfsClient,
+    ) -> Result<Value, VerifierError> {
+        let ipfs_file = match query_ipfs(cid, ipfs_client) {
             Ok(x) => x,
             Err(e) => {
                 eprintln!("Error querying IPFS for CID {}: {}", cid, e);
                 return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
             }
         };
-        let ipfs_json = match decode_ipfs_content(ipfs_file) {
+        let ipfs_json = match decode_ipfs_content(&ipfs_file) {
             Ok(x) => x,
             Err(e) => {
                 eprintln!("Error decoding IPFS data for CID {}: {}", cid, e);
@@ -270,14 +474,14 @@ where
                         .unwrap()
                         .as_str()
                         .unwrap();
-                    return self.unwrap_ion_content(prov_index_file_uri);
+                    return self.unwrap_ion_content(prov_index_file_uri, ipfs_client);
                 }
                 IonFileType::ProvisionalIndexFile => {
                     // Get the chunkFileUri (CID) & recursively call on that.
                     let chunks = ipfs_json.get(CHUNKS_KEY).unwrap();
                     let chunk_file_uri =
                         chunks[0].get(CHUNK_FILE_URI_KEY).unwrap().as_str().unwrap();
-                    return self.unwrap_ion_content(chunk_file_uri);
+                    return self.unwrap_ion_content(chunk_file_uri, ipfs_client);
                 }
                 IonFileType::ChunkFile => return Ok(ipfs_json),
             }
@@ -308,19 +512,20 @@ where
         &self,
         tx: &Transaction,
         update_commitment: &str,
+        ipfs_client: &IpfsClient,
     ) -> Result<DocumentState, VerifierError> {
         let ipfs_cid = &self.op_return_cid(&tx)?;
-        let content_json = &self.unwrap_ion_content(ipfs_cid)?;
+        let content_json = &self.unwrap_ion_content(ipfs_cid, ipfs_client)?;
         let deltas = content_deltas(content_json)?;
         return extract_doc_state(deltas, update_commitment);
     }
 
     /// Resolves the given DID to obtain the DID Document and Update Commitment.
-    fn resolve_did(&self, did: &str) -> Result<(Document, String), VerifierError> {
-        let (doc, doc_meta) = match self.resolver.resolve_as_result(did) {
+    fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        match self.resolver.resolve_as_result(did) {
             Ok((x, y, z)) => {
                 if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
-                    (doc, doc_meta)
+                    Ok((doc, doc_meta))
                 } else {
                     eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
                     return Err(VerifierError::DIDResolutionError(did.to_string()));
@@ -330,46 +535,118 @@ where
                 eprintln!("Failed to resolve DID: {}", e);
                 return Err(VerifierError::DIDResolutionError(did.to_string()));
             }
-        };
+        }
+    }
 
-        // Extract the Update Commitment from the DID Document Metadata.
-        if let Some(property_set) = doc_meta.property_set {
+    // /// Resolves the given DID to obtain the DID Document and Update Commitment.
+    // fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata, String), VerifierError> {
+    //     let (doc, doc_meta) = match self.resolver.resolve_as_result(did) {
+    //         Ok((x, y, z)) => {
+    //             if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
+    //                 (doc, doc_meta)
+    //             } else {
+    //                 eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
+    //                 return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //             }
+    //         }
+    //         Err(e) => {
+    //             eprintln!("Failed to resolve DID: {}", e);
+    //             return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //         }
+    //     };
+
+    //     // Extract the Update Commitment from the DID Document Metadata.
+    //     if let Some(property_set) = doc_meta.property_set {
+    //         // if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
+    //         if let Some(method_metadata) = property_set.get(METHOD_KEY) {
+    //             let method_map = match method_metadata {
+    //                 Metadata::Map(x) => x,
+    //                 _ => {
+    //                     eprintln!("Unhandled Metadata variant. Expected Map.");
+    //                     return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //                 }
+    //             };
+    //             if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
+    //                 match uc_metadata {
+    //                     Metadata::String(uc) => return Ok((doc, doc_meta, uc.to_string())),
+    //                     _ => {
+    //                         eprintln!("Unhandled Metadata variant. Expected String.");
+    //                         return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //                     }
+    //                 }
+    //             } else {
+    //                 eprintln!(
+    //                     "Missing '{}' key in DocumentMetadata {} value for DID: {}",
+    //                     UPDATE_COMMITMENT_KEY, METHOD_KEY, did
+    //                 );
+    //                 return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //             }
+    //         } else {
+    //             eprintln!(
+    //                 "Missing '{}' key in DocumentMetadata for DID: {}",
+    //                 METHOD_KEY, did
+    //             );
+    //             return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //         }
+    //     } else {
+    //         eprintln!("Missing property set in DocumentMetadata for DID: {}", did);
+    //         return Err(VerifierError::DIDResolutionError(did.to_string()));
+    //     }
+    // }
+
+    // TODO: make this a free function.
+    /// Extract the Update Commitment from DID Document Metadata.
+    fn extract_update_commitment(
+        &self,
+        did_doc_meta: &DocumentMetadata,
+    ) -> Result<String, VerifierError> {
+        if let Some(property_set) = &did_doc_meta.property_set {
             // if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
             if let Some(method_metadata) = property_set.get(METHOD_KEY) {
                 let method_map = match method_metadata {
                     Metadata::Map(x) => x,
                     _ => {
                         eprintln!("Unhandled Metadata variant. Expected Map.");
-                        return Err(VerifierError::DIDResolutionError(did.to_string()));
+                        return Err(VerifierError::DIDMetadataError);
                     }
                 };
                 if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
                     match uc_metadata {
-                        Metadata::String(uc) => return Ok((doc, uc.to_string())),
+                        Metadata::String(uc) => return Ok(uc.to_string()),
                         _ => {
                             eprintln!("Unhandled Metadata variant. Expected String.");
-                            return Err(VerifierError::DIDResolutionError(did.to_string()));
+                            return Err(VerifierError::DIDMetadataError);
                         }
                     }
                 } else {
                     eprintln!(
-                        "Missing '{}' key in DocumentMetadata {} value for DID: {}",
-                        UPDATE_COMMITMENT_KEY, METHOD_KEY, did
+                        "Missing '{}' key in Document Metadata {} value.",
+                        UPDATE_COMMITMENT_KEY, METHOD_KEY
                     );
-                    return Err(VerifierError::DIDResolutionError(did.to_string()));
+                    return Err(VerifierError::DIDMetadataError);
                 }
             } else {
-                eprintln!(
-                    "Missing '{}' key in DocumentMetadata for DID: {}",
-                    METHOD_KEY, did
-                );
-                return Err(VerifierError::DIDResolutionError(did.to_string()));
+                eprintln!("Missing '{}' key in DID Document Metadata.", METHOD_KEY);
+                return Err(VerifierError::DIDMetadataError);
             }
         } else {
-            eprintln!("Missing property set in DocumentMetadata for DID: {}", did);
-            return Err(VerifierError::DIDResolutionError(did.to_string()));
+            eprintln!("Missing property set in DID Document Metadata.");
+            return Err(VerifierError::DIDMetadataError);
         }
     }
+}
+
+/// Converts a VerificationBundle into an IONCommitment.
+pub fn commitment(bundle: VerificationBundle) -> Result<IONCommitment, CommitmentError> {
+    IONCommitment::new(
+        bundle.did_doc,
+        bundle.chunk_file,
+        bundle.provisional_index_file,
+        bundle.core_index_file,
+        bundle.transaction,
+        bundle.merkle_block,
+        bundle.block_header,
+    )
 }
 
 /// Gets a Bitcoin RPC client instance.
@@ -391,14 +668,14 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
 pub fn transaction(
     block_hash: &BlockHash,
     tx_index: u32,
-    rpc_client: Option<bitcoincore_rpc::Client>,
+    client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<Transaction, Box<dyn std::error::Error>> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    let client = match rpc_client {
-        Some(x) => x,
-        None => crate::verifier::rpc_client(),
-    };
-    match client.get_block(&block_hash) {
+    if client.is_none() {
+        let rpc_client = crate::verifier::rpc_client();
+        return transaction(block_hash, tx_index, Some(&rpc_client));
+    }
+    match client.unwrap().get_block(&block_hash) {
         Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
         Err(e) => {
             eprintln!("Error getting Bitcoin block via RPC: {}", e);
@@ -409,16 +686,19 @@ pub fn transaction(
 
 /// Gets a Merkle proof for the given transaction via the RPC API.
 pub fn merkle_proof(
-    tx: Transaction,
+    tx: &Transaction,
     block_hash: &BlockHash,
-    rpc_client: Option<bitcoincore_rpc::Client>,
+    client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    let client = match rpc_client {
-        Some(x) => x,
-        None => crate::verifier::rpc_client(),
-    };
-    match client.get_tx_out_proof(&[tx.txid()], Some(&block_hash)) {
+    if client.is_none() {
+        let rpc_client = crate::verifier::rpc_client();
+        return merkle_proof(tx, block_hash, Some(&rpc_client));
+    }
+    match client
+        .unwrap()
+        .get_tx_out_proof(&[tx.txid()], Some(&block_hash))
+    {
         Ok(x) => Ok(x),
         Err(e) => {
             eprintln!("Error getting Merkle proof via RPC: {}", e);
@@ -430,14 +710,14 @@ pub fn merkle_proof(
 /// Gets a Bitcoin block header via the RPC API.
 pub fn block_header(
     block_hash: &BlockHash,
-    rpc_client: Option<bitcoincore_rpc::Client>,
+    client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<BlockHeader, Box<dyn std::error::Error>> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    let client = match rpc_client {
-        Some(x) => x,
-        None => crate::verifier::rpc_client(),
+    if client.is_none() {
+        let rpc_client = crate::verifier::rpc_client();
+        return block_header(block_hash, Some(&rpc_client));
     };
-    match client.get_block_header(&block_hash) {
+    match client.unwrap().get_block_header(&block_hash) {
         Ok(x) => Ok(x),
         Err(e) => {
             eprintln!("Error getting block header via RPC: {}", e);
@@ -551,7 +831,8 @@ where
         // Resolve the DID Document to get the expected public keys & endpoints,
         // and the update commitment needed to differentiate between patches in
         // the patches found in the chunk file retrieved from IPFS.
-        let (expected_content, update_commitment) = self.resolve_did(&did)?;
+        let (expected_content, doc_meta) = self.resolve_did(&did)?;
+        let update_commitment = self.extract_update_commitment(&doc_meta)?;
 
         let tx_locator = self.locate_transaction(did)?;
         let tx = self.transaction(tx_locator)?;
@@ -568,7 +849,8 @@ where
 
         // Query_ipfs to get the ION chunkFile content to get the verified public
         // keys & endpoints for the DID identified by the update commitment.
-        let verified_content = self.verified_content(&tx, &update_commitment)?;
+        let ipfs_client = IpfsClient::default();
+        let verified_content = self.verified_content(&tx, &update_commitment, &ipfs_client)?;
 
         // Check each expected key is found in the vector of verified keys.
         if let Some(expected_keys) = expected_content.get_keys() {
@@ -682,8 +964,17 @@ where
         &self.resolver
     }
 
+    /// Gets a block hash (proof-of-work) Commitment for the given DID.
     fn commitment(&self, did: &str) -> Result<Box<dyn Commitment>, VerifierError> {
         todo!()
+        // let bundle = self.verification_bundle(did)?;
+        // match commitment(bundle) {
+        //     Ok(x) => Ok(Box::new(x)),
+        //     Err(e) => {
+        //         eprintln!("Failed to obtain proof of work Commitment: {}", e);
+        //         Err(VerifierError::TimestampVerificationError(did.to_string()))
+        //     },
+        // }
     }
 
     fn block_hash(&self, did: &str) -> &str {
@@ -693,13 +984,15 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::io::Read;
     use std::str::FromStr;
 
     use super::*;
     use crate::{
         data::{
-            TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT,
-            TEST_PROVISIONAL_INDEX_FILE_CONTENT, TEST_TRANSACTION_HEX,
+            TEST_CHUNK_FILE_CONTENT, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_CONTENT,
+            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+            TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
         IONResolver,
     };
@@ -708,6 +1001,7 @@ mod tests {
         ION,
     };
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
+    use trustchain_core::data::TEST_ROOT_DOCUMENT_METADATA;
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
     // Note that this resolver will *not* succeed at resolving DIDs. For that, a
@@ -906,7 +1200,9 @@ mod tests {
         let target = IONVerifier::new(resolver);
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let actual = target.unwrap_ion_content(cid).unwrap();
+
+        let ipfs_client = IpfsClient::default();
+        let actual = target.unwrap_ion_content(cid, &ipfs_client).unwrap();
 
         // Check that the content is the chunk file JSON (with top-level key "deltas").
         assert!(actual.get(DELTAS_KEY).is_some());
@@ -1007,7 +1303,13 @@ mod tests {
         let result = target.resolve_did(did);
 
         assert!(result.is_ok());
-        let (_, update_commitment) = result.unwrap();
+        let (doc, doc_meta) = result.unwrap();
+
+        // Also testing the extract_update_commitment method.
+        // TODO: split this into a separate test.
+        let update_commitment = target.extract_update_commitment(&doc_meta);
+        assert!(update_commitment.is_ok());
+        let update_commitment = update_commitment.unwrap();
         assert_eq!(
             update_commitment,
             "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"
@@ -1031,7 +1333,10 @@ mod tests {
         let tx = target.transaction(tx_locator).unwrap();
         let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
 
-        let result = target.verified_content(&tx, update_commitment).unwrap();
+        let ipfs_client = IpfsClient::default();
+        let result = target
+            .verified_content(&tx, update_commitment, &ipfs_client)
+            .unwrap();
 
         // Expect one public key and one service endpoint.
         assert_eq!(result.public_keys.as_ref().unwrap().len(), 1);
@@ -1048,32 +1353,89 @@ mod tests {
     }
 
     #[test]
-    fn test_verification_bundle_serialize() {
-        // let verification_bundle = VerificationBundle();
-        // Tests: 1. is valid json
-        panic!();
+    #[ignore = "Integration test requires IPFS"]
+    fn test_fetch_chunk_file() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+
+        let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+        let did_doc_meta = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA).unwrap();
+
+        let result = target.fetch_chunk_file(&prov_index_file, &did_doc_meta);
+        assert!(result.is_ok());
+        let chunk_file_bytes = result.unwrap();
+
+        let mut decoder = GzDecoder::new(&*chunk_file_bytes);
+        let mut ipfs_content_str = String::new();
+        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+            Err(_) => panic!(),
+        };
+        assert!(value.is_object());
+        assert!(value.as_object().unwrap().contains_key("deltas"));
     }
 
     #[test]
-    fn test_verification_bundle_deserialize() {
-        // Tests: assert individual elements of struct
-        panic!();
+    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_fetch_bundle() {
+        // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
+        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
+            "http://localhost:3000/",
+        ))));
+        let mut target = IONVerifier::new(resolver);
+
+        assert!(target.bundles().is_empty());
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        target.fetch_bundle(&did);
+
+        assert!(!target.bundles().is_empty());
+        assert_eq!(target.bundles().len(), 1);
+        assert!(target.bundles().contains_key(did));
     }
+
+    // #[test]
+    // fn test_verification_bundle_serialize() {
+    //     // let verification_bundle = VerificationBundle();
+    //     // Tests: 1. is valid json
+    //     panic!();
+    // }
+
+    // #[test]
+    // fn test_verification_bundle_deserialize() {
+    //     // Tests: assert individual elements of struct
+    //     panic!();
+    // }
 
     #[test]
     fn test_chunk_file_deserialize() {
-        todo!()
+        let bytes = hex::decode(TEST_CHUNK_FILE_HEX).unwrap();
+        let mut decoder = GzDecoder::new(&*bytes);
+        let mut ipfs_content_str = String::new();
+        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+            Err(_) => panic!(),
+        };
+        assert!(value.is_object());
+        assert!(value.as_object().unwrap().contains_key("deltas"));
     }
 
     #[test]
     fn test_prov_index_file_deserialize() {
-        todo!()
+        let bytes = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+        let mut decoder = GzDecoder::new(&*bytes);
+        let mut ipfs_content_str = String::new();
+        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+            Err(_) => panic!(),
+        };
+        assert!(value.is_object());
+        assert!(value.as_object().unwrap().contains_key("chunks"));
     }
 
-    #[test]
-    fn test_core_index_file_deserialize() {
-        todo!()
-    }
+    // #[test]
+    // fn test_core_index_file_deserialize() {
+    //     todo!()
+    // }
 
     #[test]
     fn test_tx_deserialize() {
@@ -1086,11 +1448,16 @@ mod tests {
 
     #[test]
     fn test_merkle_block_deserialize() {
-        todo!()
+        let bytes = hex::decode(TEST_MERKLE_BLOCK_HEX).unwrap();
+        let merkle_block: MerkleBlock = bitcoin::consensus::deserialize(&bytes).unwrap();
+        let header = merkle_block.header;
+        let expected_merkle_root =
+            "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+        assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
     }
 
-    #[test]
-    fn test_block_header_deserialize() {
-        todo!()
-    }
+    // #[test]
+    // fn test_block_header_deserialize() {
+    //     todo!()
+    // }
 }
