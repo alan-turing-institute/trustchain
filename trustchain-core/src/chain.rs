@@ -54,6 +54,17 @@ pub trait Chain {
     fn verify_proofs(&self) -> Result<(), ChainError>;
     /// Returns a vector of DID strings ordered by the level in the chain, starting at the root (level 0).
     fn level_vec(&self) -> &Vec<String>;
+    /// Returns a vector of Documents and Document Metadata for each DID ordered by the level in the chain, starting at the root (level 0).
+    fn to_vec(&self) -> Vec<(Document, DocumentMetadata)> {
+        self.level_vec()
+            .iter()
+            .map(|did| self.data(did).unwrap().clone())
+            .collect()
+    }
+    /// Returns whether the Chain is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Gets proof from DocumentMetadata.
@@ -599,5 +610,29 @@ pub mod tests {
         let target = test_chain(false).unwrap();
         println!("{}", target);
         Ok(())
+    }
+
+    #[test]
+    fn test_to_vec() {
+        let target = test_chain(false).unwrap();
+        let result = target.to_vec();
+        assert_eq!(result.len(), 3);
+
+        let root: &Document = &result[0].0;
+        let l1: &Document = &result[1].0;
+        let l2: &Document = &result[2].0;
+
+        assert_eq!(
+            root.id,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+        assert_eq!(
+            l1.id,
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
+        );
+        assert_eq!(
+            l2.id,
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        );
     }
 }
