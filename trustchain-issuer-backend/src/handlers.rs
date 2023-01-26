@@ -10,7 +10,7 @@ use serde_json::to_string_pretty;
 use ssi::did::Document;
 use ssi::did_resolve::{DocumentMetadata, ResolutionResult};
 use ssi::vc::Credential;
-use trustchain_core::chain::DIDChain;
+use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
 use uuid::Uuid;
 
@@ -111,6 +111,7 @@ fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
     generate_vc(false, Some(subject_id), credential_id)
 }
 
+// TODO: consider  introducing as a trait in core that DIDChain implements
 fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
     ResolutionResult {
         context: Some(serde_json::Value::String(
@@ -141,7 +142,7 @@ async fn get_did_resolver(did: web::Path<String>) -> impl Responder {
 
 #[get("/did/chain/{did}")]
 async fn get_did_chain(did: web::Path<String>) -> impl Responder {
-    info!("Received DID to verify: {}", did.as_str());
+    info!("Received DID to get trustchain: {}", did.as_str());
 
     // TODO: implement actual verification with trustchain-ion crate
     // let resolver = get_ion_resolver();
@@ -151,10 +152,13 @@ async fn get_did_chain(did: web::Path<String>) -> impl Responder {
     let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();
 
     // Convert DID chain to vec of ResolutionResults
-    let chain_json = to_string_pretty(&chain).unwrap();
-    // let chain_json = to_string_pretty(&chain.to_vec()).unwrap();
+    let chain_resolution_result_vec = chain
+        .to_vec()
+        .into_iter()
+        .map(|(doc, doc_meta)| to_resolution_result(doc, doc_meta))
+        .collect::<Vec<_>>();
 
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(chain_json)
+        .body(to_string_pretty(&chain_resolution_result_vec).unwrap())
 }
