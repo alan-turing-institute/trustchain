@@ -117,17 +117,15 @@ where
             Ok(Some(doc)) => Ok(doc),
             Err(e) => {
                 println!("{}", e);
-                return Err(Box::new(VerifierError::FailureToGetDIDOperation(
-                    did.to_owned(),
-                    "MongoDB query failed.".to_string(),
-                )));
-            }
-            _ => {
-                return Err(Box::new(VerifierError::FailureToGetDIDOperation(
+                Err(Box::new(VerifierError::FailureToGetDIDOperation(
                     did.to_owned(),
                     "MongoDB query failed.".to_string(),
                 )))
             }
+            _ => Err(Box::new(VerifierError::FailureToGetDIDOperation(
+                did.to_owned(),
+                "MongoDB query failed.".to_string(),
+            ))),
         }
     }
 }

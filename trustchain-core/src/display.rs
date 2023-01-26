@@ -87,9 +87,9 @@ impl fmt::Display for PrettyDID {
 /// An error relating to Trustchain graphs.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GraphError {
-    /// Constructed graph is not a tree.
-    #[error("Graph is not a tree.")]
-    NotATree,
+    /// Constructed graph contains a cycle.
+    #[error("Graph contains a cycle.")]
+    ContainsCycle,
 }
 
 /// Wrapper struct for a petgraph DiGraph of documents.
@@ -150,7 +150,11 @@ impl TrustchainGraph {
     /// Makes a new TrustchainGraph instance.
     pub fn new(chains: &Vec<DIDChain>, label_width: usize) -> Result<Self, GraphError> {
         let graph = read_chains(chains, label_width);
-        Ok(Self { graph })
+        if !petgraph::algo::is_cyclic_directed(&graph) {
+            Ok(Self { graph })
+        } else {
+            Err(GraphError::ContainsCycle)
+        }
     }
 
     /// Outputs graph to graphviz format.
@@ -176,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_read_chains() -> Result<(), GraphError> {
-        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
+        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
         assert!(graph.is_ok());
         if let Ok(graph) = graph {
@@ -186,15 +190,21 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn test_read_chains_with_cycle() {
+        let chains = vec![test_chain(false).unwrap(), test_chain(true).unwrap()];
+        let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
+        assert!(matches!(graph, Err(GraphError::ContainsCycle)));
+    }
+    #[test]
     fn test_to_dot() -> Result<(), GraphError> {
-        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
+        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
-        format!("{}", graph.to_dot());
+        graph.to_dot();
         Ok(())
     }
     #[test]
     fn test_display() -> Result<(), GraphError> {
-        let chains = vec![test_chain().unwrap(), test_chain().unwrap()];
+        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
         format!("{}", graph);
         Ok(())
