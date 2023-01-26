@@ -8,12 +8,8 @@ use std::{
 };
 use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
-    attest::attest_operation,
-    attestor::IONAttestor,
-    create::{create_operation, read_doc_state_from},
-    get_ion_resolver,
-    resolve::main_resolve,
-    verifier::IONVerifier,
+    attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
+    resolve::main_resolve, verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -95,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Read doc state from file path
                     let doc_state = if let Some(file_path) = file_path {
                         let f = File::open(file_path)?;
-                        let doc_state = read_doc_state_from(f)?;
+                        let doc_state = serde_json::from_reader(f)?;
                         Some(doc_state)
                     } else {
                         None

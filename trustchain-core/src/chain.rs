@@ -52,8 +52,19 @@ pub trait Chain {
     fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
-    /// Return view of chain in correct order
-    fn as_vec(&self) -> &Vec<String>;
+    /// Returns a vector of DID strings ordered by the level in the chain, starting at the root (level 0).
+    fn level_vec(&self) -> &Vec<String>;
+    /// Returns a vector of Documents and Document Metadata for each DID ordered by the level in the chain, starting at the root (level 0).
+    fn to_vec(&self) -> Vec<(Document, DocumentMetadata)> {
+        self.level_vec()
+            .iter()
+            .map(|did| self.data(did).unwrap().clone())
+            .collect()
+    }
+    /// Returns whether the Chain is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Gets proof from DocumentMetadata.
@@ -188,7 +199,7 @@ impl DIDChain {
 }
 
 impl Chain for DIDChain {
-    fn as_vec(&self) -> &Vec<String> {
+    fn level_vec(&self) -> &Vec<String> {
         &self.level_vec
     }
 
@@ -357,7 +368,7 @@ pub mod tests {
     }
 
     // Public helper function returns a chain of three DIDs to facilitate reuse in display module tests.
-    pub fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
+    pub fn test_chain(reversed: bool) -> Result<DIDChain, Box<dyn std::error::Error>> {
         let mut chain = DIDChain::empty();
 
         let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
@@ -370,9 +381,16 @@ pub mod tests {
         let level2_doc_meta: DocumentMetadata =
             serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
 
-        chain.prepend((level2_doc, level2_doc_meta));
-        chain.prepend((level1_doc, level1_doc_meta));
-        chain.prepend((root_doc, root_doc_meta));
+        // Use reversed option to allow chain to be constructed in reverse for failing test
+        if !reversed {
+            chain.prepend((level2_doc, level2_doc_meta));
+            chain.prepend((level1_doc, level1_doc_meta));
+            chain.prepend((root_doc, root_doc_meta));
+        } else {
+            chain.prepend((root_doc, root_doc_meta));
+            chain.prepend((level1_doc, level1_doc_meta));
+            chain.prepend((level2_doc, level2_doc_meta));
+        }
         chain.level_vec.reverse();
         Ok(chain)
     }
@@ -445,8 +463,8 @@ pub mod tests {
     }
 
     #[test]
-    fn test_as_vec() {
-        let target = test_chain().unwrap();
+    fn test_level_vec() {
+        let target = test_chain(false).unwrap();
         let expected_vec = vec![
             // ROOT DID
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string(),
@@ -455,12 +473,12 @@ pub mod tests {
             // LEVEL TWO DID
             "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
         ];
-        assert_eq!(target.as_vec(), &expected_vec);
+        assert_eq!(target.level_vec(), &expected_vec);
     }
 
     #[test]
     fn test_root() {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         assert_eq!(
             target.root(),
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
@@ -469,7 +487,7 @@ pub mod tests {
 
     #[test]
     fn test_leaf() {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         assert_eq!(
             target.leaf(),
             "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
@@ -478,7 +496,7 @@ pub mod tests {
 
     #[test]
     fn test_verify_proofs() {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         assert!(target.verify_proofs().is_ok());
         let target = test_invalid_chain().unwrap();
         assert!(target.verify_proofs().is_err());
@@ -487,7 +505,7 @@ pub mod tests {
     #[test]
     fn test_level() {
         // Test the level returned for each node in the test chain
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         assert_eq!(target.level(expected_root_did).unwrap(), 0);
 
@@ -499,7 +517,7 @@ pub mod tests {
 
     #[test]
     fn test_upstream() {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -522,7 +540,7 @@ pub mod tests {
 
     #[test]
     fn test_downstream() {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -542,7 +560,7 @@ pub mod tests {
 
     #[test]
     fn test_data() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -589,8 +607,32 @@ pub mod tests {
 
     #[test]
     fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain().unwrap();
+        let target = test_chain(false).unwrap();
         println!("{}", target);
         Ok(())
+    }
+
+    #[test]
+    fn test_to_vec() {
+        let target = test_chain(false).unwrap();
+        let result = target.to_vec();
+        assert_eq!(result.len(), 3);
+
+        let root: &Document = &result[0].0;
+        let l1: &Document = &result[1].0;
+        let l2: &Document = &result[2].0;
+
+        assert_eq!(
+            root.id,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+        assert_eq!(
+            l1.id,
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
+        );
+        assert_eq!(
+            l2.id,
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        );
     }
 }
