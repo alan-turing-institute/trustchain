@@ -96,13 +96,20 @@ impl Display for TrustchainGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chain::tests::test_chain;
+    use crate::data::{TEST_DID_CHAIN, TEST_DID_CHAIN_REVERSED};
 
     const DEFAULT_LABEL_WIDTH: usize = 30;
 
+    fn test_chain() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN).unwrap()
+    }
+    fn test_chain_reversed() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN_REVERSED).unwrap()
+    }
+
     #[test]
     fn test_read_chains() -> Result<(), GraphError> {
-        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
+        let chains = vec![test_chain(), test_chain()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
         assert!(graph.is_ok());
         if let Ok(graph) = graph {
@@ -113,20 +120,20 @@ mod tests {
     }
     #[test]
     fn test_read_chains_with_cycle() {
-        let chains = vec![test_chain(false).unwrap(), test_chain(true).unwrap()];
+        let chains = vec![test_chain(), test_chain_reversed()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
         assert!(matches!(graph, Err(GraphError::ContainsCycle)));
     }
     #[test]
     fn test_to_dot() -> Result<(), GraphError> {
-        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
+        let chains = vec![test_chain(), test_chain()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
         graph.to_dot();
         Ok(())
     }
     #[test]
     fn test_display() -> Result<(), GraphError> {
-        let chains = vec![test_chain(false).unwrap(), test_chain(false).unwrap()];
+        let chains = vec![test_chain(), test_chain()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
         format!("{}", graph);
         Ok(())
