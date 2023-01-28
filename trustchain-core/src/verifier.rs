@@ -1,9 +1,8 @@
-use std::convert::TryInto;
-
 use crate::chain::{Chain, DIDChain};
-use crate::commitment::{Commitment, CommitmentError, IterableCommitment, IteratedCommitment};
+use crate::commitment::{self, Commitment};
 use crate::resolver::Resolver;
 use ssi::did_resolve::DIDResolver;
+use std::io::ErrorKind;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.
@@ -102,12 +101,15 @@ pub enum VerifierError {
     /// Failed to fetch verification material.
     #[error("Failed to fetch verification material.")]
     FailureToFetchVerificationMaterial,
+    /// Attempt to access verification material before it has been fetched.
+    #[error("Verification material not yet fetched for DID: {0}.")]
+    VerificationMaterialNotYetFetched(String),
 }
 
 /// Verifier of root and downstream DIDs.
 pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a downstream DID by tracing its chain back to the root.
-    fn verify(&self, did: &str, root_timestamp: u32) -> Result<DIDChain, VerifierError> {
+    fn verify(&mut self, did: &str, root_timestamp: u32) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
         let chain = match DIDChain::new(did, self.resolver()) {
             Ok(x) => x,
@@ -137,23 +139,24 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Gets the verified block hash for a DID.
     /// This is the hash of the PoW block (header) that has been verified
     /// to contain the most recent DID operation for the given DID.
-    fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError> {
-        let candidate_hash = self.block_hash(did);
+    fn verified_block_hash(&mut self, did: &str) -> Result<String, VerifierError> {
+        let _ = self.fetch_commitment(did)?;
         let commitment = self.commitment(did)?;
+        let candidate_hash = self.block_hash(did);
         match commitment.verify(candidate_hash) {
             Ok(_) => Ok(candidate_hash.to_string()),
             Err(e) => {
                 eprintln!(
-                    "Hash {} verification failed for DID: {}",
-                    candidate_hash, did
+                    "Hash {} verification failed for DID: {}. With error: {}",
+                    candidate_hash, did, e
                 );
                 Err(VerifierError::FailedBlockHashVerification(did.to_string()))
             }
         }
     }
 
-    /// Get the verified timestamp for a DID as a Unix time.
-    fn verified_timestamp(&self, did: &str) -> Result<u32, VerifierError> {
+    /// Gets the verified timestamp for a DID as a Unix time.
+    fn verified_timestamp(&mut self, did: &str) -> Result<u32, VerifierError> {
         match self.verified_block_hash(did) {
             Ok(block_hash) => self.block_hash_to_unix_time(&block_hash),
             Err(e) => Err(e),
@@ -163,8 +166,12 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Maps a block hash to a Unix time.
     fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError>;
 
-    /// Gets a block hash (proof-of-work) Commitment for the given DID.
-    fn commitment(&self, did: &str) -> Result<Box<dyn Commitment>, VerifierError>;
+    /// Gets a proof-of-work Commitment for the given DID.
+    fn commitment(&mut self, did: &str) -> Result<Box<dyn Commitment>, VerifierError>;
+
+    /// Fetches data for a proof-of-work Commitment for the given DID and
+    /// stores it locally for later retrieval via the `commitment` method.
+    fn fetch_commitment(&mut self, did: &str) -> Result<(), VerifierError>;
 
     /// Gets the *unverified* block hash for a given DID.
     fn block_hash(&self, did: &str) -> &str;

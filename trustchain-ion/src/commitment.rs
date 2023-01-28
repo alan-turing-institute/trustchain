@@ -8,8 +8,8 @@ use ssi::did::Document;
 use std::collections::HashMap;
 use std::io::Read;
 use trustchain_core::commitment::TrivialCommitment;
+use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
-use trustchain_core::commitment::{IterableCommitment, IteratedCommitment};
 
 use crate::utils::{reverse_endianness, HasEndpoints, HasKeys};
 use crate::BITS_KEY;
@@ -485,10 +485,10 @@ pub fn decode_block_header(bytes: &[u8]) -> Result<serde_json::Value, Commitment
     Ok(serde_json::json!(map))
 }
 
-/// An iterated commitment to ION DID Document data.
+/// A commitment to ION DID Document data.
 pub struct IONCommitment {
     did_doc: Document,
-    iterated_commitment: IteratedCommitment,
+    chained_commitment: ChainedCommitment,
 }
 
 impl IONCommitment {
@@ -538,7 +538,7 @@ impl IONCommitment {
         // The following construction is only possible because each TrivialCommitment
         // knows how to convert itself to the correct Commitment type.
         // This explains why the TrivialCommitment trait is necessary.
-        let mut iterated_commitment = IteratedCommitment::new(Box::new(chunk_file_commitment));
+        let mut iterated_commitment = ChainedCommitment::new(Box::new(chunk_file_commitment));
         iterated_commitment.append(Box::new(prov_index_file_commitment))?;
         iterated_commitment.append(Box::new(core_index_file_commitment))?;
         iterated_commitment.append(Box::new(tx_commitment))?;
@@ -547,16 +547,59 @@ impl IONCommitment {
 
         Ok(Self {
             did_doc,
-            iterated_commitment,
+            chained_commitment: iterated_commitment,
         })
     }
 
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // Delegate verification to the iterated commitment (as a Commitment).
-        Commitment::verify(&self.iterated_commitment, target)?;
+        Commitment::verify(&self.chained_commitment, target)?;
         Ok(())
     }
 }
+
+// Delegate all Commitment trait methods to the wrapped ChainedCommitment.
+impl TrivialCommitment for IONCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+        self.chained_commitment.hasher()
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        self.chained_commitment.candidate_data()
+    }
+
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        self.chained_commitment.decode_candidate_data()
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        self
+    }
+}
+
+impl Commitment for IONCommitment {
+    fn expected_data(&self) -> &serde_json::Value {
+        self.chained_commitment.expected_data()
+    }
+}
+
+impl CommitmentChain for IONCommitment {
+    fn commitments(&self) -> &Vec<Box<dyn Commitment>> {
+        self.chained_commitment.commitments()
+    }
+
+    fn mut_commitments(&mut self) -> &mut Vec<Box<dyn Commitment>> {
+        self.chained_commitment.mut_commitments()
+    }
+
+    fn append(
+        &mut self,
+        trivial_commitment: Box<dyn TrivialCommitment>,
+    ) -> Result<(), CommitmentError> {
+        self.chained_commitment.append(trivial_commitment)
+    }
+}
+// End of IONCommitment
 
 #[cfg(test)]
 mod tests {
@@ -790,7 +833,7 @@ mod tests {
         )
         .unwrap();
 
-        let expected_data = commitment.iterated_commitment.expected_data();
+        let expected_data = commitment.chained_commitment.expected_data();
 
         // The expected data contains public keys and service endpoints.
         match expected_data {
@@ -801,7 +844,7 @@ mod tests {
         }
 
         // Check each individual commitment.
-        let commitments = commitment.iterated_commitment.commitments();
+        let commitments = commitment.chained_commitment.commitments();
 
         // The first one commits to the chunk file CID and is expected
         // to contain the same data as the iterated commitment.
@@ -885,9 +928,9 @@ mod tests {
         assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
 
         // Verify the iterated commitment content (i.e. the expected_data).
-        assert!(commitment.iterated_commitment.verify_content().is_ok());
+        assert!(commitment.chained_commitment.verify_content().is_ok());
         assert!(commitment
-            .iterated_commitment
+            .chained_commitment
             .verify(&block_hash_str)
             .is_ok());
 

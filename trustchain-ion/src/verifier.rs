@@ -637,15 +637,15 @@ where
 }
 
 /// Converts a VerificationBundle into an IONCommitment.
-pub fn commitment(bundle: VerificationBundle) -> Result<IONCommitment, CommitmentError> {
+pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment, CommitmentError> {
     IONCommitment::new(
-        bundle.did_doc,
-        bundle.chunk_file,
-        bundle.provisional_index_file,
-        bundle.core_index_file,
-        bundle.transaction,
-        bundle.merkle_block,
-        bundle.block_header,
+        bundle.did_doc.clone(),
+        bundle.chunk_file.clone(),
+        bundle.provisional_index_file.clone(),
+        bundle.core_index_file.clone(),
+        bundle.transaction.clone(),
+        bundle.merkle_block.clone(),
+        bundle.block_header.clone(),
     )
 }
 
@@ -817,7 +817,7 @@ where
 {
     // TODO NEXT: This method is now implemented as a default in the trait.
     // Remove this implementation and instead implement the block_hash() and commitment() methods.
-    fn verified_block_hash(&self, did: &str) -> Result<String, VerifierError> {
+    fn verified_block_hash(&mut self, did: &str) -> Result<String, VerifierError> {
         // TODO NEXT:
         // Major refactor to simplify the verification process, which should be:
         // 1. gather all relevant data (inc. DID Document) to construct a VerificationBundle.
@@ -965,20 +965,37 @@ where
     }
 
     /// Gets a block hash (proof-of-work) Commitment for the given DID.
-    fn commitment(&self, did: &str) -> Result<Box<dyn Commitment>, VerifierError> {
-        todo!()
-        // let bundle = self.verification_bundle(did)?;
-        // match commitment(bundle) {
-        //     Ok(x) => Ok(Box::new(x)),
-        //     Err(e) => {
-        //         eprintln!("Failed to obtain proof of work Commitment: {}", e);
-        //         Err(VerifierError::TimestampVerificationError(did.to_string()))
-        //     },
-        // }
+    /// The mutable reference to self enables a newly-fetched Commitment
+    /// to be stored locally for faster subsequent retrieval.
+    fn commitment(&mut self, did: &str) -> Result<Box<dyn Commitment>, VerifierError> {
+        let _ = self.fetch_commitment(did);
+        if !self.bundles.contains_key(did) {
+            eprintln!("Commitment not yet fetched for DID: {}", did);
+            return Err(VerifierError::VerificationMaterialNotYetFetched(
+                did.to_string(),
+            ));
+        }
+        let bundle = self.bundles.get(did).unwrap();
+        match construct_commitment(bundle) {
+            Ok(x) => Ok(Box::new(x)),
+            Err(e) => {
+                eprintln!("Failed to obtain proof of work Commitment: {}", e);
+                Err(VerifierError::TimestampVerificationError(did.to_string()))
+            }
+        }
     }
 
     fn block_hash(&self, did: &str) -> &str {
         todo!()
+    }
+
+    fn fetch_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
+        // If the corresponding VerificationBundle is already available, do nothing.
+        if self.bundles.contains_key(did) {
+            return Ok(());
+        };
+        let _ = self.verification_bundle(did)?;
+        Ok(())
     }
 }
 
@@ -1001,6 +1018,9 @@ mod tests {
         ION,
     };
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
+    use trustchain_core::commitment::{
+        ChainedCommitment, Commitment, CommitmentChain, TrivialCommitment,
+    };
     use trustchain_core::data::TEST_ROOT_DOCUMENT_METADATA;
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
@@ -1113,25 +1133,6 @@ mod tests {
         let actual = target.op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
     }
-
-    // Moved to utils.rs:
-    // #[test]
-    // #[ignore = "Integration test requires IPFS"]
-    // fn test_query_ipfs() {
-    //     let resolver = Resolver::new(get_http_resolver());
-    //     let target = IONVerifier::new(resolver);
-
-    //     let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-
-    //     let actual = match target.query_ipfs(cid) {
-    //         Ok(x) => x,
-    //         Err(e) => panic!(),
-    //     };
-
-    //     // The CID is the address of a core index file, so the JSON result
-    //     // contains the key "provisionalIndexFileUri".
-    //     assert!(actual.get(PROVISIONAL_INDEX_FILE_URI_KEY).is_some());
-    // }
 
     #[test]
     fn test_ion_file_type() {
@@ -1391,6 +1392,28 @@ mod tests {
         assert!(!target.bundles().is_empty());
         assert_eq!(target.bundles().len(), 1);
         assert!(target.bundles().contains_key(did));
+    }
+
+    #[test]
+    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_commitment() {
+        // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
+        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
+            "http://localhost:3000/",
+        ))));
+        let mut target = IONVerifier::new(resolver);
+
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+
+        assert!(target.bundles().is_empty());
+        let result = target.commitment(did).unwrap();
+
+        // Check that the verification bundle for the commitment is now stored in the Verifier.
+        assert!(!target.bundles().is_empty());
+        assert_eq!(target.bundles().len(), 1);
+        let bundle = target.bundles.get(did).unwrap();
+        let commitment = construct_commitment(bundle).unwrap();
+        assert_eq!(result.hash(), commitment.hash())
     }
 
     // #[test]

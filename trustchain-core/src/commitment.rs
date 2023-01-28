@@ -81,10 +81,9 @@ pub trait Commitment: TrivialCommitment {
     }
 }
 
-// TODO: extend the Iterable trait here.
-/// A sequence of commitments in which the target in the n'th commitment
+/// A chain of commitments in which the target in the n'th commitment
 /// is identical to the expected data in the (n+1)'th commitment
-pub trait IterableCommitment: Commitment {
+pub trait CommitmentChain: Commitment {
     /// Gets the sequence of commitments.
     fn commitments(&self) -> &Vec<Box<dyn Commitment>>;
 
@@ -104,11 +103,11 @@ pub trait IterableCommitment: Commitment {
 
 /// An iterated commitment in which the hash of the n'th commitment
 /// is identical to the expected data in the (n+1)'th commitment.
-pub struct IteratedCommitment {
+pub struct ChainedCommitment {
     commitments: Vec<Box<dyn Commitment>>,
 }
 
-impl IteratedCommitment {
+impl ChainedCommitment {
     pub fn new(commitment: Box<dyn Commitment>) -> Self {
         let mut commitments = Vec::new();
         commitments.push(commitment);
@@ -116,11 +115,11 @@ impl IteratedCommitment {
     }
 }
 
-impl TrivialCommitment for IteratedCommitment {
+impl TrivialCommitment for ChainedCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // TODO: Compose the hasher functions in the sequence of commitments.
         // Unclear how to compose the function pointers (some approaches only work on closures).
-        // If this were implemented there would be no need to implement verify for IteratedCommitment.
+        // If this were implemented there might be no need to implement verify for IteratedCommitment.
         |_| {
             eprintln!("Composed hasher not implemented. Call verify directly.");
             Err(CommitmentError::FailedToComputeHash)
@@ -138,7 +137,7 @@ impl TrivialCommitment for IteratedCommitment {
 
     fn hash(&self) -> Result<String, CommitmentError> {
         // The hash of the iterated commitment is that of the last in the sequence.
-        self.commitments.last().as_ref().unwrap().hash()
+        self.commitments().last().as_ref().unwrap().hash()
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -146,11 +145,12 @@ impl TrivialCommitment for IteratedCommitment {
     }
 }
 
-impl Commitment for IteratedCommitment {
+impl Commitment for ChainedCommitment {
     fn expected_data(&self) -> &serde_json::Value {
-        // The iterated commitment commits to the expected data in the first of the
+        // The chained commitment commits to the expected data in the first of the
         // sequence of commitments. Must cast here to avoid infinite recursion.
-        let first_commitment: &Box<dyn Commitment> = **&self.commitments.first().as_ref().unwrap();
+        let first_commitment: &Box<dyn Commitment> =
+            **&self.commitments().first().as_ref().unwrap();
         &first_commitment.expected_data()
     }
 
@@ -185,7 +185,7 @@ impl Commitment for IteratedCommitment {
     }
 }
 
-impl IterableCommitment for IteratedCommitment {
+impl CommitmentChain for ChainedCommitment {
     fn commitments(&self) -> &Vec<Box<dyn Commitment>> {
         &self.commitments
     }
@@ -202,7 +202,8 @@ impl IterableCommitment for IteratedCommitment {
         // This ensures that the composition still commits to the expected data.
         let expected_data = json!(self.hash()?);
         let new_commitment = trivial_commitment.to_commitment(expected_data);
-        let commitments: &mut Vec<Box<dyn Commitment>> = self.commitments.as_mut();
+        // let commitments: &mut Vec<Box<dyn Commitment>> = self.commitments.as_mut();
+        let commitments: &mut Vec<Box<dyn Commitment>> = self.mut_commitments();
         commitments.push(new_commitment);
         Ok(())
     }
