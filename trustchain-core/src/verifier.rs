@@ -5,7 +5,7 @@ use crate::commitment::{
     Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
 };
 use crate::resolver::Resolver;
-use crate::utils::{HasEndpoints, HasKeys};
+use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use serde_json::json;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
@@ -262,6 +262,16 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         let did_commitment = verifiable_timestamp.did_commitment();
         let timestamp_commitment = verifiable_timestamp.timestamp_commitment();
+
+        // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
+        if !json_contains(
+            timestamp_commitment.expected_data(),
+            &json!(verifiable_timestamp.timestamp()),
+        ) {
+            return Err(VerifierError::TimestampVerificationError(
+                did_commitment.did().to_string(),
+            ));
+        }
 
         // Verify both the commitments with the *same* target hash, thereby confirming
         // that the same proof-of-work commits to both the DID Document data & the timestamp.
