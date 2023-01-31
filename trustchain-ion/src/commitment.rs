@@ -6,12 +6,14 @@ use ipfs_hasher::IpfsHasher;
 use serde_json::json;
 use ssi::did::Document;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::io::Read;
-use trustchain_core::commitment::TrivialCommitment;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
+use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
+use trustchain_core::utils::{HasEndpoints, HasKeys};
 
-use crate::utils::{reverse_endianness, HasEndpoints, HasKeys};
+use crate::utils::{decode_block_header, reverse_endianness};
 use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
 use crate::MERKLE_ROOT_KEY;
@@ -406,7 +408,16 @@ impl TrivialCommitment for TrivialBlockHashCommitment {
 
     /// Deserialises the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-        |x| decode_block_header(&x)
+        |x| {
+            if x.len() != 80 {
+                eprintln!("Error: Bitcoin block header must be 80 bytes.");
+                return Err(CommitmentError::DataDecodingError);
+            };
+            Ok(decode_block_header(
+                x.try_into()
+                    .expect("Bitcoin block header should be 80 bytes."),
+            ))
+        }
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -456,34 +467,6 @@ impl Commitment for BlockHashCommitment {
     }
 }
 // End of BlockHashCommitment.
-
-/// Decodes a Bitcoin block from 80 bytes of data.
-pub fn decode_block_header(bytes: &[u8]) -> Result<serde_json::Value, CommitmentError> {
-    // Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
-    if bytes.len() != 80 {
-        eprintln!("Error: Bitcoin block header must be 80 bytes.");
-        return Err(CommitmentError::DataDecodingError);
-    };
-
-    // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
-    let version = reverse_endianness(&hex::encode(&bytes[0..4])).unwrap();
-    let hash_prev_block = reverse_endianness(&hex::encode(&bytes[4..36])).unwrap();
-    let merkle_root = reverse_endianness(&hex::encode(&bytes[36..68])).unwrap();
-    let timestamp = reverse_endianness(&hex::encode(&bytes[68..72])).unwrap();
-    let bits = reverse_endianness(&hex::encode(&bytes[72..76])).unwrap();
-    let nonce = reverse_endianness(&hex::encode(&bytes[76..])).unwrap();
-
-    // Convert to JSON.
-    let mut map = HashMap::new();
-    map.insert(VERSION_KEY, version);
-    map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
-    map.insert(MERKLE_ROOT_KEY, merkle_root);
-    map.insert(TIMESTAMP_KEY, timestamp);
-    map.insert(BITS_KEY, bits);
-    map.insert(NONCE_KEY, nonce);
-
-    Ok(serde_json::json!(map))
-}
 
 /// A commitment to ION DID Document data.
 pub struct IONCommitment {
@@ -552,7 +535,7 @@ impl IONCommitment {
     }
 
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
-        // Delegate verification to the iterated commitment (as a Commitment).
+        // Delegate verification to the chained commitment.
         Commitment::verify(&self.chained_commitment, target)?;
         Ok(())
     }
@@ -562,6 +545,10 @@ impl IONCommitment {
 impl TrivialCommitment for IONCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         self.chained_commitment.hasher()
+    }
+
+    fn hash(&self) -> Result<String, CommitmentError> {
+        self.chained_commitment.hash()
     }
 
     fn candidate_data(&self) -> &[u8] {
@@ -577,6 +564,7 @@ impl TrivialCommitment for IONCommitment {
     }
 }
 
+// Delegate all Commitment trait methods to the wrapped ChainedCommitment.
 impl Commitment for IONCommitment {
     fn expected_data(&self) -> &serde_json::Value {
         self.chained_commitment.expected_data()
@@ -599,6 +587,16 @@ impl CommitmentChain for IONCommitment {
         self.chained_commitment.append(trivial_commitment)
     }
 }
+
+impl DIDCommitment for IONCommitment {
+    fn did(&self) -> &str {
+        &self.did_doc.id
+    }
+
+    fn did_document(&self) -> &Document {
+        &self.did_doc
+    }
+}
 // End of IONCommitment
 
 #[cfg(test)]
@@ -613,9 +611,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        utils::query_ipfs,
-        verifier::{block_header, merkle_proof, transaction},
-        CID_KEY, MERKLE_ROOT_KEY, SERVICE_KEY,
+        utils::{block_header, query_ipfs},
+        verifier::{merkle_proof, transaction},
+        CID_KEY, MERKLE_ROOT_KEY,
     };
 
     #[test]

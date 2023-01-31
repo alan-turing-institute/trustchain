@@ -1,10 +1,12 @@
 use core::panic;
 
+use serde_json::json;
 use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
 
 use did_ion::{sidetree::SidetreeClient, ION};
 use trustchain_core::chain::{Chain, DIDChain};
+use trustchain_core::commitment::Commitment;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 // Type aliases
@@ -46,16 +48,30 @@ fn trustchain_verification() {
 
 #[test]
 #[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
-fn test_verified_block_hash() {
+fn test_verifiable_timestamp() {
     let resolver = test_resolver("http://localhost:3000/");
     let mut target = IONVerifier::new(resolver);
 
     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-    let result = target.verified_block_hash(did);
+    let result = target.verifiable_timestamp(did);
 
     assert!(result.is_ok());
+
+    let verifiable_timestamp = result.unwrap();
+
+    // Check that the timestamp is correct
+    // see https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+    assert_eq!(verifiable_timestamp.timestamp(), 1666265405 as u64);
+
+    // Confirm that the timestamp is the expected data in the TimestampCommitment.
     assert_eq!(
-        result.unwrap(),
-        "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f"
+        verifiable_timestamp.timestamp_commitment().expected_data(),
+        &json!(1666265405)
     );
+
+    let expected_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+    assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
+
+    // Verify the timestamp.
+    assert!(target.verify_timestamp(&verifiable_timestamp).is_ok());
 }

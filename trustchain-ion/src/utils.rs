@@ -1,5 +1,5 @@
 //! Utils module.
-use bitcoin::{BlockHash, Transaction};
+use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
 use flate2::read::GzDecoder;
@@ -9,127 +9,74 @@ use ipfs_api_backend_actix::IpfsClient;
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
+use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::error::Error;
 use std::io::Read;
-use trustchain_core::verifier::VerifierError;
+use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::{
     TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD,
-    BITCOIN_RPC_USERNAME, MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING,
-    MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX,
-    MONGO_FILTER_TYPE,
+    BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY,
+    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
+    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY,
+    TIMESTAMP_KEY, VERSION_KEY,
 };
 
-pub trait HasKeys {
-    fn get_keys(&self) -> Option<Vec<JWK>>;
-}
+// TODO: can't implement a trait (HasKeys from trustchain-core) defined
+// outside this crate for a type defined outside this crate.
+// If necessary, create a wrapper for DocumentState.
 
-pub trait HasEndpoints {
-    fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>>;
-}
+// impl HasKeys for DocumentState {
+//     fn get_keys(&self) -> Option<Vec<JWK>> {
+//         let public_key_entries: Vec<PublicKeyEntry> = match &self.public_keys {
+//             Some(x) => x.to_vec(),
+//             None => return None,
+//         };
+//         let public_keys: Vec<JWK> = public_key_entries
+//             .iter()
+//             .filter_map(|entry| {
+//                 match &entry.public_key {
+//                     PublicKey::PublicKeyJwk(pub_key_jwk) => {
+//                         // Return the JWK
+//                         match JWK::try_from(pub_key_jwk.to_owned()) {
+//                             Ok(jwk) => return Some(jwk),
+//                             Err(e) => {
+//                                 eprintln!("Failed to convert PublicKeyJwk to JWK: {}", e);
+//                                 return None;
+//                             }
+//                         }
+//                     }
+//                     PublicKey::PublicKeyMultibase(_) => {
+//                         eprintln!("Unhandled PublicKey variant. Expected PublicKeyJwk.");
+//                         return None;
+//                     }
+//                 }
+//             })
+//             .collect();
+//         if public_keys.len() == 0 {
+//             return None;
+//         }
+//         return Some(public_keys);
+//     }
+// }
 
-impl HasKeys for Document {
-    fn get_keys(&self) -> Option<Vec<JWK>> {
-        let verification_methods = match &self.verification_method {
-            Some(x) => x,
-            None => return None,
-        };
+// TODO: can't implement a trait (HasEndpoints from trustchain-core) defined
+// outside this crate for a type defined outside this crate.
+// If necessary, create a wrapper for DocumentState.
 
-        let verification_method_maps: Vec<&VerificationMethodMap> = verification_methods
-            .iter()
-            .filter_map(|verification_method| match verification_method {
-                VerificationMethod::Map(x) => Some(x),
-                _ => {
-                    eprintln!("Unhandled VerificationMethod variant. Expected Map.");
-                    return None;
-                }
-            })
-            .collect();
-
-        if verification_method_maps.len() == 0 {
-            return None;
-        }
-
-        let keys: Vec<JWK> = verification_method_maps
-            .iter()
-            .filter_map(|verification_method_map| verification_method_map.public_key_jwk.to_owned())
-            .collect();
-
-        if keys.len() == 0 {
-            return None;
-        }
-        Some(keys)
-    }
-}
-
-impl HasKeys for DocumentState {
-    fn get_keys(&self) -> Option<Vec<JWK>> {
-        let public_key_entries: Vec<PublicKeyEntry> = match &self.public_keys {
-            Some(x) => x.to_vec(),
-            None => return None,
-        };
-        let public_keys: Vec<JWK> = public_key_entries
-            .iter()
-            .filter_map(|entry| {
-                match &entry.public_key {
-                    PublicKey::PublicKeyJwk(pub_key_jwk) => {
-                        // Return the JWK
-                        match JWK::try_from(pub_key_jwk.to_owned()) {
-                            Ok(jwk) => return Some(jwk),
-                            Err(e) => {
-                                eprintln!("Failed to convert PublicKeyJwk to JWK: {}", e);
-                                return None;
-                            }
-                        }
-                    }
-                    PublicKey::PublicKeyMultibase(_) => {
-                        eprintln!("Unhandled PublicKey variant. Expected PublicKeyJwk.");
-                        return None;
-                    }
-                }
-            })
-            .collect();
-        if public_keys.len() == 0 {
-            return None;
-        }
-        return Some(public_keys);
-    }
-}
-
-impl HasEndpoints for Document {
-    fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
-        let services = match &self.service {
-            Some(x) => x,
-            None => return None,
-        };
-        let service_endpoints: Vec<ServiceEndpoint> = services
-            .iter()
-            .flat_map(|service| match service.to_owned().service_endpoint {
-                Some(endpoints) => return endpoints.into_iter(),
-                None => return Vec::<ServiceEndpoint>::new().into_iter(),
-            })
-            .collect();
-        if service_endpoints.len() == 0 {
-            return None;
-        }
-        Some(service_endpoints)
-    }
-}
-
-impl HasEndpoints for DocumentState {
-    fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
-        let service_endpoint_entries: Vec<ServiceEndpointEntry> = match &self.services {
-            Some(x) => x.to_vec(),
-            None => return None,
-        };
-        let service_endpoints: Vec<ServiceEndpoint> = service_endpoint_entries
-            .iter()
-            .map(|entry| entry.service_endpoint.to_owned())
-            .collect();
-        return Some(service_endpoints);
-    }
-}
+// impl HasEndpoints for DocumentState {
+//     fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
+//         let service_endpoint_entries: Vec<ServiceEndpointEntry> = match &self.services {
+//             Some(x) => x.to_vec(),
+//             None => return None,
+//         };
+//         let service_endpoints: Vec<ServiceEndpoint> = service_endpoint_entries
+//             .iter()
+//             .map(|entry| entry.service_endpoint.to_owned())
+//             .collect();
+//         return Some(service_endpoints);
+//     }
+// }
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
@@ -232,6 +179,48 @@ pub async fn query_mongodb(
     }
 }
 
+/// Gets a Bitcoin block header via the RPC API.
+pub fn block_header(
+    block_hash: &BlockHash,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<BlockHeader, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = crate::verifier::rpc_client();
+        return block_header(block_hash, Some(&rpc_client));
+    };
+    match client.unwrap().get_block_header(&block_hash) {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            eprintln!("Error getting block header via RPC: {}", e);
+            Err(Box::new(e))
+        }
+    }
+}
+
+/// Decodes a Bitcoin block from 80 bytes of data into a JSON object.
+/// Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
+pub fn decode_block_header(bytes: &[u8; 80]) -> serde_json::Value {
+    // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
+    let version = reverse_endianness(&hex::encode(&bytes[0..4])).unwrap();
+    let hash_prev_block = reverse_endianness(&hex::encode(&bytes[4..36])).unwrap();
+    let merkle_root = reverse_endianness(&hex::encode(&bytes[36..68])).unwrap();
+    let timestamp = reverse_endianness(&hex::encode(&bytes[68..72])).unwrap();
+    let bits = reverse_endianness(&hex::encode(&bytes[72..76])).unwrap();
+    let nonce = reverse_endianness(&hex::encode(&bytes[76..])).unwrap();
+
+    // Convert to JSON.
+    let mut map = HashMap::new();
+    map.insert(VERSION_KEY, version);
+    map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
+    map.insert(MERKLE_ROOT_KEY, merkle_root);
+    map.insert(TIMESTAMP_KEY, timestamp);
+    map.insert(BITS_KEY, bits);
+    map.insert(NONCE_KEY, nonce);
+
+    serde_json::json!(map)
+}
+
 pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
     let mut bytes = hex::decode(hex)?;
     bytes.reverse();
@@ -302,48 +291,48 @@ mod tests {
         assert_eq!(result.as_ref().unwrap().len(), 2);
     }
 
-    #[test]
-    fn test_get_keys_from_document_state() {
-        let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let deltas = content_deltas(&chunk_file_json).unwrap();
-        // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
-        let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
+    // #[test]
+    // fn test_get_keys_from_document_state() {
+    //     let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+    //     let deltas = content_deltas(&chunk_file_json).unwrap();
+    //     // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
+    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
+    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
-        let result = doc_state.get_keys();
-        assert!(result.as_ref().is_some());
-        assert_eq!(result.as_ref().unwrap().len(), 1);
+    //     let result = doc_state.get_keys();
+    //     assert!(result.as_ref().is_some());
+    //     assert_eq!(result.as_ref().unwrap().len(), 1);
 
-        // Check the values of the key's x & y coordinates.
-        if let Params::EC(ec_params) = &result.unwrap().first().unwrap().params {
-            assert!(ec_params.x_coordinate.is_some());
-            assert!(ec_params.y_coordinate.is_some());
-            if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
-                assert_eq!(
-                    serde_json::to_string(x).unwrap(),
-                    "\"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU\""
-                );
-                assert_eq!(
-                    serde_json::to_string(y).unwrap(),
-                    "\"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0\""
-                );
-            };
-        } else {
-            panic!();
-        }
+    //     // Check the values of the key's x & y coordinates.
+    //     if let Params::EC(ec_params) = &result.unwrap().first().unwrap().params {
+    //         assert!(ec_params.x_coordinate.is_some());
+    //         assert!(ec_params.y_coordinate.is_some());
+    //         if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
+    //             assert_eq!(
+    //                 serde_json::to_string(x).unwrap(),
+    //                 "\"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU\""
+    //             );
+    //             assert_eq!(
+    //                 serde_json::to_string(y).unwrap(),
+    //                 "\"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0\""
+    //             );
+    //         };
+    //     } else {
+    //         panic!();
+    //     }
 
-        // Now test with a DocumentState containing two keys.
-        let chunk_file_json: Value =
-            serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS).unwrap();
-        let deltas = content_deltas(&chunk_file_json).unwrap();
-        // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
-        let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
+    //     // Now test with a DocumentState containing two keys.
+    //     let chunk_file_json: Value =
+    //         serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS).unwrap();
+    //     let deltas = content_deltas(&chunk_file_json).unwrap();
+    //     // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
+    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
+    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
-        let result = doc_state.get_keys();
-        assert!(result.as_ref().is_some());
-        assert_eq!(result.as_ref().unwrap().len(), 2);
-    }
+    //     let result = doc_state.get_keys();
+    //     assert!(result.as_ref().is_some());
+    //     assert_eq!(result.as_ref().unwrap().len(), 2);
+    // }
 
     #[test]
     fn test_get_endpoints_from_document() {
@@ -379,36 +368,36 @@ mod tests {
         assert_eq!(uri, "https://bar.example.com");
     }
 
-    #[test]
-    fn test_get_endpoints_from_document_state() {
-        let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let deltas = content_deltas(&chunk_file_json).unwrap();
-        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
-        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
+    // #[test]
+    // fn test_get_endpoints_from_document_state() {
+    //     let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+    //     let deltas = content_deltas(&chunk_file_json).unwrap();
+    //     let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
+    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
-        let result = doc_state.get_endpoints();
-        assert!(&result.is_some());
-        let result = result.unwrap();
-        assert_eq!(&result.len(), &1);
-        let uri = match result.first().unwrap() {
-            ServiceEndpoint::URI(x) => x,
-            _ => panic!(),
-        };
+    //     let result = doc_state.get_endpoints();
+    //     assert!(&result.is_some());
+    //     let result = result.unwrap();
+    //     assert_eq!(&result.len(), &1);
+    //     let uri = match result.first().unwrap() {
+    //         ServiceEndpoint::URI(x) => x,
+    //         _ => panic!(),
+    //     };
 
-        assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
+    //     assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
 
-        // Now test with DocumentState containing two service endpoints.
-        let chunk_file_json: Value =
-            serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES).unwrap();
-        let deltas = content_deltas(&chunk_file_json).unwrap();
-        let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-        let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
+    //     // Now test with DocumentState containing two service endpoints.
+    //     let chunk_file_json: Value =
+    //         serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES).unwrap();
+    //     let deltas = content_deltas(&chunk_file_json).unwrap();
+    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
+    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
 
-        let result = doc_state.get_endpoints();
-        assert!(&result.is_some());
-        let result = result.unwrap();
-        assert_eq!(&result.len(), &2);
-    }
+    //     let result = doc_state.get_endpoints();
+    //     assert!(&result.is_some());
+    //     let result = result.unwrap();
+    //     assert_eq!(&result.len(), &2);
+    // }
 
     #[test]
     #[ignore = "Integration test requires IPFS"]

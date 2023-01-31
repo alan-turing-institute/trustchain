@@ -1,7 +1,12 @@
 use serde_json::json;
+use ssi::{
+    did::{Document, ServiceEndpoint},
+    did_resolve::DocumentMetadata,
+    jwk::JWK,
+};
 use thiserror::Error;
 
-use crate::utils::{json_contains, type_of};
+use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 
 /// An error relating to Commitment verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -101,7 +106,7 @@ pub trait CommitmentChain: Commitment {
     ) -> Result<(), CommitmentError>;
 }
 
-/// An iterated commitment in which the hash of the n'th commitment
+/// A chain of commitments in which the hash of the n'th commitment
 /// is identical to the expected data in the (n+1)'th commitment.
 pub struct ChainedCommitment {
     commitments: Vec<Box<dyn Commitment>>,
@@ -117,11 +122,8 @@ impl ChainedCommitment {
 
 impl TrivialCommitment for ChainedCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
-        // TODO: Compose the hasher functions in the sequence of commitments.
-        // Unclear how to compose the function pointers (some approaches only work on closures).
-        // If this were implemented there might be no need to implement verify for IteratedCommitment.
         |_| {
-            eprintln!("Composed hasher not implemented. Call verify directly.");
+            eprintln!("No hasher function available for ChainedCommitment. Call verify directly.");
             Err(CommitmentError::FailedToComputeHash)
         }
     }
@@ -202,9 +204,88 @@ impl CommitmentChain for ChainedCommitment {
         // This ensures that the composition still commits to the expected data.
         let expected_data = json!(self.hash()?);
         let new_commitment = trivial_commitment.to_commitment(expected_data);
-        // let commitments: &mut Vec<Box<dyn Commitment>> = self.commitments.as_mut();
         let commitments: &mut Vec<Box<dyn Commitment>> = self.mut_commitments();
         commitments.push(new_commitment);
         Ok(())
+    }
+}
+
+pub trait DIDCommitment: Commitment {
+    /// Gets the DID.
+    fn did(&self) -> &str;
+    /// Gets the DID Document.
+    fn did_document(&self) -> &Document;
+    // /// Gets the DID Document Metadata.
+    // fn did_document_metadata(&self) -> DocumentMetadata;
+    /// Gets the keys in the candidate data.
+    fn candidate_keys(&self) -> Option<Vec<JWK>> {
+        self.did_document().get_keys()
+    }
+    /// Gets the endpoints in the candidate data.
+    fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
+        self.did_document().get_endpoints()
+    }
+}
+
+/// A Commitment whose expected data is a Unix time and whose hash, hasher
+/// and candidate data are identical to that of a given DIDCommitment.
+pub struct TimestampCommitment {
+    timestamp: u64,
+    expected_data: serde_json::Value,
+    hasher: fn(&[u8]) -> Result<String, CommitmentError>,
+    candidate_data: Vec<u8>,
+    decode_candidate_data: fn(&[u8]) -> Result<serde_json::Value, CommitmentError>,
+}
+
+impl TimestampCommitment {
+    /// Constructs a TimestampCommitment with hash, hasher and candidate data
+    /// identical to a given DIDCommitment, and with a Unix time as expected data.
+    pub fn new(did_commitment: &Box<dyn DIDCommitment>, expected_data: u64) -> Self {
+        // Note the expected data in the TimestampCommitment is the timestamp, but the
+        // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
+        // by verifying both the DIDCommitment and the TimestampCommitment we confirm
+        // that the *same* hash commits to *both* the DID Document data and the timestamp.
+
+        // The decoded candidate data must contain the timestamp such that it is found
+        // by the json_contains function, otherwise the content verification will fail.
+        Self {
+            timestamp: expected_data,
+            expected_data: json!(expected_data),
+            hasher: did_commitment.hasher(),
+            candidate_data: did_commitment.candidate_data().to_vec(),
+            decode_candidate_data: did_commitment.decode_candidate_data(),
+        }
+    }
+
+    /// Gets the timestamp as a Unix time
+    fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+}
+
+impl TrivialCommitment for TimestampCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+        self.hasher
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        &self.candidate_data
+    }
+
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        self.decode_candidate_data
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        if !expected_data.eq(self.expected_data()) {
+            eprintln!("Attempted modification of expected timestamp data not permitted. Ignored.");
+        }
+        self
+    }
+}
+
+impl Commitment for TimestampCommitment {
+    fn expected_data(&self) -> &serde_json::Value {
+        &self.expected_data
     }
 }

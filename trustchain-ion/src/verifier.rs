@@ -1,6 +1,7 @@
 use crate::commitment::IONCommitment;
 use crate::utils::{
-    decode_ipfs_content, query_ipfs, query_mongodb, reverse_endianness, HasEndpoints, HasKeys,
+    block_header, decode_block_header, decode_ipfs_content, query_ipfs, query_mongodb,
+    reverse_endianness,
 };
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, CHUNKS_KEY,
@@ -28,10 +29,10 @@ use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
 use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::io::Read;
 use std::str::FromStr;
-use trustchain_core::commitment::{Commitment, CommitmentError};
+use trustchain_core::commitment::{Commitment, CommitmentError, DIDCommitment};
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Verifier, VerifierError};
@@ -145,6 +146,8 @@ where
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
     pub fn fetch_bundle(&mut self, did: &str) -> Result<(), VerifierError> {
+        // TODO: if running on a Trustchain light client, make an API call to a full node to request the bundle.
+
         let (did_doc, did_doc_meta) = self.resolve_did(did)?;
         let (block_hash, tx_index) = self.locate_transaction(did)?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
@@ -520,7 +523,7 @@ where
         return extract_doc_state(deltas, update_commitment);
     }
 
-    /// Resolves the given DID to obtain the DID Document and Update Commitment.
+    /// Resolves the given DID to obtain the DID Document and Document Metadata.
     fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
         match self.resolver.resolve_as_result(did) {
             Ok((x, y, z)) => {
@@ -636,6 +639,8 @@ where
     }
 }
 
+// TODO: move some/all of these free functions to utils.
+
 /// Converts a VerificationBundle into an IONCommitment.
 pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment, CommitmentError> {
     IONCommitment::new(
@@ -707,25 +712,6 @@ pub fn merkle_proof(
     }
 }
 
-/// Gets a Bitcoin block header via the RPC API.
-pub fn block_header(
-    block_hash: &BlockHash,
-    client: Option<&bitcoincore_rpc::Client>,
-) -> Result<BlockHeader, Box<dyn std::error::Error>> {
-    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    if client.is_none() {
-        let rpc_client = crate::verifier::rpc_client();
-        return block_header(block_hash, Some(&rpc_client));
-    };
-    match client.unwrap().get_block_header(&block_hash) {
-        Ok(x) => Ok(x),
-        Err(e) => {
-            eprintln!("Error getting block header via RPC: {}", e);
-            Err(Box::new(e))
-        }
-    }
-}
-
 /// Converts DID content from a chunk file into a vector of Delta objects.
 pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierError> {
     if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
@@ -754,6 +740,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     }
 }
 
+// TODO: Move this logic into the `decode_candidate_data` method inside TrivialIpfsCommitment.
 /// Extracts public keys and endpoints from "deltas" with matching update commitment.
 pub fn extract_doc_state(
     deltas: Vec<Delta>,
@@ -815,160 +802,29 @@ impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
 {
-    // TODO NEXT: This method is now implemented as a default in the trait.
-    // Remove this implementation and instead implement the block_hash() and commitment() methods.
-    fn verified_block_hash(&mut self, did: &str) -> Result<String, VerifierError> {
-        // TODO NEXT:
-        // Major refactor to simplify the verification process, which should be:
-        // 1. gather all relevant data (inc. DID Document) to construct a VerificationBundle.
-        // 2. store it in a struct field of type Option<VerificationBundle>.
-        // 3. add a method to impl VerificationBundle:
-        //  pub fn as_commitment(&self) -> IONCommitment
-        // 4. re-implement this method (i.e. `verified_block_hash`), which performs those
-        // first three steps then gets the block hash for the target (from the local node,
-        // whether full or SPV), verifies the IONCommitment against this target and returns the block hash.
-
-        // Resolve the DID Document to get the expected public keys & endpoints,
-        // and the update commitment needed to differentiate between patches in
-        // the patches found in the chunk file retrieved from IPFS.
-        let (expected_content, doc_meta) = self.resolve_did(&did)?;
-        let update_commitment = self.extract_update_commitment(&doc_meta)?;
-
-        let tx_locator = self.locate_transaction(did)?;
-        let tx = self.transaction(tx_locator)?;
-
-        // Perform 2 verifications:
-        // 1. verify that the transaction commits to the expected DID data
-        //      See Branch 1 at https://hackmd.io/Dgoof7eZS6ysXuM6CUbCVQ#Branch-1-Verify-the-IPFS-data
-        // 2. verify that the transaction really is in the block (via Merkle proof)
-        //      See Branch 2 at https://hackmd.io/Dgoof7eZS6ysXuM6CUbCVQ#Branch-2-Verify-the-Bitcoin-transaction
-
-        // 1. Verify that the DID Document was committed to by the Bitcoin transaction.
-        // Note: Do this by checking each pub key and service endpoint one by one,
-        // rather than attempting to reconstruct the exact DID Document and hashing it.
-
-        // Query_ipfs to get the ION chunkFile content to get the verified public
-        // keys & endpoints for the DID identified by the update commitment.
-        let ipfs_client = IpfsClient::default();
-        let verified_content = self.verified_content(&tx, &update_commitment, &ipfs_client)?;
-
-        // Check each expected key is found in the vector of verified keys.
-        if let Some(expected_keys) = expected_content.get_keys() {
-            if let Some(verified_keys) = verified_content.get_keys() {
-                if !expected_keys.iter().all(|key| verified_keys.contains(key)) {
-                    return Err(VerifierError::KeyNotFoundInVerifiedContent(did.to_string()));
-                }
-            }
-        }
-        // Check each expected endpoint is found in the vector of verified endpoints.
-        if let Some(expected_endpoints) = expected_content.get_endpoints() {
-            if let Some(verified_endpoints) = verified_content.get_endpoints() {
-                if !expected_endpoints
-                    .iter()
-                    .all(|uri| verified_endpoints.contains(uri))
-                {
-                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
-                        did.to_string(),
-                    ));
-                }
-            }
-        }
-        // If these checks pass, this branch of verification is complete.
-
-        // TODO: add a test where one of the above checks fails.
-        // TODO: refactor the following into smaller functions.
-
-        // 2. Verify that the Bitcoin transaction is in the block (via a Merkle proof).
-
-        // Get a Merkle proof for the Bitcoin transaction *directly from Bitcoin Core*.
-        let tx_out_proof = self
-            .rpc_client
-            .get_tx_out_proof(&[tx.txid()], Some(&tx_locator.0))
-            .unwrap();
-        let merkle_block: MerkleBlock = bitcoin::consensus::deserialize(&tx_out_proof).unwrap();
-
-        // Check that the transaction ID of interest is contained in the PartialMerkleTree.
-        // These next steps are key as they prove that the transaction obtained earlier (from which
-        // the OP_RETURN data was extracted and verified) is contained in the MerkleBlock.
-        let merkle_block_hashes: Vec<String> = merkle_block
-            .txn
-            .hashes()
-            .iter()
-            .map(|hash| hash.to_string())
-            .collect();
-        if !merkle_block_hashes.contains(&tx.txid().to_string()) {
-            return Err(VerifierError::FailedTransactionTimestampVerification(
-                tx.txid().to_string(),
-            ));
-        }
-
-        // Traverse the PartialMerkleTree to obtain the Merkle root.
-        let merkle_root = match merkle_block.txn.extract_matches(&mut vec![], &mut vec![]) {
+    /// Queries a local proof-of-work node to get the expected timestamp for a given proof-of-work hash.
+    fn expected_timestamp(&self, hash: &str) -> Result<u64, VerifierError> {
+        let block_hash = match BlockHash::from_str(hash) {
             Ok(x) => x,
             Err(e) => {
-                eprintln!(
-                    "Failed to obtain Merkle root from PartialMerkleTree: {:?}",
-                    e
-                );
-                return Err(VerifierError::FailedTransactionTimestampVerification(
-                    tx.txid().to_string(),
-                ));
+                eprintln!("Failed to convert hash string to BlockHash: {}", e);
+                return Err(VerifierError::InvalidProofOfWorkHash(hash.to_string()));
             }
         };
-
-        // Check the Merkle root matches that in the MerkleBlock.
-        if !merkle_root.eq(&merkle_block.header.merkle_root) {
-            eprintln!(
-                "Merkle roots do not match: {}, {}",
-                merkle_root, &merkle_block.header.merkle_root
-            );
-            return Err(VerifierError::FailedTransactionTimestampVerification(
-                tx.txid().to_string(),
-            ));
-        }
-
-        // Check the MerkleBlock hash matches the block hash obtained earlier from MongoDB.
-        // IMP TODO: ideally we should now hash the merkle_block header to obtain the block hash.
-        // For now, we'll use the hash inside the MerkleBlock data structure.
-        let (block_hash, _) = tx_locator;
-        if !merkle_block.header.block_hash().eq(&block_hash) {
-            return Err(VerifierError::FailedProofOfWorkHashVerification(
-                block_hash.to_string(),
-                merkle_block.header.block_hash().to_string(),
-            ));
-        }
-        return Ok(block_hash.to_string());
-    }
-
-    fn block_hash_to_unix_time(&self, block_hash: &str) -> Result<u32, VerifierError> {
-        let hash = match BlockHash::from_str(block_hash) {
-            Ok(hash) => hash,
-            Err(e) => {
-                eprintln!("Error converting string to BlockHash: {}", e);
-                return Err(VerifierError::InvalidBlockHash(block_hash.to_owned()));
+        let block_header = match block_header(&block_hash, Some(&self.rpc_client)) {
+            Ok(x) => x,
+            Err(_) => {
+                todo!()
             }
         };
-        let block_header = match self.rpc_client.get_block_header(&hash) {
-            Ok(block_header) => block_header,
-            Err(e) => {
-                eprintln!("Error getting Bitcoin block header: {}", e);
-                return Err(VerifierError::LedgerClientError(
-                    "getblockheader".to_string(),
-                ));
-            }
-        };
-        Ok(block_header.time)
-    }
-
-    fn resolver(&self) -> &Resolver<T> {
-        &self.resolver
+        Ok(block_header.time as u64)
     }
 
     /// Gets a block hash (proof-of-work) Commitment for the given DID.
     /// The mutable reference to self enables a newly-fetched Commitment
     /// to be stored locally for faster subsequent retrieval.
-    fn commitment(&mut self, did: &str) -> Result<Box<dyn Commitment>, VerifierError> {
-        let _ = self.fetch_commitment(did);
+    fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
+        let _ = self.fetch_did_commitment(did);
         if !self.bundles.contains_key(did) {
             eprintln!("Commitment not yet fetched for DID: {}", did);
             return Err(VerifierError::VerificationMaterialNotYetFetched(
@@ -985,17 +841,19 @@ where
         }
     }
 
-    fn block_hash(&self, did: &str) -> &str {
-        todo!()
-    }
+    fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
+        // TODO: handle the possibility that the DID has been updated since previously fetched.
 
-    fn fetch_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
         // If the corresponding VerificationBundle is already available, do nothing.
         if self.bundles.contains_key(did) {
             return Ok(());
         };
         let _ = self.verification_bundle(did)?;
         Ok(())
+    }
+
+    fn resolver(&self) -> &Resolver<T> {
+        &self.resolver
     }
 }
 
@@ -1406,27 +1264,27 @@ mod tests {
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
         assert!(target.bundles().is_empty());
-        let result = target.commitment(did).unwrap();
+        let result = target.did_commitment(did).unwrap();
 
         // Check that the verification bundle for the commitment is now stored in the Verifier.
         assert!(!target.bundles().is_empty());
         assert_eq!(target.bundles().len(), 1);
         let bundle = target.bundles.get(did).unwrap();
         let commitment = construct_commitment(bundle).unwrap();
-        assert_eq!(result.hash(), commitment.hash())
+        assert_eq!(result.hash(), commitment.hash());
     }
 
     // #[test]
     // fn test_verification_bundle_serialize() {
     //     // let verification_bundle = VerificationBundle();
     //     // Tests: 1. is valid json
-    //     panic!();
+    //     todo!();
     // }
 
     // #[test]
     // fn test_verification_bundle_deserialize() {
     //     // Tests: assert individual elements of struct
-    //     panic!();
+    //     todo!();
     // }
 
     #[test]

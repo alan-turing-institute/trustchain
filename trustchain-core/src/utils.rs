@@ -1,6 +1,7 @@
 //! Utils module.
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 // use std::io::Read;
 use crate::TRUSTCHAIN_DATA;
@@ -113,6 +114,68 @@ pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> 
 /// Extracts and decodes the payload from the JWT.
 pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
+}
+
+pub trait HasKeys {
+    fn get_keys(&self) -> Option<Vec<JWK>>;
+}
+
+pub trait HasEndpoints {
+    fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>>;
+}
+
+impl HasKeys for Document {
+    fn get_keys(&self) -> Option<Vec<JWK>> {
+        let verification_methods = match &self.verification_method {
+            Some(x) => x,
+            None => return None,
+        };
+
+        let verification_method_maps: Vec<&VerificationMethodMap> = verification_methods
+            .iter()
+            .filter_map(|verification_method| match verification_method {
+                VerificationMethod::Map(x) => Some(x),
+                _ => {
+                    eprintln!("Unhandled VerificationMethod variant. Expected Map.");
+                    return None;
+                }
+            })
+            .collect();
+
+        if verification_method_maps.len() == 0 {
+            return None;
+        }
+
+        let keys: Vec<JWK> = verification_method_maps
+            .iter()
+            .filter_map(|verification_method_map| verification_method_map.public_key_jwk.to_owned())
+            .collect();
+
+        if keys.len() == 0 {
+            return None;
+        }
+        Some(keys)
+    }
+}
+
+impl HasEndpoints for Document {
+    fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
+        let services = match &self.service {
+            Some(x) => x,
+            None => return None,
+        };
+        let service_endpoints: Vec<ServiceEndpoint> = services
+            .iter()
+            .flat_map(|service| match service.to_owned().service_endpoint {
+                Some(endpoints) => return endpoints.into_iter(),
+                None => return Vec::<ServiceEndpoint>::new().into_iter(),
+            })
+            .collect();
+        if service_endpoints.len() == 0 {
+            return None;
+        }
+        Some(service_endpoints)
+    }
 }
 
 /// Tests whether one JSON object contains all the elements of another.
