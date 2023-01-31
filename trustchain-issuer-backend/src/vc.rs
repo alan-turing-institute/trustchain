@@ -1,5 +1,5 @@
+use axum::Json;
 // use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-use actix_web::web;
 use image::EncodableLayout;
 // use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty, Map, Value};
@@ -8,20 +8,22 @@ use ssi::vc::Credential;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+use crate::ISSUER_DID;
+
 /// Converts a credential into an offer
 pub fn credential_to_offer(_credential: &str) -> String {
     todo!()
 }
 
 /// Verifies a received credential
-pub fn verify_vc(_credential: &web::Json<Credential>) -> String {
+pub fn verify_vc(Json(_credential): Json<Credential>) -> String {
     todo!()
 }
 
 /// Generates a VC (prototype uses const DID and const credential file)
 pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str) -> String {
-    let command_str = format!("trustchain-cli vc attest --did did:ion:test:EiBYdto2LQd_uAj_EXEoxP_KbLmZzwe1E-vXp8ZsMv1Gpg");
-    let mut command = command_str.split(" ").skip(1).fold(
+    let command_str = format!("trustchain-cli vc attest --did {}", ISSUER_DID);
+    let mut command = command_str.split(' ').skip(1).fold(
         Command::new(command_str.split_once(' ').unwrap().0),
         |mut cmd, s| {
             cmd.arg(s);
@@ -41,10 +43,7 @@ pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str
         serde_json::from_reader(std::fs::read(file_str).unwrap().as_bytes()).unwrap();
 
     // Add passed credential_id
-    credential.id = Some(ssi::vc::URI::String(format!(
-        "urn:uuid:{}",
-        credential_id.to_string()
-    )));
+    credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", credential_id)));
 
     // Add subject_id if not none
     if let Some(subject_id_str) = subject_id {
@@ -66,7 +65,7 @@ pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str
     println!("{}", String::from_utf8(output.clone().stdout).unwrap());
     println!("{}", String::from_utf8(output.clone().stderr).unwrap());
 
-    let vc_string = String::from_utf8(output.clone().stdout).unwrap();
+    let vc_string = String::from_utf8(output.stdout).unwrap();
 
     // Credential offer structure
     // {
