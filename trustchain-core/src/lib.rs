@@ -26,10 +26,9 @@ pub const TRUSTCHAIN_PROOF_SERVICE_ID_VALUE: &str = "trustchain-controller-proof
 /// The value of the type for the service containing a Trustchain controller proof within a DID document.
 pub const TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE: &str = "TrustchainProofService";
 
-/// Root event time hardcoded into binary
-// pub const ROOT_EVENT_TIME: u32 = 2377445;
-// pub const ROOT_EVENT_TIME_2378493: u32 = 2378493;
+/// Root event unix time for first Trustchain root on testnet.
 pub const ROOT_EVENT_TIME: u32 = 1666265405;
+/// Root event unix time for second Trustchain root on testnet.
 pub const ROOT_EVENT_TIME_2378493: u32 = 1666971942;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
