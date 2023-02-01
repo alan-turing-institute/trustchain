@@ -2,6 +2,9 @@ use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::one_or_many::OneOrMany;
 use std::fmt;
 
+use crate::TRUSTCHAIN_SERVICE_ID_VALUE;
+
+/// Truncates a string to be of maximum length `max_chars` and adds ellipsis.
 fn truncate(s: &str, max_chars: usize) -> String {
     match s.char_indices().nth(max_chars) {
         None => s.to_string(),
@@ -9,8 +12,10 @@ fn truncate(s: &str, max_chars: usize) -> String {
     }
 }
 
+/// Extracts the service endpoint string from a DID `Document` if exactly one service with
+/// "id": `TrustchainID` is present.
 fn get_service_endpoint_string(doc: &Document) -> Option<String> {
-    match doc.select_service("TrustchainID") {
+    match doc.select_service(TRUSTCHAIN_SERVICE_ID_VALUE) {
         Some(Service {
             service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(service_endpoint))),
             ..
