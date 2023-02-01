@@ -1,5 +1,6 @@
 use axum::{routing::get, Router};
-use trustchain_issuer_backend::{handlers, HOST};
+use clap::Parser;
+use trustchain_issuer_backend::{config::ServerConfig, handlers};
 
 // Process sketch:
 // 1. User visits "/issuer" page, and is displayed a QR code of a URL (with UUID) to send GET
@@ -12,6 +13,9 @@ use trustchain_issuer_backend::{handlers, HOST};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    // Get config from CLI
+    let config = ServerConfig::from_args();
+
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -29,10 +33,11 @@ async fn main() -> std::io::Result<()> {
             get(handlers::get_verifier).post(handlers::post_verifier),
         )
         .route("/did/:id", get(handlers::get_did_resolver))
-        .route("/did/chain/:id", get(handlers::get_did_chain));
+        .route("/did/chain/:id", get(handlers::get_did_chain))
+        .with_state(config.clone());
 
     // Address
-    let addr = HOST.parse().unwrap();
+    let addr = format!("{}:{}", config.host, config.port).parse().unwrap();
 
     // Logging
     tracing::debug!("listening on {}", addr);

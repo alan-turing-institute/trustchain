@@ -1,8 +1,9 @@
+use crate::config::ServerConfig;
 use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
 use crate::vc::generate_vc;
-use crate::{EXAMPLE_VP_REQUEST, HOST};
-use axum::extract::Path;
+use crate::EXAMPLE_VP_REQUEST;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
@@ -33,21 +34,20 @@ pub async fn issuer() -> Html<String> {
             .unwrap(),
     )
 }
-
-pub async fn get_verifier_qrcode() -> Html<String> {
+pub async fn get_verifier_qrcode(State(config): State<ServerConfig>) -> Html<String> {
     // Generate a QR code for server address and combination of name and UUID
-    let address_str = format!("http://{HOST}/vc/verifier");
+    let address_str = format!("http://{}:{}/vc/verifier", config.host, config.port);
 
     // Respond with the QR code as a png embedded in html
     Html(str_to_qr_code_html(&address_str, "Verifier"))
 }
 
-pub async fn get_issuer_qrcode() -> Html<String> {
+pub async fn get_issuer_qrcode(State(config): State<ServerConfig>) -> Html<String> {
     // Generate a UUID
     let id = Uuid::new_v4().to_string();
 
     // Generate a QR code for server address and combination of name and UUID
-    let address_str = format!("http://{HOST}/vc/issuer/{id}");
+    let address_str = format!("http://{}:{}/vc/issuer/{id}", config.host, config.port);
 
     // Respond with the QR code as a png embedded in html
     Html(str_to_qr_code_html(&address_str, "Issuer"))

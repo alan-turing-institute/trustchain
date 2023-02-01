@@ -14,6 +14,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+clap = { version = "^3.2", features=["derive", "env", "cargo"] }
 ssi = "0.4"
 chrono = "^0.4"
 tracing = "0.1"
