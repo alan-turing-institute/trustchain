@@ -173,7 +173,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 Err(ResolverError::MultipleTrustchainProofService) => {
                     let res_meta = ResolutionMetadata {
                         error: Some(
-                            "Multiple 'TrustchainProofService' entries are present.".to_string(),
+                            "Multiple Trustchain proof service entries are present.".to_string(),
                         ),
                         content_type: None,
                         property_set: None,
@@ -212,7 +212,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 {
                     return Err(ResolverError::FailedToConvertToTrustchain);
                 } else if did_res_meta_error
-                    == "Multiple 'TrustchainProofService' entries are present."
+                    == "Multiple Trustchain proof service entries are present."
                 {
                     return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
@@ -544,10 +544,7 @@ mod tests {
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
-        assert_eq!(
-            proof_service.id,
-            format!("#{TRUSTCHAIN_PROOF_SERVICE_ID_VALUE}")
-        );
+        assert_eq!(proof_service.id, format!("#trustchain-controller-proof"));
         assert_eq!(
             proof_service.type_,
             OneOrMany::One(String::from("TrustchainProofService"))
@@ -572,10 +569,7 @@ mod tests {
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
-        assert_eq!(
-            proof_service.id,
-            format!("#{TRUSTCHAIN_PROOF_SERVICE_ID_VALUE}")
-        );
+        assert_eq!(proof_service.id, format!("#trustchain-controller-proof"));
         assert_eq!(
             proof_service.type_,
             OneOrMany::One(String::from("TrustchainProofService"))
