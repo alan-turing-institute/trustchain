@@ -8,6 +8,7 @@ use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
+use trustchain_core::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
 use crate::controller::IONController;
 use crate::get_ion_resolver;
@@ -62,7 +63,7 @@ pub fn attest_operation(
     // 2.1: Add RemoveService patch if Trustchain proof already present
     if controller.is_proof_in_doc_meta(&doc_meta) {
         patches.push(DIDStatePatch::RemoveServices {
-            ids: vec!["trustchain-controller-proof".to_string()],
+            ids: vec![TRUSTCHAIN_PROOF_SERVICE_ID_VALUE.to_string()],
         });
     }
 
