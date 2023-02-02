@@ -1,5 +1,5 @@
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::display::TrustchainGraph;
+use trustchain_core::graph::TrustchainGraph;
 use trustchain_ion::get_ion_resolver;
 
 #[test]

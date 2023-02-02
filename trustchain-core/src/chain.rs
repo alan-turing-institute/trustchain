@@ -310,12 +310,12 @@ impl Chain for DIDChain {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use ssi::jwk::JWK;
 
     use super::*;
     use crate::data::{
-        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
+        TEST_DID_CHAIN, TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
         TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
         TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
@@ -367,32 +367,9 @@ pub mod tests {
         )
     }
 
-    // Public helper function returns a chain of three DIDs to facilitate reuse in display module tests.
-    pub fn test_chain(reversed: bool) -> Result<DIDChain, Box<dyn std::error::Error>> {
-        let mut chain = DIDChain::empty();
-
-        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
-        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
-        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
-
-        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
-        let level1_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
-        let level2_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
-
-        // Use reversed option to allow chain to be constructed in reverse for failing test
-        if !reversed {
-            chain.prepend((level2_doc, level2_doc_meta));
-            chain.prepend((level1_doc, level1_doc_meta));
-            chain.prepend((root_doc, root_doc_meta));
-        } else {
-            chain.prepend((root_doc, root_doc_meta));
-            chain.prepend((level1_doc, level1_doc_meta));
-            chain.prepend((level2_doc, level2_doc_meta));
-        }
-        chain.level_vec.reverse();
-        Ok(chain)
+    // Helper function returns a valid chain of three DIDs.
+    fn test_chain() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN).unwrap()
     }
 
     // Helper function returns an invalid chain of three DIDs.
@@ -464,7 +441,7 @@ pub mod tests {
 
     #[test]
     fn test_level_vec() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let expected_vec = vec![
             // ROOT DID
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string(),
@@ -478,7 +455,7 @@ pub mod tests {
 
     #[test]
     fn test_root() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         assert_eq!(
             target.root(),
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
@@ -487,7 +464,7 @@ pub mod tests {
 
     #[test]
     fn test_leaf() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         assert_eq!(
             target.leaf(),
             "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
@@ -496,7 +473,7 @@ pub mod tests {
 
     #[test]
     fn test_verify_proofs() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         assert!(target.verify_proofs().is_ok());
         let target = test_invalid_chain().unwrap();
         assert!(target.verify_proofs().is_err());
@@ -505,7 +482,7 @@ pub mod tests {
     #[test]
     fn test_level() {
         // Test the level returned for each node in the test chain
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         assert_eq!(target.level(expected_root_did).unwrap(), 0);
 
@@ -517,7 +494,7 @@ pub mod tests {
 
     #[test]
     fn test_upstream() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -540,7 +517,7 @@ pub mod tests {
 
     #[test]
     fn test_downstream() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -560,7 +537,7 @@ pub mod tests {
 
     #[test]
     fn test_data() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -607,14 +584,14 @@ pub mod tests {
 
     #[test]
     fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         println!("{}", target);
         Ok(())
     }
 
     #[test]
     fn test_to_vec() {
-        let target = test_chain(false).unwrap();
+        let target = test_chain();
         let result = target.to_vec();
         assert_eq!(result.len(), 3);
 
