@@ -129,13 +129,13 @@ pub fn set_panic_hook() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWS};
+    use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
     use ssi::did::Document;
 
     #[test]
     fn test_decode_verify() -> Result<(), Box<dyn std::error::Error>> {
         let key: JWK = serde_json::from_str(TEST_ROOT_JWK_PK)?;
-        let jwt = TEST_ROOT_PLUS_1_JWS;
+        let jwt = TEST_ROOT_PLUS_1_JWT;
         let result = decode_verify(jwt, &key);
         assert!(result.is_ok());
         Ok(())
@@ -146,7 +146,7 @@ mod tests {
         let doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
         let doc_canon = canonicalize(&doc)?;
         let actual_hash = hash(&doc_canon);
-        let jwt = TEST_ROOT_PLUS_1_JWS;
+        let jwt = TEST_ROOT_PLUS_1_JWT;
         let expected_hash = decode(jwt)?;
         assert_eq!(expected_hash, actual_hash);
         Ok(())
