@@ -36,7 +36,10 @@ pub async fn issuer() -> Html<String> {
 }
 pub async fn get_verifier_qrcode(State(config): State<ServerConfig>) -> Html<String> {
     // Generate a QR code for server address and combination of name and UUID
-    let address_str = format!("http://{}:{}/vc/verifier", config.host, config.port);
+    let address_str = format!(
+        "http://{}:{}/vc/verifier",
+        config.host_reference, config.port
+    );
 
     // Respond with the QR code as a png embedded in html
     Html(str_to_qr_code_html(&address_str, "Verifier"))
@@ -47,7 +50,10 @@ pub async fn get_issuer_qrcode(State(config): State<ServerConfig>) -> Html<Strin
     let id = Uuid::new_v4().to_string();
 
     // Generate a QR code for server address and combination of name and UUID
-    let address_str = format!("http://{}:{}/vc/issuer/{id}", config.host, config.port);
+    let address_str = format!(
+        "http://{}:{}/vc/issuer/{id}",
+        config.host_reference, config.port
+    );
 
     // Respond with the QR code as a png embedded in html
     Html(str_to_qr_code_html(&address_str, "Issuer"))

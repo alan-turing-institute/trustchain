@@ -4,7 +4,7 @@ use image::EncodableLayout;
 // use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty, Map, Value};
 use ssi::one_or_many::OneOrMany;
-use ssi::vc::Credential;
+use ssi::vc::{Credential, VCDateTime};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
@@ -44,6 +44,8 @@ pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str
 
     // Add passed credential_id
     credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", credential_id)));
+    let now = chrono::offset::Utc::now();
+    credential.issuance_date = Some(VCDateTime::from(now));
 
     // Add subject_id if not none
     if let Some(subject_id_str) = subject_id {
@@ -98,7 +100,7 @@ pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str
         offer.insert("credentialPreview".to_string(), Value::Object(vc));
 
         // Insert expiry time for using offer within next hour
-        let expiry_time = chrono::offset::Utc::now() + chrono::Duration::minutes(60);
+        let expiry_time = now + chrono::Duration::minutes(60);
         offer.insert(
             "expires".to_string(),
             Value::String(expiry_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),

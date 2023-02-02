@@ -1,5 +1,6 @@
 use axum::{routing::get, Router};
 use clap::Parser;
+use log::info;
 use trustchain_issuer_backend::{config::ServerConfig, handlers};
 
 // Process sketch:
@@ -13,11 +14,14 @@ use trustchain_issuer_backend::{config::ServerConfig, handlers};
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    // Get config from CLI
-    let config = ServerConfig::from_args();
-
     // Initialize tracing
     tracing_subscriber::fmt::init();
+
+    // Get config from CLI
+    let config: ServerConfig = Parser::parse();
+
+    // Print config
+    info!("{}", config);
 
     // Build our application with a route
     let app = Router::new()
