@@ -64,10 +64,7 @@ impl IONAttestor {
     }
     /// Get the IONAttestor's public signing key.
     pub fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        match self.signing_key(key_id) {
-            Ok(key) => Ok(key.to_public()),
-            Err(e) => Err(e),
-        }
+        Ok(self.signing_key(key_id)?.to_public())
     }
 }
 
@@ -107,11 +104,7 @@ impl Subject for IONAttestor {
 }
 
 impl Attestor for IONAttestor {
-    fn attest(
-        &self,
-        doc: &Document,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         // Add controller to document
@@ -121,14 +114,9 @@ impl Attestor for IONAttestor {
         doc.controller = Some(OneOrMany::One(self.did().to_string()));
 
         // Canonicalize document
-        let doc_canon = match ION::json_canonicalization_scheme(&doc) {
-            Ok(str) => str,
-            Err(_) => {
-                return Err(Box::new(AttestorError::InvalidDocumentParameters(
-                    doc.id.clone(),
-                )))
-            }
-        };
+        let doc_canon = ION::json_canonicalization_scheme(&doc)
+            .map_err(|_| AttestorError::InvalidDocumentParameters(doc.id.clone()))?;
+
         // Hash canonicalized document
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
@@ -137,30 +125,24 @@ impl Attestor for IONAttestor {
             Ok(key) => key,
             Err(_) => {
                 if let Some(key_id) = key_id {
-                    return Err(Box::new(AttestorError::NoSigningKeyWithId(
+                    return Err(AttestorError::NoSigningKeyWithId(
                         self.did().to_string(),
                         key_id.to_string(),
-                    )));
+                    ));
                 } else {
-                    return Err(Box::new(AttestorError::NoSigningKey(
-                        self.did().to_string(),
-                    )));
+                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
                 }
             }
         };
         // Encode and sign
         match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
-            Err(e) => Err(Box::new(AttestorError::SigningError(doc.id, e.to_string()))),
+            Err(e) => Err(AttestorError::SigningError(doc.id, e.to_string())),
         }
     }
 
     /// Attests to a passed string slice.
-    fn attest_str(
-        &self,
-        doc: &str,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    fn attest_str(&self, doc: &str, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         // Hash canonicalized document
@@ -177,10 +159,10 @@ impl Attestor for IONAttestor {
             &signing_key,
         ) {
             Ok(str) => Ok(str),
-            Err(e) => Err(Box::new(AttestorError::SigningError(
+            Err(e) => Err(AttestorError::SigningError(
                 self.did().to_string(),
                 e.to_string(),
-            ))),
+            )),
         }
     }
 }
@@ -193,22 +175,17 @@ impl CredentialAttestor for IONAttestor {
         doc: &Credential,
         key_id: Option<&str>,
         resolver: &dyn DIDResolver,
-    ) -> Result<Credential, Box<dyn std::error::Error>> {
+    ) -> Result<Credential, AttestorError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
         // Generate proof
         let proof = doc
             .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
-            .await;
+            .await?;
         // Handle proof result
-        match proof {
-            Ok(proof) => {
-                let mut doc_with_proof = doc.clone();
-                doc_with_proof.add_proof(proof);
-                Ok(doc_with_proof)
-            }
-            Err(e) => Err(Box::new(e)),
-        }
+        let mut doc_with_proof = doc.clone();
+        doc_with_proof.add_proof(proof);
+        Ok(doc_with_proof)
     }
 }
 
