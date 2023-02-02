@@ -4,7 +4,7 @@ use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 #[test]
-#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+#[ignore = "Requires a running Sidetree node listening on http://localhost:3000."]
 fn trustchain_verification() {
     // Integration test of the Trustchain resolution pipeline.
     // root - root-plus-1 - root-plus-2
@@ -22,7 +22,7 @@ fn trustchain_verification() {
     // Verify initial DIDs
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME);
-        println!("{}", result.as_ref().unwrap());
+        // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
 
@@ -40,7 +40,7 @@ fn trustchain_verification() {
     ];
     for did in new_dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_2378493);
-        println!("{}", result.as_ref().unwrap());
+        // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
 }

@@ -12,6 +12,7 @@ use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::generate_key;
+use trustchain_core::{TRUSTCHAIN_PROOF_SERVICE_ID_VALUE, TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE};
 impl KeyManager for IONController {}
 impl ControllerKeyManager for IONController {}
 
@@ -140,8 +141,8 @@ impl IONController {
 
         DIDStatePatch::AddServices {
             services: vec![ServiceEndpointEntry {
-                id: "trustchain-controller-proof".to_string(),
-                r#type: "TrustchainProofService".to_string(),
+                id: TRUSTCHAIN_PROOF_SERVICE_ID_VALUE.to_string(),
+                r#type: TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE.to_string(),
                 service_endpoint: ServiceEndpoint::Map(serde_json::Value::Object(obj.clone())),
             }],
         }

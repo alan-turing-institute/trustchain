@@ -15,7 +15,7 @@ use trustchain_core::verifier::{Verifier, VerifierError};
 /// A transaction on the PoW ledger.
 type TransactionIndex = (u32, u32);
 
-/// Struct for TrustchainVerifier
+/// Trustchain Verifier for ION DID method. The generic type parameterises the wrapped DID resolver.
 pub struct IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
@@ -27,7 +27,7 @@ impl<T> IONVerifier<T>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Construct a new IONVerifier.
+    /// Constructs a new IONVerifier.
     pub fn new(resolver: Resolver<T>) -> Self {
         Self { resolver }
     }
@@ -95,13 +95,11 @@ where
         })
     }
 
-    /// Query the ION MongoDB for a DID operation.
-    // async fn query_mongo(did: &str) -> mongodb::error::Result<mongodb::bson::Document> {
+    /// Queries the ION MongoDB for a DID operation.
     async fn query_mongo(did: &str) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
         let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
         let client = Client::with_options(client_options)?;
 
-        // let doc: mongodb::bson::Document = client
         let query_result = client
             .database(MONGO_DATABASE_ION_TESTNET_CORE)
             .collection(MONGO_COLLECTION_OPERATIONS)
@@ -116,7 +114,7 @@ where
         match query_result {
             Ok(Some(doc)) => Ok(doc),
             Err(e) => {
-                println!("{}", e);
+                eprintln!("{}", e);
                 Err(Box::new(VerifierError::FailureToGetDIDOperation(
                     did.to_owned(),
                     "MongoDB query failed.".to_string(),
@@ -167,7 +165,7 @@ mod tests {
     use super::*;
     use ssi::did_resolve::HTTPDIDResolver;
 
-    // Helper function for generating a HTTP resolver for tests only.
+    // Helper function for generating a placeholder HTTP resolver only for tests not querying ION.
     fn get_http_resolver() -> HTTPDIDResolver {
         HTTPDIDResolver::new("http://localhost:3000/")
     }
