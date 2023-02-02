@@ -8,21 +8,7 @@ use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use std::io::Read;
 use trustchain_core::utils::{generate_key, get_operations_path};
-
-/// Returns a deserialized document state from a reader.
-pub fn read_doc_state_from<T>(mut reader: T) -> Result<DocumentState, Box<dyn std::error::Error>>
-where
-    T: Read,
-{
-    // NB. serde_json::from_reader needs an implementation of "read" in Read trait,
-    // which is awkward, so instead call read_to_string here.
-    let buf: &mut String = &mut String::new();
-    reader.read_to_string(buf)?;
-    let doc_state: DocumentState = serde_json::from_str(buf.as_str())?;
-    Ok(doc_state)
-}
 
 /// Makes a new DID subject to be controlled with correspondong create operation written to file.
 pub fn create_operation(
@@ -133,7 +119,6 @@ pub fn create_operation(
 mod test {
     use super::*;
     use glob::glob;
-    use mockall::mock;
     use trustchain_core::utils::init;
 
     // Test document state for making a create operation from
@@ -169,15 +154,6 @@ mod test {
         ]
     }"##;
 
-    mock! {
-        Reader {} // Name of the mock struct, less the "Mock" prefix
-        impl Read for Reader {
-            // specification of the trait to mock
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
-            fn read_to_string(&mut self, buf: &mut String) -> std::io::Result<usize>;
-        }
-    }
-
     #[test]
     fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {
         init();
@@ -185,17 +161,8 @@ mod test {
         // 1. Run create with no document state passed
         create_operation(None, false)?;
 
-        // Construct a mock Reader.
-        let mut mock_reader = MockReader::new();
-        mock_reader.expect_read_to_string().return_once(move |buf| {
-            // Implement the side effect of filling the buffer.
-            buf.push_str(TEST_DOC_STATE);
-            // Dummy return value
-            std::io::Result::Ok(0)
-        });
-        let doc_state = read_doc_state_from(mock_reader)?;
-
         // 2. Run create with a document state passed
+        let doc_state: DocumentState = serde_json::from_reader(TEST_DOC_STATE.as_bytes())?;
         create_operation(Some(doc_state), false)?;
 
         // Try to read outputted create operations and  check they deserialize
