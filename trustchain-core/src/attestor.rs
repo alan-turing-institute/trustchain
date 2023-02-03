@@ -58,7 +58,7 @@ pub trait CredentialAttestor: Attestor {
     /// Attests to a Credential. Attestor attests to a credential by signing the credential with (one of) its private signing key(s).
     async fn attest_credential<T: DIDResolver>(
         &self,
-        doc: &Credential,
+        credential: &Credential,
         key_id: Option<&str>,
         resolver: &T,
     ) -> Result<Credential, AttestorError>;
