@@ -41,16 +41,12 @@ impl IONAttestor {
         // If no key_id is given, return the first available key.
         if let Some(key_id) = key_id {
             // Iterate over the available keys.
-            for key in keys.into_iter() {
+            for key_in_loop in keys.into_iter() {
                 // If the key has a key_id which matches the given key_id, return it.
-                // Otherwise continue.
-                match key.key_id {
-                    Some(ref this_key_id) => {
-                        if this_key_id == key_id {
-                            return Ok(key);
-                        }
+                if let Some(key_in_loop_id) = &key_in_loop.key_id {
+                    if key_in_loop_id == key_id {
+                        return Ok(key_in_loop);
                     }
-                    None => continue,
                 }
             }
             // If none of the keys has a matching key_id, the required key does not exist.
