@@ -1,4 +1,3 @@
-use serde_json::to_string_pretty;
 use ssi::ldp::now_ms;
 use std::convert::TryFrom;
 use trustchain_core::attestor::CredentialAttestor;
@@ -7,13 +6,10 @@ use trustchain_ion::get_ion_resolver;
 
 use ssi::vc::{Credential, LinkedDataProofOptions, VCDateTime};
 
-// Linked @context provides a set of allowed fields for the
-// credentail
-// Provides detail "credentailSubject"
-// "https://www.w3.org/2018/credentials/examples/v1"
-// Provides image field "credentailSubject"
-// "https://w3id.org/citizenship/v1"
-
+// Linked @context provides a set of allowed fields for the credential:
+//   "credentialSubject" key: "https://www.w3.org/2018/credentials/examples/v1"
+//   "image" key: "https://w3id.org/citizenship/v1"
+//
 // Other examples: https://www.w3.org/TR/vc-use-cases/
 const TEST_UNSIGNED_VC: &str = r##"{
   "@context": [
@@ -42,9 +38,9 @@ const TEST_UNSIGNED_VC: &str = r##"{
 
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
 #[test]
-fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
+fn test_attest_credential() {
     // 1. Set-up
-    let did = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+    let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
 
     // Make resolver
     let resolver = get_ion_resolver("http://localhost:3000/");
@@ -53,9 +49,9 @@ fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
     let attestor = IONAttestor::new(did);
 
     // 3. Read credential
-    let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC)?;
+    let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
 
-    // 4. Perform proof add and verify
+    // 4. Generate VC and verify
     resolver.runtime.block_on(async {
         let _ldp_opts = LinkedDataProofOptions {
             // The type of signature to be used can be specified.
@@ -65,15 +61,13 @@ fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
             ..LinkedDataProofOptions::default()
         };
 
-        // Set issuer to "None" to prevent check for resolved key match
-        // If it is the did, the resolver looks to match the pk to the
-        // signing key provided
+        // TODO: move notes to appropriate comment location
+        // Set issuer to "None" to prevent check for resolved key match. If it is the DID, the resolver looks to match the public key to the signing key provided.
         // vc.issuer = None;
-
+        //
         // Generate proof:
-        // If the context does not have all fields it will fail
-        // as the JSONLD using Policy::Strict (when calling `sign_proof` and
-        // https://docs.rs/ssi/0.4.0/ssi/ldp/trait.LinkedDataDocument.html#tymethod.to_dataset_for_signing)
+        // If the context does not have all fields it will fail as the JSONLD using Policy::Strict
+        // (when calling `sign_proof` and https://docs.rs/ssi/0.4.0/ssi/ldp/trait.LinkedDataDocument.html#tymethod.to_dataset_for_signing)
         // Err(JSONLD(KeyExpansionFailed))
         //
         // The specific fn is in ssi::jsonld.rs
@@ -82,50 +76,23 @@ fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
         //
         // The matched `@context` is necessary to parse successfully when strict.
 
-        // Generate a proof
-        // let proof = vc.generate_proof(&signing_key, &ldp_opts, &resolver).await;
-
-        // Add proof to credential
-        // vc.add_proof(proof.unwrap());
-
         // Use attest_credential method instead of generating and adding proof
-        let vc_with_proof = attestor
+        let mut vc_with_proof = attestor
             .attest_credential(&vc, None, &resolver)
             .await
             .unwrap();
 
-        // Print VC with proof
-        println!("{}", &to_string_pretty(&vc_with_proof).unwrap());
-
-        // Verify
+        // Verify: expect no warnings or errors
         let verification_result = vc_with_proof.verify(None, &resolver).await;
-
-        // Print verification result
-        println!(
-            "---\n> Verification (no modification):\n{}",
-            &to_string_pretty(&verification_result).unwrap()
-        );
-
         assert!(verification_result.warnings.is_empty());
         assert!(verification_result.errors.is_empty());
 
-        let mut vc_with_proof = vc_with_proof;
         // Change credential to make signature invalid
         vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
 
-        // Verify
+        // Verify: expect no warnings and a signature error as VC has changed
         let verification_result = vc_with_proof.verify(None, &resolver).await;
-
-        // Print verification result
-        println!(
-            "---\n> Verification (after modification):\n{}",
-            &to_string_pretty(&verification_result).unwrap()
-        );
-
-        // No warnings but signature errror
         assert!(verification_result.warnings.is_empty());
-        assert!(!verification_result.errors.is_empty());
+        assert_eq!(verification_result.errors, vec!["signature error"]);
     });
-
-    Ok(())
 }
