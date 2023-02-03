@@ -147,28 +147,31 @@ impl CredentialAttestor for IONAttestor {
     // Attests to a passed credential returning the credential with proof.
     async fn attest_credential<T: DIDResolver>(
         &self,
-        doc: &Credential,
+        credential: &Credential,
         key_id: Option<&str>,
         resolver: &T,
     ) -> Result<Credential, AttestorError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
+
         // Generate proof
-        let proof = doc
+        let proof = credential
             .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
             .await?;
-        // Handle proof result
-        let mut doc_with_proof = doc.clone();
-        doc_with_proof.add_proof(proof);
-        Ok(doc_with_proof)
+
+        // Add proof to credential
+        let mut vc = credential.clone();
+        vc.add_proof(proof);
+        Ok(vc)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::get_ion_resolver;
     use ssi::did::Document;
-    use trustchain_core::data::{TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
+    use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
     use trustchain_core::utils::init;
 
     #[test]
@@ -234,6 +237,36 @@ mod tests {
         assert_eq!(valid_decoded, doc_canon_hash);
 
         Ok(())
+    }
+
+    #[test]
+    fn test_attest_credential() {
+        // Initialize temp path for saving keys
+        init();
+
+        // Resolver
+        let resolver = get_ion_resolver("http://localhost:3000/");
+
+        // Use resolver runtime for async scope
+        resolver.runtime.block_on(async {
+            // Set-up keys and attestor
+            let did = "did:example:test_attest_credential";
+            // Attestor
+            let target = IONAttestor::try_from(AttestorData::new(
+                did.to_string(),
+                serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
+            ))
+            .unwrap();
+
+            // Load credential
+            let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+
+            // Attest to doc
+            let vc_with_proof = target.attest_credential(&vc, None, &resolver).await;
+
+            // Check attest was ok
+            assert!(vc_with_proof.is_ok());
+        });
     }
 
     #[test]
