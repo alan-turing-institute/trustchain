@@ -7,6 +7,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
+use core::time;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
@@ -128,11 +129,18 @@ pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
     // Use ResolutionResult struct
     let resolved_json = to_resolution_result(doc, doc_meta);
 
+    // Arbitrary delay for testing
+    let delay = time::Duration::from_millis(500);
+    std::thread::sleep(delay);
     (
         StatusCode::OK,
         Html(to_string_pretty(&resolved_json).unwrap()),
     )
 }
+// #[derive(Debug, Serialize, Deserialize)]
+// struct DIDChainResolutionResolution {
+//     did_chain: Vec<ResolutionResult>,
+// }
 
 pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
     info!("Received DID to get trustchain: {}", did.as_str());
