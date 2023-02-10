@@ -137,10 +137,23 @@ pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
         Html(to_string_pretty(&resolved_json).unwrap()),
     )
 }
-// #[derive(Debug, Serialize, Deserialize)]
-// struct DIDChainResolutionResolution {
-//     did_chain: Vec<ResolutionResult>,
-// }
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DIDChainResolutionResolution {
+    did_chain: Vec<ResolutionResult>,
+}
+
+impl DIDChainResolutionResolution {
+    fn new(did_chain: &DIDChain) -> Self {
+        Self {
+            did_chain: did_chain
+                .to_vec()
+                .into_iter()
+                .map(|(doc, doc_meta)| to_resolution_result(doc, doc_meta))
+                .collect::<Vec<_>>(),
+        }
+    }
+}
 
 pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
     info!("Received DID to get trustchain: {}", did.as_str());
@@ -153,14 +166,9 @@ pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
     let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();
 
     // Convert DID chain to vec of ResolutionResults
-    let chain_resolution_result_vec = chain
-        .to_vec()
-        .into_iter()
-        .map(|(doc, doc_meta)| to_resolution_result(doc, doc_meta))
-        .collect::<Vec<_>>();
-
+    let chain_resolution = DIDChainResolutionResolution::new(&chain);
     (
         StatusCode::OK,
-        Json(to_string_pretty(&chain_resolution_result_vec).unwrap()),
+        Html(to_string_pretty(&chain_resolution).unwrap()),
     )
 }
