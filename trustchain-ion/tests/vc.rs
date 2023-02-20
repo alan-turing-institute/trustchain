@@ -53,14 +53,6 @@ fn test_sign_credential() {
 
     // 4. Generate VC and verify
     resolver.runtime.block_on(async {
-        let _ldp_opts = LinkedDataProofOptions {
-            // The type of signature to be used can be specified.
-            // The signing key is used to determine the signature type.
-            // type_: Some("JsonWebSignature2020".to_string()),
-            // type_: Some("EcdsaSecp256k1Signature2019".to_string()),
-            ..LinkedDataProofOptions::default()
-        };
-
         // Use attest_credential method instead of generating and adding proof
         let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
@@ -96,10 +88,6 @@ fn test_sign_credential_failure() {
 
     // 4. Generate VC and verify
     resolver.runtime.block_on(async {
-        let _ldp_opts = LinkedDataProofOptions {
-            ..LinkedDataProofOptions::default()
-        };
-
         // Sign credential (expect failure).
         let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
         assert!(vc_with_proof.is_err());
