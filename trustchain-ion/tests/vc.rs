@@ -1,6 +1,6 @@
 use ssi::ldp::now_ms;
 use std::convert::TryFrom;
-use trustchain_core::attestor::Issuer;
+use trustchain_core::issuer::Issuer;
 use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::get_ion_resolver;
 

@@ -1,9 +1,5 @@
-use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
-use async_trait::async_trait;
 use ssi::did::Document;
-use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
 use thiserror::Error;
 
 /// An error relating to a Trustchain Attestor.
@@ -24,24 +20,6 @@ pub enum AttestorError {
     /// Failed to sign DID document.
     #[error("Signing error for Document with DID {0}: {1}.")]
     SigningError(String, String),
-    /// Wrapped error for SSI error.
-    #[error("A wrapped variant for an SSI error.")]
-    SSI(ssi::error::Error),
-    /// Wrapped error for key manager error.
-    #[error("A wrapped variant for a key manager error.")]
-    KeyManager(KeyManagerError),
-}
-
-impl From<ssi::error::Error> for AttestorError {
-    fn from(err: ssi::error::Error) -> Self {
-        AttestorError::SSI(err)
-    }
-}
-
-impl From<KeyManagerError> for AttestorError {
-    fn from(err: KeyManagerError) -> Self {
-        AttestorError::KeyManager(err)
-    }
 }
 
 /// An upstream entity that attests to a downstream DID.
@@ -50,16 +28,4 @@ pub trait Attestor: Subject {
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own DID.
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
-}
-
-/// A credential issuer signs a credential to generate a verifiable credential.
-#[async_trait]
-pub trait Issuer: Subject {
-    /// Signs a credential. An issuer attests to a credential by signing the credential with one of their private signing keys.
-    async fn sign<T: DIDResolver>(
-        &self,
-        credential: &Credential,
-        key_id: Option<&str>,
-        resolver: &T,
-    ) -> Result<Credential, AttestorError>;
 }

@@ -6,7 +6,7 @@ use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
-use trustchain_core::attestor::Issuer;
+use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
@@ -146,7 +146,7 @@ impl Issuer for IONAttestor {
         credential: &Credential,
         key_id: Option<&str>,
         resolver: &T,
-    ) -> Result<Credential, AttestorError> {
+    ) -> Result<Credential, IssuerError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 

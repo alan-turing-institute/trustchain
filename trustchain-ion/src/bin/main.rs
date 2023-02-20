@@ -6,7 +6,7 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_core::{attestor::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     resolve::main_resolve, verifier::IONVerifier,
