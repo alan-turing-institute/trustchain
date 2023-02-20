@@ -52,11 +52,11 @@ pub trait Attestor: Subject {
     fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
 }
 
-/// A credential attestor attests to a credential to generate a verifiable credential.
+/// A credential issuer signs a credential to generate a verifiable credential.
 #[async_trait]
-pub trait CredentialAttestor: Attestor {
-    /// Attests to a Credential. Attestor attests to a credential by signing the credential with (one of) its private signing key(s).
-    async fn attest_credential<T: DIDResolver>(
+pub trait Issuer: Subject {
+    /// Signs a credential. An issuer attests to a credential by signing the credential with one of their private signing keys.
+    async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
         key_id: Option<&str>,

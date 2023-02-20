@@ -6,7 +6,7 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_core::{attestor::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     resolve::main_resolve, verifier::IONVerifier,
@@ -136,10 +136,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
                     let attestor = IONAttestor::new(did);
                     resolver.runtime.block_on(async {
-                        let credential_with_proof = attestor
-                            .attest_credential(&credential, key_id, &resolver)
-                            .await
-                            .unwrap();
+                        let credential_with_proof =
+                            attestor.sign(&credential, key_id, &resolver).await.unwrap();
                         println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                     });
                 }

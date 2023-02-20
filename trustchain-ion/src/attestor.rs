@@ -6,7 +6,7 @@ use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
-use trustchain_core::attestor::CredentialAttestor;
+use trustchain_core::attestor::Issuer;
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
@@ -139,9 +139,9 @@ impl Attestor for IONAttestor {
 }
 
 #[async_trait]
-impl CredentialAttestor for IONAttestor {
+impl Issuer for IONAttestor {
     // Attests to a passed credential returning the credential with proof.
-    async fn attest_credential<T: DIDResolver>(
+    async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
         key_id: Option<&str>,
@@ -258,7 +258,7 @@ mod tests {
             let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
             // Attest to doc
-            let vc_with_proof = target.attest_credential(&vc, None, &resolver).await;
+            let vc_with_proof = target.sign(&vc, None, &resolver).await;
 
             // Check attest was ok
             assert!(vc_with_proof.is_ok());

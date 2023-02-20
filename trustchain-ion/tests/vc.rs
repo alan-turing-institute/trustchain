@@ -1,6 +1,6 @@
 use ssi::ldp::now_ms;
 use std::convert::TryFrom;
-use trustchain_core::attestor::CredentialAttestor;
+use trustchain_core::attestor::Issuer;
 use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::get_ion_resolver;
 
@@ -77,10 +77,7 @@ fn test_attest_credential() {
         // The matched `@context` is necessary to parse successfully when strict.
 
         // Use attest_credential method instead of generating and adding proof
-        let mut vc_with_proof = attestor
-            .attest_credential(&vc, None, &resolver)
-            .await
-            .unwrap();
+        let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
         // Verify: expect no warnings or errors
         let verification_result = vc_with_proof.verify(None, &resolver).await;
