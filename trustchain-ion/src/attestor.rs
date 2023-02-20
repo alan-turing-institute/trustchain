@@ -140,7 +140,7 @@ impl Attestor for IONAttestor {
 
 #[async_trait]
 impl Issuer for IONAttestor {
-    // Attests to a given credential returning the credential with proof.
+    // Attests to a given credential returning the credential with proof. The `@context` of the credential has linked-data fields strictly checked as part of proof generation.
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
@@ -254,7 +254,7 @@ mod tests {
             ))
             .unwrap();
 
-            // Load credential
+            // Load credential. Issuer is "None" here so no resolution is required.
             let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
             // Attest to doc

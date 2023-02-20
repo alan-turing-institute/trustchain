@@ -1,6 +1,6 @@
 use ssi::ldp::now_ms;
 use std::convert::TryFrom;
-use trustchain_core::issuer::Issuer;
+use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::get_ion_resolver;
 
@@ -38,7 +38,7 @@ const TEST_UNSIGNED_VC: &str = r##"{
 
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
 #[test]
-fn test_attest_credential() {
+fn test_sign_credential() {
     // 1. Set-up
     let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
 
@@ -61,21 +61,6 @@ fn test_attest_credential() {
             ..LinkedDataProofOptions::default()
         };
 
-        // TODO: move notes to appropriate comment location
-        // Set issuer to "None" to prevent check for resolved key match. If it is the DID, the resolver looks to match the public key to the signing key provided.
-        // vc.issuer = None;
-        //
-        // Generate proof:
-        // If the context does not have all fields it will fail as the JSONLD using Policy::Strict
-        // (when calling `sign_proof` and https://docs.rs/ssi/0.4.0/ssi/ldp/trait.LinkedDataDocument.html#tymethod.to_dataset_for_signing)
-        // Err(JSONLD(KeyExpansionFailed))
-        //
-        // The specific fn is in ssi::jsonld.rs
-        //   expand_json(..., lax=false, ...) -> fails (strict JSON-LD)
-        //   expand_json(..., lax=true, ...) -> passes (relaxed JSON-LD)
-        //
-        // The matched `@context` is necessary to parse successfully when strict.
-
         // Use attest_credential method instead of generating and adding proof
         let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
@@ -91,5 +76,33 @@ fn test_attest_credential() {
         let verification_result = vc_with_proof.verify(None, &resolver).await;
         assert!(verification_result.warnings.is_empty());
         assert_eq!(verification_result.errors, vec!["signature error"]);
+    });
+}
+
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+#[test]
+fn test_sign_credential_failure() {
+    // 1. Set-up (with a DID *not* matching the issuer field in the credential).
+    let did = "did:ion:test:EiDMe2SFfJ_7eXVW7RF1ZHOkeu2M-Bre0ak2cXNBH0P-TQ";
+
+    // Make resolver
+    let resolver = get_ion_resolver("http://localhost:3000/");
+
+    // 2. Load Attestor
+    let attestor = IONAttestor::new(did);
+
+    // 3. Read credential
+    let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+
+    // 4. Generate VC and verify
+    resolver.runtime.block_on(async {
+        let _ldp_opts = LinkedDataProofOptions {
+            ..LinkedDataProofOptions::default()
+        };
+
+        // Sign credential (expect failure).
+        let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
+        assert!(vc_with_proof.is_err());
+        assert!(matches!(vc_with_proof, Err(IssuerError::KeyManager(_))));
     });
 }
