@@ -4,7 +4,7 @@ use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_ion::attestor::IONAttestor;
 use trustchain_ion::get_ion_resolver;
 
-use ssi::vc::{Credential, LinkedDataProofOptions, VCDateTime};
+use ssi::vc::{Credential, VCDateTime};
 
 // Linked @context provides a set of allowed fields for the credential:
 //   "credentialSubject" key: "https://www.w3.org/2018/credentials/examples/v1"
