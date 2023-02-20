@@ -140,7 +140,7 @@ impl Attestor for IONAttestor {
 
 #[async_trait]
 impl Issuer for IONAttestor {
-    // Attests to a passed credential returning the credential with proof.
+    // Attests to a given credential returning the credential with proof.
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
