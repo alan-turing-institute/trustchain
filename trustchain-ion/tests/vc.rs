@@ -103,6 +103,9 @@ fn test_sign_credential_failure() {
         // Sign credential (expect failure).
         let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
         assert!(vc_with_proof.is_err());
-        assert!(matches!(vc_with_proof, Err(IssuerError::KeyManager(_))));
+        assert!(matches!(
+            vc_with_proof,
+            Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
+        ));
     });
 }
