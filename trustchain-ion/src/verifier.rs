@@ -494,8 +494,6 @@ where
     }
 }
 
-// TODO: move some/all of these free functions to utils.
-
 /// Converts a VerificationBundle into an IONCommitment.
 pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment, CommitmentError> {
     IONCommitment::new(

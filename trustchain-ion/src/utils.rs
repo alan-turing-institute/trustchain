@@ -301,7 +301,6 @@ mod tests {
     use crate::data::{
         TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS, TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES,
     };
-    use crate::verifier::extract_doc_state;
     use crate::PROVISIONAL_INDEX_FILE_URI_KEY;
     use crate::{data::TEST_CHUNK_FILE_CONTENT, verifier::content_deltas};
     use flate2::read::GzDecoder;

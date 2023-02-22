@@ -13,7 +13,7 @@ use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
 
-use crate::utils::{decode_block_header, reverse_endianness};
+use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
 use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
 use crate::MERKLE_ROOT_KEY;
@@ -54,24 +54,11 @@ impl TrivialCommitment for TrivialIpfsCommitment {
             // for the methods implemented here (and similarly for IpfsCommitment). Then have an
             // IndexFileCommitment struct for the core & prov index file commitments that just implement the
             // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
-
-            // TODO: use the helper function `decode_ipfs_content` in utils.rs.
-            // Convert the Gzipped IPFS file (bytes) to a JSON Value.
-            let mut decoder = GzDecoder::new(x);
-            let mut ipfs_content_str = String::new();
-            match decoder.read_to_string(&mut ipfs_content_str) {
-                Ok(_) => {
-                    match serde_json::from_str(&ipfs_content_str) {
-                        Ok(value) => return Ok(value),
-                        Err(e) => {
-                            eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                            return Err(CommitmentError::DataDecodingError);
-                        }
-                    };
-                }
+            match decode_ipfs_content(&x.to_owned()) {
+                Ok(x) => Ok(x),
                 Err(e) => {
                     eprintln!("Error decoding IPFS content: {}", e);
-                    return Err(CommitmentError::DataDecodingError);
+                    Err(CommitmentError::DataDecodingError)
                 }
             }
         }
