@@ -1,7 +1,7 @@
 use crate::commitment::IONCommitment;
 use crate::utils::{
     block_header, decode_block_header, decode_ipfs_content, query_ipfs, query_mongodb,
-    reverse_endianness,
+    reverse_endianness, transaction,
 };
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, CHUNKS_KEY,
@@ -524,25 +524,25 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
 }
 
-/// Gets the Bitcoin transaction at the given location via the RPC API.
-pub fn transaction(
-    block_hash: &BlockHash,
-    tx_index: u32,
-    client: Option<&bitcoincore_rpc::Client>,
-) -> Result<Transaction, Box<dyn std::error::Error>> {
-    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    if client.is_none() {
-        let rpc_client = crate::verifier::rpc_client();
-        return transaction(block_hash, tx_index, Some(&rpc_client));
-    }
-    match client.unwrap().get_block(&block_hash) {
-        Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
-        Err(e) => {
-            eprintln!("Error getting Bitcoin block via RPC: {}", e);
-            Err(Box::new(e))
-        }
-    }
-}
+// /// Gets the Bitcoin transaction at the given location via the RPC API.
+// pub fn transaction(
+//     block_hash: &BlockHash,
+//     tx_index: u32,
+//     client: Option<&bitcoincore_rpc::Client>,
+// ) -> Result<Transaction, Box<dyn std::error::Error>> {
+//     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+//     if client.is_none() {
+//         let rpc_client = crate::verifier::rpc_client();
+//         return transaction(block_hash, tx_index, Some(&rpc_client));
+//     }
+//     match client.unwrap().get_block(&block_hash) {
+//         Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
+//         Err(e) => {
+//             eprintln!("Error getting Bitcoin block via RPC: {}", e);
+//             Err(Box::new(e))
+//         }
+//     }
+// }
 
 /// Gets a Merkle proof for the given transaction via the RPC API.
 pub fn merkle_proof(
@@ -780,29 +780,6 @@ mod tests {
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
         let result = target.locate_transaction(invalid_did);
         assert!(result.is_err());
-    }
-
-    #[test]
-    #[ignore = "Integration test requires Bitcoin"]
-    fn test_transaction() {
-        // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
-        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        let tx_index = 3;
-        let result = transaction(&block_hash, tx_index, None);
-
-        assert!(result.is_ok());
-        let tx = result.unwrap();
-
-        // Expected transaction ID:
-        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.txid().to_string(), expected);
-
-        // Expect a different transaction ID to fail.
-        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_ne!(tx.txid().to_string(), not_expected);
     }
 
     #[test]
