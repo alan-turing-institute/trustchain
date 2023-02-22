@@ -180,6 +180,21 @@ pub async fn query_mongodb(
     }
 }
 
+/// Gets a Bitcoin RPC client instance.
+pub fn rpc_client() -> bitcoincore_rpc::Client {
+    // TODO: check where these config parameters (username & password)
+    // are configured in ION and use the same config file.
+    bitcoincore_rpc::Client::new(
+        BITCOIN_CONNECTION_STRING,
+        bitcoincore_rpc::Auth::UserPass(
+            BITCOIN_RPC_USERNAME.to_string(),
+            BITCOIN_RPC_PASSWORD.to_string(),
+        ),
+    )
+    .unwrap()
+    // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
+}
+
 /// Gets a Bitcoin block header via the RPC API.
 pub fn block_header(
     block_hash: &BlockHash,
@@ -187,7 +202,7 @@ pub fn block_header(
 ) -> Result<BlockHeader, Box<dyn std::error::Error>> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
-        let rpc_client = crate::verifier::rpc_client();
+        let rpc_client = rpc_client();
         return block_header(block_hash, Some(&rpc_client));
     };
     match client.unwrap().get_block_header(&block_hash) {
@@ -230,7 +245,7 @@ pub fn transaction(
 ) -> Result<Transaction, Box<dyn std::error::Error>> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
-        let rpc_client = crate::verifier::rpc_client();
+        let rpc_client = rpc_client();
         return transaction(block_hash, tx_index, Some(&rpc_client));
     }
     match client.unwrap().get_block(&block_hash) {
