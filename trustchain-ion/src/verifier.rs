@@ -112,8 +112,8 @@ where
                 BITCOIN_RPC_PASSWORD.to_string(),
             ),
         )
-        .unwrap();
         // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
+        .unwrap();
 
         // TODO: this client must be configured to connect to the endpoint
         // specified as "ipfsHttpApiEndpointUri" in the ION config file
@@ -136,10 +136,9 @@ where
         // TODO: handle the possibility that the DID has been updated since previously fetched.
 
         // If the corresponding VerificationBundle is already available, do nothing.
-        if self.bundles.contains_key(did) {
-            return Ok(());
+        if !self.bundles.contains_key(did) {
+            self.verification_bundle(did)?;
         };
-        let _ = self.verification_bundle(did)?;
         Ok(())
     }
 
