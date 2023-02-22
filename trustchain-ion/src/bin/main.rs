@@ -47,7 +47,6 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        // TODO: consider vverbose for stepping through
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 ),
@@ -55,13 +54,13 @@ fn cli() -> Command {
         .subcommand(
             // TODO: refactor into library code
             Command::new("vc")
-                .about("Verifiable credential functionality: attest and verify.")
+                .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
                 .subcommand(
-                    Command::new("attest")
-                        .about("Attests to a credential.")
+                    Command::new("sign")
+                        .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
@@ -121,7 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("vc", sub_matches)) => {
             let resolver = get_ion_resolver("http://localhost:3000/");
             match sub_matches.subcommand() {
-                Some(("attest", sub_matches)) => {
+                Some(("sign", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
