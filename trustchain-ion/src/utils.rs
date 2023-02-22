@@ -257,6 +257,29 @@ pub fn transaction(
     }
 }
 
+/// Gets a Merkle proof for the given Bitcoin transaction via the RPC API.
+pub fn merkle_proof(
+    tx: &Transaction,
+    block_hash: &BlockHash,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return merkle_proof(tx, block_hash, Some(&rpc_client));
+    }
+    match client
+        .unwrap()
+        .get_tx_out_proof(&[tx.txid()], Some(&block_hash))
+    {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            eprintln!("Error getting Merkle proof via RPC: {}", e);
+            Err(Box::new(e))
+        }
+    }
+}
+
 pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
     let mut bytes = hex::decode(hex)?;
     bytes.reverse();

@@ -611,8 +611,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        utils::{block_header, query_ipfs, transaction},
-        verifier::merkle_proof,
+        utils::{block_header, merkle_proof, query_ipfs, transaction},
         CID_KEY, MERKLE_ROOT_KEY,
     };
 
