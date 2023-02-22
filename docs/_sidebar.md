@@ -1,2 +1,4 @@
 * [Trustchain](/)
-<!-- * [Demo](Demo.md) -->
+* [Installations](installation.md)
+* [License & disclaimer](license_disclaimer.md)
+* [Acknowledgements](acknowledgements.md)
