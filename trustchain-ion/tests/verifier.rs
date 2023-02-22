@@ -59,18 +59,19 @@ fn test_verifiable_timestamp() {
 
     let verifiable_timestamp = result.unwrap();
 
-    // Check that the timestamp is correct
-    // see https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+    // Check that the DID commitment is the expected proof of work hash.
+    // See https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+    let expected_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+    assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
+
+    // Check that the DID timestamp is correct by comparing to the known header.
     assert_eq!(verifiable_timestamp.timestamp(), 1666265405 as u64);
 
-    // Confirm that the timestamp is the expected data in the TimestampCommitment.
+    // Confirm that the same timestamp is the expected data in the TimestampCommitment.
     assert_eq!(
         verifiable_timestamp.timestamp_commitment().expected_data(),
         &json!(1666265405)
     );
-
-    let expected_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
-    assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
 
     // Verify the timestamp.
     assert!(target.verify_timestamp(&verifiable_timestamp).is_ok());

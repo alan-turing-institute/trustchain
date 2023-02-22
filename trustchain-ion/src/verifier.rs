@@ -175,6 +175,24 @@ where
         Ok(())
     }
 
+    /// Resolves the given DID to obtain the DID Document and Document Metadata.
+    fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        match self.resolver.resolve_as_result(did) {
+            Ok((x, y, z)) => {
+                if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
+                    Ok((doc, doc_meta))
+                } else {
+                    eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
+                    return Err(VerifierError::DIDResolutionError(did.to_string()));
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to resolve DID: {}", e);
+                return Err(VerifierError::DIDResolutionError(did.to_string()));
+            }
+        }
+    }
+
     fn fetch_transaction(
         &self,
         block_hash: &BlockHash,
@@ -376,19 +394,6 @@ where
         })
     }
 
-    /// Gets the Bitcoin transaction at the given location.
-    fn transaction(&self, tx_locator: TransactionLocator) -> Result<Transaction, VerifierError> {
-        let (block_hash, transaction_index) = tx_locator;
-
-        match self.rpc_client.get_block(&block_hash) {
-            Ok(block) => Ok(block.txdata[transaction_index as usize].to_owned()),
-            Err(e) => {
-                eprintln!("Error getting Bitcoin block: {}", e);
-                Err(VerifierError::LedgerClientError("getblock".to_string()))
-            }
-        }
-    }
-
     /// Extracts the ION OP_RETURN data from a Bitcoin transaction.
     ///
     /// ## Errors
@@ -446,156 +451,6 @@ where
             .unwrap();
         return Ok(cid.to_string());
     }
-
-    /// Unwraps the ION DID content associated with an IPFS content identifier.
-    fn unwrap_ion_content(
-        &self,
-        cid: &str,
-        ipfs_client: &IpfsClient,
-    ) -> Result<Value, VerifierError> {
-        let ipfs_file = match query_ipfs(cid, ipfs_client) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Error querying IPFS for CID {}: {}", cid, e);
-                return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-            }
-        };
-        let ipfs_json = match decode_ipfs_content(&ipfs_file) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Error decoding IPFS data for CID {}: {}", cid, e);
-                return Err(VerifierError::FailureToGetDIDContent(cid.to_string()));
-            }
-        };
-
-        if let Some(file_type) = self.ion_file_type(&ipfs_json) {
-            match file_type {
-                IonFileType::CoreIndexFile => {
-                    // get the provisionalIndexFileUri (CID) & recursively call on that.
-                    let prov_index_file_uri = ipfs_json
-                        .get(PROVISIONAL_INDEX_FILE_URI_KEY)
-                        .unwrap()
-                        .as_str()
-                        .unwrap();
-                    return self.unwrap_ion_content(prov_index_file_uri, ipfs_client);
-                }
-                IonFileType::ProvisionalIndexFile => {
-                    // Get the chunkFileUri (CID) & recursively call on that.
-                    let chunks = ipfs_json.get(CHUNKS_KEY).unwrap();
-                    let chunk_file_uri =
-                        chunks[0].get(CHUNK_FILE_URI_KEY).unwrap().as_str().unwrap();
-                    return self.unwrap_ion_content(chunk_file_uri, ipfs_client);
-                }
-                IonFileType::ChunkFile => return Ok(ipfs_json),
-            }
-        } else {
-            return Err(VerifierError::UnrecognisedDIDContent(cid.to_string()));
-        }
-    }
-
-    /// Determines the type of ION file found in a given JSON object.
-    fn ion_file_type(&self, json: &Value) -> Option<IonFileType> {
-        if let Some(_) = json.get(PROVISIONAL_INDEX_FILE_URI_KEY) {
-            return Some(IonFileType::CoreIndexFile);
-        } else if let Some(chunks_array) = json.get(CHUNKS_KEY) {
-            if let Some(_) = chunks_array[0].get(CHUNK_FILE_URI_KEY) {
-                return Some(IonFileType::ProvisionalIndexFile);
-            } else {
-                return None;
-            }
-        } else if let Some(_) = json.get(DELTAS_KEY) {
-            return Some(IonFileType::ChunkFile);
-        } else {
-            return None;
-        }
-    }
-
-    /// Gets DID Document content from IPFS committed to by the given transaction and update commitment.
-    fn verified_content(
-        &self,
-        tx: &Transaction,
-        update_commitment: &str,
-        ipfs_client: &IpfsClient,
-    ) -> Result<DocumentState, VerifierError> {
-        let ipfs_cid = &self.op_return_cid(&tx)?;
-        let content_json = &self.unwrap_ion_content(ipfs_cid, ipfs_client)?;
-        let deltas = content_deltas(content_json)?;
-        return extract_doc_state(deltas, update_commitment);
-    }
-
-    /// Resolves the given DID to obtain the DID Document and Document Metadata.
-    fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        match self.resolver.resolve_as_result(did) {
-            Ok((x, y, z)) => {
-                if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
-                    Ok((doc, doc_meta))
-                } else {
-                    eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
-                    return Err(VerifierError::DIDResolutionError(did.to_string()));
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to resolve DID: {}", e);
-                return Err(VerifierError::DIDResolutionError(did.to_string()));
-            }
-        }
-    }
-
-    // /// Resolves the given DID to obtain the DID Document and Update Commitment.
-    // fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata, String), VerifierError> {
-    //     let (doc, doc_meta) = match self.resolver.resolve_as_result(did) {
-    //         Ok((x, y, z)) => {
-    //             if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
-    //                 (doc, doc_meta)
-    //             } else {
-    //                 eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
-    //                 return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //             }
-    //         }
-    //         Err(e) => {
-    //             eprintln!("Failed to resolve DID: {}", e);
-    //             return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //         }
-    //     };
-
-    //     // Extract the Update Commitment from the DID Document Metadata.
-    //     if let Some(property_set) = doc_meta.property_set {
-    //         // if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
-    //         if let Some(method_metadata) = property_set.get(METHOD_KEY) {
-    //             let method_map = match method_metadata {
-    //                 Metadata::Map(x) => x,
-    //                 _ => {
-    //                     eprintln!("Unhandled Metadata variant. Expected Map.");
-    //                     return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //                 }
-    //             };
-    //             if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
-    //                 match uc_metadata {
-    //                     Metadata::String(uc) => return Ok((doc, doc_meta, uc.to_string())),
-    //                     _ => {
-    //                         eprintln!("Unhandled Metadata variant. Expected String.");
-    //                         return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //                     }
-    //                 }
-    //             } else {
-    //                 eprintln!(
-    //                     "Missing '{}' key in DocumentMetadata {} value for DID: {}",
-    //                     UPDATE_COMMITMENT_KEY, METHOD_KEY, did
-    //                 );
-    //                 return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //             }
-    //         } else {
-    //             eprintln!(
-    //                 "Missing '{}' key in DocumentMetadata for DID: {}",
-    //                 METHOD_KEY, did
-    //             );
-    //             return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //         }
-    //     } else {
-    //         eprintln!("Missing property set in DocumentMetadata for DID: {}", did);
-    //         return Err(VerifierError::DIDResolutionError(did.to_string()));
-    //     }
-    // }
 
     // TODO: make this a free function.
     /// Extract the Update Commitment from DID Document Metadata.
@@ -960,12 +815,12 @@ mod tests {
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
         let expected = "ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
-        // Block 2377445
+        // Block 2377445.
         let block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
                 .unwrap();
-        let tx_locator = (block_hash, 3); // block hash & transaction index
-        let tx = target.transaction(tx_locator).unwrap();
+        let tx_index = 3;
+        let tx = transaction(&block_hash, tx_index, Some(&target.rpc_client)).unwrap();
 
         let actual = target.op_return_data(&tx).unwrap();
         assert_eq!(expected, actual);
@@ -981,116 +836,15 @@ mod tests {
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
         let expected = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
-        // Block 2377445
+        // Block 2377445.
         let block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
                 .unwrap();
-        let tx_locator = (block_hash, 3); // block hash & transaction index
-        let tx = target.transaction(tx_locator).unwrap();
+        let tx_index = 3;
+        let tx = transaction(&block_hash, tx_index, Some(&target.rpc_client)).unwrap();
 
         let actual = target.op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_ion_file_type() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        let json_core_index: Value = serde_json::from_str(TEST_CORE_INDEX_FILE_CONTENT).unwrap();
-        let json_prov_index: Value =
-            serde_json::from_str(TEST_PROVISIONAL_INDEX_FILE_CONTENT).unwrap();
-        let json_chunks: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-
-        assert_eq!(
-            target.ion_file_type(&json_core_index).unwrap(),
-            IonFileType::CoreIndexFile
-        );
-        assert_eq!(
-            target.ion_file_type(&json_prov_index).unwrap(),
-            IonFileType::ProvisionalIndexFile
-        );
-        assert_eq!(
-            target.ion_file_type(&json_chunks).unwrap(),
-            IonFileType::ChunkFile
-        );
-        // Test with different sample files.
-        let json_str_core_index = r#"{"operations":{"create":[{"suffixData":{"deltaHash":"EiC6lxYLAjrwBjEz_uNT2ht5WCmt2fo2EZqxUvGBic-7OQ","recoveryCommitment":"EiA2PI72Nx4NncDCIXSQhX8eMJF-1JSiqk2Z9aOcfn3Y3w"}}]},"provisionalIndexFileUri":"QmPPTCygrc9fdtdbHWvKvvR8nVmfHa8KJ7BCd1mdMKC2WK"}"#;
-        let json_str_prov_index =
-            r#"{"chunks":[{"chunkFileUri":"QmS7wMGjVW7hQ3SUpQyD8oqV7XFdupYgZ5W9UWFbPGHNXK"}]}"#;
-        let json_str_chunks = r#"{"deltas":[{"patches":[{"action":"replace","document":{"publicKeys":[{"id":"signing-key","publicKeyJwk":{"crv":"secp256k1","kty":"EC","x":"xbbKX8W-JFrigm9aHHIadDAPBqbwRpNb2iYybNRLyfg","y":"3HDnnvYF62CmrJ-i6D9G7XsVyFiFyvj6sVy-A7hdncg"},"type":"EcdsaSecp256k1VerificationKey2019"}]}}],"updateCommitment":"EiAo0UWyp7lSGoQYDMgYz5P9TvLhKGVzjCARpaANhj-fBQ"}]}"#;
-
-        let json_core_index: Value = serde_json::from_str(json_str_core_index).unwrap();
-        let json_prov_index: Value = serde_json::from_str(json_str_prov_index).unwrap();
-        let json_chunks: Value = serde_json::from_str(json_str_chunks).unwrap();
-
-        assert_eq!(
-            target.ion_file_type(&json_core_index).unwrap(),
-            IonFileType::CoreIndexFile
-        );
-        assert_eq!(
-            target.ion_file_type(&json_prov_index).unwrap(),
-            IonFileType::ProvisionalIndexFile
-        );
-        assert_eq!(
-            target.ion_file_type(&json_chunks).unwrap(),
-            IonFileType::ChunkFile
-        );
-
-        // Test negative results with bad JSON data.
-        let bad_json_str_core_index = r#"{"operations":{"create":[{"suffixData":{"deltaHash":"EiC6lxYLAjrwBjEz_uNT2ht5WCmt2fo2EZqxUvGBic-7OQ","recoveryCommitment":"EiA2PI72Nx4NncDCIXSQhX8eMJF-1JSiqk2Z9aOcfn3Y3w"}}]},"other":"QmPPTCygrc9fdtdbHWvKvvR8nVmfHa8KJ7BCd1mdMKC2WK"}"#;
-        let bad_json_str_prov_index =
-            r#"{"chunks":[{"other":"QmS7wMGjVW7hQ3SUpQyD8oqV7XFdupYgZ5W9UWFbPGHNXK"}]}"#;
-        let bad_json_str_chunks = r#"{"other":[{"patches":[{"action":"replace","document":{"publicKeys":[{"id":"signing-key","publicKeyJwk":{"crv":"secp256k1","kty":"EC","x":"xbbKX8W-JFrigm9aHHIadDAPBqbwRpNb2iYybNRLyfg","y":"3HDnnvYF62CmrJ-i6D9G7XsVyFiFyvj6sVy-A7hdncg"},"type":"EcdsaSecp256k1VerificationKey2019"}]}}],"updateCommitment":"EiAo0UWyp7lSGoQYDMgYz5P9TvLhKGVzjCARpaANhj-fBQ"}]}"#;
-
-        let bad_json_core_index: Value = serde_json::from_str(bad_json_str_core_index).unwrap();
-        let bad_json_prov_index: Value = serde_json::from_str(bad_json_str_prov_index).unwrap();
-        let bad_json_chunks: Value = serde_json::from_str(bad_json_str_chunks).unwrap();
-
-        assert!(target.ion_file_type(&bad_json_core_index).is_none());
-        assert!(target.ion_file_type(&bad_json_prov_index).is_none());
-        assert!(target.ion_file_type(&bad_json_chunks).is_none());
-    }
-
-    #[test]
-    #[ignore = "Integration test requires IPFS"]
-    fn test_unwrap_ion_content() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-
-        let ipfs_client = IpfsClient::default();
-        let actual = target.unwrap_ion_content(cid, &ipfs_client).unwrap();
-
-        // Check that the content is the chunk file JSON (with top-level key "deltas").
-        assert!(actual.get(DELTAS_KEY).is_some());
-
-        // The "deltas" element contains an array of "patches".
-        assert!(actual.get(DELTAS_KEY).unwrap().is_array());
-        assert!(actual.get(DELTAS_KEY).unwrap()[0].get("patches").is_some());
-
-        // Each patch contains (in this case) a single "action".
-        assert!(actual.get(DELTAS_KEY).unwrap()[0]
-            .get("patches")
-            .unwrap()
-            .is_array());
-        assert!(
-            actual.get(DELTAS_KEY).unwrap()[0].get("patches").unwrap()[0]
-                .get("action")
-                .is_some()
-        );
-
-        // And each patch also contains a "document" which contains public keys.
-        assert!(
-            actual.get(DELTAS_KEY).unwrap()[0].get("patches").unwrap()[0]
-                .get("document")
-                .is_some()
-        );
-        let doc = actual.get(DELTAS_KEY).unwrap()[0].get("patches").unwrap()[0]
-            .get("document")
-            .unwrap();
-        assert!(doc.get("publicKeys").is_some());
     }
 
     #[test]
@@ -1173,42 +927,6 @@ mod tests {
             update_commitment,
             "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"
         );
-    }
-
-    #[test]
-    #[ignore = "Integration test requires Bitcoin RPC & IPFS"]
-    fn test_verified_content() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        // Test with the transaction committing to DID:
-        // did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg
-
-        // Block 2377445
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        let tx_locator = (block_hash, 3); // block hash & transaction index
-        let tx = target.transaction(tx_locator).unwrap();
-        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
-
-        let ipfs_client = IpfsClient::default();
-        let result = target
-            .verified_content(&tx, update_commitment, &ipfs_client)
-            .unwrap();
-
-        // Expect one public key and one service endpoint.
-        assert_eq!(result.public_keys.as_ref().unwrap().len(), 1);
-        assert_eq!(result.services.as_ref().unwrap().len(), 1);
-
-        // Check the endpoint (pub_key checked in test_extract_doc_state).
-        if let ServiceEndpoint::URI(uri) =
-            &result.services.unwrap().first().unwrap().service_endpoint
-        {
-            assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
-        } else {
-            panic!();
-        }
     }
 
     #[test]
