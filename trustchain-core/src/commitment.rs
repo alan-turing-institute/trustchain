@@ -83,10 +83,9 @@ pub trait Commitment: TrivialCommitment {
     /// Verifies the commitment.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // Verify the content.
-        let _ = &self.verify_content()?;
+        self.verify_content()?;
         // Verify the target by comparing with the computed hash.
-        let hash = self.hash()?;
-        if hash.ne(target) {
+        if self.hash()?.ne(target) {
             return Err(CommitmentError::FailedHashVerification(type_of(&self)));
         }
         Ok(())
