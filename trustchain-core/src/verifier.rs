@@ -249,7 +249,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// value for the timestamp retreived from a local proof-of-work network node.
     fn verifiable_timestamp(&mut self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
-        let _ = self.fetch_did_commitment(did)?;
+        self.fetch_did_commitment(did)?;
         let did_commitment = self.did_commitment(did)?;
 
         // Extract the proof-of-work hash from the DID Commitment.
@@ -273,7 +273,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         verifiable_timestamp: &VerifiableTimestamp,
     ) -> Result<(), VerifierError> {
         // Verify that the DID Commitment commits to the DID Document data.
-        let _ = verifiable_timestamp.verify_content()?;
+        verifiable_timestamp.verify_content()?;
 
         let did_commitment = verifiable_timestamp.did_commitment();
         let timestamp_commitment = verifiable_timestamp.timestamp_commitment();
