@@ -169,18 +169,7 @@ impl VerifiableTimestamp {
 
     /// Gets the hash (proof-of-work) commitment.
     pub fn hash(&self) -> Result<String, VerifierError> {
-        match self.did_commitment.hash() {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!(
-                    "Failed to get proof-of-work hash from VerifiableTimestamp: {}",
-                    e
-                );
-                Err(VerifierError::TimestampVerificationError(
-                    self.did_commitment().did().to_string(),
-                ))
-            }
-        }
+        Ok(self.did_commitment.hash()?)
     }
 
     /// Gets the timestamp as a Unix time.
