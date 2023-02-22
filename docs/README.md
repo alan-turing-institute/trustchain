@@ -6,6 +6,8 @@ These two standards are already closely linked: Verifying a VC involves performi
 
 Trustchain aims to combine the two standards to create DIDs which are themselves verifiable credentials. In doing so, verifiable **downstream DIDs** (dDIDs) can be constructed, which are signed by an entity represented in an **upstream DID** (uDID). dDIDs are essential building blocks to create a chain of trusted DIDs.
 
+<center><img src="figs/dDID_schematic.png" width="400px" /></center>
+
 The following links may be of particular interest:
 - [Trustchain repo](https://github.com/alan-turing-institute/trustchain)
 - [Trustchain wiki](https://github.com/alan-turing-institute/trustchain/wiki)
