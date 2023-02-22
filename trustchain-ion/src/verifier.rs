@@ -611,7 +611,6 @@ impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
 {
-    /// Queries a local proof-of-work node to get the expected timestamp for a given proof-of-work hash.
     fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError> {
         let block_hash = match BlockHash::from_str(hash) {
             Ok(x) => x,
@@ -629,9 +628,6 @@ where
         Ok(block_header.time)
     }
 
-    /// Gets a block hash (proof-of-work) Commitment for the given DID.
-    /// The mutable reference to self enables a newly-fetched Commitment
-    /// to be stored locally for faster subsequent retrieval.
     fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
         self.fetch_did_commitment(did)?;
         if !self.bundles.contains_key(did) {
@@ -643,7 +639,7 @@ where
         let bundle = self.bundles.get(did).unwrap();
         Ok(Box::new(construct_commitment(bundle)?))
     }
-    /// Gets the resolver.
+
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
     }
