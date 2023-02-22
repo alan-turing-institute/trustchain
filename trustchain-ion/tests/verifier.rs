@@ -74,5 +74,10 @@ fn test_verifiable_timestamp() {
     );
 
     // Verify the timestamp.
-    assert!(target.verify_timestamp(&verifiable_timestamp).is_ok());
+    let actual = target.verify_timestamp(&verifiable_timestamp);
+
+    if let Err(e) = actual {
+        println!("{:?}", e);
+        panic!()
+    }
 }

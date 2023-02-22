@@ -278,6 +278,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let hash = verifiable_timestamp.hash()?;
         did_commitment.verify(&hash)?;
         timestamp_commitment.verify(&hash)?;
+
         Ok(())
     }
 

@@ -25,8 +25,8 @@ pub enum CommitmentError {
     #[error("Failed hash verification. Computed hash not equal to target.")]
     FailedHashVerification(String),
     /// Failed content verification.
-    #[error("Failed content verification. Expected data not found in candidate.")]
-    FailedContentVerification(String),
+    #[error("Failed content verification. Expected data {0} not found in candidate: {1}.")]
+    FailedContentVerification(String, String),
     /// Empty iterated commitment.
     #[error("Failed verification. Empty iterated commitment.")]
     EmptyIteratedCommitment,
@@ -72,7 +72,10 @@ pub trait Commitment: TrivialCommitment {
 
         // Verify the content.
         if !json_contains(&candidate_data, &self.expected_data()) {
-            return Err(CommitmentError::FailedContentVerification(type_of(&self)));
+            return Err(CommitmentError::FailedContentVerification(
+                self.expected_data().to_string(),
+                candidate_data.to_string(),
+            ));
         }
         Ok(())
     }
