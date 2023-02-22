@@ -1,13 +1,8 @@
-use std::ops::Deref;
-
 use crate::chain::{Chain, ChainError, DIDChain};
-use crate::commitment::{
-    Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
-};
+use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
 use crate::resolver::Resolver;
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use serde_json::json;
-use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
@@ -166,8 +161,8 @@ impl VerifiableTimestamp {
     }
 
     /// Gets the DID Commitment.
-    fn did_commitment(&self) -> Box<&dyn DIDCommitment> {
-        Box::new(self.did_commitment.as_ref())
+    fn did_commitment(&self) -> &dyn DIDCommitment {
+        self.did_commitment.as_ref()
     }
 
     /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
@@ -233,7 +228,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // Verify the root timestamp.
         let root = chain.root();
         let verifiable_timestamp = self.verifiable_timestamp(root)?;
-        let _ = &self.verify_timestamp(&verifiable_timestamp)?;
+        self.verify_timestamp(&verifiable_timestamp)?;
 
         // At this point we know that the same proof of work commits to both the timestamp
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
