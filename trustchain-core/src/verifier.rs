@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::chain::{Chain, DIDChain};
+use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{
     Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
 };
@@ -125,6 +125,9 @@ pub enum VerifierError {
     /// Wrapped resolver error.
     #[error("A resolver error during verification.")]
     ResolverFailure(crate::resolver::ResolverError),
+    /// Wrapped chain error.
+    #[error("A chain error during verification.")]
+    ChainFailure(crate::chain::ChainError),
 }
 
 impl From<crate::commitment::CommitmentError> for VerifierError {
@@ -136,6 +139,12 @@ impl From<crate::commitment::CommitmentError> for VerifierError {
 impl From<crate::resolver::ResolverError> for VerifierError {
     fn from(err: crate::resolver::ResolverError) -> Self {
         VerifierError::ResolverFailure(err)
+    }
+}
+
+impl From<ChainError> for VerifierError {
+    fn from(err: ChainError) -> Self {
+        VerifierError::ChainFailure(err)
     }
 }
 
@@ -216,16 +225,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a downstream DID by tracing its chain back to the root.
     fn verify(&mut self, did: &str, root_timestamp: Timestamp) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
-        let chain = match DIDChain::new(did, self.resolver()) {
-            Ok(x) => x,
-            Err(e) => return Err(VerifierError::ChainBuildFailure(e.to_string())),
-        };
+        let chain = DIDChain::new(did, self.resolver())?;
 
         // Verify the proofs in the chain.
-        match chain.verify_proofs() {
-            Ok(_) => (),
-            Err(e) => return Err(VerifierError::InvalidChain(e.to_string())),
-        };
+        chain.verify_proofs()?;
 
         // Verify the root timestamp.
         let root = chain.root();
@@ -236,9 +239,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
         // It only remains to check that the verified timestamp matches the expected root timestamp.
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
-            return Err(VerifierError::InvalidRoot(root.to_string()));
+            Err(VerifierError::InvalidRoot(root.to_string()))
+        } else {
+            Ok(chain)
         }
-        Ok(chain)
     }
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
