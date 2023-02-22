@@ -121,12 +121,21 @@ pub enum VerifierError {
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
     #[error("A commitment error during verification.")]
-    CommitmentFailure(CommitmentError),
+    CommitmentFailure(crate::commitment::CommitmentError),
+    /// Wrapped resolver error.
+    #[error("A resolver error during verification.")]
+    ResolverFailure(crate::resolver::ResolverError),
 }
 
-impl From<CommitmentError> for VerifierError {
+impl From<crate::commitment::CommitmentError> for VerifierError {
     fn from(err: CommitmentError) -> Self {
         VerifierError::CommitmentFailure(err)
+    }
+}
+
+impl From<crate::resolver::ResolverError> for VerifierError {
+    fn from(err: crate::resolver::ResolverError) -> Self {
+        VerifierError::ResolverFailure(err)
     }
 }
 
