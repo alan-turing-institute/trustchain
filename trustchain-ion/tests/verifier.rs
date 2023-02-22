@@ -16,7 +16,7 @@ pub fn test_resolver(endpoint: &str) -> IONResolver {
     IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
 }
 
-use trustchain_core::verifier::Verifier;
+use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_core::ROOT_EVENT_TIME;
 use trustchain_ion::verifier::IONVerifier;
 
@@ -65,7 +65,7 @@ fn test_verifiable_timestamp() {
     assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
 
     // Check that the DID timestamp is correct by comparing to the known header.
-    assert_eq!(verifiable_timestamp.timestamp(), 1666265405 as u64);
+    assert_eq!(verifiable_timestamp.timestamp(), 1666265405 as Timestamp);
 
     // Confirm that the same timestamp is the expected data in the TimestampCommitment.
     assert_eq!(

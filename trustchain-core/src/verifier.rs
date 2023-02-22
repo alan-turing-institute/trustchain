@@ -121,13 +121,17 @@ pub enum VerifierError {
     VerificationMaterialNotYetFetched(String),
 }
 
+/// A Unix timestamp.
+pub type Timestamp = u32;
+
 /// A verifiably timestamped DID Document.
 pub struct VerifiableTimestamp {
     did_commitment: Box<dyn DIDCommitment>,
-    timestamp: u64,
+    timestamp: Timestamp,
 }
+
 impl VerifiableTimestamp {
-    fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: u64) -> Self {
+    fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: Timestamp) -> Self {
         Self {
             did_commitment,
             timestamp: expected_timestamp,
@@ -162,7 +166,7 @@ impl VerifiableTimestamp {
     }
 
     /// Gets the timestamp as a Unix time.
-    pub fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> Timestamp {
         self.timestamp
     }
 
@@ -203,7 +207,7 @@ impl VerifiableTimestamp {
 /// A verifier of root and downstream DIDs.
 pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a downstream DID by tracing its chain back to the root.
-    fn verify(&mut self, did: &str, root_timestamp: u64) -> Result<DIDChain, VerifierError> {
+    fn verify(&mut self, did: &str, root_timestamp: Timestamp) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
         let chain = match DIDChain::new(did, self.resolver()) {
             Ok(x) => x,
@@ -282,7 +286,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     }
 
     /// Queries a local proof-of-work node to get the expected timestamp for a given proof-of-work hash.
-    fn expected_timestamp(&self, hash: &str) -> Result<u64, VerifierError>;
+    fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError>;
 
     /// Gets a block hash (proof-of-work) Commitment for the given DID.
     /// The mutable reference to self enables a newly-fetched Commitment

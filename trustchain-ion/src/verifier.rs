@@ -35,10 +35,10 @@ use std::str::FromStr;
 use trustchain_core::commitment::{Commitment, CommitmentError, DIDCommitment};
 use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
-use trustchain_core::verifier::{Verifier, VerifierError};
+use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 
-// /// Locator for a transaction on the PoW ledger, given by the pair:
-// /// (block_hash, tx_index_within_block).
+/// Locator for a transaction on the PoW ledger, given by the pair:
+/// (block_hash, tx_index_within_block).
 type TransactionLocator = (BlockHash, u32);
 
 /// Enum to distinguish ION file types.
@@ -600,7 +600,7 @@ where
     T: Sync + Send + DIDResolver,
 {
     /// Queries a local proof-of-work node to get the expected timestamp for a given proof-of-work hash.
-    fn expected_timestamp(&self, hash: &str) -> Result<u64, VerifierError> {
+    fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError> {
         let block_hash = match BlockHash::from_str(hash) {
             Ok(x) => x,
             Err(e) => {
@@ -614,7 +614,7 @@ where
                 todo!()
             }
         };
-        Ok(block_header.time as u64)
+        Ok(block_header.time)
     }
 
     /// Gets a block hash (proof-of-work) Commitment for the given DID.

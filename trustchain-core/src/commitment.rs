@@ -7,6 +7,7 @@ use ssi::{
 use thiserror::Error;
 
 use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
+use crate::verifier::Timestamp;
 
 /// An error relating to Commitment verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -230,7 +231,7 @@ pub trait DIDCommitment: Commitment {
 /// A Commitment whose expected data is a Unix time and whose hash, hasher
 /// and candidate data are identical to that of a given DIDCommitment.
 pub struct TimestampCommitment {
-    timestamp: u64,
+    timestamp: Timestamp,
     expected_data: serde_json::Value,
     hasher: fn(&[u8]) -> Result<String, CommitmentError>,
     candidate_data: Vec<u8>,
@@ -240,7 +241,7 @@ pub struct TimestampCommitment {
 impl TimestampCommitment {
     /// Constructs a TimestampCommitment with hash, hasher and candidate data
     /// identical to a given DIDCommitment, and with a Unix time as expected data.
-    pub fn new(did_commitment: &Box<dyn DIDCommitment>, expected_data: u64) -> Self {
+    pub fn new(did_commitment: &Box<dyn DIDCommitment>, expected_data: Timestamp) -> Self {
         // Note the expected data in the TimestampCommitment is the timestamp, but the
         // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
         // by verifying both the DIDCommitment and the TimestampCommitment we confirm
@@ -257,8 +258,8 @@ impl TimestampCommitment {
         }
     }
 
-    /// Gets the timestamp as a Unix time
-    fn timestamp(&self) -> u64 {
+    /// Gets the timestamp as a Unix time.
+    fn timestamp(&self) -> Timestamp {
         self.timestamp
     }
 }
