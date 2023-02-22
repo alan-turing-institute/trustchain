@@ -119,6 +119,15 @@ pub enum VerifierError {
     /// Attempt to access verification material before it has been fetched.
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
+    /// Wrapped commitment error.
+    #[error("A commitment error during verification.")]
+    CommitmentFailure(CommitmentError),
+}
+
+impl From<CommitmentError> for VerifierError {
+    fn from(err: CommitmentError) -> Self {
+        VerifierError::CommitmentFailure(err)
+    }
 }
 
 /// A Unix timestamp.

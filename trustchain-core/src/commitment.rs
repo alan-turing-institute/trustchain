@@ -6,8 +6,11 @@ use ssi::{
 };
 use thiserror::Error;
 
-use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
+use crate::{
+    utils::{json_contains, type_of, HasEndpoints, HasKeys},
+    verifier::VerifierError,
+};
 
 /// An error relating to Commitment verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
