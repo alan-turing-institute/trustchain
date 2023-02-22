@@ -629,13 +629,7 @@ where
             ));
         }
         let bundle = self.bundles.get(did).unwrap();
-        match construct_commitment(bundle) {
-            Ok(x) => Ok(Box::new(x)),
-            Err(e) => {
-                eprintln!("Failed to obtain proof of work Commitment: {}", e);
-                Err(VerifierError::TimestampVerificationError(did.to_string()))
-            }
-        }
+        Ok(Box::new(construct_commitment(bundle)?))
     }
 
     fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
