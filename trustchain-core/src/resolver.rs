@@ -311,8 +311,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             {
                 // Make new HashMap; add keys and values
                 let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
-                proof_hash_map
-                    .insert(String::from("id"), Metadata::String(controller.to_owned()));
+                proof_hash_map.insert(String::from("id"), Metadata::String(controller.to_owned()));
                 proof_hash_map.insert(
                     String::from("type"),
                     Metadata::String("JsonWebSignature2020".to_string()),

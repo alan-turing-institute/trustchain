@@ -119,7 +119,8 @@ impl fmt::Display for DIDChain {
                     "{0:^1$}",
                     format!(
                         "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp_opt(ROOT_EVENT_TIME_2378493 as i64, 0).unwrap()
+                        Utc.timestamp_opt(ROOT_EVENT_TIME_2378493 as i64, 0)
+                            .unwrap()
                     ),
                     box_width
                 )?;
