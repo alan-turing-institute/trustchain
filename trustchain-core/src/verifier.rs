@@ -275,8 +275,8 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // Verify both the commitments with the *same* target hash, thereby confirming
         // that the same proof-of-work commits to both the DID Document data & the timestamp.
         let hash = verifiable_timestamp.hash()?;
-        let _ = did_commitment.verify(&hash);
-        let _ = timestamp_commitment.verify(&hash);
+        did_commitment.verify(&hash)?;
+        timestamp_commitment.verify(&hash)?;
         Ok(())
     }
 
