@@ -131,6 +131,18 @@ where
         }
     }
 
+    /// Fetches the DID commitment.
+    fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
+        // TODO: handle the possibility that the DID has been updated since previously fetched.
+
+        // If the corresponding VerificationBundle is already available, do nothing.
+        if self.bundles.contains_key(did) {
+            return Ok(());
+        };
+        let _ = self.verification_bundle(did)?;
+        Ok(())
+    }
+
     pub fn bundles(&self) -> &HashMap<String, VerificationBundle> {
         &self.bundles
     }
@@ -621,7 +633,7 @@ where
     /// The mutable reference to self enables a newly-fetched Commitment
     /// to be stored locally for faster subsequent retrieval.
     fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
-        let _ = self.fetch_did_commitment(did);
+        self.fetch_did_commitment(did)?;
         if !self.bundles.contains_key(did) {
             eprintln!("Commitment not yet fetched for DID: {}", did);
             return Err(VerifierError::VerificationMaterialNotYetFetched(
@@ -631,18 +643,7 @@ where
         let bundle = self.bundles.get(did).unwrap();
         Ok(Box::new(construct_commitment(bundle)?))
     }
-
-    fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
-        // TODO: handle the possibility that the DID has been updated since previously fetched.
-
-        // If the corresponding VerificationBundle is already available, do nothing.
-        if self.bundles.contains_key(did) {
-            return Ok(());
-        };
-        let _ = self.verification_bundle(did)?;
-        Ok(())
-    }
-
+    /// Gets the resolver.
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
     }

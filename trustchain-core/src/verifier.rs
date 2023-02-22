@@ -244,20 +244,9 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// value for the timestamp retreived from a local proof-of-work network node.
     fn verifiable_timestamp(&mut self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
-        self.fetch_did_commitment(did)?;
         let did_commitment = self.did_commitment(did)?;
-
-        // Extract the proof-of-work hash from the DID Commitment.
-        let hash = match did_commitment.hash() {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to get hash from DID commitment: {}", e);
-                return Err(VerifierError::TimestampVerificationError(
-                    did_commitment.did().to_string(),
-                ));
-            }
-        };
-
+        // Hash the DID commitment
+        let hash = did_commitment.hash()?;
         // Get the expected timestamp for the proof-of-work hash by querying a *local* node.
         let expected_timestamp = self.expected_timestamp(&hash)?;
         Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
@@ -298,10 +287,6 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// The mutable reference to self enables a newly-fetched Commitment
     /// to be stored locally for faster subsequent retrieval.
     fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
-
-    /// Fetches data for a proof-of-work Commitment for the given DID and
-    /// stores it locally for later retrieval.
-    fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError>;
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;
