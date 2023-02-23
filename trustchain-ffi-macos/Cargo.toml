@@ -1,0 +1,17 @@
+[package]
+name = "trustchain-ffi-macos"
+version = "0.1.0"
+authors = ["Trustchain Devs"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
