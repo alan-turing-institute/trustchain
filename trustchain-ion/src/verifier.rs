@@ -494,8 +494,6 @@ where
     }
 }
 
-// TODO: move some/all of these free functions to utils.
-
 /// Converts a VerificationBundle into an IONCommitment.
 pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment, CommitmentError> {
     IONCommitment::new(
@@ -642,7 +640,7 @@ mod tests {
     use crate::{
         data::{
             TEST_CHUNK_FILE_CONTENT, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_CONTENT,
-            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+            TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
             TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
         IONResolver,
@@ -851,6 +849,30 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Integration test requires IPFS"]
+    fn test_fetch_core_index_file() {
+        let resolver = Resolver::new(get_http_resolver());
+        let target = IONVerifier::new(resolver);
+
+        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let result = target.fetch_core_index_file(cid);
+        assert!(result.is_ok());
+        let core_index_file_bytes = result.unwrap();
+
+        let mut decoder = GzDecoder::new(&*core_index_file_bytes);
+        let mut ipfs_content_str = String::new();
+        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+            Err(_) => panic!(),
+        };
+        assert!(value.is_object());
+        assert!(value
+            .as_object()
+            .unwrap()
+            .contains_key("provisionalIndexFileUri"));
+    }
+
+    #[test]
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
@@ -929,10 +951,21 @@ mod tests {
         assert!(value.as_object().unwrap().contains_key("chunks"));
     }
 
-    // #[test]
-    // fn test_core_index_file_deserialize() {
-    //     todo!()
-    // }
+    #[test]
+    fn test_core_index_file_deserialize() {
+        let bytes = hex::decode(TEST_CORE_INDEX_FILE_HEX).unwrap();
+        let mut decoder = GzDecoder::new(&*bytes);
+        let mut ipfs_content_str = String::new();
+        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+            Err(_) => panic!(),
+        };
+        assert!(value.is_object());
+        assert!(value
+            .as_object()
+            .unwrap()
+            .contains_key("provisionalIndexFileUri"));
+    }
 
     #[test]
     fn test_tx_deserialize() {
