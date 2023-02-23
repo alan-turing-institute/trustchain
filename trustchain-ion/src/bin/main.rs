@@ -1,11 +1,7 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use std::fs::File;
-use trustchain_ion::{
-    attest::attest_operation,
-    create::{create_operation, read_doc_state_from},
-    resolve::main_resolve,
-};
+use trustchain_ion::{attest::attest_operation, create::create_operation, resolve::main_resolve};
 
 fn cli() -> Command {
     Command::new("trustchain")
@@ -55,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Read doc state from file path
                     let doc_state = if let Some(file_path) = file_path {
                         let f = File::open(file_path)?;
-                        let doc_state = read_doc_state_from(f)?;
+                        let doc_state = serde_json::from_reader(f)?;
                         Some(doc_state)
                     } else {
                         None

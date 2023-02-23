@@ -33,8 +33,8 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::commitment::{Commitment, CommitmentError, DIDCommitment};
-use trustchain_core::did_suffix;
 use trustchain_core::resolver::Resolver;
+use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
@@ -325,7 +325,7 @@ where
     /// Returns the location on the ledger of the transaction embedding
     /// the most recent ION operation for the given DID.
     fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
-        let suffix = did_suffix(did);
+        let suffix = get_did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database for a bson::Document.
             // let doc = match block_on(Self::query_mongo(suffix)) {

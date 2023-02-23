@@ -17,6 +17,8 @@ default = ["console_error_panic_hook"]
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 
+
+
 wasm-bindgen = "0.2.63"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by

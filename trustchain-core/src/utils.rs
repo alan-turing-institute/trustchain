@@ -1,10 +1,9 @@
 //! Utils module.
+use crate::TRUSTCHAIN_DATA;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
-// use std::io::Read;
-use crate::TRUSTCHAIN_DATA;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
@@ -24,38 +23,33 @@ pub fn init() {
     });
 }
 
-/// Gets the path for storing operations and creates directories if they do not exist.
-pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
-    // Make directory and operation file name
-    let path = Path::new(path.as_str()).join("operations");
-    std::fs::create_dir_all(&path)?;
-    Ok(path)
+/// Extracts a vec of public keys from a DID document.
+pub fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
 }
 
-/// Returns the suffix of a short-form DID.
-pub fn get_did_suffix(did: &str) -> &str {
-    did.split(':').last().unwrap()
-}
-
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_PREFIX: &[u8] = &[0x12];
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_SIZE: &[u8] = &[0x20];
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209
-/// Combination of [hash_protocol] and [hash_algorithm]
-///
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209).
 /// Returns multihash prefix and hash.
 ///
 /// Default implementation: SHA-256 (`sha2-256`)
-///
-/// [hash_protocol] and [hash_algorithm] must correspond, and their default implementations
-/// call this function ([hash_protocol_algorithm]). Implementers are therefore encouraged to
-/// overwrite this function ([hash_protocol_algorithm]) rather than those ([hash_protocol] and
-/// [hash_algorithm]).
-///
-/// [hash_protocol]: Self::hash_protocol
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
 fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -71,28 +65,32 @@ fn data_encoding_scheme(data: &[u8]) -> String {
     base64::encode_config(data, base64::URL_SAFE_NO_PAD)
 }
 
+/// Gets the path for storing operations and creates directories if they do not exist.
+pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    // Make directory and operation file name
+    let path = Path::new(path.as_str()).join("operations");
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
+}
+
+/// Returns the suffix of a short-form DID.
+pub fn get_did_suffix(did: &str) -> &str {
+    did.split(':').last().unwrap()
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
 }
 
-/// Generates a new cryptographic key.
-pub fn generate_key() -> JWK {
-    JWK::generate_secp256k1().expect("Could not generate key.")
-}
-
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 /// [`HASH_PROTOCOL`](https://identity.foundation/sidetree/spec/v1.0.0/#hash-protocol)
-///
-/// This should be implemented using [hash_algorithm].
 ///
 /// Default implementation calls [hash_protocol_algorithm] and returns the concatenation of the
 /// prefix and hash.
 ///
-/// This function must correspond with [hash_algorithm]. To ensure that correspondence,
-/// implementers may want to override [hash_protocol_algorithm] instead of this function.
-///
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
+/// [hash_protocol_algorithm]: hash_protocol_algorithm
 fn hash_protocol(data: &[u8]) -> Vec<u8> {
     let (prefix, hash) = hash_protocol_algorithm(data);
     [prefix, hash].concat()
@@ -259,6 +257,10 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
         }
     }
 }
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    JWK::generate_secp256k1().expect("Could not generate key.")
+}
 
 #[allow(dead_code)]
 pub fn set_panic_hook() {
@@ -267,7 +269,7 @@ pub fn set_panic_hook() {
     // we will get better error messages if our code ever panics.
     //
     // For more details see
-    // https://github.com/rustwasm/console_error_panic_hook#readme
+    // <https://github.com/rustwasm/console_error_panic_hook#readme>
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }
@@ -279,7 +281,6 @@ mod tests {
         TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT,
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS,
     };
-    use serde_json::to_string_pretty as to_json;
     use ssi::did::Document;
 
     #[test]
@@ -352,96 +353,96 @@ mod tests {
 
         // Same elements but different order:
         let exp_str = r##"{"verificationMethod" : [
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
-                "publicKeyJwk" : {
-                   "crv": "secp256k1",
-                   "kty": "EC",
-                   "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
-                   "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-                },
-                "type" : "JsonWebSignature2020"
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+            "publicKeyJwk" : {
+                "crv": "secp256k1",
+                "kty": "EC",
+                "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
             },
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
-                "publicKeyJwk" : {
-                   "crv" : "secp256k1",
-                   "kty" : "EC",
-                   "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
-                   "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
-                },
-                "type" : "JsonWebSignature2020"
-            }]
-        }"##;
+            "type" : "JsonWebSignature2020"
+        },
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+            "publicKeyJwk" : {
+                "crv" : "secp256k1",
+                "kty" : "EC",
+                "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+            },
+            "type" : "JsonWebSignature2020"
+        }]
+    }"##;
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));
 
         // Different nested key:
         let exp_str = r##"{"verificationMethod" : [
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
-                "publicKeyJwk" : {
-                    "crv": "secp256k1",
-                    "kty": "EC",
-                    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
-                    "z": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-                },
-                "type" : "JsonWebSignature2020"
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+            "publicKeyJwk" : {
+                "crv": "secp256k1",
+                "kty": "EC",
+                "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                "z": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
             },
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
-                "publicKeyJwk" : {
-                    "crv" : "secp256k1",
-                    "kty" : "EC",
-                    "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
-                    "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
-                },
-                "type" : "JsonWebSignature2020"
-            }]
-        }"##;
+            "type" : "JsonWebSignature2020"
+        },
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+            "publicKeyJwk" : {
+                "crv" : "secp256k1",
+                "kty" : "EC",
+                "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                "y" : "ZcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+            },
+            "type" : "JsonWebSignature2020"
+        }]
+    }"##;
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(!json_contains(&candidate, &expected));
 
         // Different nested value:
         let exp_str = r##"{"verificationMethod" : [
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
-                "publicKeyJwk" : {
-                    "crv": "secp256k1",
-                    "kty": "EC",
-                    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
-                    "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-                },
-                "type" : "JsonWebSignature2020"
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V9jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU85",
+            "publicKeyJwk" : {
+                "crv": "secp256k1",
+                "kty": "EC",
+                "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
             },
-            {
-                "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
-                "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
-                "publicKeyJwk" : {
-                    "crv" : "secp256k1",
-                    "kty" : "EC",
-                    "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
-                    "y" : "YcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
-                },
-                "type" : "JsonWebSignature2020"
-            }]
-        }"##;
+            "type" : "JsonWebSignature2020"
+        },
+        {
+            "controller" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
+            "id" : "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84",
+            "publicKeyJwk" : {
+                "crv" : "secp256k1",
+                "kty" : "EC",
+                "x" : "RbIj1Y4jeqkn0cizEfxHZidD-GQouFmAtE6YCpxFjpg",
+                "y" : "YcbgNp3hrfp3cujZFKqgFS0uFGOn2Rk16Y9nOv0h15s"
+            },
+            "type" : "JsonWebSignature2020"
+        }]
+    }"##;
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(!json_contains(&candidate, &expected));
 
         // Entire expected object nested:
         let exp_str = r##"{"publicKeyJwk" : {
-            "crv": "secp256k1",
-            "kty": "EC",
-            "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
-            "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-        }}"##;
+        "crv": "secp256k1",
+        "kty": "EC",
+        "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+        "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+    }}"##;
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));

@@ -312,7 +312,6 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
         TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
     };
-    use trustchain_core::did_suffix;
 
     #[test]
     fn test_get_keys_from_document() {
@@ -496,8 +495,7 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires MongoDB"]
     fn test_query_mongodb() {
-        let did = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let suffix = did_suffix(did);
+        let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         // Make runtime
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
