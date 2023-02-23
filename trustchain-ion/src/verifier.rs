@@ -261,47 +261,36 @@ where
         did_doc_meta: &DocumentMetadata,
     ) -> Result<Vec<u8>, VerifierError> {
         // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
-        let content = match decode_ipfs_content(prov_index_file) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to decode ION provisional index file: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
+        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
+            eprintln!("Failed to decode ION provisional index file: {}", err);
+            VerifierError::FailureToFetchVerificationMaterial
+        })?;
         // Look inside the "chunks" element.
-        let content = match content.get(CHUNKS_KEY) {
-            Some(x) => x,
-            None => {
-                eprintln!(
-                    "Expected key {} not found in ION provisional index file.",
-                    CHUNKS_KEY
-                );
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
+        let content = content.get(CHUNKS_KEY).ok_or_else(|| {
+            eprintln!("Expected key {CHUNKS_KEY} not found in ION provisional index file.");
+            VerifierError::FailureToFetchVerificationMaterial
+        })?;
 
         // In the current version of the Sidetree protocol, a single chunk
         // entry must be present in the chunks array (see
         // https://identity.foundation/sidetree/spec/#provisional-index-file).
         // So here we only need to consider the first entry in the content.
         // This may need to be updated in future to accommodate changes to the Sidetre protocol.
-        let cid = match content[0].get(CHUNK_FILE_URI_KEY) {
-            Some(value) => value.as_str().unwrap(),
-            None => {
+        let cid = content[0]
+            .get(CHUNK_FILE_URI_KEY)
+            .ok_or_else(|| {
                 eprintln!(
-                    "Expected key {} not found in ION provisional index file.",
-                    CHUNK_FILE_URI_KEY
+                    "Expected key {CHUNK_FILE_URI_KEY} not found in ION provisional index file."
                 );
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
-        match query_ipfs(cid, &self.ipfs_client) {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!("Failed to fetch ION provisional index file: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        }
+                VerifierError::FailureToFetchVerificationMaterial
+            })?
+            .as_str()
+            .unwrap();
+
+        query_ipfs(cid, &self.ipfs_client).map_err(|err| {
+            eprintln!("Failed to fetch ION provisional index file: {}", err);
+            VerifierError::FailureToFetchVerificationMaterial
+        })
     }
 
     /// Fetches a Merkle proof directly from a Bitcoin node.

@@ -71,7 +71,7 @@ pub trait Commitment: TrivialCommitment {
         };
 
         // Verify the content.
-        if !json_contains(&candidate_data, &self.expected_data()) {
+        if !json_contains(&candidate_data, self.expected_data()) {
             return Err(CommitmentError::FailedContentVerification(
                 self.expected_data().to_string(),
                 candidate_data.to_string(),
@@ -83,10 +83,9 @@ pub trait Commitment: TrivialCommitment {
     /// Verifies the commitment.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // Verify the content.
-        let _ = &self.verify_content()?;
+        self.verify_content()?;
         // Verify the target by comparing with the computed hash.
-        let hash = self.hash()?;
-        if hash.ne(target) {
+        if self.hash()?.ne(target) {
             return Err(CommitmentError::FailedHashVerification(type_of(&self)));
         }
         Ok(())
@@ -121,8 +120,7 @@ pub struct ChainedCommitment {
 
 impl ChainedCommitment {
     pub fn new(commitment: Box<dyn Commitment>) -> Self {
-        let mut commitments = Vec::new();
-        commitments.push(commitment);
+        let commitments: Vec<Box<dyn Commitment>> = vec![commitment];
         Self { commitments }
     }
 }
@@ -135,7 +133,7 @@ impl TrivialCommitment for ChainedCommitment {
 
     fn candidate_data(&self) -> &[u8] {
         // Use as_ref to avoid consuming the Some() value from first().
-        &self.commitments.first().as_ref().unwrap().candidate_data()
+        self.commitments.first().as_ref().unwrap().candidate_data()
     }
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
@@ -156,27 +154,25 @@ impl Commitment for ChainedCommitment {
     fn expected_data(&self) -> &serde_json::Value {
         // The chained commitment commits to the expected data in the first of the
         // sequence of commitments. Must cast here to avoid infinite recursion.
-        let first_commitment: &Box<dyn Commitment> =
-            **&self.commitments().first().as_ref().unwrap();
-        &first_commitment.expected_data()
+        self.commitments().first().as_ref().unwrap().expected_data()
     }
 
     /// Verifies an IteratedCommitment by verifying each of its constituent commitments.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // Verify the content.
-        let _ = &self.verify_content()?;
+        self.verify_content()?;
+
         // Verify each commitment in the sequence.
         let commitments = self.commitments();
-        if commitments.len() == 0 {
+        if commitments.is_empty() {
             return Err(CommitmentError::EmptyIteratedCommitment);
         }
         let mut it = self.commitments().iter();
         let mut commitment = it.next().unwrap();
-        let mut this_target = "";
 
         while let Some(&next) = it.next().as_ref() {
             // The target for the current commitment is the expected data of the next one.
-            this_target = match next.expected_data() {
+            let this_target = match next.expected_data() {
                 serde_json::Value::String(x) => x,
                 _ => {
                     eprintln!("Unhandled JSON Value variant. Expected String.");
@@ -209,8 +205,7 @@ impl CommitmentChain for ChainedCommitment {
         // This ensures that the composition still commits to the expected data.
         let expected_data = json!(self.hash()?);
         let new_commitment = trivial_commitment.to_commitment(expected_data);
-        let commitments: &mut Vec<Box<dyn Commitment>> = self.mut_commitments();
-        commitments.push(new_commitment);
+        self.mut_commitments().push(new_commitment);
         Ok(())
     }
 }
