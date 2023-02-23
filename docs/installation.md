@@ -1,15 +1,15 @@
-# Installation guide
-## Quick install
-This brief guide is intended for experienced users/developers who want to get started quickly.
+# Installation & Usage
 
-For detailed installation instructions please see the [full installation guide](TODO).
+## Installation Overview
+
+This brief guide is intended for experienced users/developers who want to get started quickly.
 
 #### Step 1. Install ION
 Trustchain delegates all DID method operations to a node on the [ION](https://identity.foundation/ion/) network.
 
-The [ION install guide](https://identity.foundation/ion/install-guide/) gives step-by-step instructions on how to setup and run your own ION node.
+The [official ION install guide](https://identity.foundation/ion/install-guide/) gives step-by-step instructions on how to setup and run your own ION node. 
 
-At the time of writing, however, the ION guide does not support
+We encountered a few problems with the official installation guide. Hence we recommend to use our modified instructions for [ION installation on Mac](/installation#ION-installation-on-Mac) or (TODO: Linux guide).
 
 #### Step 2. Install Rust
 Follow the [Rust install guide](https://www.rust-lang.org/tools/install).
@@ -52,7 +52,7 @@ trustchain-cli vc --help
 
 These instructions are based on the [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
 
-### Prerequites
+#### Prerequites
 - Install [Xcode command line tools](https://developer.apple.com/download/all/)
     ```
      xcode-select --install
@@ -62,11 +62,11 @@ These instructions are based on the [ION Install Guide](https://identity.foundat
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     ```
 
-### Prepare your local environment
+#### Prepare your local environment
 - Install node.js from https://nodejs.org/en/ or with `brew install node`. Instructions call for `v14` but latest is `v19.3.0`.
 - Inbound Ports to Open: If you wish to run a node that writes ION DID operations, you will need to enable uPnP on your router or open ports `4002` and `4003` so that the operation data files can be served to others via IPFS.
 
-### Set up Bitcoin Core
+#### Set up Bitcoin Core
 - Download the Bitcoin core binary tar archive: https://bitcoincore.org/en/releases/
     - 24.0.1 version for **Apple with Intel processor** is: https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-x86_64-apple-darwin.tar.gz
     - 24.0.1 version for **Apple M1** is: https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-arm64-apple-darwin.dmg
@@ -142,7 +142,7 @@ Then re-run bitcoind with the command above. This time, when the pop up appears,
     ```
     The node should return a JSON object containing the number of blocks in the blockchain, similar to the above.
 
-### Install Kubo (IPFS)
+#### Install Kubo (IPFS)
 - Install with: `brew install ipfs`
 - Initialise with: `ipfs init`. This produces output similar to:
     ```
@@ -165,7 +165,7 @@ Then re-run bitcoind with the command above. This time, when the pop up appears,
     ```
 
 
-### Set up MongoDB
+#### Set up MongoDB
 - Following [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/):
     ```
     brew tap mongodb/brew
@@ -176,7 +176,7 @@ Then re-run bitcoind with the command above. This time, when the pop up appears,
     brew services start mongodb-community@6.0
     ```
 
-### Configure & Build ION Microservices
+#### Configure & Build ION Microservices
 - Clone the ION repository:
     ```
     git clone https://github.com/decentralized-identity/ion
@@ -237,7 +237,7 @@ Then re-run bitcoind with the command above. This time, when the pop up appears,
     {"result":{"name":"sidetreeDefaultWallet","warning":"Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."},"error":null,"id":"curltest"}
     ```
 
-### Run the ION Bitcoin microservice
+#### Run the ION Bitcoin microservice
 - Set environment variables
     - Edit the `package.json` file in the root of the clone ION repository. Replace the line:
     ```
@@ -261,7 +261,7 @@ npm run bitcoin
 ```
 - Wait while the `getaddressinfo` command is processed. This can take up to an hour because it requires scanning the entire blockchain.
 
-### Run the ION core microservice
+#### Run the ION core microservice
 - Start IPFS (in a separate shell):
 ```
 ipfs daemon
@@ -290,14 +290,14 @@ npm run core
 Note: this will fail unless the ION Bitcoin microservice has started successfully (Step 6).
 - Wait while the microservice synchronises its database of ION transactions.
 
-### Verify ION is working properly
+#### Verify ION is working properly
 Check the following DID resolution in your browser:
     - testnet: http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw
     - mainnet: http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w
 
 If ION is working you will see a resolved DID Document in the browser. 
         
-### Shut down the ION node
+#### Shut down the ION node
 Before shutting down the computer running ION, you can stop the two microservices by hitting `CTRL+C` in the terminals in which they are running, then stop Bitcoin with the following command:
 ```
 /Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=/Applications/bitcoin-24.0.1/bitcoin.conf stop
