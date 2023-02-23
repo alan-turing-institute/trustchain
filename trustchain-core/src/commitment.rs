@@ -129,10 +129,8 @@ impl ChainedCommitment {
 
 impl TrivialCommitment for ChainedCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
-        |_| {
-            eprintln!("No hasher function available for ChainedCommitment. Call verify directly.");
-            Err(CommitmentError::FailedToComputeHash)
-        }
+        // The hasher of a chained commitment is that of the last in the sequence.
+        self.commitments().last().unwrap().hasher()
     }
 
     fn candidate_data(&self) -> &[u8] {
@@ -145,7 +143,7 @@ impl TrivialCommitment for ChainedCommitment {
     }
 
     fn hash(&self) -> Result<String, CommitmentError> {
-        // The hash of the iterated commitment is that of the last in the sequence.
+        // The hash of a chained commitment is that of the last in the sequence.
         self.commitments().last().as_ref().unwrap().hash()
     }
 
@@ -232,10 +230,16 @@ pub trait DIDCommitment: Commitment {
     fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
         self.did_document().get_endpoints()
     }
+    /// Get the candidate data in which we expect to find a timestamp.
+    fn timestamp_candidate_data(&self) -> Result<&[u8], CommitmentError>;
+    /// Gets the decoder (function) for the timestamp candidate data.
+    fn decode_timestamp_candidate_data(
+        &self,
+    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError>;
 }
 
-/// A Commitment whose expected data is a Unix time and whose hash, hasher
-/// and candidate data are identical to that of a given DIDCommitment.
+/// A Commitment whose expected data is a Unix time and hasher
+/// and candidate data are obtained from a given DIDCommitment.
 pub struct TimestampCommitment {
     timestamp: Timestamp,
     expected_data: serde_json::Value,
@@ -245,9 +249,12 @@ pub struct TimestampCommitment {
 }
 
 impl TimestampCommitment {
-    /// Constructs a TimestampCommitment with hash, hasher and candidate data
-    /// identical to a given DIDCommitment, and with a Unix time as expected data.
-    pub fn new(did_commitment: &Box<dyn DIDCommitment>, expected_data: Timestamp) -> Self {
+    /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
+    /// timestamp as expected data.
+    pub fn new(
+        did_commitment: &Box<dyn DIDCommitment>,
+        expected_data: Timestamp,
+    ) -> Result<Self, CommitmentError> {
         // Note the expected data in the TimestampCommitment is the timestamp, but the
         // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
         // by verifying both the DIDCommitment and the TimestampCommitment we confirm
@@ -255,13 +262,24 @@ impl TimestampCommitment {
 
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
-        Self {
+
+        // TODO: the hasher, candidate_data and decoder (function) need to come from the *last*
+        // commitment in the DIDCommitment chain. But in general DIDCommitment is a Commitment,
+        // but not necessarily a CommitmentChain, so we need to implement the "last commitment" code
+        // in trustchain-ion.
+        // Therefore, DIDCommitment must have overridden methods for hasher(), candidate_data() and
+        // decode_candidate_data(). Just do this in trustchain-ion commitment.rs and we're done.
+        // BUT that won't work because DIDCommitment is implemented (in trustchain-ion) for
+        // IONCommitment, which is *both* a CommitmentChain *and* a DIDCommitment.
+        // So it needs to be a CommitmentChain for verifying the pub keys & endpoints
+        // and at the same time a TimestampCommitment.
+        Ok(Self {
             timestamp: expected_data,
             expected_data: json!(expected_data),
             hasher: did_commitment.hasher(),
-            candidate_data: did_commitment.candidate_data().to_vec(),
-            decode_candidate_data: did_commitment.decode_candidate_data(),
-        }
+            candidate_data: did_commitment.timestamp_candidate_data()?.to_vec(),
+            decode_candidate_data: did_commitment.decode_timestamp_candidate_data()?,
+        })
     }
 
     /// Gets the timestamp as a Unix time.
@@ -287,7 +305,7 @@ impl TrivialCommitment for TimestampCommitment {
         if !expected_data.eq(self.expected_data()) {
             eprintln!("Attempted modification of expected timestamp data not permitted. Ignored.");
         }
-        self
+        panic!("A TimestampCommitment is not convertible to a Commitment.");
     }
 }
 

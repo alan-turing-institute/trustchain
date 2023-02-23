@@ -167,8 +167,11 @@ impl VerifiableTimestamp {
 
     /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
     /// owned DID Commitment, and with the expected timestamp as expected data.
-    pub fn timestamp_commitment(&self) -> TimestampCommitment {
-        TimestampCommitment::new(&self.did_commitment, self.timestamp)
+    pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
+        Ok(TimestampCommitment::new(
+            &self.did_commitment,
+            self.timestamp,
+        )?)
     }
 
     /// Gets the hash (proof-of-work) commitment.
@@ -252,7 +255,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
     }
 
-    /// TODO
+    /// TODO: docstring, and mention the to_string() conversion from u32 unix time.
     fn verify_timestamp(
         &self,
         verifiable_timestamp: &VerifiableTimestamp,
@@ -261,7 +264,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         verifiable_timestamp.verify_content()?;
 
         let did_commitment = verifiable_timestamp.did_commitment();
-        let timestamp_commitment = verifiable_timestamp.timestamp_commitment();
+        let timestamp_commitment = verifiable_timestamp.timestamp_commitment()?;
 
         // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
         if !json_contains(
