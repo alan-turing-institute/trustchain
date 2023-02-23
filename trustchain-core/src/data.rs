@@ -968,3 +968,28 @@ pub const TEST_DID_CHAIN_REVERSED: &str = r##"
     ]
 }
 "##;
+
+/// Test credential: no issuer is present for the unit test
+pub const TEST_CREDENTIAL: &str = r##"{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://www.w3.org/2018/credentials/examples/v1",
+    "https://w3id.org/citizenship/v1"
+  ],
+  "credentialSchema": {
+    "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
+    "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
+  },
+  "type": ["VerifiableCredential"],
+  "image": "some_base64_representation",
+  "credentialSubject": {
+    "givenName": "Jane",
+    "familyName": "Doe",
+    "degree": {
+      "type": "BachelorDegree",
+      "name": "Bachelor of Science and Arts",
+      "college": "College of Engineering"
+    }
+  }
+}
+"##;
