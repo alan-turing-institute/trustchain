@@ -6,6 +6,7 @@ pub mod controller;
 pub mod data;
 pub mod display;
 pub mod graph;
+pub mod issuer;
 pub mod key_manager;
 pub mod resolver;
 pub mod subject;

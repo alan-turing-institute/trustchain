@@ -3,7 +3,7 @@ use ssi::did::Document;
 use thiserror::Error;
 
 /// An error relating to a Trustchain Attestor.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum AttestorError {
     /// No trustchain subject.
     #[error("DID: {0} as Trustchain subject does not exist.")]
