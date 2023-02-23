@@ -9,7 +9,7 @@ pub fn greet() -> String {
 /// Example resolve interface.
 pub fn resolve(did: String) -> String {
     // Trustchain Resolver with android localhost
-    let resolver = get_ion_resolver("http://10.0.2.2:3000/");
+    let resolver = get_ion_resolver("http://127.0.0.1:3000/");
     // Result metadata, Document, Document metadata
     let (_, doc, _) = resolver.resolve_as_result(&did).unwrap();
     to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
