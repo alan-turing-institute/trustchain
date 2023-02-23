@@ -47,6 +47,14 @@ pub enum TrustchainIpfsError {
     DataDecodingError,
 }
 
+/// An error relating to a Bitcoin RPC API call.
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TrustchainBitcoinError {
+    /// Failed to decode Bitcoin RPC data.
+    #[error("Failed to decode Bitcoin RPC data.")]
+    DataDecodingError,
+}
+
 // DID
 pub const DID_DELIMITER: &str = ":";
 

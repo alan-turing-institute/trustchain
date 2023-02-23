@@ -7,6 +7,7 @@ use serde_json::json;
 use ssi::did::Document;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::i32;
 use std::io::Read;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
@@ -413,10 +414,17 @@ impl TrivialCommitment for TrivialBlockHashCommitment {
                 eprintln!("Error: Bitcoin block header must be 80 bytes.");
                 return Err(CommitmentError::DataDecodingError);
             };
-            Ok(decode_block_header(
+            let decoded_header = decode_block_header(
                 x.try_into()
                     .expect("Bitcoin block header should be 80 bytes."),
-            ))
+            );
+            match decoded_header {
+                Ok(x) => Ok(x),
+                Err(e) => {
+                    eprintln!("Error decoding Bitcoin block header: {}.", e);
+                    return Err(CommitmentError::DataDecodingError);
+                }
+            }
         }
     }
 
@@ -596,6 +604,28 @@ impl DIDCommitment for IONCommitment {
     fn did_document(&self) -> &Document {
         &self.did_doc
     }
+
+    fn timestamp_candidate_data(&self) -> Result<&[u8], CommitmentError> {
+        // The candidate data for the timestamp is the Bitcoin block header,
+        // which is the candidate data in the last commitment in the chain
+        // (i.e. the BlockHashCommitment).
+        if let Some(commitment) = self.chained_commitment.commitments().last() {
+            return Ok(commitment.candidate_data());
+        }
+        Err(CommitmentError::EmptyIteratedCommitment)
+    }
+
+    fn decode_timestamp_candidate_data(
+        &self,
+    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError> {
+        // The required candidate data decoder (function) is the one for the
+        // Bitcoin block header, which is the decoder in the last commitment
+        // in the chain (i.e. the BlockHashCommitment).
+        if let Some(commitment) = self.chained_commitment.commitments().last() {
+            return Ok(commitment.decode_candidate_data());
+        }
+        Err(CommitmentError::EmptyIteratedCommitment)
+    }
 }
 // End of IONCommitment
 
@@ -767,6 +797,11 @@ mod tests {
         let commitment =
             BlockHashCommitment::new(TrivialBlockHashCommitment { candidate_data }, expected_data);
         assert!(commitment.verify(target).is_ok());
+
+        // Check the timestamp is a u32 Unix time.
+        let binding = commitment.decode_candidate_data()(commitment.candidate_data()).unwrap();
+        let actual_timestamp = binding.get(TIMESTAMP_KEY).unwrap();
+        assert_eq!(actual_timestamp, &json!(1666265405));
 
         // We do *not* expect a different target to succeed.
         let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
