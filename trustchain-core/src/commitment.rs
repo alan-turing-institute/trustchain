@@ -207,8 +207,7 @@ impl CommitmentChain for ChainedCommitment {
         // This ensures that the composition still commits to the expected data.
         let expected_data = json!(self.hash()?);
         let new_commitment = trivial_commitment.to_commitment(expected_data);
-        let commitments: &mut Vec<Box<dyn Commitment>> = self.mut_commitments();
-        commitments.push(new_commitment);
+        self.mut_commitments().push(new_commitment);
         Ok(())
     }
 }
