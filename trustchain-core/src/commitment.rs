@@ -1,16 +1,12 @@
 use serde_json::json;
 use ssi::{
     did::{Document, ServiceEndpoint},
-    did_resolve::DocumentMetadata,
     jwk::JWK,
 };
 use thiserror::Error;
 
+use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
-use crate::{
-    utils::{json_contains, type_of, HasEndpoints, HasKeys},
-    verifier::VerifierError,
-};
 
 /// An error relating to Commitment verification.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -145,7 +141,7 @@ impl TrivialCommitment for ChainedCommitment {
         self.commitments().last().as_ref().unwrap().hash()
     }
 
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+    fn to_commitment(self: Box<Self>, _expected_data: serde_json::Value) -> Box<dyn Commitment> {
         self
     }
 }

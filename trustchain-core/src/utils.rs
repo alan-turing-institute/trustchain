@@ -135,12 +135,12 @@ impl HasKeys for Document {
                 VerificationMethod::Map(x) => Some(x),
                 _ => {
                     eprintln!("Unhandled VerificationMethod variant. Expected Map.");
-                    return None;
+                    None
                 }
             })
             .collect();
 
-        if verification_method_maps.len() == 0 {
+        if verification_method_maps.is_empty() {
             return None;
         }
 
@@ -149,7 +149,7 @@ impl HasKeys for Document {
             .filter_map(|verification_method_map| verification_method_map.public_key_jwk.to_owned())
             .collect();
 
-        if keys.len() == 0 {
+        if keys.is_empty() {
             return None;
         }
         Some(keys)
@@ -165,11 +165,11 @@ impl HasEndpoints for Document {
         let service_endpoints: Vec<ServiceEndpoint> = services
             .iter()
             .flat_map(|service| match service.to_owned().service_endpoint {
-                Some(endpoints) => return endpoints.into_iter(),
-                None => return Vec::<ServiceEndpoint>::new().into_iter(),
+                Some(endpoints) => endpoints.into_iter(),
+                None => Vec::<ServiceEndpoint>::new().into_iter(),
             })
             .collect();
-        if service_endpoints.len() == 0 {
+        if service_endpoints.is_empty() {
             return None;
         }
         Some(service_endpoints)
@@ -179,13 +179,10 @@ impl HasEndpoints for Document {
 /// Tests whether one JSON object contains all the elements of another.
 pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value) -> bool {
     // If the expected Value is an array, recursively check each element.
-    match expected {
-        serde_json::Value::Array(exp_vec) => {
-            return exp_vec
-                .iter()
-                .all(|exp_value| json_contains(candidate, exp_value))
-        }
-        _ => (),
+    if let serde_json::Value::Array(exp_vec) = expected {
+        return exp_vec
+            .iter()
+            .all(|exp_value| json_contains(candidate, exp_value));
     }
     match candidate {
         serde_json::Value::Null => matches!(expected, serde_json::Value::Null),
@@ -232,7 +229,7 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
                                         expected,
                                     );
                                 }
-                                return false;
+                                false
                             }) {
                                 return true;
                             };
