@@ -7,6 +7,7 @@ use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
 use mongodb::{bson::doc, options::ClientOptions, Client};
+use serde_json::json;
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::collections::HashMap;
@@ -15,8 +16,8 @@ use std::io::Read;
 use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::{
-    TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD,
-    BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY,
+    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
+    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY,
     MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
     MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY,
     TIMESTAMP_KEY, VERSION_KEY,
@@ -216,25 +217,48 @@ pub fn block_header(
 
 /// Decodes a Bitcoin block from 80 bytes of data into a JSON object.
 /// Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
-pub fn decode_block_header(bytes: &[u8; 80]) -> serde_json::Value {
+pub fn decode_block_header(
+    bytes: &[u8; 80],
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
     let version = reverse_endianness(&hex::encode(&bytes[0..4])).unwrap();
     let hash_prev_block = reverse_endianness(&hex::encode(&bytes[4..36])).unwrap();
     let merkle_root = reverse_endianness(&hex::encode(&bytes[36..68])).unwrap();
-    let timestamp = reverse_endianness(&hex::encode(&bytes[68..72])).unwrap();
+    let timestamp_hex = reverse_endianness(&hex::encode(&bytes[68..72])).unwrap();
     let bits = reverse_endianness(&hex::encode(&bytes[72..76])).unwrap();
     let nonce = reverse_endianness(&hex::encode(&bytes[76..])).unwrap();
 
-    // Convert to JSON.
+    // Convert the timestamp to a u32 Unix time.
+    let timestamp = match i32::from_str_radix(&timestamp_hex, 16) {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!(
+                "Failed to convert block header timestamp hex to i32: {}",
+                timestamp_hex
+            );
+            return Err(Box::new(TrustchainBitcoinError::DataDecodingError));
+        }
+    };
+
+    // Construct a HashMap for the block header (minus the timestamp).
     let mut map = HashMap::new();
     map.insert(VERSION_KEY, version);
     map.insert(HASH_PREV_BLOCK_KEY, hash_prev_block);
     map.insert(MERKLE_ROOT_KEY, merkle_root);
-    map.insert(TIMESTAMP_KEY, timestamp);
     map.insert(BITS_KEY, bits);
     map.insert(NONCE_KEY, nonce);
 
-    serde_json::json!(map)
+    let mut json_obj = json!(map);
+    let json_map = match json_obj.as_object_mut() {
+        Some(x) => x,
+        None => {
+            eprintln!("Error decoding Bitcoin block header.");
+            return Err(Box::new(TrustchainBitcoinError::DataDecodingError));
+        }
+    };
+    // Insert the timestamp as a serde_json::Value of type Number.
+    json_map.insert(TIMESTAMP_KEY.to_string(), json!(timestamp));
+    Ok(json!(json_map))
 }
 
 /// Gets the Bitcoin transaction at the given location via the RPC API.

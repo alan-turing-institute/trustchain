@@ -65,19 +65,19 @@ fn test_verifiable_timestamp() {
     assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
 
     // Check that the DID timestamp is correct by comparing to the known header.
-    assert_eq!(verifiable_timestamp.timestamp(), 1666265405 as Timestamp);
+    let timestamp: Timestamp = 1666265405;
+    assert_eq!(verifiable_timestamp.timestamp(), timestamp);
 
     // Confirm that the same timestamp is the expected data in the TimestampCommitment.
     assert_eq!(
-        verifiable_timestamp.timestamp_commitment().expected_data(),
-        &json!(1666265405)
+        verifiable_timestamp
+            .timestamp_commitment()
+            .unwrap()
+            .expected_data(),
+        &json!(timestamp)
     );
 
     // Verify the timestamp.
     let actual = target.verify_timestamp(&verifiable_timestamp);
-
-    if let Err(e) = actual {
-        println!("{:?}", e);
-        panic!()
-    }
+    assert!(actual.is_ok());
 }
