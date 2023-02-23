@@ -168,7 +168,7 @@ impl VerifiableTimestamp {
     /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
     /// owned DID Commitment, and with the expected timestamp as expected data.
     pub fn timestamp_commitment(&self) -> TimestampCommitment {
-        TimestampCommitment::new(&self.did_commitment, self.timestamp)
+        TimestampCommitment::new(&*self.did_commitment, self.timestamp)
     }
 
     /// Gets the hash (proof-of-work) commitment.
