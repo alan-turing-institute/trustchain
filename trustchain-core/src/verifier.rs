@@ -169,7 +169,7 @@ impl VerifiableTimestamp {
     /// owned DID Commitment, and with the expected timestamp as expected data.
     pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
         Ok(TimestampCommitment::new(
-            &self.did_commitment,
+            &*self.did_commitment,
             self.timestamp,
         )?)
     }

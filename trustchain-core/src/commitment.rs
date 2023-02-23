@@ -252,7 +252,7 @@ impl TimestampCommitment {
     /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
     /// timestamp as expected data.
     pub fn new(
-        did_commitment: &Box<dyn DIDCommitment>,
+        did_commitment: &dyn DIDCommitment,
         expected_data: Timestamp,
     ) -> Result<Self, CommitmentError> {
         // Note the expected data in the TimestampCommitment is the timestamp, but the
