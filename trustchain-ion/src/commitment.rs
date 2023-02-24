@@ -14,7 +14,7 @@ use std::io::Read;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
-use trustchain_core::utils::{HasEndpoints, HasKeys};
+use trustchain_core::utils::{get_did_suffix, HasEndpoints, HasKeys};
 
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
 use crate::BITS_KEY;
@@ -79,7 +79,7 @@ fn did_core_index_file_commitment(
     let candidate_data = core_index_file_commitment.decode_candidate_data()(
         core_index_file_commitment.candidate_data(),
     )?;
-
+    let did_suffix = get_did_suffix(did);
     let suffixes = if let Value::Object(l0) = candidate_data {
         if let Value::Object(l1) = l0.get("operations").unwrap() {
             // TODO: to be generalized to roots that have been updated
@@ -99,16 +99,14 @@ fn did_core_index_file_commitment(
                                         Some(Value::String(s)) => s,
                                         _ => panic!("No recovery commitment"),
                                     };
-                                    let s = ION::serialize_suffix_data(&SuffixData {
+                                    ION::serialize_suffix_data(&SuffixData {
                                         r#type: None,
                                         delta_hash: delta_hash.clone(),
                                         recovery_commitment: recovery_commitment.clone(),
                                         anchor_origin: None,
                                     })
                                     .unwrap()
-                                    .to_string();
-                                    println!("{s}");
-                                    s
+                                    .to_string()
                                 }
                                 _ => panic!(),
                             }
@@ -127,7 +125,12 @@ fn did_core_index_file_commitment(
         panic!()
     };
 
-    Ok(1)
+    // Get index
+    if let Some(idx) = suffixes.iter().position(|v| v == did_suffix) {
+        Ok(idx)
+    } else {
+        panic!()
+    }
 }
 
 /// A Commitment whose hash is an IPFS content identifier (CID).
@@ -693,14 +696,17 @@ mod tests {
     };
 
     #[test]
+    #[ignore = "Integration test requires IPFS"]
     fn test_extract_suffix_idx() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let ipfs_client = IpfsClient::default();
         let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
         let core_index_file_commitment = TrivialIpfsCommitment { candidate_data };
-        let suffix_data =
-            did_core_index_file_commitment("did:ion:test:...", &core_index_file_commitment);
-        println!("{:?}", suffix_data);
+        let suffix_data = did_core_index_file_commitment(
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+            &core_index_file_commitment,
+        );
+        assert_eq!(1, suffix_data.unwrap());
     }
 
     #[test]
