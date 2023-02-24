@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
+use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
+
 /// An error relating to Trustchain resolution.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ResolverError {
@@ -19,11 +21,11 @@ pub enum ResolverError {
     /// Failed to convert to Truschain document and metadata.
     #[error("Failed to convert to Truschain document and metadata.")]
     FailedToConvertToTrustchain,
-    /// Multiple 'TrustchainProofService' entries are present.
-    #[error("Multiple 'TrustchainProofService' entries are present.")]
+    /// Multiple Trustchain proof service entries are present.
+    #[error("Multiple Trustchain proof service entries are present.")]
     MultipleTrustchainProofService,
-    /// No 'TrustchainProofService' is present.
-    #[error("No 'TrustchainProofService' is present.")]
+    /// No Trustchain proof service is present.
+    #[error("No Trustchain proof service is present.")]
     NoTrustchainProofService,
     /// Cannot connect to sidetree server.
     #[error("Cannot connect to sidetree server.")]
@@ -106,7 +108,7 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // TODO: condition on ResolutionInputMetadata to optionally not perform transform.
+        // Consider using ResolutionInputMetadata to optionally not perform transform.
         // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
     }
@@ -171,7 +173,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 Err(ResolverError::MultipleTrustchainProofService) => {
                     let res_meta = ResolutionMetadata {
                         error: Some(
-                            "Multiple 'TrustchainProofService' entries are present.".to_string(),
+                            "Multiple Trustchain proof service entries are present.".to_string(),
                         ),
                         content_type: None,
                         property_set: None,
@@ -189,17 +191,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID as a `Result` type.
-    pub fn resolve_as_result(
-        &self,
-        did: &str,
-    ) -> Result<
-        (
-            ResolutionMetadata,
-            Option<Document>,
-            Option<DocumentMetadata>,
-        ),
-        ResolverError,
-    > {
+    pub fn resolve_as_result(&self, did: &str) -> ResolverResult {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
             let (did_res_meta, did_doc, did_doc_meta) =
@@ -220,7 +212,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                 {
                     return Err(ResolverError::FailedToConvertToTrustchain);
                 } else if did_res_meta_error
-                    == "Multiple 'TrustchainProofService' entries are present."
+                    == "Multiple Trustchain proof service entries are present."
                 {
                     return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
@@ -236,7 +228,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
     /// Gets a result of an index of a single Trustchain proof service, otherwise relevant error.
     fn get_proof_idx(&self, doc: &Document) -> Result<usize, ResolverError> {
         let mut idxs: Vec<usize> = Vec::new();
-        let fragment = "trustchain-controller-proof";
+        let fragment = TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
         for (idx, service) in doc.service.iter().flatten().enumerate() {
             if let [service_fragment, _] =
                 service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
@@ -552,7 +544,7 @@ mod tests {
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
-        assert_eq!(proof_service.id, "#trustchain-controller-proof");
+        assert_eq!(proof_service.id, format!("#trustchain-controller-proof"));
         assert_eq!(
             proof_service.type_,
             OneOrMany::One(String::from("TrustchainProofService"))
@@ -577,7 +569,7 @@ mod tests {
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
 
         // Check the contents of the proof service property.
-        assert_eq!(proof_service.id, "#trustchain-controller-proof");
+        assert_eq!(proof_service.id, format!("#trustchain-controller-proof"));
         assert_eq!(
             proof_service.type_,
             OneOrMany::One(String::from("TrustchainProofService"))

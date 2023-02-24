@@ -2,10 +2,14 @@
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
 use ssi::vc::{Credential, URI};
-use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use std::{
+    fs::File,
+    io::{stdin, BufReader},
+};
+use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
-    attest::main_attest, attestor::IONAttestor, create::main_create, resolve::main_resolve,
-    test_resolver, verifier::IONVerifier,
+    attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
+    resolve::main_resolve, verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -45,7 +49,6 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        // TODO: consider vverbose for stepping through
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 ),
@@ -53,23 +56,23 @@ fn cli() -> Command {
         .subcommand(
             // TODO: refactor into library code
             Command::new("vc")
-                .about("Verifiable credential functionality: attest and verify.")
+                .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
                 .subcommand(
-                    Command::new("attest")
-                        .about("Attests to a credential.")
+                    Command::new("sign")
+                        .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
@@ -85,7 +88,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    main_create(file_path, verbose)?;
+
+                    // Read doc state from file path
+                    let doc_state = if let Some(file_path) = file_path {
+                        let f = File::open(file_path)?;
+                        let doc_state = serde_json::from_reader(f)?;
+                        Some(doc_state)
+                    } else {
+                        None
+                    };
+
+                    // Read from the file path to a "Reader"
+                    create_operation(doc_state, verbose)?;
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -95,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
-                    main_attest(did, controlled_did, verbose)?;
+                    attest_operation(did, controlled_did, verbose)?;
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -106,28 +120,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Some(("vc", sub_matches)) => {
-            let resolver = test_resolver("http://localhost:3000/");
+            let resolver = get_ion_resolver("http://localhost:3000/");
             match sub_matches.subcommand() {
-                Some(("attest", sub_matches)) => {
+                Some(("sign", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let path = sub_matches.get_one::<String>("credential_file").unwrap();
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     let mut credential: Credential =
-                        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
                     credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
                     let attestor = IONAttestor::new(did);
                     resolver.runtime.block_on(async {
-                        let credential_with_proof = attestor
-                            .attest_credential(&credential, key_id, &resolver)
-                            .await
-                            .unwrap();
+                        let credential_with_proof =
+                            attestor.sign(&credential, key_id, &resolver).await.unwrap();
                         println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                     });
                 }
                 Some(("verify", sub_matches)) => {
-                    let path = sub_matches.get_one::<String>("credential_file").unwrap();
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
@@ -135,7 +150,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None => ROOT_EVENT_TIME_2378493,
                     };
                     let credential: Credential =
-                        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
                     resolver.runtime.block_on(async {
                         let verify_result = credential.verify(None, &resolver).await;
                         if verify_result.errors.is_empty() {
@@ -154,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // Trustchain verify the issued credential
-                    let verifier = IONVerifier::new(test_resolver("http://localhost:3000/"));
+                    let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,

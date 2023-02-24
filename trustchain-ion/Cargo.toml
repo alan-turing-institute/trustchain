@@ -36,31 +36,16 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 wee_alloc = { version = "0.4.5", optional = true }
 
 clap = { version = "~4.0", features=["derive", "cargo"] }
-
-# https://crates.io/crates/did-ion
 did-ion="0.1.0"
 tokio = {version = "1.20.1", features = ["full"]}
 futures = "0.3.21"
-
 async-trait = "0.1"
-
-# ssi = { version = "0.4", path = "../", default-features = false, features = ["http-did", "secp256k1"] }
 ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
-# ssi = { git = "ssh://git@github.com:alan-turing-institute/ssi.git", features = ["http-did", "secp256k1"] }
 serde_json = "1.0"
 canonical_json = "0.4.0"
-# lazy_static="1.4.0"
-# async-trait = "0.1"
-# anyhow = {}
-# failure = {}
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
-# anyhow = "1.0"
 thiserror = "1.0"
-# base64 = "0.13"
-# sha2 = "0.10"
-# json-patch = "0.2.6"
-# reqwest = { version = "0.11", features = ["json"] }
 mongodb = "2.3.1"
 
 
@@ -72,7 +57,7 @@ features = ["json", "native-tls-vendored"]
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
 glob = "0.3"
-
+mockall = "0.11.2"
 # wasm-pack profile option not used currently
 # [profile.release]
 # # Tell `rustc` to optimize for small code size.

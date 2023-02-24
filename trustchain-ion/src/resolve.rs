@@ -10,11 +10,8 @@ pub fn main_resolve(did: &str, _verbose: bool) -> Result<(), Box<dyn std::error:
         "http://localhost:3000/",
     ))));
 
-    // Get DID from clap
-    let did_to_resolve = did;
-
     // Result metadata, Document, Document metadata
-    let result = resolver.resolve_as_result(did_to_resolve);
+    let result = resolver.resolve_as_result(did);
     let (res_meta, doc, doc_meta) = match result {
         Ok(x) => x,
         Err(e) => {

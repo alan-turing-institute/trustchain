@@ -1,12 +1,9 @@
 use crate::subject::Subject;
-use async_trait::async_trait;
 use ssi::did::Document;
-use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
 use thiserror::Error;
 
 /// An error relating to a Trustchain Attestor.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum AttestorError {
     /// No trustchain subject.
     #[error("DID: {0} as Trustchain subject does not exist.")]
@@ -30,26 +27,5 @@ pub trait Attestor: Subject {
     /// Attests to a DID Document. Subject attests to a DID document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.
     /// Typically, the signer will be a controller, but not necessarily. However, every signer is the subject of its own DID.
-    fn attest(
-        &self,
-        doc: &Document,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>>;
-    fn attest_str(
-        &self,
-        doc: &str,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>>;
-}
-
-/// A credential attestor attests to a credential to generate a verifiable credential.
-#[async_trait]
-pub trait CredentialAttestor: Attestor {
-    /// Attests to a Credential. Attestor attests to a credential by signing the credential with (one of) its private signing key(s).
-    async fn attest_credential(
-        &self,
-        doc: &Credential,
-        key_id: Option<&str>,
-        resolver: &dyn DIDResolver,
-    ) -> Result<Credential, Box<dyn std::error::Error>>;
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError>;
 }

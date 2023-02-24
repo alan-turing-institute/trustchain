@@ -1,9 +1,9 @@
 //! Utils module.
+use crate::TRUSTCHAIN_DATA;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use ssi::did::{Document, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
-// use std::io::Read;
-use crate::TRUSTCHAIN_DATA;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
@@ -18,24 +18,33 @@ pub fn init() {
     });
 }
 
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html
+/// Extracts a vec of public keys from a DID document.
+pub fn extract_keys(doc: &Document) -> Vec<JWK> {
+    let mut public_keys: Vec<JWK> = Vec::new();
+    if let Some(verification_methods) = doc.verification_method.as_ref() {
+        for verification_method in verification_methods {
+            if let VerificationMethod::Map(VerificationMethodMap {
+                public_key_jwk: Some(key),
+                ..
+            }) = verification_method
+            {
+                public_keys.push(key.clone());
+            } else {
+                continue;
+            }
+        }
+    }
+    public_keys
+}
+
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_PREFIX: &[u8] = &[0x12];
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 const MULTIHASH_SHA2_256_SIZE: &[u8] = &[0x20];
-/// From did-ion: https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209
-/// Combination of [hash_protocol] and [hash_algorithm]
-///
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#107-209).
 /// Returns multihash prefix and hash.
 ///
 /// Default implementation: SHA-256 (`sha2-256`)
-///
-/// [hash_protocol] and [hash_algorithm] must correspond, and their default implementations
-/// call this function ([hash_protocol_algorithm]). Implementers are therefore encouraged to
-/// overwrite this function ([hash_protocol_algorithm]) rather than those ([hash_protocol] and
-/// [hash_algorithm]).
-///
-/// [hash_protocol]: Self::hash_protocol
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
 fn hash_protocol_algorithm(data: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -70,18 +79,13 @@ pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_js
     serde_jcs::to_string(value)
 }
 
+/// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).
 /// [`HASH_PROTOCOL`](https://identity.foundation/sidetree/spec/v1.0.0/#hash-protocol)
-///
-/// This should be implemented using [hash_algorithm].
 ///
 /// Default implementation calls [hash_protocol_algorithm] and returns the concatenation of the
 /// prefix and hash.
 ///
-/// This function must correspond with [hash_algorithm]. To ensure that correspondence,
-/// implementers may want to override [hash_protocol_algorithm] instead of this function.
-///
-/// [hash_algorithm]: Self::hash_algorithm
-/// [hash_protocol_algorithm]: Self::hash_protocol_algorithm
+/// [hash_protocol_algorithm]: hash_protocol_algorithm
 fn hash_protocol(data: &[u8]) -> Vec<u8> {
     let (prefix, hash) = hash_protocol_algorithm(data);
     [prefix, hash].concat()
@@ -105,6 +109,11 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
+/// Generates a new cryptographic key.
+pub fn generate_key() -> JWK {
+    JWK::generate_secp256k1().expect("Could not generate key.")
+}
+
 #[allow(dead_code)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -112,7 +121,7 @@ pub fn set_panic_hook() {
     // we will get better error messages if our code ever panics.
     //
     // For more details see
-    // https://github.com/rustwasm/console_error_panic_hook#readme
+    // <https://github.com/rustwasm/console_error_panic_hook#readme>
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 }
@@ -121,7 +130,6 @@ pub fn set_panic_hook() {
 mod tests {
     use super::*;
     use crate::data::{TEST_ROOT_JWK_PK, TEST_ROOT_PLUS_1_DOCUMENT, TEST_ROOT_PLUS_1_JWT};
-    use serde_json::to_string_pretty as to_json;
     use ssi::did::Document;
 
     #[test]
@@ -142,5 +150,18 @@ mod tests {
         let expected_hash = decode(jwt)?;
         assert_eq!(expected_hash, actual_hash);
         Ok(())
+    }
+
+    #[test]
+    fn test_generate_key() {
+        let result = generate_key();
+
+        // Check for the expected elliptic curve (used by ION to generate keys).
+        match result.params {
+            ssi::jwk::Params::EC(ecparams) => {
+                assert_eq!(ecparams.curve, Some(String::from("secp256k1")))
+            }
+            _ => panic!(),
+        }
     }
 }

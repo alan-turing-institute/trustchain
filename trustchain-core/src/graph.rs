@@ -1,4 +1,5 @@
-use crate::chain::{Chain, DIDChain, PrettyDID};
+use crate::chain::{Chain, DIDChain};
+use crate::display::PrettyDID;
 use petgraph::dot::{Config, Dot};
 use petgraph::graph::DiGraph;
 use std::collections::HashMap;
@@ -8,10 +9,9 @@ use thiserror::Error;
 /// An error relating to Trustchain graphs.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GraphError {
-    /// Constructed graph is not a tree.
-    #[error("Graph is not a tree.")]
-    NotATree,
-    // TODO add error types
+    /// Constructed graph contains a cycle.
+    #[error("Graph contains a cycle.")]
+    ContainsCycle,
 }
 
 /// Wrapper struct for a petgraph DiGraph of documents.
@@ -20,26 +20,23 @@ pub struct TrustchainGraph {
     graph: DiGraph<String, String>,
 }
 
-/// Read chains from a vector and return a DiGraph.
-/// See: https://docs.rs/petgraph/latest/petgraph/graph/struct.Graph.html
-fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
+/// Read chains from a vector and return a DiGraph, a subtype of a petgraph [Graph](https://docs.rs/petgraph/latest/petgraph/graph/struct.Graph.html).
+fn read_chains(chains: &Vec<DIDChain>, label_width: usize) -> DiGraph<String, String> {
     let mut nodes = HashMap::<String, petgraph::prelude::NodeIndex>::new();
     let mut graph = DiGraph::<String, String>::new();
-    const MAX_WIDTH: usize = 35;
     for chain in chains {
         let mut did = chain.root().to_owned();
         let mut level = 0;
         // Add source
-        let ns = match nodes.get(&did) {
-            Some(&v) => v,
+        match nodes.get(&did) {
+            Some(_) => (),
             None => {
-                let pretty_did =
-                    PrettyDID::new(&chain.data(&did).unwrap().0, level, MAX_WIDTH).to_node_string();
+                let pretty_did = PrettyDID::new(&chain.data(&did).unwrap().0, level, label_width)
+                    .to_node_string();
                 let ns = graph.add_node(pretty_did);
                 nodes.insert(did.to_owned(), ns);
-                ns
             }
-        };
+        }
         while let Some(ddid) = chain.downstream(&did) {
             // Get source node
             let ns = match nodes.get(&did) {
@@ -51,7 +48,7 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
                 Some(&v) => v,
                 None => {
                     let pretty_ddid =
-                        PrettyDID::new(&chain.data(ddid).unwrap().0, level + 1, MAX_WIDTH)
+                        PrettyDID::new(&chain.data(ddid).unwrap().0, level + 1, label_width)
                             .to_node_string();
                     let nt = graph.add_node(pretty_ddid);
                     nodes.insert(ddid.to_owned(), nt);
@@ -71,28 +68,21 @@ fn read_chains(chains: &Vec<DIDChain>) -> DiGraph<String, String> {
     graph
 }
 
-impl From<Vec<DIDChain>> for TrustchainGraph {
-    fn from(chains: Vec<DIDChain>) -> Self {
-        TrustchainGraph::new(&chains).unwrap()
-    }
-}
-
 impl TrustchainGraph {
     /// Makes a new TrustchainGraph instance.
-    pub fn new(chains: &Vec<DIDChain>) -> Result<Self, GraphError> {
-        let graph = read_chains(chains);
-        Ok(Self { graph })
+    pub fn new(chains: &Vec<DIDChain>, label_width: usize) -> Result<Self, GraphError> {
+        let graph = read_chains(chains, label_width);
+        if !petgraph::algo::is_cyclic_directed(&graph) {
+            Ok(Self { graph })
+        } else {
+            Err(GraphError::ContainsCycle)
+        }
     }
 
     /// Outputs graph to graphviz format.
     pub fn to_dot(&self) -> String {
         // Output the tree to `graphviz` `DOT` format
         format!("{}", Dot::with_config(&self.graph, &[Config::EdgeNoLabel]))
-    }
-
-    /// Saves to a graphviz/dot file
-    pub fn save(&self) {
-        todo!()
     }
 }
 
@@ -105,46 +95,47 @@ impl Display for TrustchainGraph {
 
 #[cfg(test)]
 mod tests {
-    use crate::TRUSTCHAIN_DATA;
-
     use super::*;
-    use std::path::Path;
+    use crate::data::{TEST_DID_CHAIN, TEST_DID_CHAIN_REVERSED};
 
-    fn get_test_did_chains() -> Result<Vec<DIDChain>, Box<dyn std::error::Error>> {
-        let root_path = std::env::var(TRUSTCHAIN_DATA).unwrap();
-        let read_file = std::fs::read_to_string(
-            Path::new(&root_path)
-                .join("resources")
-                .join("test")
-                .join("test_did_chains.json"),
-        )?;
-        let did_chains: Vec<DIDChain> = serde_json::from_str(read_file.as_str())?;
-        Ok(did_chains)
+    const DEFAULT_LABEL_WIDTH: usize = 30;
+
+    fn test_chain() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN).unwrap()
+    }
+    fn test_chain_reversed() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN_REVERSED).unwrap()
     }
 
     #[test]
-    fn test_read_chains() {
-        let chains = get_test_did_chains().unwrap();
-        let graph = TrustchainGraph::new(&chains);
+    fn test_read_chains() -> Result<(), GraphError> {
+        let chains = vec![test_chain(), test_chain()];
+        let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
         assert!(graph.is_ok());
+        if let Ok(graph) = graph {
+            assert_eq!(graph.graph.node_count(), 3);
+            assert_eq!(graph.graph.edge_count(), 2);
+        }
+        Ok(())
+    }
+    #[test]
+    fn test_read_chains_with_cycle() {
+        let chains = vec![test_chain(), test_chain_reversed()];
+        let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH);
+        assert!(matches!(graph, Err(GraphError::ContainsCycle)));
     }
     #[test]
     fn test_to_dot() -> Result<(), GraphError> {
-        let chains = get_test_did_chains().unwrap();
-        let graph = TrustchainGraph::new(&chains)?;
-        print!("{}", graph.to_dot());
+        let chains = vec![test_chain(), test_chain()];
+        let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
+        graph.to_dot();
         Ok(())
     }
-    // #[test]
-    // fn invalid_not_a_tree() {
-    //     todo!()
-    // }
-    // #[test]
-    // fn valid_tree() {
-    //     todo!()
-    // }
-    // #[test]
-    // fn display() {
-    //     todo!()
-    // }
+    #[test]
+    fn test_display() -> Result<(), GraphError> {
+        let chains = vec![test_chain(), test_chain()];
+        let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
+        format!("{}", graph);
+        Ok(())
+    }
 }
