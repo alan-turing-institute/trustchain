@@ -166,10 +166,7 @@ fn did_core_index_file_commitment(
     did: &str,
     core_index_file_commitment: &dyn TrivialIpfsCommitment,
 ) -> Result<usize, CommitmentError> {
-    let candidate_data = core_index_file_commitment.decode_candidate_data()(
-        core_index_file_commitment.candidate_data(),
-        None,
-    )?;
+    let candidate_data = core_index_file_commitment.commitment_content()?;
     let did_suffix = get_did_suffix(did);
     let suffixes = if let Value::Object(l0) = candidate_data {
         if let Value::Object(l1) = l0.get("operations").unwrap() {
@@ -256,6 +253,9 @@ impl TrivialCommitment for IpfsCommitment {
         &self,
     ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
+    }
+    fn index(&self) -> Option<usize> {
+        self.trivial_commitment.index()
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -1051,7 +1051,7 @@ mod tests {
         )
         .unwrap();
 
-        // println!("ION commitment index: {:?}", commitment.index());
+        println!("ION commitment index: {:?}", commitment.index());
 
         let expected_data = commitment.chained_commitment.expected_data();
 
