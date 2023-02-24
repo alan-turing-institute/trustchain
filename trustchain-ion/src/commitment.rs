@@ -23,23 +23,41 @@ use crate::TIMESTAMP_KEY;
 use crate::VERSION_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
-/// A TrivialCommitment whose hash is an IPFS content identifier (CID).
-pub struct TrivialIpfsCommitment {
+fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
+    |x| {
+        let ipfs_hasher = IpfsHasher::default();
+        Ok(ipfs_hasher.compute(x))
+    }
+}
+
+fn ipfs_decode_candidate_data() -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    |x| match decode_ipfs_content(&x.to_owned()) {
+        Ok(x) => Ok(x),
+        Err(e) => {
+            eprintln!("Error decoding IPFS content: {}", e);
+            Err(CommitmentError::DataDecodingError)
+        }
+    }
+}
+
+// Common trait for Commitments whose hash is an IPFS content identifier (CID).
+pub trait TrivialIpfsCommitment: TrivialCommitment {}
+
+/// A TrivialCommitment whose hash is an IPFS content identifier (CID)
+/// for an ION Index file.
+pub struct TrivialIpfsIndexFileCommitment {
     candidate_data: Vec<u8>,
 }
 
-impl TrivialIpfsCommitment {
+impl TrivialIpfsIndexFileCommitment {
     pub fn new(candidate_data: Vec<u8>) -> Self {
         Self { candidate_data }
     }
 }
 
-impl TrivialCommitment for TrivialIpfsCommitment {
+impl TrivialCommitment for TrivialIpfsIndexFileCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
-        |x| {
-            let ipfs_hasher = IpfsHasher::default();
-            Ok(ipfs_hasher.compute(x))
-        }
+        ipfs_hasher()
     }
 
     fn candidate_data(&self) -> &[u8] {
@@ -47,38 +65,82 @@ impl TrivialCommitment for TrivialIpfsCommitment {
     }
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-        |x| {
-            // TODO: in the case of the chunk file we must restrict attention to paraticular deltas/patches,
-            // e.g. using the updateCommitment. So we'll need a different ChunkFileCommitment struct with a
-            // different decode_candidate_data() method. To avoid code repetition, we should make
-            // TrivialIpfsCommitment into a trait (extending TrivialCommitment) with default implementations
-            // for the methods implemented here (and similarly for IpfsCommitment). Then have an
-            // IndexFileCommitment struct for the core & prov index file commitments that just implement the
-            // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
-            match decode_ipfs_content(&x.to_owned()) {
-                Ok(x) => Ok(x),
-                Err(e) => {
-                    eprintln!("Error decoding IPFS content: {}", e);
-                    Err(CommitmentError::DataDecodingError)
-                }
-            }
-        }
+        ipfs_decode_candidate_data()
     }
 
+    // fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    //     |x| {
+    //         // TODO: in the case of the chunk file we must restrict attention to paraticular deltas/patches,
+    //         // e.g. using the updateCommitment. So we'll need a different ChunkFileCommitment struct with a
+    //         // different decode_candidate_data() method. To avoid code repetition, we should make
+    //         // TrivialIpfsCommitment into a trait (extending TrivialCommitment) with default implementations
+    //         // for the methods implemented here (and similarly for IpfsCommitment). Then have an
+    //         // IndexFileCommitment struct for the core & prov index file commitments that just implement the
+    //         // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
+    //         match decode_ipfs_content(&x.to_owned()) {
+    //             Ok(x) => Ok(x),
+    //             Err(e) => {
+    //                 eprintln!("Error decoding IPFS content: {}", e);
+    //                 Err(CommitmentError::DataDecodingError)
+    //             }
+    //         }
+    //     }
+    // }
+
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        Box::new(IpfsCommitment::new(*self, expected_data))
+        Box::new(IpfsCommitment::new(Box::new(*self), expected_data))
     }
 }
 
+impl TrivialIpfsCommitment for TrivialIpfsIndexFileCommitment {}
+
+/// A TrivialCommitment whose hash is an IPFS content identifier (CID)
+/// for an ION chunk file.
+pub struct TrivialIpfsChunkFileCommitment {
+    candidate_data: Vec<u8>,
+    delta_index: usize,
+}
+
+impl TrivialIpfsChunkFileCommitment {
+    pub fn new(candidate_data: Vec<u8>, delta_index: usize) -> Self {
+        Self {
+            candidate_data,
+            delta_index,
+        }
+    }
+}
+
+impl TrivialCommitment for TrivialIpfsChunkFileCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+        ipfs_hasher()
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        &self.candidate_data
+    }
+
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        let decoded_chunk_file = ipfs_decode_candidate_data();
+        // TODO: use &self.delta_index to identify the right delta in the chunk file.
+        decoded_chunk_file
+    }
+
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(IpfsCommitment::new(Box::new(*self), expected_data))
+    }
+}
+
+impl TrivialIpfsCommitment for TrivialIpfsChunkFileCommitment {}
+
 /// A Commitment whose hash is an IPFS content identifier (CID).
 pub struct IpfsCommitment {
-    trivial_commitment: TrivialIpfsCommitment,
+    trivial_commitment: Box<dyn TrivialIpfsCommitment>,
     expected_data: serde_json::Value,
 }
 
 impl IpfsCommitment {
     pub fn new(
-        trivial_commitment: TrivialIpfsCommitment,
+        trivial_commitment: Box<dyn TrivialIpfsCommitment>,
         expected_data: serde_json::Value,
     ) -> Self {
         Self {
@@ -490,17 +552,19 @@ impl IONCommitment {
         };
         let expected_data = json!([keys, endpoints]);
 
-        // Construct the first Commitment, followed by a sequence of TrivialCommitments.
+        let delta_index: usize = 0;
+        // Construct the first *full* Commitment, followed by a sequence of TrivialCommitments.
         let chunk_file_commitment = IpfsCommitment::new(
-            TrivialIpfsCommitment {
+            Box::new(TrivialIpfsChunkFileCommitment {
                 candidate_data: chunk_file,
-            },
+                delta_index,
+            }),
             expected_data,
         );
-        let prov_index_file_commitment = TrivialIpfsCommitment {
+        let prov_index_file_commitment = TrivialIpfsIndexFileCommitment {
             candidate_data: provisional_index_file,
         };
-        let core_index_file_commitment = TrivialIpfsCommitment {
+        let core_index_file_commitment = TrivialIpfsIndexFileCommitment {
             candidate_data: core_index_file,
         };
         let tx_commitment = TrivialTxCommitment {
@@ -645,8 +709,10 @@ mod tests {
         let expected_data =
             r#"{"provisionalIndexFileUri":"QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let expected_data: serde_json::Value = serde_json::from_str(expected_data).unwrap();
-        let commitment =
-            IpfsCommitment::new(TrivialIpfsCommitment { candidate_data }, expected_data);
+        let commitment = IpfsCommitment::new(
+            Box::new(TrivialIpfsIndexFileCommitment { candidate_data }),
+            expected_data,
+        );
         assert!(commitment.verify(target).is_ok());
 
         // We do *not* expect a different target to succeed.
@@ -662,8 +728,10 @@ mod tests {
             r#"{"provisionalIndexFileUri":"PmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let bad_expected_data = serde_json::from_str(bad_expected_data).unwrap();
         let candidate_data = candidate_data_.clone();
-        let commitment =
-            IpfsCommitment::new(TrivialIpfsCommitment { candidate_data }, bad_expected_data);
+        let commitment = IpfsCommitment::new(
+            Box::new(TrivialIpfsIndexFileCommitment { candidate_data }),
+            bad_expected_data,
+        );
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
