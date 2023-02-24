@@ -132,9 +132,11 @@ impl TrivialCommitment for TrivialIpfsChunkFileCommitment {
     }
 }
 
+impl TrivialIpfsCommitment for TrivialIpfsChunkFileCommitment {}
+
 fn did_core_index_file_commitment(
     did: &str,
-    core_index_file_commitment: &TrivialIpfsCommitment,
+    core_index_file_commitment: &dyn TrivialIpfsCommitment,
 ) -> Result<usize, CommitmentError> {
     let candidate_data = core_index_file_commitment.decode_candidate_data()(
         core_index_file_commitment.candidate_data(),
@@ -763,7 +765,7 @@ mod tests {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let ipfs_client = IpfsClient::default();
         let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
-        let core_index_file_commitment = TrivialIpfsCommitment { candidate_data };
+        let core_index_file_commitment = TrivialIpfsIndexFileCommitment { candidate_data };
         let suffix_data = did_core_index_file_commitment(
             "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
             &core_index_file_commitment,
