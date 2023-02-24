@@ -1,9 +1,11 @@
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
+use did_ion::sidetree::{Sidetree, SuffixData};
+use did_ion::ION;
 use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
-use serde_json::json;
+use serde_json::{json, Value};
 use ssi::did::Document;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -68,6 +70,64 @@ impl TrivialCommitment for TrivialIpfsCommitment {
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(IpfsCommitment::new(*self, expected_data))
     }
+}
+
+fn did_core_index_file_commitment(
+    did: &str,
+    core_index_file_commitment: &TrivialIpfsCommitment,
+) -> Result<usize, CommitmentError> {
+    let candidate_data = core_index_file_commitment.decode_candidate_data()(
+        core_index_file_commitment.candidate_data(),
+    )?;
+
+    let suffixes = if let Value::Object(l0) = candidate_data {
+        if let Value::Object(l1) = l0.get("operations").unwrap() {
+            // TODO: to be generalized to roots that have been updated
+            if let Value::Array(suffix_datas) = l1.get("create").unwrap() {
+                // if
+                suffix_datas
+                    .iter()
+                    .map(|value| {
+                        if let Value::Object(l2) = value {
+                            match l2.get("suffixData") {
+                                Some(Value::Object(l3)) => {
+                                    let delta_hash = match l3.get("deltaHash") {
+                                        Some(Value::String(s)) => s,
+                                        _ => panic!("No deltaHash"),
+                                    };
+                                    let recovery_commitment = match l3.get("recoveryCommitment") {
+                                        Some(Value::String(s)) => s,
+                                        _ => panic!("No recovery commitment"),
+                                    };
+                                    let s = ION::serialize_suffix_data(&SuffixData {
+                                        r#type: None,
+                                        delta_hash: delta_hash.clone(),
+                                        recovery_commitment: recovery_commitment.clone(),
+                                        anchor_origin: None,
+                                    })
+                                    .unwrap()
+                                    .to_string();
+                                    println!("{s}");
+                                    s
+                                }
+                                _ => panic!(),
+                            }
+                        } else {
+                            panic!()
+                        }
+                    })
+                    .collect::<Vec<String>>()
+            } else {
+                panic!()
+            }
+        } else {
+            panic!()
+        }
+    } else {
+        panic!()
+    };
+
+    Ok(1)
 }
 
 /// A Commitment whose hash is an IPFS content identifier (CID).
@@ -631,6 +691,17 @@ mod tests {
         utils::{block_header, merkle_proof, query_ipfs, transaction},
         CID_KEY, MERKLE_ROOT_KEY,
     };
+
+    #[test]
+    fn test_extract_suffix_idx() {
+        let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let ipfs_client = IpfsClient::default();
+        let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
+        let core_index_file_commitment = TrivialIpfsCommitment { candidate_data };
+        let suffix_data =
+            did_core_index_file_commitment("did:ion:test:...", &core_index_file_commitment);
+        println!("{:?}", suffix_data);
+    }
 
     #[test]
     #[ignore = "Integration test requires IPFS"]
