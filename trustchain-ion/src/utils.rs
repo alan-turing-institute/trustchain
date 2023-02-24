@@ -216,7 +216,7 @@ pub fn block_header(
 }
 
 /// Decodes a Bitcoin block from 80 bytes of data into a JSON object.
-/// Format is explained here: https://en.bitcoin.it/wiki/Block_hashing_algorithm
+/// Format is explained [here](https://en.bitcoin.it/wiki/Block_hashing_algorithm).
 pub fn decode_block_header(
     bytes: &[u8; 80],
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
