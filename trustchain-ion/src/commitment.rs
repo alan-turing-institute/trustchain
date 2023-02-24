@@ -615,7 +615,14 @@ impl IONCommitment {
         };
         let expected_data = json!([keys, endpoints]);
 
-        let delta_index: usize = 0;
+        // Construct the core index file commitment first, to get the
+        // index of the chunk file delta for this DID.
+        let core_index_file_commitment = TrivialIpfsIndexFileCommitment {
+            candidate_data: core_index_file,
+        };
+        let delta_index: usize =
+            did_core_index_file_commitment(&did_doc.id, &core_index_file_commitment)?;
+
         // Construct the first *full* Commitment, followed by a sequence of TrivialCommitments.
         let chunk_file_commitment = IpfsCommitment::new(
             Box::new(TrivialIpfsChunkFileCommitment {
@@ -626,9 +633,6 @@ impl IONCommitment {
         );
         let prov_index_file_commitment = TrivialIpfsIndexFileCommitment {
             candidate_data: provisional_index_file,
-        };
-        let core_index_file_commitment = TrivialIpfsIndexFileCommitment {
-            candidate_data: core_index_file,
         };
         let tx_commitment = TrivialTxCommitment {
             candidate_data: transaction,
