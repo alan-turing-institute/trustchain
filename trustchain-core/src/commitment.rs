@@ -49,7 +49,7 @@ pub trait TrivialCommitment {
     }
     /// Gets the data content that the hash verifiably commits to.
     fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
-        self.decode_candidate_data()(self.candidate_data(), None)
+        self.decode_candidate_data()(self.candidate_data(), self.index())
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
     /// Converts this TrivialCommitment to a Commitment.
