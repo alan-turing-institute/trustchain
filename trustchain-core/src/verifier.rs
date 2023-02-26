@@ -7,7 +7,7 @@ use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum VerifierError {
     /// Invalid payload in proof compared to resolved document.
     #[error("Invalid payload provided in proof for dDID: {0}.")]

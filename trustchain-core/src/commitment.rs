@@ -9,7 +9,7 @@ use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
 
 /// An error relating to Commitment verification.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum CommitmentError {
     /// Data decoding error.
     #[error("Data decoding error.")]
@@ -26,6 +26,15 @@ pub enum CommitmentError {
     /// Empty iterated commitment.
     #[error("Failed verification. Empty iterated commitment.")]
     EmptyIteratedCommitment,
+    /// Wrapped serde JSON deserialization error.
+    #[error("Failed to deserialize.")]
+    FailedToDeserialize(serde_json::Error),
+}
+
+impl From<serde_json::Error> for CommitmentError {
+    fn from(err: serde_json::Error) -> Self {
+        CommitmentError::FailedToDeserialize(err)
+    }
 }
 
 /// A cryptographic commitment with no expected data content.

@@ -16,6 +16,7 @@ use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{get_did_suffix, HasEndpoints, HasKeys};
 
+use crate::sidetree::CoreIndexFile;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
 use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
@@ -166,58 +167,20 @@ fn did_core_index_file_commitment(
     did: &str,
     core_index_file_commitment: &dyn TrivialIpfsCommitment,
 ) -> Result<usize, CommitmentError> {
-    let candidate_data = core_index_file_commitment.commitment_content()?;
+    let core_index_file: CoreIndexFile =
+        serde_json::from_value(core_index_file_commitment.commitment_content()?)?;
     let did_suffix = get_did_suffix(did);
-    let suffixes = if let Value::Object(l0) = candidate_data {
-        if let Value::Object(l1) = l0.get("operations").unwrap() {
-            // TODO: to be generalized to roots that have been updated
-            if let Value::Array(suffix_datas) = l1.get("create").unwrap() {
-                // if
-                suffix_datas
-                    .iter()
-                    .map(|value| {
-                        if let Value::Object(l2) = value {
-                            match l2.get("suffixData") {
-                                Some(Value::Object(l3)) => {
-                                    let delta_hash = match l3.get("deltaHash") {
-                                        Some(Value::String(s)) => s,
-                                        _ => panic!("No deltaHash"),
-                                    };
-                                    let recovery_commitment = match l3.get("recoveryCommitment") {
-                                        Some(Value::String(s)) => s,
-                                        _ => panic!("No recovery commitment"),
-                                    };
-                                    ION::serialize_suffix_data(&SuffixData {
-                                        r#type: None,
-                                        delta_hash: delta_hash.clone(),
-                                        recovery_commitment: recovery_commitment.clone(),
-                                        anchor_origin: None,
-                                    })
-                                    .unwrap()
-                                    .to_string()
-                                }
-                                _ => panic!(),
-                            }
-                        } else {
-                            panic!()
-                        }
-                    })
-                    .collect::<Vec<String>>()
-            } else {
-                panic!()
-            }
-        } else {
-            panic!()
-        }
-    } else {
-        panic!()
-    };
-
-    // Get index
-    if let Some(idx) = suffixes.iter().position(|v| v == did_suffix) {
-        Ok(idx)
-    } else {
-        panic!()
+    // TODO: to be generalized to roots that have been updated
+    match core_index_file
+        .created_did_suffixes()
+        .iter()
+        .position(|v| v == did_suffix)
+    {
+        Some(idx) => Ok(idx),
+        None => Err(CommitmentError::FailedContentVerification(
+            did.to_string(),
+            serde_json::to_string(&core_index_file).unwrap(),
+        )),
     }
 }
 
