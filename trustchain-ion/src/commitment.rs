@@ -43,9 +43,6 @@ fn ipfs_decode_candidate_data(
     }
 }
 
-// Common trait for Commitments whose hash is an IPFS content identifier (CID).
-pub trait TrivialIpfsCommitment: TrivialCommitment {}
-
 /// A TrivialCommitment whose hash is an IPFS content identifier (CID)
 /// for an ION Index file.
 pub struct TrivialIpfsIndexFileCommitment {
@@ -96,8 +93,6 @@ impl TrivialCommitment for TrivialIpfsIndexFileCommitment {
         Box::new(IpfsCommitment::new(Box::new(*self), expected_data))
     }
 }
-
-impl TrivialIpfsCommitment for TrivialIpfsIndexFileCommitment {}
 
 /// A TrivialCommitment whose hash is an IPFS content identifier (CID)
 /// for an ION chunk file.
@@ -160,11 +155,9 @@ impl TrivialCommitment for TrivialIpfsChunkFileCommitment {
     }
 }
 
-impl TrivialIpfsCommitment for TrivialIpfsChunkFileCommitment {}
-
 fn did_core_index_file_commitment(
     did: &str,
-    core_index_file_commitment: &dyn TrivialIpfsCommitment,
+    core_index_file_commitment: &dyn TrivialCommitment,
 ) -> Result<usize, CommitmentError> {
     let candidate_data = core_index_file_commitment.commitment_content()?;
     let did_suffix = get_did_suffix(did);
@@ -223,13 +216,13 @@ fn did_core_index_file_commitment(
 
 /// A Commitment whose hash is an IPFS content identifier (CID).
 pub struct IpfsCommitment {
-    trivial_commitment: Box<dyn TrivialIpfsCommitment>,
+    trivial_commitment: Box<dyn TrivialCommitment>,
     expected_data: serde_json::Value,
 }
 
 impl IpfsCommitment {
     pub fn new(
-        trivial_commitment: Box<dyn TrivialIpfsCommitment>,
+        trivial_commitment: Box<dyn TrivialCommitment>,
         expected_data: serde_json::Value,
     ) -> Self {
         Self {
@@ -254,6 +247,7 @@ impl TrivialCommitment for IpfsCommitment {
     ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
     }
+
     fn index(&self) -> Option<usize> {
         self.trivial_commitment.index()
     }
@@ -662,8 +656,7 @@ impl IONCommitment {
         let core_index_file_commitment = TrivialIpfsIndexFileCommitment {
             candidate_data: core_index_file,
         };
-        let delta_index: usize =
-            did_core_index_file_commitment(&did_doc.id, &core_index_file_commitment)?;
+        let delta_index = did_core_index_file_commitment(&did_doc.id, &core_index_file_commitment)?;
 
         println!("My index in ION commitment: {}", delta_index);
 
@@ -825,6 +818,17 @@ mod tests {
             &core_index_file_commitment,
         );
         assert_eq!(1, suffix_data.unwrap());
+    }
+
+    #[test]
+    fn test_chunk_file_commitment() {
+        let candidate_data: Vec<u8> = vec![];
+        let delta_index: usize = 0;
+        let target = TrivialIpfsChunkFileCommitment {
+            candidate_data,
+            delta_index,
+        };
+        assert!(target.index().is_some());
     }
 
     #[test]
