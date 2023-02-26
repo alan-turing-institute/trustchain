@@ -17,12 +17,15 @@ use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{get_did_suffix, HasEndpoints, HasKeys};
 
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
-use crate::BITS_KEY;
 use crate::HASH_PREV_BLOCK_KEY;
 use crate::MERKLE_ROOT_KEY;
 use crate::NONCE_KEY;
 use crate::TIMESTAMP_KEY;
 use crate::VERSION_KEY;
+use crate::{
+    BITS_KEY, CREATE_KEY, DELTAS_KEY, DELTA_HASH_KEY, OPERATIONS_KEY, RECOVERY_COMMITMENT_KEY,
+    SUFFIX_DATA_KEY,
+};
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
 fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
@@ -67,25 +70,6 @@ impl TrivialCommitment for TrivialIpfsIndexFileCommitment {
         ipfs_decode_candidate_data()
     }
 
-    // fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-    //     |x| {
-    //         // TODO: in the case of the chunk file we must restrict attention to paraticular deltas/patches,
-    //         // e.g. using the updateCommitment. So we'll need a different ChunkFileCommitment struct with a
-    //         // different decode_candidate_data() method. To avoid code repetition, we should make
-    //         // TrivialIpfsCommitment into a trait (extending TrivialCommitment) with default implementations
-    //         // for the methods implemented here (and similarly for IpfsCommitment). Then have an
-    //         // IndexFileCommitment struct for the core & prov index file commitments that just implement the
-    //         // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
-    //         match decode_ipfs_content(&x.to_owned()) {
-    //             Ok(x) => Ok(x),
-    //             Err(e) => {
-    //                 eprintln!("Error decoding IPFS content: {}", e);
-    //                 Err(CommitmentError::DataDecodingError)
-    //             }
-    //         }
-    //     }
-    // }
-
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(IpfsCommitment::new(Box::new(*self), expected_data))
     }
@@ -116,66 +100,62 @@ impl TrivialCommitment for TrivialIpfsChunkFileCommitment {
         &self.candidate_data
     }
 
-    // fn index(&self) -> Option<usize> {
-    //     Some(self.delta_index)
-    // }
+    fn filter(
+        &self,
+    ) -> Option<Box<dyn Fn(serde_json::Value) -> Result<serde_json::Value, CommitmentError>>> {
+        // Ignore all of the deltas in the chunk file except the one at index delta_index
+        // (which is the one corresponding to the relevant DID).
+        let delta_index = self.delta_index;
+        Some(Box::new(move |value| {
+            println!("delta_index here: {:?}", delta_index);
+            if let Value::Object(map) = value {
+                match map.get(DELTAS_KEY) {
+                    Some(Value::Array(deltas)) => Ok(deltas.get(delta_index).unwrap().clone()),
+                    _ => Err(CommitmentError::DataDecodingError),
+                }
+            } else {
+                Err(CommitmentError::DataDecodingError)
+            }
+        }))
+    }
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-        todo!();
-        // |x: Option<usize>| match decode_ipfs_content(&x.to_owned()) {
-        //     Ok(x) => {
-        //         println!("idx here: {:?}", maybe_idx);
-        //         if let Value::Object(l0) = x {
-        //             match l0.get("deltas") {
-        //                 Some(Value::Array(deltas)) => {
-        //                     Ok(deltas.get(maybe_idx.unwrap()).unwrap().clone())
-        //                 }
-        //                 _ => Err(CommitmentError::DataDecodingError),
-        //             }
-        //         } else {
-        //             Err(CommitmentError::DataDecodingError)
-        //         }
-        //     }
-        //     Err(e) => {
-        //         eprintln!("Error decoding IPFS content: {}", e);
-        //         Err(CommitmentError::DataDecodingError)
-        //     }
-        // }
+        ipfs_decode_candidate_data()
     }
-    // /// Gets the data content that the hash verifiably commits to.
-    // fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
-    //     self.decode_candidate_data()(self.candidate_data(), Some(self.delta_index))
-    // }
+
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(IpfsCommitment::new(Box::new(*self), expected_data))
     }
 }
 
-fn did_core_index_file_commitment(
+/// Identifies the index of the DID operation relating to the given DID in the
+/// ION core index file (and therefore also in the vector of chunk file deltas).
+fn did_operation_index(
     did: &str,
     core_index_file_commitment: &dyn TrivialCommitment,
 ) -> Result<usize, CommitmentError> {
     let candidate_data = core_index_file_commitment.commitment_content()?;
     let did_suffix = get_did_suffix(did);
-    let suffixes = if let Value::Object(l0) = candidate_data {
-        if let Value::Object(l1) = l0.get("operations").unwrap() {
-            // TODO: to be generalized to roots that have been updated
-            if let Value::Array(suffix_datas) = l1.get("create").unwrap() {
+    let suffixes = if let Value::Object(map0) = candidate_data {
+        if let Value::Object(map1) = map0.get(OPERATIONS_KEY).unwrap() {
+            // TODO: to be generalized to root DIDs that have been updated.
+            if let Value::Array(suffix_datas) = map1.get(CREATE_KEY).unwrap() {
                 // if
                 suffix_datas
                     .iter()
                     .map(|value| {
-                        if let Value::Object(l2) = value {
-                            match l2.get("suffixData") {
-                                Some(Value::Object(l3)) => {
-                                    let delta_hash = match l3.get("deltaHash") {
+                        if let Value::Object(map2) = value {
+                            match map2.get(SUFFIX_DATA_KEY) {
+                                Some(Value::Object(map3)) => {
+                                    let delta_hash = match map3.get(DELTA_HASH_KEY) {
                                         Some(Value::String(s)) => s,
                                         _ => panic!("No deltaHash"),
                                     };
-                                    let recovery_commitment = match l3.get("recoveryCommitment") {
-                                        Some(Value::String(s)) => s,
-                                        _ => panic!("No recovery commitment"),
-                                    };
+                                    let recovery_commitment =
+                                        match map3.get(RECOVERY_COMMITMENT_KEY) {
+                                            Some(Value::String(s)) => s,
+                                            _ => panic!("No recovery commitment"),
+                                        };
                                     ION::serialize_suffix_data(&SuffixData {
                                         r#type: None,
                                         delta_hash: delta_hash.clone(),
@@ -638,7 +618,7 @@ impl IONCommitment {
         let core_index_file_commitment = TrivialIpfsIndexFileCommitment {
             candidate_data: core_index_file,
         };
-        let delta_index = did_core_index_file_commitment(&did_doc.id, &core_index_file_commitment)?;
+        let delta_index = did_operation_index(&did_doc.id, &core_index_file_commitment)?;
 
         println!("My index in ION commitment: {}", delta_index);
 
@@ -790,7 +770,7 @@ mod tests {
         let ipfs_client = IpfsClient::default();
         let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
         let core_index_file_commitment = TrivialIpfsIndexFileCommitment { candidate_data };
-        let suffix_data = did_core_index_file_commitment(
+        let suffix_data = did_operation_index(
             "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
             &core_index_file_commitment,
         );

@@ -69,6 +69,11 @@ pub const UPDATE_COMMITMENT_KEY: &str = "updateCommitment";
 pub const METHOD_KEY: &str = "method";
 pub const VERIFICATION_METHOD_KEY: &str = "verificationMethod";
 pub const SERVICE_KEY: &str = "service";
+pub const OPERATIONS_KEY: &str = "operations";
+pub const CREATE_KEY: &str = "create";
+pub const SUFFIX_DATA_KEY: &str = "suffixData";
+pub const DELTA_HASH_KEY: &str = "deltaHash";
+pub const RECOVERY_COMMITMENT_KEY: &str = "recoveryCommitment";
 
 // IPFS
 pub const CID_KEY: &str = "cid";
