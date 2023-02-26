@@ -35,21 +35,19 @@ pub trait TrivialCommitment {
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
     /// Gets the candidate data decoder (function).
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError>;
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError>;
     /// Computes the hash (commitment).
     fn hash(&self) -> Result<String, CommitmentError> {
         // Call the hasher on the candidate data.
         self.hasher()(self.candidate_data())
     }
-    /// Optional index for filtering candidate data.
-    fn index(&self) -> Option<usize> {
-        None
-    }
+    // /// Optional index for filtering candidate data.
+    // fn index(&self) -> Option<usize> {
+    //     None
+    // }
     /// Gets the data content that the hash verifiably commits to.
     fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
-        self.decode_candidate_data()(self.candidate_data(), self.index())
+        self.decode_candidate_data()(self.candidate_data())
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
     /// Converts this TrivialCommitment to a Commitment.
@@ -139,9 +137,7 @@ impl TrivialCommitment for ChainedCommitment {
         self.commitments.first().as_ref().unwrap().candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.commitments().first().unwrap().decode_candidate_data()
     }
 
@@ -235,10 +231,7 @@ pub trait DIDCommitment: Commitment {
     /// Gets the decoder (function) for the timestamp candidate data.
     fn decode_timestamp_candidate_data(
         &self,
-    ) -> Result<
-        fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError>,
-        CommitmentError,
-    >;
+    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError>;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher
@@ -248,7 +241,7 @@ pub struct TimestampCommitment {
     expected_data: serde_json::Value,
     hasher: fn(&[u8]) -> Result<String, CommitmentError>,
     candidate_data: Vec<u8>,
-    decode_candidate_data: fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError>,
+    decode_candidate_data: fn(&[u8]) -> Result<serde_json::Value, CommitmentError>,
 }
 
 impl TimestampCommitment {
@@ -300,9 +293,7 @@ impl TrivialCommitment for TimestampCommitment {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.decode_candidate_data
     }
 

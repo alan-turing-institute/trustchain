@@ -32,9 +32,8 @@ fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
     }
 }
 
-fn ipfs_decode_candidate_data(
-) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
-    |x, _maybe_idx| match decode_ipfs_content(&x.to_owned()) {
+fn ipfs_decode_candidate_data() -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    |x| match decode_ipfs_content(&x.to_owned()) {
         Ok(x) => Ok(x),
         Err(e) => {
             eprintln!("Error decoding IPFS content: {}", e);
@@ -64,9 +63,7 @@ impl TrivialCommitment for TrivialIpfsIndexFileCommitment {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         ipfs_decode_candidate_data()
     }
 
@@ -119,32 +116,31 @@ impl TrivialCommitment for TrivialIpfsChunkFileCommitment {
         &self.candidate_data
     }
 
-    fn index(&self) -> Option<usize> {
-        Some(self.delta_index)
-    }
+    // fn index(&self) -> Option<usize> {
+    //     Some(self.delta_index)
+    // }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
-        |x, maybe_idx: Option<usize>| match decode_ipfs_content(&x.to_owned()) {
-            Ok(x) => {
-                println!("idx here: {:?}", maybe_idx);
-                if let Value::Object(l0) = x {
-                    match l0.get("deltas") {
-                        Some(Value::Array(deltas)) => {
-                            Ok(deltas.get(maybe_idx.unwrap()).unwrap().clone())
-                        }
-                        _ => Err(CommitmentError::DataDecodingError),
-                    }
-                } else {
-                    Err(CommitmentError::DataDecodingError)
-                }
-            }
-            Err(e) => {
-                eprintln!("Error decoding IPFS content: {}", e);
-                Err(CommitmentError::DataDecodingError)
-            }
-        }
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        todo!();
+        // |x: Option<usize>| match decode_ipfs_content(&x.to_owned()) {
+        //     Ok(x) => {
+        //         println!("idx here: {:?}", maybe_idx);
+        //         if let Value::Object(l0) = x {
+        //             match l0.get("deltas") {
+        //                 Some(Value::Array(deltas)) => {
+        //                     Ok(deltas.get(maybe_idx.unwrap()).unwrap().clone())
+        //                 }
+        //                 _ => Err(CommitmentError::DataDecodingError),
+        //             }
+        //         } else {
+        //             Err(CommitmentError::DataDecodingError)
+        //         }
+        //     }
+        //     Err(e) => {
+        //         eprintln!("Error decoding IPFS content: {}", e);
+        //         Err(CommitmentError::DataDecodingError)
+        //     }
+        // }
     }
     // /// Gets the data content that the hash verifiably commits to.
     // fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
@@ -242,15 +238,13 @@ impl TrivialCommitment for IpfsCommitment {
         self.trivial_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
     }
 
-    fn index(&self) -> Option<usize> {
-        self.trivial_commitment.index()
-    }
+    // fn index(&self) -> Option<usize> {
+    //     self.trivial_commitment.index()
+    // }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(*self)
@@ -296,10 +290,8 @@ impl TrivialCommitment for TrivialTxCommitment {
 
     /// Deserialises the candidate data into a Bitcoin transaction, then
     /// extracts and returns the IPFS content identifier in the OP_RETURN data.
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
-        |x, maybe_idx| {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        |x| {
             // Deserialise the transaction from the candidate data.
             let tx: Transaction = match Deserialize::deserialize(x) {
                 Ok(tx) => tx,
@@ -390,9 +382,7 @@ impl TrivialCommitment for TxCommitment {
         self.trivial_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
     }
 
@@ -449,10 +439,8 @@ impl TrivialCommitment for TrivialMerkleRootCommitment {
     }
 
     /// Deserialises the candidate data into a Merkle proof.
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
-        |x, maybe_idx| {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        |x| {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
@@ -505,9 +493,7 @@ impl TrivialCommitment for MerkleRootCommitment {
         self.trivial_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
     }
 
@@ -553,10 +539,8 @@ impl TrivialCommitment for TrivialBlockHashCommitment {
     }
 
     /// Deserialises the candidate data into a Block header (as JSON).
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
-        |x, maybe_idx| {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+        |x| {
             if x.len() != 80 {
                 eprintln!("Error: Bitcoin block header must be 80 bytes.");
                 return Err(CommitmentError::DataDecodingError);
@@ -607,9 +591,7 @@ impl TrivialCommitment for BlockHashCommitment {
         self.trivial_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.trivial_commitment.decode_candidate_data()
     }
 
@@ -719,9 +701,7 @@ impl TrivialCommitment for IONCommitment {
         self.chained_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(
-        &self,
-    ) -> fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         self.chained_commitment.decode_candidate_data()
     }
 
@@ -775,10 +755,7 @@ impl DIDCommitment for IONCommitment {
 
     fn decode_timestamp_candidate_data(
         &self,
-    ) -> Result<
-        fn(&[u8], Option<usize>) -> Result<serde_json::Value, CommitmentError>,
-        CommitmentError,
-    > {
+    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError> {
         // The required candidate data decoder (function) is the one for the
         // Bitcoin block header, which is the decoder in the last commitment
         // in the chain (i.e. the BlockHashCommitment).
@@ -820,16 +797,16 @@ mod tests {
         assert_eq!(1, suffix_data.unwrap());
     }
 
-    #[test]
-    fn test_chunk_file_commitment() {
-        let candidate_data: Vec<u8> = vec![];
-        let delta_index: usize = 0;
-        let target = TrivialIpfsChunkFileCommitment {
-            candidate_data,
-            delta_index,
-        };
-        assert!(target.index().is_some());
-    }
+    // #[test]
+    // fn test_chunk_file_commitment() {
+    //     let candidate_data: Vec<u8> = vec![];
+    //     let delta_index: usize = 0;
+    //     let target = TrivialIpfsChunkFileCommitment {
+    //         candidate_data,
+    //         delta_index,
+    //     };
+    //     assert!(target.index().is_some());
+    // }
 
     #[test]
     #[ignore = "Integration test requires IPFS"]
@@ -1055,7 +1032,7 @@ mod tests {
         )
         .unwrap();
 
-        println!("ION commitment index: {:?}", commitment.index());
+        // println!("ION commitment index: {:?}", commitment.index());
 
         let expected_data = commitment.chained_commitment.expected_data();
 
