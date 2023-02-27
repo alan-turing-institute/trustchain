@@ -77,10 +77,9 @@ pub trait Commitment: TrivialCommitment {
         };
 
         // Verify the content.
-        let expected_data = self.expected_data()?;
-        if !json_contains(&candidate_data, expected_data) {
+        if !json_contains(&candidate_data, self.expected_data()?) {
             return Err(CommitmentError::FailedContentVerification(
-                expected_data.to_string(),
+                self.expected_data()?.to_string(),
                 candidate_data.to_string(),
             ));
         }
