@@ -4,14 +4,14 @@ use did_ion::{
 };
 use serde::{Deserialize, Serialize};
 
-/// Data structure for suffix data in create operations.
+/// Data structure for suffix data of create operations within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSuffixData {
     /// DID Suffix data.
     pub suffix_data: SuffixData,
 }
-/// Data structure for suffix data for non-create operations.
+/// Data structure for suffix data of recover and deactivate operations within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OtherOperationSuffixData {
@@ -21,18 +21,18 @@ pub struct OtherOperationSuffixData {
     pub reveal_value: String,
 }
 
-/// Data structure for core index file operations key.
+/// Data structure for operations contained within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreIndexFileOperations {
-    /// List of suffix data associated with create operations.
+    /// Suffix data associated with create operations.
     pub create: Option<Vec<CreateSuffixData>>,
-    /// List of suffix data associated with recover operations.
+    /// Suffix data associated with recover operations.
     pub recover: Option<Vec<OtherOperationSuffixData>>,
-    /// List of suffix data associated with deactivate operations.
+    /// Suffix data associated with deactivate operations.
     pub deactivate: Option<Vec<OtherOperationSuffixData>>,
 }
-/// Data structure for core index file.
+/// Data structure for a Sidetree [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreIndexFile {
@@ -47,7 +47,7 @@ pub struct CoreIndexFile {
 }
 
 impl CoreIndexFile {
-    /// Returns the DID suffixes being created in the core index file.
+    /// Returns a vector of DID suffixes being created in the core index file.
     pub fn created_did_suffixes(&self) -> Vec<String> {
         if let Some(ops) = self.operations.as_ref() {
             if let Some(created) = ops.create.as_ref() {
