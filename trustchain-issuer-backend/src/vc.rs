@@ -22,7 +22,7 @@ pub fn verify_vc(Json(_credential): Json<Credential>) -> String {
 
 /// Generates a VC (prototype uses const DID and const credential file)
 pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str) -> String {
-    let command_str = format!("trustchain-cli vc attest --did {}", ISSUER_DID);
+    let command_str = format!("trustchain-cli vc sign --did {}", ISSUER_DID);
     let mut command = command_str.split(' ').skip(1).fold(
         Command::new(command_str.split_once(' ').unwrap().0),
         |mut cmd, s| {
