@@ -58,7 +58,6 @@ fn test_verifiable_timestamp() {
             .timestamp_commitment()
             .unwrap()
             .expected_data()
-            .as_ref()
             .unwrap(),
         &json!(timestamp)
     );

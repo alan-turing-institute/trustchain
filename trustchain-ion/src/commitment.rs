@@ -156,8 +156,10 @@ impl TrivialCommitment for IpfsIndexFileCommitment {
 }
 
 impl Commitment for IpfsIndexFileCommitment {
-    fn expected_data(&self) -> &Option<serde_json::Value> {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
 
@@ -221,8 +223,10 @@ impl IpfsChunkFileCommitment {
 }
 
 impl Commitment for IpfsChunkFileCommitment {
-    fn expected_data(&self) -> &Option<Value> {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
 // End of IpfsCommitment.
@@ -334,8 +338,10 @@ impl TrivialCommitment for TxCommitment {
 }
 
 impl Commitment for TxCommitment {
-    fn expected_data(&self) -> &Option<serde_json::Value> {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
 // End of TxCommitment.
@@ -417,8 +423,10 @@ impl TrivialCommitment for MerkleRootCommitment {
 }
 
 impl Commitment for MerkleRootCommitment {
-    fn expected_data(&self) -> &Option<serde_json::Value> {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
 // End of MerkleRootCommitment.
@@ -487,8 +495,10 @@ impl TrivialCommitment for BlockHashCommitment {
 }
 
 impl Commitment for BlockHashCommitment {
-    fn expected_data(&self) -> &Option<serde_json::Value> {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
 // End of BlockHashCommitment.
@@ -585,7 +595,7 @@ impl TrivialCommitment for IONCommitment {
 
 // Delegate all Commitment trait methods to the wrapped ChainedCommitment.
 impl Commitment for IONCommitment {
-    fn expected_data(&self) -> &Option<serde_json::Value> {
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         self.chained_commitment.expected_data()
     }
 }
@@ -880,13 +890,8 @@ mod tests {
         )
         .unwrap();
 
-        println!("ION commitment index: {:?}", commitment.index());
+        let expected_data = commitment.chained_commitment.expected_data().unwrap();
 
-        let expected_data = commitment
-            .chained_commitment
-            .expected_data()
-            .as_ref()
-            .unwrap();
         println!("{:?}", expected_data);
         // The expected data contains public keys and service endpoints.
         match expected_data {
@@ -905,7 +910,7 @@ mod tests {
         assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
         assert_eq!(
             expected_data,
-            chunk_file_commitment.expected_data().as_ref().unwrap()
+            chunk_file_commitment.expected_data().unwrap()
         );
 
         // Verify the chunk file commitment.
@@ -920,7 +925,7 @@ mod tests {
         );
         assert!(json_contains(
             &json!(chunk_file_cid),
-            prov_index_file_commitment.expected_data().as_ref().unwrap()
+            prov_index_file_commitment.expected_data().unwrap()
         ));
 
         // Verify the provisional index file commitment.
@@ -937,7 +942,7 @@ mod tests {
         );
         assert!(json_contains(
             &json!(prov_index_file_cid),
-            core_index_file_commitment.expected_data().as_ref().unwrap()
+            core_index_file_commitment.expected_data().unwrap()
         ));
 
         // Verify the core index file commitment.
@@ -952,7 +957,7 @@ mod tests {
         assert_eq!(tx_commitment.hash().unwrap(), tx_id);
         assert!(json_contains(
             &json!(core_index_file_cid),
-            tx_commitment.expected_data().as_ref().unwrap()
+            tx_commitment.expected_data().unwrap()
         ));
 
         // Verify the transaction ID commitment.
@@ -977,7 +982,7 @@ mod tests {
         assert_eq!(block_hash_commitment.hash().unwrap(), block_hash_str);
         assert!(json_contains(
             &json!(merkle_root),
-            block_hash_commitment.expected_data().as_ref().unwrap()
+            block_hash_commitment.expected_data().unwrap()
         ));
 
         // Verify the Merkle root commitment.

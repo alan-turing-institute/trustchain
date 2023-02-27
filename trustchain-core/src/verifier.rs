@@ -267,15 +267,13 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let timestamp_commitment = verifiable_timestamp.timestamp_commitment()?;
 
         // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
-        if let Some(expected_data) = timestamp_commitment.expected_data() {
-            if !json_contains(expected_data, &json!(verifiable_timestamp.timestamp())) {
-                return Err(VerifierError::TimestampVerificationError(
-                    did_commitment.did().to_string(),
-                ));
-            }
-        } else {
-            // TODO: handle as error
-            panic!("Missing expected data!")
+        if !json_contains(
+            timestamp_commitment.expected_data()?,
+            &json!(verifiable_timestamp.timestamp()),
+        ) {
+            return Err(VerifierError::TimestampVerificationError(
+                did_commitment.did().to_string(),
+            ));
         }
 
         // Verify both the commitments with the *same* target hash, thereby confirming
