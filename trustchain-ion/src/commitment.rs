@@ -112,6 +112,7 @@ impl TrivialCommitment for IpfsChunkFileCommitment {
         let delta_index = self.delta_index;
         Some(Box::new(move |value| {
             println!("delta_index here: {:?}", delta_index);
+            // TODO: check if mix of create, recover and deactivate whether the correct index is used
             if let Value::Object(map) = value {
                 match map.get(DELTAS_KEY) {
                     Some(Value::Array(deltas)) => Ok(deltas.get(delta_index).unwrap().clone()),
@@ -495,6 +496,7 @@ impl TrivialCommitment for IONCommitment {
     }
 
     fn hash(&self) -> Result<String, CommitmentError> {
+        // TODO: this needs to be reconsidered if replacing the use of hash() method in Commitment::verify()
         self.chained_commitment.hash()
     }
 
