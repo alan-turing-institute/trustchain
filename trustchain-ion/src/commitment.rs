@@ -218,10 +218,10 @@ impl TrivialCommitment for TxCommitment {
             let mut op_return_data = "";
             let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
             for script in &op_return_scripts {
-                match std::str::from_utf8(&script.as_ref()) {
+                match std::str::from_utf8(script.as_ref()) {
                     Ok(op_return_str) => match op_return_str.find(&ion_substr) {
                         Some(i) => {
-                            if op_return_data.len() == 0 {
+                            if op_return_data.is_empty() {
                                 op_return_data = &op_return_str[i..] // Trim any leading characters.
                             } else {
                                 // Raise an error if multiple ION OP_RETURN scripts are found.
@@ -236,7 +236,7 @@ impl TrivialCommitment for TxCommitment {
                     Err(_) => continue,
                 }
             }
-            if op_return_data.len() == 0 {
+            if op_return_data.is_empty() {
                 eprintln!("Error: no ION OP_RETURN script found.");
                 return Err(CommitmentError::DataDecodingError);
             }
@@ -288,7 +288,7 @@ impl TrivialCommitment for MerkleRootCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // Candidate data is a Merkle proof containing a branch of transaction IDs.
         |x| {
-            let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(&x) {
+            let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
                     eprintln!("Failed to deserialise MerkleBlock: {:?}", e);
@@ -303,7 +303,7 @@ impl TrivialCommitment for MerkleRootCommitment {
                         "Failed to obtain Merkle root from PartialMerkleTree: {:?}",
                         e
                     );
-                    return Err(CommitmentError::FailedToComputeHash);
+                    Err(CommitmentError::FailedToComputeHash)
                 }
             }
         }
@@ -373,7 +373,7 @@ impl TrivialCommitment for BlockHashCommitment {
         |x| {
             // Bitcoin block hash is a double SHA256 hash of the block header.
             // We use a generic SHA256 library to avoid trust in rust-bitcoin.
-            let hash1_hex = sha256::digest(&*x);
+            let hash1_hex = sha256::digest(x);
             let hash1_bytes = hex::decode(hash1_hex).unwrap();
             let hash2_hex = sha256::digest(&*hash1_bytes);
             // For leading (not trailing) zeros, convert the hex to big-endian.
@@ -400,7 +400,7 @@ impl TrivialCommitment for BlockHashCommitment {
                 Ok(x) => Ok(x),
                 Err(e) => {
                     eprintln!("Error decoding Bitcoin block header: {}.", e);
-                    return Err(CommitmentError::DataDecodingError);
+                    Err(CommitmentError::DataDecodingError)
                 }
             }
         }
@@ -480,6 +480,7 @@ impl IONCommitment {
         })
     }
 
+    // TODO: remove unused method?
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // Delegate verification to the chained commitment.
         Commitment::verify(&self.chained_commitment, target)?;
@@ -625,7 +626,7 @@ mod tests {
         let bad_expected_data =
             r#"{"provisionalIndexFileUri":"PmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs"}"#;
         let bad_expected_data = serde_json::from_str(bad_expected_data).unwrap();
-        let candidate_data = candidate_data_.clone();
+        let candidate_data = candidate_data_;
         let commitment = IpfsIndexFileCommitment::new(candidate_data, Some(bad_expected_data));
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
@@ -710,7 +711,7 @@ mod tests {
         // We do *not* expect to find an arbitrary transaction ID.
         let bad_txid_str = "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         let bad_expected_data = serde_json::json!(bad_txid_str);
-        let candidate_data = candidate_data_.clone();
+        let candidate_data = candidate_data_;
         let commitment = MerkleRootCommitment::new(candidate_data, Some(bad_expected_data));
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
@@ -757,7 +758,7 @@ mod tests {
         let bad_merkle_root_str =
             "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         let bad_expected_data = serde_json::json!(bad_merkle_root_str);
-        let candidate_data = candidate_data_.clone();
+        let candidate_data = candidate_data_;
         let commitment = BlockHashCommitment::new(candidate_data, Some(bad_expected_data));
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
@@ -884,7 +885,7 @@ mod tests {
         assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
         assert!(json_contains(
             &json!(tx_id),
-            merkle_root_commitment.expected_data().as_ref().unwrap()
+            merkle_root_commitment.expected_data().unwrap()
         ));
 
         // Verify the Merkle root commitment.
@@ -904,12 +905,9 @@ mod tests {
 
         // Verify the iterated commitment content (i.e. the expected_data).
         assert!(commitment.chained_commitment.verify_content().is_ok());
-        assert!(commitment
-            .chained_commitment
-            .verify(&block_hash_str)
-            .is_ok());
+        assert!(commitment.chained_commitment.verify(block_hash_str).is_ok());
 
         // Verify the IONCommitment itself.
-        assert!(commitment.verify(&block_hash_str).is_ok());
+        assert!(commitment.verify(block_hash_str).is_ok());
     }
 }
