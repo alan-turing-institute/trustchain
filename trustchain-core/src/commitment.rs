@@ -1,5 +1,3 @@
-use std::option;
-
 use serde_json::json;
 use ssi::{
     did::{Document, ServiceEndpoint},
@@ -57,11 +55,6 @@ pub trait TrivialCommitment {
         // By default there is no filtering.
         None
     }
-
-    // IMP NOTE: the "self"s *inside* the call to the function pointers in the following two
-    // methods do *not* refer to *this* commitment. Instead, they refer to the self of the object
-    // that calls the function pointer.
-
     // SOLUTION (TODO):
     // For both of these two functions, get rid of these "helper" methods and
     // instead make the "inner" calls directly on the commitment object, e.g.
@@ -75,12 +68,12 @@ pub trait TrivialCommitment {
     // we should use:
     // commitment.decode_candidate_data()(commitment.candidate_data())
 
-    /// Computes the hash (commitment).
+    /// Computes the hash (commitment). This method should not be overridden by implementors.
     fn hash(&self) -> Result<String, CommitmentError> {
         // Call the hasher on the candidate data.
-        self.hasher()(&self.candidate_data())
+        self.hasher()(self.candidate_data())
     }
-    /// Gets the data content that the hash verifiably commits to.
+    /// Gets the data content that the hash verifiably commits to. This method should not be overridden by implementors.
     fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
         self.decode_candidate_data()(self.candidate_data())
     }
@@ -120,13 +113,12 @@ pub trait Commitment: TrivialCommitment {
 
         // Check that the unfiltered candidate data contains the filtered data
         // (to ensure no pollution from the filter closture).
-        if let Some(_) = optional_filter {
-            if !json_contains(&unfiltered_candidate_data, &candidate_data) {
-                return Err(CommitmentError::FailedContentVerification(
-                    self.expected_data()?.to_string(),
-                    candidate_data.to_string(),
-                ));
-            }
+        if optional_filter.is_some() && !json_contains(&unfiltered_candidate_data, &candidate_data)
+        {
+            return Err(CommitmentError::FailedContentVerification(
+                self.expected_data()?.to_string(),
+                candidate_data.to_string(),
+            ));
         }
 
         // Verify the content.
