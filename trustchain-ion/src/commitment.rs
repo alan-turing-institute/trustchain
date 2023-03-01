@@ -1,16 +1,10 @@
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
-use did_ion::sidetree::{Sidetree, SuffixData};
-use did_ion::ION;
-use flate2::read::GzDecoder;
 use ipfs_hasher::IpfsHasher;
 use serde_json::{json, Value};
 use ssi::did::Document;
-use std::collections::HashMap;
 use std::convert::TryInto;
-use std::i32;
-use std::io::Read;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
@@ -18,16 +12,9 @@ use trustchain_core::utils::{get_did_suffix, HasEndpoints, HasKeys};
 
 use crate::sidetree::CoreIndexFile;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
-use crate::HASH_PREV_BLOCK_KEY;
-use crate::MERKLE_ROOT_KEY;
-use crate::NONCE_KEY;
-use crate::TIMESTAMP_KEY;
-use crate::VERSION_KEY;
-use crate::{
-    BITS_KEY, CREATE_KEY, DELTAS_KEY, DELTA_HASH_KEY, OPERATIONS_KEY, RECOVERY_COMMITMENT_KEY,
-    SUFFIX_DATA_KEY,
-};
+use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
+
 fn did_core_index_file_commitment(
     did: &str,
     core_index_file_commitment: &IpfsIndexFileCommitment,
@@ -94,24 +81,6 @@ impl TrivialCommitment for IpfsIndexFileCommitment {
         ipfs_decode_candidate_data()
     }
 
-    // fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-    //     |x| {
-    //         // TODO: in the case of the chunk file we must restrict attention to paraticular deltas/patches,
-    //         // e.g. using the updateCommitment. So we'll need a different ChunkFileCommitment struct with a
-    //         // different decode_candidate_data() method. To avoid code repetition, we should make
-    //         // TrivialIpfsCommitment into a trait (extending TrivialCommitment) with default implementations
-    //         // for the methods implemented here (and similarly for IpfsCommitment). Then have an
-    //         // IndexFileCommitment struct for the core & prov index file commitments that just implement the
-    //         // generic IpfsCommitment, whereas the ChunkFileCommitment overrides decode_candidate_data().
-    //         match decode_ipfs_content(&x.to_owned()) {
-    //             Ok(x) => Ok(x),
-    //             Err(e) => {
-    //                 eprintln!("Error decoding IPFS content: {}", e);
-    //                 Err(CommitmentError::DataDecodingError)
-    //             }
-    //         }
-    //     }
-    // }
     fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         self.expected_data = Some(expected_data);
         self
@@ -126,8 +95,6 @@ impl Commitment for IpfsIndexFileCommitment {
     }
 }
 
-/// A Commitment whose hash is an IPFS content identifier (CID)
-/// for an ION chunk file.
 impl TrivialCommitment for IpfsChunkFileCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         ipfs_hasher()
@@ -164,6 +131,7 @@ impl TrivialCommitment for IpfsChunkFileCommitment {
     }
 }
 
+/// A Commitment whose hash is an IPFS content identifier (CID) for an ION chunk file.
 pub struct IpfsChunkFileCommitment {
     candidate_data: Vec<u8>,
     delta_index: usize,
@@ -612,7 +580,7 @@ mod tests {
     use super::*;
     use crate::{
         utils::{block_header, merkle_proof, query_ipfs, transaction},
-        CID_KEY, MERKLE_ROOT_KEY,
+        CID_KEY, MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
 
     #[test]
@@ -628,17 +596,6 @@ mod tests {
         );
         assert_eq!(1, suffix_data.unwrap());
     }
-
-    // #[test]
-    // fn test_chunk_file_commitment() {
-    //     let candidate_data: Vec<u8> = vec![];
-    //     let delta_index: usize = 0;
-    //     let target = TrivialIpfsChunkFileCommitment {
-    //         candidate_data,
-    //         delta_index,
-    //     };
-    //     assert!(target.index().is_some());
-    // }
 
     #[test]
     #[ignore = "Integration test requires IPFS"]
