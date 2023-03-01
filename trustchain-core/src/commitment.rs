@@ -28,6 +28,9 @@ pub enum CommitmentError {
     /// Empty iterated commitment.
     #[error("Failed verification. Empty iterated commitment.")]
     EmptyIteratedCommitment,
+    /// No expected data present.
+    #[error("Failed retrieval of expected data. Empty expected data.")]
+    EmptyExpectedData,
 }
 
 /// A cryptographic commitment with no expected data content.
@@ -80,7 +83,7 @@ pub trait TrivialCommitment {
 /// A cryptographic commitment with expected data content.
 pub trait Commitment: TrivialCommitment {
     /// Gets the expected data.
-    fn expected_data(&self) -> &serde_json::Value;
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError>;
 
     /// Verifies that the expected data is found in the candidate data.
     fn verify_content(&self) -> Result<(), CommitmentError> {
@@ -111,16 +114,16 @@ pub trait Commitment: TrivialCommitment {
         if let Some(_) = optional_filter {
             if !json_contains(&unfiltered_candidate_data, &candidate_data) {
                 return Err(CommitmentError::FailedContentVerification(
-                    self.expected_data().to_string(),
+                    self.expected_data()?.to_string(),
                     candidate_data.to_string(),
                 ));
             }
         }
 
         // Verify the content.
-        if !json_contains(&candidate_data, self.expected_data()) {
+        if !json_contains(&candidate_data, self.expected_data()?) {
             return Err(CommitmentError::FailedContentVerification(
-                self.expected_data().to_string(),
+                self.expected_data()?.to_string(),
                 candidate_data.to_string(),
             ));
         }
@@ -198,7 +201,7 @@ impl TrivialCommitment for ChainedCommitment {
 }
 
 impl Commitment for ChainedCommitment {
-    fn expected_data(&self) -> &serde_json::Value {
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         // The chained commitment commits to the expected data in the first of the
         // sequence of commitments. Must cast here to avoid infinite recursion.
         self.commitments().first().as_ref().unwrap().expected_data()
@@ -219,7 +222,7 @@ impl Commitment for ChainedCommitment {
 
         while let Some(&next) = it.next().as_ref() {
             // The target for the current commitment is the expected data of the next one.
-            let this_target = match next.expected_data() {
+            let this_target = match next.expected_data()? {
                 serde_json::Value::String(x) => x,
                 _ => {
                     eprintln!("Unhandled JSON Value variant. Expected String.");
@@ -252,6 +255,7 @@ impl CommitmentChain for ChainedCommitment {
         // This ensures that the composition still commits to the expected data.
         let expected_data = json!(self.hash()?);
         let new_commitment = trivial_commitment.to_commitment(expected_data);
+
         self.mut_commitments().push(new_commitment);
         Ok(())
     }
@@ -284,7 +288,7 @@ pub trait DIDCommitment: Commitment {
 /// and candidate data are obtained from a given DIDCommitment.
 pub struct TimestampCommitment {
     timestamp: Timestamp,
-    expected_data: serde_json::Value,
+    expected_data: Option<serde_json::Value>,
     hasher: fn(&[u8]) -> Result<String, CommitmentError>,
     candidate_data: Vec<u8>,
     decode_candidate_data: fn(&[u8]) -> Result<serde_json::Value, CommitmentError>,
@@ -317,7 +321,7 @@ impl TimestampCommitment {
         // and at the same time a TimestampCommitment.
         Ok(Self {
             timestamp: expected_data,
-            expected_data: json!(expected_data),
+            expected_data: Some(json!(expected_data)),
             hasher: did_commitment.hasher(),
             candidate_data: did_commitment.timestamp_candidate_data()?.to_vec(),
             decode_candidate_data: did_commitment.decode_timestamp_candidate_data()?,
@@ -344,7 +348,8 @@ impl TrivialCommitment for TimestampCommitment {
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        if !expected_data.eq(self.expected_data()) {
+        let _expected_data = self.expected_data().expect("No expected data present.");
+        if !expected_data.eq(_expected_data) {
             eprintln!("Attempted modification of expected timestamp data not permitted. Ignored.");
         }
         panic!("A TimestampCommitment is not convertible to a Commitment.");
@@ -352,7 +357,9 @@ impl TrivialCommitment for TimestampCommitment {
 }
 
 impl Commitment for TimestampCommitment {
-    fn expected_data(&self) -> &serde_json::Value {
-        &self.expected_data
+    fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
+        self.expected_data
+            .as_ref()
+            .ok_or(CommitmentError::EmptyExpectedData)
     }
 }
