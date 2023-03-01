@@ -15,7 +15,7 @@ use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness}
 use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
-fn did_core_index_file_commitment(
+fn did_create_operation_index(
     did: &str,
     core_index_file_commitment: &IpfsIndexFileCommitment,
 ) -> Result<usize, CommitmentError> {
@@ -452,7 +452,7 @@ impl IONCommitment {
         // Construct the core index file commitment first, to get the index of the chunk file delta for this DID.
         let core_index_file_commitment = IpfsIndexFileCommitment::new(core_index_file, None);
         let delta_index: usize =
-            did_core_index_file_commitment(&did_doc.id, &core_index_file_commitment)?;
+            did_create_operation_index(&did_doc.id, &core_index_file_commitment)?;
 
         println!("My index in ION commitment: {}", delta_index);
 
@@ -591,11 +591,11 @@ mod tests {
         let ipfs_client = IpfsClient::default();
         let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
         let core_index_file_commitment = IpfsIndexFileCommitment::new(candidate_data, None);
-        let suffix_data = did_core_index_file_commitment(
+        let operation_idx = did_create_operation_index(
             "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
             &core_index_file_commitment,
         );
-        assert_eq!(1, suffix_data.unwrap());
+        assert_eq!(1, operation_idx.unwrap());
     }
 
     #[test]
