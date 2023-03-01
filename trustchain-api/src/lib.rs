@@ -1,28 +1,30 @@
-use std::error::Error;
-
 use did_ion::sidetree::DocumentState;
-use trustchain_ion::{attest::attest_operation, create::create_operation, resolve::main_resolve};
+use ssi::{jwk::JWK, vc::Credential};
+use std::error::Error;
 
 pub trait TrustchainDIDCLI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
-    fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<(), Box<dyn Error>> {
-        create_operation(document_state, verbose)
-    }
+    fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<(), Box<dyn Error>>;
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.
-    fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        attest_operation(did, controlled_did, verbose)
-    }
+    fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
     /// Resolves a given DID using a resolver available at localhost:3000
-    fn resolve(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        main_resolve(did, verbose)
-    }
+    fn resolve(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
     /// TODO: the below have no CLI implementation currently but are planned
+    /// Generates an update operation and writes to operations path.
     fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
+    /// Generates a recover operation and writes to operations path.
     fn recover(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
+    /// Generates a deactivate operation and writes to operations path.
     fn deactivate(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
+    /// Publishes operations within the operations path (queue).
     fn publish(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
 }
-pub trait TrustchainVCCLI {}
+pub trait TrustchainVCCLI {
+    /// Signs a credential
+    fn sign(credential: &Credential, did: &str, key: &JWK) -> Credential;
+    /// Verifies a credential
+    fn verify(credential: &Credential, did: &str, key: &JWK) -> Result<(), Box<dyn Error>>;
+}
 
 pub trait TrustchainFFI {}
 pub trait TrustchainHTTP {}
