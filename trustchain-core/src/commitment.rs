@@ -55,7 +55,7 @@ pub trait TrivialCommitment {
         // By default there is no filtering.
         None
     }
-    // SOLUTION (TODO):
+    // TODO: consider all replacements hash() and commitment_content()
     // For both of these two functions, get rid of these "helper" methods and
     // instead make the "inner" calls directly on the commitment object, e.g.
     // instead of:
@@ -136,6 +136,9 @@ pub trait Commitment: TrivialCommitment {
         // Verify the content.
         self.verify_content()?;
         // Verify the target by comparing with the computed hash.
+        // TODO: consider replacing `self.hash()` with `self.hasher()(self.candidate_data())` to
+        // prevent invalid verification if method overridden.
+        // if self.hasher()(self.candidate_data())?.ne(target) {
         if self.hash()?.ne(target) {
             return Err(CommitmentError::FailedHashVerification(type_of(&self)));
         }
@@ -349,8 +352,7 @@ impl TrivialCommitment for TimestampCommitment {
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        let _expected_data = self.expected_data().expect("No expected data present.");
-        if !expected_data.eq(_expected_data) {
+        if !expected_data.eq(self.expected_data().expect("No expected data present.")) {
             eprintln!("Attempted modification of expected timestamp data not permitted. Ignored.");
         }
         panic!("A TimestampCommitment is not convertible to a Commitment.");
