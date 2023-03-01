@@ -19,21 +19,22 @@ fn did_create_operation_index(
     did: &str,
     core_index_file_commitment: &IpfsIndexFileCommitment,
 ) -> Result<usize, CommitmentError> {
+    // TODO: to be generalized to roots that have been updated
     let core_index_file: CoreIndexFile =
         serde_json::from_value(core_index_file_commitment.commitment_content()?)?;
     let did_suffix = get_did_suffix(did);
-    // TODO: to be generalized to roots that have been updated
-    match core_index_file
+    core_index_file
         .created_did_suffixes()
-        .iter()
-        .position(|v| v == did_suffix)
-    {
-        Some(idx) => Ok(idx),
-        None => Err(CommitmentError::FailedContentVerification(
+        .ok_or(CommitmentError::FailedContentVerification(
             did.to_string(),
             serde_json::to_string(&core_index_file).unwrap(),
-        )),
-    }
+        ))?
+        .into_iter()
+        .position(|v| v == did_suffix)
+        .ok_or(CommitmentError::FailedContentVerification(
+            did.to_string(),
+            serde_json::to_string(&core_index_file).unwrap(),
+        ))
 }
 
 fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {

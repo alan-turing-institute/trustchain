@@ -48,27 +48,22 @@ pub struct CoreIndexFile {
 
 impl CoreIndexFile {
     /// Returns a vector of DID suffixes being created in the core index file.
-    pub fn created_did_suffixes(&self) -> Vec<String> {
-        if let Some(ops) = self.operations.as_ref() {
-            if let Some(created) = ops.create.as_ref() {
-                created
-                    .iter()
-                    .filter_map(|create_suffix_data| {
-                        if let Ok(suffix) =
-                            ION::serialize_suffix_data(&create_suffix_data.suffix_data)
-                        {
-                            Some(suffix.to_string())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
+    pub fn created_did_suffixes(&self) -> Option<Vec<String>> {
+        Some(
+            self.operations
+                .as_ref()?
+                .create
+                .as_ref()?
+                .iter()
+                .filter_map(|create_suffix_data| {
+                    Some(
+                        ION::serialize_suffix_data(&create_suffix_data.suffix_data)
+                            .ok()?
+                            .to_string(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -129,7 +124,7 @@ mod tests {
             "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
             "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         ];
-        let actual = core_index_file.created_did_suffixes();
+        let actual = core_index_file.created_did_suffixes().unwrap();
         assert_eq!(expected, actual);
     }
 }
