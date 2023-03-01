@@ -909,7 +909,7 @@ mod tests {
         assert_eq!(target.bundles().len(), 1);
         let bundle = target.bundles.get(did).unwrap();
         let commitment = construct_commitment(bundle).unwrap();
-        assert_eq!(result.hash(), commitment.hash());
+        assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
     }
 
     // #[test]
