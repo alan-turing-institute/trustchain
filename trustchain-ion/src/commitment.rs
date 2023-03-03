@@ -8,7 +8,7 @@ use std::convert::TryInto;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
-use trustchain_core::utils::{get_did_suffix, HasEndpoints, HasKeys};
+use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::sidetree::CoreIndexFile;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
@@ -16,20 +16,11 @@ use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
 fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
-    |x| {
-        let ipfs_hasher = IpfsHasher::default();
-        Ok(ipfs_hasher.compute(x))
-    }
+    |x| Ok(IpfsHasher::default().compute(x))
 }
 
 fn ipfs_decode_candidate_data() -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-    |x| match decode_ipfs_content(&x.to_owned()) {
-        Ok(x) => Ok(x),
-        Err(e) => {
-            eprintln!("Error decoding IPFS content: {}", e);
-            Err(CommitmentError::DataDecodingError)
-        }
-    }
+    |x| decode_ipfs_content(&x.to_owned()).map_err(|_| CommitmentError::DataDecodingError)
 }
 
 /// A Commitment whose hash is an IPFS content identifier (CID) for an ION Index file.
