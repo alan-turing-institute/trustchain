@@ -5,6 +5,7 @@ pub mod controller;
 pub mod create;
 pub mod data;
 pub mod resolve;
+pub mod sidetree;
 pub mod utils;
 pub mod verifier;
 use did_ion::{sidetree::SidetreeClient, ION};

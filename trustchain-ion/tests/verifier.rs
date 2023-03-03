@@ -57,11 +57,14 @@ fn test_verifiable_timestamp() {
         verifiable_timestamp
             .timestamp_commitment()
             .unwrap()
-            .expected_data(),
+            .expected_data()
+            .unwrap(),
         &json!(timestamp)
     );
 
     // Verify the timestamp.
+    let actual = target.verify_timestamp(&verifiable_timestamp);
+    // Verify a second time to check data is not consumed
     let actual = target.verify_timestamp(&verifiable_timestamp);
     assert!(actual.is_ok());
 }

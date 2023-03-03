@@ -7,7 +7,7 @@ use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum VerifierError {
     /// Invalid payload in proof compared to resolved document.
     #[error("Invalid payload provided in proof for dDID: {0}.")]
@@ -268,7 +268,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
         if !json_contains(
-            timestamp_commitment.expected_data(),
+            timestamp_commitment.expected_data()?,
             &json!(verifiable_timestamp.timestamp()),
         ) {
             return Err(VerifierError::TimestampVerificationError(
