@@ -3,6 +3,8 @@ use did_ion::{
     ION,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use trustchain_core::{commitment::CommitmentError, utils::get_did_suffix};
 
 /// Data structure for suffix data of create operations within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
 #[derive(Serialize, Deserialize)]
@@ -65,6 +67,22 @@ impl CoreIndexFile {
                 .collect::<Vec<_>>(),
         )
     }
+    /// Returns the index of the create operation for the given DID.
+    pub fn did_create_operation_index(&self, did: &str) -> Result<usize, CommitmentError> {
+        // TODO: to be generalized to roots that have been updated
+        let did_suffix = get_did_suffix(did);
+        self.created_did_suffixes()
+            .ok_or(CommitmentError::FailedContentVerification(
+                did.to_string(),
+                serde_json::to_string(self).unwrap(),
+            ))?
+            .into_iter()
+            .position(|v| v == did_suffix)
+            .ok_or(CommitmentError::FailedContentVerification(
+                did.to_string(),
+                serde_json::to_string(self).unwrap(),
+            ))
+    }
 }
 
 #[cfg(test)]
@@ -125,6 +143,17 @@ mod tests {
             "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         ];
         let actual = core_index_file.created_did_suffixes().unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_extract_suffix_idx() {
+        let core_index_file: CoreIndexFile =
+            serde_json::from_str(TEST_CORE_INDEX_FILE_CONTENT).unwrap();
+        let expected = 1;
+        let actual = core_index_file
+            .did_create_operation_index("EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A")
+            .unwrap();
         assert_eq!(expected, actual);
     }
 }

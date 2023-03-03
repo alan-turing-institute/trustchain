@@ -15,28 +15,6 @@ use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness}
 use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
-fn did_create_operation_index(
-    did: &str,
-    core_index_file_commitment: &IpfsIndexFileCommitment,
-) -> Result<usize, CommitmentError> {
-    // TODO: to be generalized to roots that have been updated
-    let core_index_file: CoreIndexFile =
-        serde_json::from_value(core_index_file_commitment.commitment_content()?)?;
-    let did_suffix = get_did_suffix(did);
-    core_index_file
-        .created_did_suffixes()
-        .ok_or(CommitmentError::FailedContentVerification(
-            did.to_string(),
-            serde_json::to_string(&core_index_file).unwrap(),
-        ))?
-        .into_iter()
-        .position(|v| v == did_suffix)
-        .ok_or(CommitmentError::FailedContentVerification(
-            did.to_string(),
-            serde_json::to_string(&core_index_file).unwrap(),
-        ))
-}
-
 fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
     |x| {
         let ipfs_hasher = IpfsHasher::default();
@@ -453,10 +431,10 @@ impl IONCommitment {
 
         // Construct the core index file commitment first, to get the index of the chunk file delta for this DID.
         let core_index_file_commitment = IpfsIndexFileCommitment::new(core_index_file, None);
-        let delta_index: usize =
-            did_create_operation_index(&did_doc.id, &core_index_file_commitment)?;
-
-        println!("My index in ION commitment: {}", delta_index);
+        let delta_index: usize = serde_json::from_value::<CoreIndexFile>(
+            core_index_file_commitment.commitment_content()?,
+        )?
+        .did_create_operation_index(&did_doc.id)?;
 
         // Construct the first *full* Commitment, followed by a sequence of TrivialCommitments.
         let chunk_file_commitment =
@@ -594,10 +572,12 @@ mod tests {
         let ipfs_client = IpfsClient::default();
         let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
         let core_index_file_commitment = IpfsIndexFileCommitment::new(candidate_data, None);
-        let operation_idx = did_create_operation_index(
-            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
-            &core_index_file_commitment,
-        );
+        let operation_idx = serde_json::from_value::<CoreIndexFile>(
+            core_index_file_commitment.commitment_content().unwrap(),
+        )
+        .unwrap()
+        .did_create_operation_index("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A");
+
         assert_eq!(1, operation_idx.unwrap());
     }
 
