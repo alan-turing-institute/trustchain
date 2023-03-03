@@ -1,6 +1,7 @@
 use did_ion::sidetree::DocumentState;
 use ssi::{jwk::JWK, vc::Credential};
 use std::error::Error;
+use trustchain_core::{chain::DIDChain, verifier::VerifierError};
 
 pub trait TrustchainDIDCLI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
@@ -9,7 +10,10 @@ pub trait TrustchainDIDCLI {
     fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
     /// Resolves a given DID using a resolver available at localhost:3000
     fn resolve(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
+
     /// TODO: the below have no CLI implementation currently but are planned
+    /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
+    fn verify(did: &str, verbose: bool) -> Result<DIDChain, VerifierError>;
     /// Generates an update operation and writes to operations path.
     fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
     /// Generates a recover operation and writes to operations path.
@@ -27,6 +31,7 @@ pub trait TrustchainVCCLI {
 }
 
 pub trait TrustchainFFI {}
+
 pub trait TrustchainHTTP {}
 
 #[cfg(test)]
