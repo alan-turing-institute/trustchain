@@ -188,14 +188,15 @@ impl TrivialCommitment for TxCommitment {
 
             // Iterate over the OP_RETURN scripts. Extract any that contain the
             // substring 'ion:' and raise an error unless precisely one such script exists.
-            let mut op_return_data = "";
+            let mut op_return_data: Option<String> = None;
             let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
             for script in &op_return_scripts {
                 match std::str::from_utf8(script.as_ref()) {
                     Ok(op_return_str) => match op_return_str.find(&ion_substr) {
                         Some(i) => {
-                            if op_return_data.is_empty() {
-                                op_return_data = &op_return_str[i..] // Trim any leading characters.
+                            if op_return_data.is_none() {
+                                op_return_data = Some(op_return_str[i..].to_string())
+                            // Trim any leading characters.
                             } else {
                                 // Raise an error if multiple ION OP_RETURN scripts are found.
                                 eprintln!("Error: multiple ION OP_RETURN scripts found.");
@@ -209,22 +210,16 @@ impl TrivialCommitment for TxCommitment {
                     Err(_) => continue,
                 }
             }
-            if op_return_data.is_empty() {
-                eprintln!("Error: no ION OP_RETURN script found.");
-                return Err(CommitmentError::DataDecodingError);
-            }
             // Extract the IPFS content identifier from the ION OP_RETURN data.
-            let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
+            let (_, operation_count_plus_cid) = op_return_data
+                .as_ref()
+                .ok_or(CommitmentError::DataDecodingError)?
+                .rsplit_once(DID_DELIMITER)
+                .unwrap();
             let (_, cid) = operation_count_plus_cid
                 .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
                 .unwrap();
-            let cid_json_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid);
-            if let Ok(value) = serde_json::from_str(&cid_json_str) {
-                Ok(value)
-            } else {
-                eprintln!("Error: failed to construct candidate data JSON from IPFS CID.");
-                Err(CommitmentError::DataDecodingError)
-            }
+            Ok(json!({ CID_KEY: cid }))
         }
     }
     fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
