@@ -554,7 +554,7 @@ impl DIDCommitment for IONCommitment {
         if let Some(commitment) = self.chained_commitment.commitments().last() {
             return Ok(commitment.candidate_data());
         }
-        Err(CommitmentError::EmptyIteratedCommitment)
+        Err(CommitmentError::EmptyChainedCommitment)
     }
 
     fn decode_timestamp_candidate_data(
@@ -566,7 +566,7 @@ impl DIDCommitment for IONCommitment {
         if let Some(commitment) = self.chained_commitment.commitments().last() {
             return Ok(commitment.decode_candidate_data());
         }
-        Err(CommitmentError::EmptyIteratedCommitment)
+        Err(CommitmentError::EmptyChainedCommitment)
     }
 }
 // End of IONCommitment

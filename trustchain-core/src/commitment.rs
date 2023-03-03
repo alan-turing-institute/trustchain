@@ -25,7 +25,7 @@ pub enum CommitmentError {
     FailedContentVerification(String, String),
     /// Empty iterated commitment.
     #[error("Failed verification. Empty iterated commitment.")]
-    EmptyIteratedCommitment,
+    EmptyChainedCommitment,
     /// No expected data present.
     #[error("Failed retrieval of expected data. Empty expected data.")]
     EmptyExpectedData,
@@ -135,9 +135,6 @@ pub trait Commitment: TrivialCommitment {
         // Verify the content.
         self.verify_content()?;
         // Verify the target by comparing with the computed hash.
-        // TODO: consider replacing `self.hash()` with `self.hasher()(self.candidate_data())` to
-        // prevent invalid verification if method overridden.
-        // if self.hasher()(self.candidate_data())?.ne(target) {
         if self.hash()?.ne(target) {
             return Err(CommitmentError::FailedHashVerification(type_of(&self)));
         }
@@ -181,21 +178,34 @@ impl ChainedCommitment {
 impl TrivialCommitment for ChainedCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // The hasher of a chained commitment is that of the last in the sequence.
-        self.commitments().last().unwrap().hasher()
+        self.commitments()
+            .last()
+            .expect("Unexpected empty commitment chain.")
+            .hasher()
     }
 
     fn candidate_data(&self) -> &[u8] {
         // Use as_ref to avoid consuming the Some() value from first().
-        self.commitments.first().as_ref().unwrap().candidate_data()
+        self.commitments
+            .first()
+            .as_ref()
+            .expect("Unexpected empty commitment chain.")
+            .candidate_data()
     }
 
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
-        self.commitments().first().unwrap().decode_candidate_data()
+        self.commitments()
+            .first()
+            .expect("Unexpected empty commitment chain.")
+            .decode_candidate_data()
     }
 
     fn hash(&self) -> Result<String, CommitmentError> {
         // The hash of a chained commitment is that of the last in the sequence.
-        self.commitments().last().as_ref().unwrap().hash()
+        self.commitments()
+            .last()
+            .ok_or(CommitmentError::EmptyChainedCommitment)?
+            .hash()
     }
 
     fn to_commitment(self: Box<Self>, _expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -207,7 +217,11 @@ impl Commitment for ChainedCommitment {
     fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         // The chained commitment commits to the expected data in the first of the
         // sequence of commitments. Must cast here to avoid infinite recursion.
-        self.commitments().first().as_ref().unwrap().expected_data()
+        self.commitments()
+            .first()
+            .as_ref()
+            .ok_or(CommitmentError::EmptyChainedCommitment)?
+            .expected_data()
     }
 
     /// Verifies an IteratedCommitment by verifying each of its constituent commitments.
@@ -218,7 +232,7 @@ impl Commitment for ChainedCommitment {
         // Verify each commitment in the sequence.
         let commitments = self.commitments();
         if commitments.is_empty() {
-            return Err(CommitmentError::EmptyIteratedCommitment);
+            return Err(CommitmentError::EmptyChainedCommitment);
         }
         let mut it = self.commitments().iter();
         let mut commitment = it.next().unwrap();
@@ -269,8 +283,6 @@ pub trait DIDCommitment: Commitment {
     fn did(&self) -> &str;
     /// Gets the DID Document.
     fn did_document(&self) -> &Document;
-    // /// Gets the DID Document Metadata.
-    // fn did_document_metadata(&self) -> DocumentMetadata;
     /// Gets the keys in the candidate data.
     fn candidate_keys(&self) -> Option<Vec<JWK>> {
         self.did_document().get_keys()
@@ -312,7 +324,8 @@ impl TimestampCommitment {
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
 
-        // TODO: the hasher, candidate_data and decoder (function) need to come from the *last*
+        // TODO (consider at end of PR): the hasher, candidate_data and decoder (function) need to
+        // come from the *last*
         // commitment in the DIDCommitment chain. But in general DIDCommitment is a Commitment,
         // but not necessarily a CommitmentChain, so we need to implement the "last commitment" code
         // in trustchain-ion.
@@ -336,7 +349,7 @@ impl TimestampCommitment {
         self.timestamp
     }
 }
-
+// TODO; enforce empty impossinle
 impl TrivialCommitment for TimestampCommitment {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         self.hasher
@@ -352,9 +365,9 @@ impl TrivialCommitment for TimestampCommitment {
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         if !expected_data.eq(self.expected_data().expect("No expected data present.")) {
-            eprintln!("Attempted modification of expected timestamp data not permitted. Ignored.");
+            panic!("Attempted modification of expected timestamp data not permitted.");
         }
-        panic!("A TimestampCommitment is not convertible to a Commitment.");
+        self
     }
 }
 
