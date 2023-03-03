@@ -74,6 +74,7 @@ impl TrivialCommitment for IpfsChunkFileCommitment {
         &self.candidate_data
     }
 
+    // TODO: change closure to take a reference.
     fn filter(
         &self,
     ) -> Option<Box<dyn Fn(serde_json::Value) -> Result<serde_json::Value, CommitmentError>>> {
@@ -81,10 +82,11 @@ impl TrivialCommitment for IpfsChunkFileCommitment {
         // (which is the one corresponding to the relevant DID).
         let delta_index = self.delta_index;
         Some(Box::new(move |value| {
-            println!("delta_index here: {:?}", delta_index);
-            // TODO: check if mix of create, recover and deactivate whether the correct index is used
+            // Note: check if mix of create, recover and deactivate whether the correct index is used.
+            // TODO: Remove in future releases.
             if let Value::Object(map) = value {
                 match map.get(DELTAS_KEY) {
+                    // TODO: create chunk file struct in crate::sidetree module.
                     Some(Value::Array(deltas)) => Ok(deltas.get(delta_index).unwrap().clone()),
                     _ => Err(CommitmentError::DataDecodingError),
                 }
