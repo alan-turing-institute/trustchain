@@ -69,9 +69,7 @@ impl<State> TrivialCommitment for IpfsIndexFileCommitment<State> {
         ipfs_decode_candidate_data()
     }
 
-    fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        // self.expected_data = Some(expected_data);
-        // self
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(IpfsIndexFileCommitment::<Complete>::new(
             self.candidate_data,
             expected_data,
@@ -148,7 +146,7 @@ impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
     fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
         ipfs_decode_candidate_data()
     }
-    fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(IpfsChunkFileCommitment::<Complete>::new(
             self.candidate_data,
             self.delta_index,
@@ -553,7 +551,7 @@ impl TrivialCommitment for IONCommitment {
         self.chained_commitment.decode_candidate_data()
     }
 
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+    fn to_commitment(self: Box<Self>, _: serde_json::Value) -> Box<dyn Commitment> {
         self
     }
 }
