@@ -1,7 +1,6 @@
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::{Script, Transaction};
-use flate2::Status;
 use ipfs_hasher::IpfsHasher;
 use serde_json::{json, Value};
 use ssi::did::Document;
@@ -168,21 +167,33 @@ impl Commitment for IpfsChunkFileCommitment<Complete> {
 // End of IpfsCommitment.
 
 /// A Commitment whose hash is a Bitcoin transaction ID.
-pub struct TxCommitment {
+pub struct TxCommitment<State = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
+    state: PhantomData<State>,
 }
 
-impl TxCommitment {
-    pub fn new(candidate_data: Vec<u8>, expected_data: Option<Value>) -> Self {
+impl TxCommitment<Incomplete> {
+    pub fn new(candidate_data: Vec<u8>) -> Self {
         Self {
             candidate_data,
-            expected_data,
+            expected_data: None,
+            state: PhantomData::<Incomplete>,
         }
     }
 }
 
-impl TrivialCommitment for TxCommitment {
+impl TxCommitment<Complete> {
+    pub fn new(candidate_data: Vec<u8>, expected_data: Value) -> Self {
+        Self {
+            candidate_data,
+            expected_data: Some(expected_data),
+            state: PhantomData::<Complete>,
+        }
+    }
+}
+
+impl<State> TrivialCommitment for TxCommitment<State> {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // Candidate data is a Bitcoin transaction, whose hash is the transaction ID.
         |x| {
@@ -260,13 +271,15 @@ impl TrivialCommitment for TxCommitment {
             Ok(json!({ CID_KEY: cid }))
         }
     }
-    fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        self.expected_data = Some(expected_data);
-        self
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(TxCommitment::<Complete>::new(
+            self.candidate_data,
+            expected_data,
+        ))
     }
 }
 
-impl Commitment for TxCommitment {
+impl Commitment for TxCommitment<Complete> {
     fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         self.expected_data
             .as_ref()
@@ -276,21 +289,32 @@ impl Commitment for TxCommitment {
 // End of TxCommitment.
 
 /// A Commitment whose hash is the root of a Merkle tree of Bitcoin transaction IDs.
-pub struct MerkleRootCommitment {
+pub struct MerkleRootCommitment<State = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
+    state: PhantomData<State>,
 }
 
-impl MerkleRootCommitment {
-    pub fn new(candidate_data: Vec<u8>, expected_data: Option<Value>) -> Self {
+impl MerkleRootCommitment<Incomplete> {
+    pub fn new(candidate_data: Vec<u8>) -> Self {
         Self {
             candidate_data,
-            expected_data,
+            expected_data: None,
+            state: PhantomData::<Incomplete>,
+        }
+    }
+}
+impl MerkleRootCommitment<Complete> {
+    pub fn new(candidate_data: Vec<u8>, expected_data: Value) -> Self {
+        Self {
+            candidate_data,
+            expected_data: Some(expected_data),
+            state: PhantomData::<Complete>,
         }
     }
 }
 
-impl TrivialCommitment for MerkleRootCommitment {
+impl<State> TrivialCommitment for MerkleRootCommitment<State> {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // Candidate data is a Merkle proof containing a branch of transaction IDs.
         |x| {
@@ -342,14 +366,15 @@ impl TrivialCommitment for MerkleRootCommitment {
         }
     }
 
-    fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        // Box::new(MerkleRootCommitment::new(*self, Some(expected_data)))
-        self.expected_data = Some(expected_data);
-        self
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(MerkleRootCommitment::<Complete>::new(
+            self.candidate_data,
+            expected_data,
+        ))
     }
 }
 
-impl Commitment for MerkleRootCommitment {
+impl Commitment for MerkleRootCommitment<Complete> {
     fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         self.expected_data
             .as_ref()
@@ -359,21 +384,32 @@ impl Commitment for MerkleRootCommitment {
 // End of MerkleRootCommitment.
 
 /// A Commitment whose hash is the PoW hash of a Bitcoin block.
-pub struct BlockHashCommitment {
+pub struct BlockHashCommitment<State = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
+    state: PhantomData<State>,
 }
 
-impl BlockHashCommitment {
-    pub fn new(candidate_data: Vec<u8>, expected_data: Option<Value>) -> Self {
+impl BlockHashCommitment<Incomplete> {
+    pub fn new(candidate_data: Vec<u8>) -> Self {
         Self {
             candidate_data,
-            expected_data,
+            expected_data: None,
+            state: PhantomData::<Incomplete>,
         }
     }
 }
 
-impl TrivialCommitment for BlockHashCommitment {
+impl BlockHashCommitment<Complete> {
+    pub fn new(candidate_data: Vec<u8>, expected_data: Value) -> Self {
+        Self {
+            candidate_data,
+            expected_data: Some(expected_data),
+            state: PhantomData::<Complete>,
+        }
+    }
+}
+impl<State> TrivialCommitment for BlockHashCommitment<State> {
     fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
         // Candidate data the block header bytes.
         |x| {
@@ -412,14 +448,15 @@ impl TrivialCommitment for BlockHashCommitment {
         }
     }
 
-    fn to_commitment(mut self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        // Box::new(BlockHashCommitment::new(*self, Some(expected_data)))
-        self.expected_data = Some(expected_data);
-        self
+    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
+        Box::new(BlockHashCommitment::<Complete>::new(
+            self.candidate_data,
+            expected_data,
+        ))
     }
 }
 
-impl Commitment for BlockHashCommitment {
+impl Commitment for BlockHashCommitment<Complete> {
     fn expected_data(&self) -> Result<&serde_json::Value, CommitmentError> {
         self.expected_data
             .as_ref()
@@ -468,9 +505,9 @@ impl IONCommitment {
             IpfsChunkFileCommitment::<Incomplete>::new(chunk_file, delta_index);
         let prov_index_file_commitment =
             IpfsIndexFileCommitment::<Incomplete>::new(provisional_index_file);
-        let tx_commitment = TxCommitment::new(transaction, None);
-        let merkle_root_commitment = MerkleRootCommitment::new(merkle_proof, None);
-        let block_hash_commitment = BlockHashCommitment::new(block_header, None);
+        let tx_commitment = TxCommitment::<Incomplete>::new(transaction);
+        let merkle_root_commitment = MerkleRootCommitment::<Incomplete>::new(merkle_proof);
+        let block_hash_commitment = BlockHashCommitment::<Incomplete>::new(block_header);
 
         // The following construction is only possible because each TrivialCommitment
         // knows how to convert itself to the correct Commitment type.
@@ -664,7 +701,7 @@ mod tests {
         let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
         let candidate_data = Serialize::serialize(&tx);
 
-        let commitment = TxCommitment::new(candidate_data, Some(expected_data));
+        let commitment = TxCommitment::<Complete>::new(candidate_data, expected_data);
         assert!(commitment.verify(target).is_ok());
 
         // We do *not* expect a different target to succeed.
@@ -680,7 +717,7 @@ mod tests {
         let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
         let bad_expected_data: serde_json::Value = serde_json::from_str(&bad_expected_str).unwrap();
         let candidate_data = Serialize::serialize(&tx);
-        let commitment = TxCommitment::new(candidate_data, Some(bad_expected_data));
+        let commitment = TxCommitment::<Complete>::new(candidate_data, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
@@ -710,7 +747,7 @@ mod tests {
         let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
         let candidate_data = candidate_data_.clone();
 
-        let commitment = MerkleRootCommitment::new(candidate_data, Some(expected_data));
+        let commitment = MerkleRootCommitment::<Complete>::new(candidate_data, expected_data);
         assert!(commitment.verify(target).is_ok());
 
         // We do *not* expect a different target to succeed.
@@ -725,7 +762,7 @@ mod tests {
         let bad_txid_str = "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         let bad_expected_data = serde_json::json!(bad_txid_str);
         let candidate_data = candidate_data_;
-        let commitment = MerkleRootCommitment::new(candidate_data, Some(bad_expected_data));
+        let commitment = MerkleRootCommitment::<Complete>::new(candidate_data, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
@@ -751,7 +788,7 @@ mod tests {
         let candidate_data_ = bitcoin::consensus::serialize(&block_header);
         let candidate_data = candidate_data_.clone();
 
-        let commitment = BlockHashCommitment::new(candidate_data, Some(expected_data));
+        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, expected_data);
         assert!(commitment.verify(target).is_ok());
 
         // Check the timestamp is a u32 Unix time.
@@ -772,7 +809,7 @@ mod tests {
             "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         let bad_expected_data = serde_json::json!(bad_merkle_root_str);
         let candidate_data = candidate_data_;
-        let commitment = BlockHashCommitment::new(candidate_data, Some(bad_expected_data));
+        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
