@@ -1,6 +1,6 @@
 use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
-use crate::resolver::Resolver;
+use crate::resolver::{Resolver, ResolverError};
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use serde_json::json;
 use ssi::did_resolve::DIDResolver;
@@ -116,23 +116,23 @@ pub enum VerifierError {
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
     #[error("A commitment error during verification.")]
-    CommitmentFailure(crate::commitment::CommitmentError),
+    CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
     #[error("A resolver error during verification.")]
-    ResolverFailure(crate::resolver::ResolverError),
+    ResolverFailure(ResolverError),
     /// Wrapped chain error.
     #[error("A chain error during verification.")]
-    ChainFailure(crate::chain::ChainError),
+    ChainFailure(ChainError),
 }
 
-impl From<crate::commitment::CommitmentError> for VerifierError {
+impl From<CommitmentError> for VerifierError {
     fn from(err: CommitmentError) -> Self {
         VerifierError::CommitmentFailure(err)
     }
 }
 
-impl From<crate::resolver::ResolverError> for VerifierError {
-    fn from(err: crate::resolver::ResolverError) -> Self {
+impl From<ResolverError> for VerifierError {
+    fn from(err: ResolverError) -> Self {
         VerifierError::ResolverFailure(err)
     }
 }
