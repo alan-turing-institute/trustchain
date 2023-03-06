@@ -7,12 +7,12 @@ use ssi::jwk::JWK;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
-// Get the type of an object as a String. For diagnostic purposes (debugging) only.
+/// Gets the type of an object as a String. For diagnostic purposes (debugging) only.
 pub fn type_of<T>(_: &T) -> String {
     std::any::type_name::<T>().to_string()
 }
 
-// Set-up tempdir and use as env var for TRUSTCHAIN_DATA
+/// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 static INIT: Once = Once::new();
 pub fn init() {
