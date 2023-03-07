@@ -8,6 +8,9 @@ use thiserror::Error;
 use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
 
+/// Type for commitment result.
+type CommitmentResult = Result<serde_json::Value, CommitmentError>;
+
 /// An error relating to Commitment verification.
 #[derive(Error, Debug)]
 pub enum CommitmentError {
@@ -47,11 +50,9 @@ pub trait TrivialCommitment {
     /// Gets the candidate data.
     fn candidate_data(&self) -> &[u8];
     /// Gets the candidate data decoder (function).
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError>;
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult;
     /// A closure for filtering candidate data. By default there is no filtering.
-    fn filter(
-        &self,
-    ) -> Option<Box<dyn Fn(serde_json::Value) -> Result<serde_json::Value, CommitmentError>>> {
+    fn filter(&self) -> Option<Box<dyn Fn(serde_json::Value) -> CommitmentResult>> {
         None
     }
     // TODO: consider all replacements hash() and commitment_content()
@@ -73,7 +74,7 @@ pub trait TrivialCommitment {
         self.hasher()(self.candidate_data())
     }
     /// Gets the data content that the hash verifiably commits to. This method should not be overridden by implementors.
-    fn commitment_content(&self) -> Result<serde_json::Value, CommitmentError> {
+    fn commitment_content(&self) -> CommitmentResult {
         self.decode_candidate_data()(self.candidate_data())
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
@@ -193,7 +194,7 @@ impl TrivialCommitment for ChainedCommitment {
             .candidate_data()
     }
 
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult {
         self.commitments()
             .first()
             .expect("Unexpected empty commitment chain.")
@@ -296,7 +297,7 @@ pub trait DIDCommitment: Commitment {
     /// Gets the decoder (function) for the timestamp candidate data.
     fn decode_timestamp_candidate_data(
         &self,
-    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError>;
+    ) -> Result<fn(&[u8]) -> CommitmentResult, CommitmentError>;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher
@@ -306,7 +307,7 @@ pub struct TimestampCommitment {
     expected_data: Option<serde_json::Value>,
     hasher: fn(&[u8]) -> Result<String, CommitmentError>,
     candidate_data: Vec<u8>,
-    decode_candidate_data: fn(&[u8]) -> Result<serde_json::Value, CommitmentError>,
+    decode_candidate_data: fn(&[u8]) -> CommitmentResult,
 }
 
 impl TimestampCommitment {
@@ -344,6 +345,7 @@ impl TimestampCommitment {
         })
     }
 
+    // TODO: remove if unused?
     /// Gets the timestamp as a Unix time.
     fn timestamp(&self) -> Timestamp {
         self.timestamp
@@ -359,7 +361,7 @@ impl TrivialCommitment for TimestampCommitment {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult {
         self.decode_candidate_data
     }
 
