@@ -192,11 +192,15 @@ impl VerifiableTimestamp {
             if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
                 if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
                     eprintln!("Expected key not found in DID Commitment data.");
-                    return Err(VerifierError::FailureToVerifyDIDContent);
+                    return Err(VerifierError::KeyNotFoundInVerifiedContent(
+                        self.did_commitment().did().to_string(),
+                    ));
                 }
             } else {
                 eprintln!("No candidate keys found in DID Commitment data.");
-                return Err(VerifierError::FailureToVerifyDIDContent);
+                return Err(VerifierError::KeyNotFoundInVerifiedContent(
+                    self.did_commitment().did().to_string(),
+                ));
             }
         }
         // Check each expected endpoint is found in the vector of verified endpoints.
@@ -207,11 +211,15 @@ impl VerifiableTimestamp {
                     .all(|uri| candidate_endpoints.contains(uri))
                 {
                     eprintln!("Expected endpoint not found in DID Commitment data.");
-                    return Err(VerifierError::FailureToVerifyDIDContent);
+                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                        self.did_commitment().did().to_string(),
+                    ));
                 }
             } else {
                 eprintln!("No candidate endpoints found in DID Commitment data.");
-                return Err(VerifierError::FailureToVerifyDIDContent);
+                return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                    self.did_commitment().did().to_string(),
+                ));
             }
         }
         Ok(())
