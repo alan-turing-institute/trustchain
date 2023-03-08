@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
 use crate::resolver::{Resolver, ResolverError};
@@ -108,9 +110,12 @@ pub enum VerifierError {
     /// Failed DID timestamp verification.
     #[error("Timestamp verification failed for DID: {0}.")]
     TimestampVerificationError(String),
+    /// Error fetching verification material.
+    #[error("Error fetching verification material: {0}. Error: {1}")]
+    ErrorFetchingVerificationMaterial(String, Box<dyn Error>),
     /// Failed to fetch verification material.
-    #[error("Failed to fetch verification material.")]
-    FailureToFetchVerificationMaterial,
+    #[error("Failed to fetch verification material: {0}")]
+    FailureToFetchVerificationMaterial(String),
     /// Attempt to access verification material before it has been fetched.
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
