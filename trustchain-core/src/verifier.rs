@@ -281,7 +281,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
         if !json_contains(
-            timestamp_commitment.expected_data()?,
+            timestamp_commitment.expected_data(),
             &json!(verifiable_timestamp.timestamp()),
         ) {
             return Err(VerifierError::TimestampVerificationError(
