@@ -33,7 +33,7 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Read;
 use std::str::FromStr;
 use trustchain_core::commitment::{Commitment, CommitmentError, DIDCommitment};
-use trustchain_core::resolver::Resolver;
+use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 
@@ -188,19 +188,14 @@ where
 
     /// Resolves the given DID to obtain the DID Document and Document Metadata.
     fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        match self.resolver.resolve_as_result(did) {
-            Ok((x, y, z)) => {
-                if let (_, Some(doc), Some(doc_meta)) = (x, y, z) {
-                    Ok((doc, doc_meta))
-                } else {
-                    eprintln!("Missing Document and/or DocumentMetadata for DID: {}", did);
-                    return Err(VerifierError::DIDResolutionError(did.to_string()));
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to resolve DID: {}", e);
-                return Err(VerifierError::DIDResolutionError(did.to_string()));
-            }
+        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did)?;
+        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
+            Ok((doc, doc_meta))
+        } else {
+            Err(VerifierError::DIDResolutionError(
+                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
+                res_meta,
+            ))
         }
     }
 
@@ -210,10 +205,10 @@ where
         tx_index: u32,
     ) -> Result<Transaction, VerifierError> {
         transaction(block_hash, tx_index, Some(&self.rpc_client)).map_err(|e| {
-            VerifierError::FailureToFetchVerificationMaterial(format!(
-                "Failed to fetch transaction: {}",
-                e
-            ))
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Failed to fetch transaction.".to_string(),
+                e,
+            )
         })
     }
 
