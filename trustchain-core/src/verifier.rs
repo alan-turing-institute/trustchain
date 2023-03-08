@@ -1,6 +1,8 @@
+use std::error::Error;
+
 use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
-use crate::resolver::Resolver;
+use crate::resolver::{Resolver, ResolverError};
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use serde_json::json;
 use ssi::did_resolve::DIDResolver;
@@ -56,7 +58,7 @@ pub enum VerifierError {
     InvalidBlockHash(String),
     /// Invalid block height.
     #[error("Invalid block height: {0}")]
-    InvalidBlockHeight(i32),
+    InvalidBlockHeight(i64),
     /// Invalid transaction index.
     #[error("Invalid transaction index: {0}")]
     InvalidTransactionIndex(i32),
@@ -108,31 +110,34 @@ pub enum VerifierError {
     /// Failed DID timestamp verification.
     #[error("Timestamp verification failed for DID: {0}.")]
     TimestampVerificationError(String),
+    /// Error fetching verification material.
+    #[error("Error fetching verification material: {0}. Error: {1}")]
+    ErrorFetchingVerificationMaterial(String, Box<dyn Error>),
     /// Failed to fetch verification material.
-    #[error("Failed to fetch verification material.")]
-    FailureToFetchVerificationMaterial,
+    #[error("Failed to fetch verification material: {0}")]
+    FailureToFetchVerificationMaterial(String),
     /// Attempt to access verification material before it has been fetched.
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
     #[error("A commitment error during verification.")]
-    CommitmentFailure(crate::commitment::CommitmentError),
+    CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
     #[error("A resolver error during verification.")]
-    ResolverFailure(crate::resolver::ResolverError),
+    ResolverFailure(ResolverError),
     /// Wrapped chain error.
     #[error("A chain error during verification.")]
-    ChainFailure(crate::chain::ChainError),
+    ChainFailure(ChainError),
 }
 
-impl From<crate::commitment::CommitmentError> for VerifierError {
+impl From<CommitmentError> for VerifierError {
     fn from(err: CommitmentError) -> Self {
         VerifierError::CommitmentFailure(err)
     }
 }
 
-impl From<crate::resolver::ResolverError> for VerifierError {
-    fn from(err: crate::resolver::ResolverError) -> Self {
+impl From<ResolverError> for VerifierError {
+    fn from(err: ResolverError) -> Self {
         VerifierError::ResolverFailure(err)
     }
 }
@@ -169,7 +174,7 @@ impl VerifiableTimestamp {
     /// owned DID Commitment, and with the expected timestamp as expected data.
     pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
         Ok(TimestampCommitment::new(
-            &*self.did_commitment,
+            self.did_commitment(),
             self.timestamp,
         )?)
     }
@@ -192,11 +197,15 @@ impl VerifiableTimestamp {
             if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
                 if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
                     eprintln!("Expected key not found in DID Commitment data.");
-                    return Err(VerifierError::FailureToVerifyDIDContent);
+                    return Err(VerifierError::KeyNotFoundInVerifiedContent(
+                        self.did_commitment().did().to_string(),
+                    ));
                 }
             } else {
                 eprintln!("No candidate keys found in DID Commitment data.");
-                return Err(VerifierError::FailureToVerifyDIDContent);
+                return Err(VerifierError::KeyNotFoundInVerifiedContent(
+                    self.did_commitment().did().to_string(),
+                ));
             }
         }
         // Check each expected endpoint is found in the vector of verified endpoints.
@@ -207,11 +216,15 @@ impl VerifiableTimestamp {
                     .all(|uri| candidate_endpoints.contains(uri))
                 {
                     eprintln!("Expected endpoint not found in DID Commitment data.");
-                    return Err(VerifierError::FailureToVerifyDIDContent);
+                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                        self.did_commitment().did().to_string(),
+                    ));
                 }
             } else {
                 eprintln!("No candidate endpoints found in DID Commitment data.");
-                return Err(VerifierError::FailureToVerifyDIDContent);
+                return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                    self.did_commitment().did().to_string(),
+                ));
             }
         }
         Ok(())

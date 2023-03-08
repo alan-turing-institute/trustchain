@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use ssi::did::Document;
 use std::convert::TryInto;
 use std::marker::PhantomData;
-use trustchain_core::commitment::{ChainedCommitment, CommitmentChain};
+use trustchain_core::commitment::{ChainedCommitment, CommitmentChain, CommitmentResult};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
@@ -16,11 +16,11 @@ use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness}
 use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
-fn ipfs_hasher() -> fn(&[u8]) -> Result<String, CommitmentError> {
+fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
     |x| Ok(IpfsHasher::default().compute(x))
 }
 
-fn ipfs_decode_candidate_data() -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+fn ipfs_decode_candidate_data() -> fn(&[u8]) -> CommitmentResult<Value> {
     |x| decode_ipfs_content(&x.to_owned()).map_err(|_| CommitmentError::DataDecodingError)
 }
 
@@ -57,7 +57,7 @@ impl IpfsIndexFileCommitment<Complete> {
 }
 
 impl<State> TrivialCommitment for IpfsIndexFileCommitment<State> {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         ipfs_hasher()
     }
 
@@ -65,7 +65,7 @@ impl<State> TrivialCommitment for IpfsIndexFileCommitment<State> {
         &self.candidate_data
     }
 
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         ipfs_decode_candidate_data()
     }
 
@@ -113,7 +113,7 @@ impl IpfsChunkFileCommitment<Complete> {
 }
 
 impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         ipfs_hasher()
     }
 
@@ -122,9 +122,7 @@ impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
     }
 
     // TODO: change closure to take a reference.
-    fn filter(
-        &self,
-    ) -> Option<Box<dyn Fn(serde_json::Value) -> Result<serde_json::Value, CommitmentError>>> {
+    fn filter(&self) -> Option<Box<dyn Fn(serde_json::Value) -> CommitmentResult<Value>>> {
         // Ignore all of the deltas in the chunk file except the one at index delta_index
         // (which is the one corresponding to the relevant DID).
         let delta_index = self.delta_index;
@@ -142,7 +140,7 @@ impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
             }
         }))
     }
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         ipfs_decode_candidate_data()
     }
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -190,7 +188,7 @@ impl TxCommitment<Complete> {
 }
 
 impl<State> TrivialCommitment for TxCommitment<State> {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data is a Bitcoin transaction, whose hash is the transaction ID.
         |x| {
             let tx: Transaction = match Deserialize::deserialize(x) {
@@ -210,7 +208,7 @@ impl<State> TrivialCommitment for TxCommitment<State> {
 
     /// Deserialises the candidate data into a Bitcoin transaction, then
     /// extracts and returns the IPFS content identifier in the OP_RETURN data.
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             // Deserialise the transaction from the candidate data.
             let tx: Transaction = match Deserialize::deserialize(x) {
@@ -310,7 +308,7 @@ impl MerkleRootCommitment<Complete> {
 }
 
 impl<State> TrivialCommitment for MerkleRootCommitment<State> {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data is a Merkle proof containing a branch of transaction IDs.
         |x| {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
@@ -339,7 +337,7 @@ impl<State> TrivialCommitment for MerkleRootCommitment<State> {
     }
 
     /// Deserialises the candidate data into a Merkle proof.
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
@@ -404,7 +402,7 @@ impl BlockHashCommitment<Complete> {
     }
 }
 impl<State> TrivialCommitment for BlockHashCommitment<State> {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data the block header bytes.
         |x| {
             // Bitcoin block hash is a double SHA256 hash of the block header.
@@ -422,7 +420,7 @@ impl<State> TrivialCommitment for BlockHashCommitment<State> {
     }
 
     /// Deserialises the candidate data into a Block header (as JSON).
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             if x.len() != 80 {
                 eprintln!("Error: Bitcoin block header must be 80 bytes.");
@@ -473,7 +471,7 @@ impl IONCommitment {
         transaction: Vec<u8>,
         merkle_proof: Vec<u8>,
         block_header: Vec<u8>,
-    ) -> Result<Self, CommitmentError> {
+    ) -> CommitmentResult<Self> {
         // Extract the public keys and endpoints as the expected data.
         let keys = match did_doc.get_keys() {
             Some(x) => x,
@@ -520,7 +518,7 @@ impl IONCommitment {
     }
 
     // TODO: remove unused method?
-    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+    fn verify(&self, target: &str) -> CommitmentResult<()> {
         // Delegate verification to the chained commitment.
         Commitment::verify(&self.chained_commitment, target)?;
         Ok(())
@@ -529,11 +527,11 @@ impl IONCommitment {
 
 // Delegate all Commitment trait methods to the wrapped ChainedCommitment.
 impl TrivialCommitment for IONCommitment {
-    fn hasher(&self) -> fn(&[u8]) -> Result<String, CommitmentError> {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         self.chained_commitment.hasher()
     }
 
-    fn hash(&self) -> Result<String, CommitmentError> {
+    fn hash(&self) -> CommitmentResult<String> {
         // TODO: this needs to be reconsidered if replacing the use of hash() method in Commitment::verify()
         self.chained_commitment.hash()
     }
@@ -542,7 +540,7 @@ impl TrivialCommitment for IONCommitment {
         self.chained_commitment.candidate_data()
     }
 
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> Result<serde_json::Value, CommitmentError> {
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         self.chained_commitment.decode_candidate_data()
     }
 
@@ -568,10 +566,7 @@ impl CommitmentChain for IONCommitment {
         self.chained_commitment.mut_commitments()
     }
 
-    fn append(
-        &mut self,
-        trivial_commitment: Box<dyn TrivialCommitment>,
-    ) -> Result<(), CommitmentError> {
+    fn append(&mut self, trivial_commitment: Box<dyn TrivialCommitment>) -> CommitmentResult<()> {
         self.chained_commitment.append(trivial_commitment)
     }
 }
@@ -585,7 +580,7 @@ impl DIDCommitment for IONCommitment {
         &self.did_doc
     }
 
-    fn timestamp_candidate_data(&self) -> Result<&[u8], CommitmentError> {
+    fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]> {
         // The candidate data for the timestamp is the Bitcoin block header,
         // which is the candidate data in the last commitment in the chain
         // (i.e. the BlockHashCommitment).
@@ -597,7 +592,7 @@ impl DIDCommitment for IONCommitment {
 
     fn decode_timestamp_candidate_data(
         &self,
-    ) -> Result<fn(&[u8]) -> Result<serde_json::Value, CommitmentError>, CommitmentError> {
+    ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>> {
         // The required candidate data decoder (function) is the one for the
         // Bitcoin block header, which is the decoder in the last commitment
         // in the chain (i.e. the BlockHashCommitment).

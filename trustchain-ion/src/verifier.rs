@@ -209,50 +209,39 @@ where
         block_hash: &BlockHash,
         tx_index: u32,
     ) -> Result<Transaction, VerifierError> {
-        match transaction(block_hash, tx_index, Some(&self.rpc_client)) {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!("Failed to fetch transaction: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        }
+        transaction(block_hash, tx_index, Some(&self.rpc_client)).map_err(|e| {
+            VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Failed to fetch transaction: {}",
+                e
+            ))
+        })
     }
 
     fn fetch_core_index_file(&self, cid: &str) -> Result<Vec<u8>, VerifierError> {
-        match query_ipfs(cid, &self.ipfs_client) {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!("Failed to fetch ION core index file: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        }
+        query_ipfs(cid, &self.ipfs_client)
+            .map_err(|e| VerifierError::FailureToFetchVerificationMaterial(e.to_string()))
     }
 
     fn fetch_prov_index_file(&self, core_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
-        let content = match decode_ipfs_content(core_index_file) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to decode ION core index file: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
-        let cid = match content.get(PROVISIONAL_INDEX_FILE_URI_KEY) {
-            Some(value) => value.as_str().unwrap(),
-            None => {
-                eprintln!(
-                    "Failed to find key {} in ION index file content.",
-                    PROVISIONAL_INDEX_FILE_URI_KEY
-                );
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
-        match query_ipfs(cid, &self.ipfs_client) {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!("Failed to fetch ION provisional index file: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        }
+        let content = decode_ipfs_content(core_index_file).map_err(|e| {
+            VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Failed to decode ION core index file: {}",
+                e
+            ))
+        })?;
+        let cid = content
+            .get(PROVISIONAL_INDEX_FILE_URI_KEY)
+            .and_then(|value| value.as_str())
+            .ok_or(VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Failed to find key {} in ION index file content.",
+                PROVISIONAL_INDEX_FILE_URI_KEY
+            )))?;
+        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Failed to fetch ION provisional index file.".to_string(),
+                e,
+            )
+        })
     }
 
     fn fetch_chunk_file(
@@ -261,35 +250,38 @@ where
         did_doc_meta: &DocumentMetadata,
     ) -> Result<Vec<u8>, VerifierError> {
         // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
-        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
-            eprintln!("Failed to decode ION provisional index file: {}", err);
-            VerifierError::FailureToFetchVerificationMaterial
+        let content = decode_ipfs_content(prov_index_file).map_err(|e| {
+            VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Failed to decode ION provisional index file: {}",
+                e
+            ))
         })?;
         // Look inside the "chunks" element.
         let content = content.get(CHUNKS_KEY).ok_or_else(|| {
-            eprintln!("Expected key {CHUNKS_KEY} not found in ION provisional index file.");
-            VerifierError::FailureToFetchVerificationMaterial
+            VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Expected key {CHUNKS_KEY} not found in ION provisional index file."
+            ))
         })?;
 
-        // In the current version of the Sidetree protocol, a single chunk
-        // entry must be present in the chunks array (see
-        // https://identity.foundation/sidetree/spec/#provisional-index-file).
-        // So here we only need to consider the first entry in the content.
-        // This may need to be updated in future to accommodate changes to the Sidetre protocol.
+        // In the current version of the Sidetree protocol, a single chunk entry must be present in
+        // the chunks array (see https://identity.foundation/sidetree/spec/#provisional-index-file).
+        // So here we only need to consider the first entry in the content. This may need to be
+        // updated in future to accommodate changes to the Sidetre protocol.
         let cid = content[0]
             .get(CHUNK_FILE_URI_KEY)
             .ok_or_else(|| {
-                eprintln!(
+                VerifierError::FailureToFetchVerificationMaterial(format!(
                     "Expected key {CHUNK_FILE_URI_KEY} not found in ION provisional index file."
-                );
-                VerifierError::FailureToFetchVerificationMaterial
+                ))
             })?
             .as_str()
             .unwrap();
 
-        query_ipfs(cid, &self.ipfs_client).map_err(|err| {
-            eprintln!("Failed to fetch ION provisional index file: {}", err);
-            VerifierError::FailureToFetchVerificationMaterial
+        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
+            VerifierError::FailureToFetchVerificationMaterial(format!(
+                "Failed to fetch ION provisional index file: {}",
+                e
+            ))
         })
     }
 
@@ -299,27 +291,25 @@ where
         block_hash: &BlockHash,
         tx: &Transaction,
     ) -> Result<Vec<u8>, VerifierError> {
-        match self
-            .rpc_client
+        self.rpc_client
             .get_tx_out_proof(&[tx.txid()], Some(block_hash))
-        {
-            Ok(x) => Ok(x),
-            Err(e) => {
-                eprintln!("Failed to fetch Merkle proof via RPC: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        }
+            .map_err(|e| {
+                VerifierError::FailureToFetchVerificationMaterial(format!(
+                    "Failed to fetch Merkle proof via RPC: {}",
+                    e
+                ))
+            })
     }
 
     fn fetch_block_header(&self, block_hash: &BlockHash) -> Result<Vec<u8>, VerifierError> {
-        let block_header = match block_header(block_hash, Some(&self.rpc_client)) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to fetch Bitcoin block header via RPC: {}", e);
-                return Err(VerifierError::FailureToFetchVerificationMaterial);
-            }
-        };
-        Ok(bitcoin::consensus::serialize(&block_header))
+        block_header(block_hash, Some(&self.rpc_client))
+            .map_err(|e| {
+                VerifierError::FailureToFetchVerificationMaterial(format!(
+                    "Failed to fetch Bitcoin block header via RPC: {}",
+                    e
+                ))
+            })
+            .map(|block_header| bitcoin::consensus::serialize(&block_header))
     }
 
     /// Returns the location on the ledger of the transaction embedding
@@ -338,57 +328,35 @@ where
             };
 
             // Extract the block height.
-            let block_height: u32 = match doc.get_i32("txnTime") {
-                Ok(x) => match u32::try_from(x) {
-                    Ok(y) => y,
-                    Err(_) => return Err(VerifierError::InvalidBlockHeight(x)),
-                },
-                Err(e) => {
-                    eprintln!("Failed to access txnTime: {}", e);
-                    return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                }
-            };
+            let block_height: i64 = doc
+                .get_i32("txnTime")
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+                .into();
+            // Convert to block height u32
+            let block_height: u32 = block_height
+                .try_into()
+                .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
 
             // Extract the index of the transaction inside the block.
-            let tx_number_str = match doc.get_i64("txnNumber") {
-                Ok(x) => x,
-                Err(e) => {
-                    eprintln!("Failed to access txnNumber: {}", e);
-                    return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                }
-            }
-            .to_string();
+            let tx_index = doc
+                .get_i64("txnNumber")
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+                .to_string()
+                .strip_prefix(&block_height.to_string())
+                .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+                .parse::<u32>()
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
 
-            let tx_index = match tx_number_str.strip_prefix(&block_height.to_string()) {
-                Some(x) => match str::parse::<u32>(x) {
-                    Ok(y) => y,
-                    Err(e) => {
-                        eprintln!("Failed to parse transaction index: {}", e);
-                        return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                    }
-                },
-                // Includes a check that the transaction txnNumber starts with the block height.
-                None => {
-                    eprintln!(
-                        "Error: txnNumber {} should start with block height",
-                        tx_number_str
-                    );
-                    return Err(VerifierError::FailureToGetDIDOperation(did.to_owned()));
-                }
-            };
+            // If call to get_network_info fails, return error
+            self.rpc_client
+                .get_network_info()
+                .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
 
             // Convert the block height to a block hash.
-            let block_hash = match self.rpc_client.get_block_hash(u64::from(block_height)) {
-                Ok(block_hash) => block_hash,
-                // If a call to get_network_info succeeds, the issue is with the block_height.
-                Err(e) => match self.rpc_client.get_network_info() {
-                    Ok(_) => return Err(VerifierError::InvalidBlockHeight(block_height as i32)),
-                    Err(e) => {
-                        eprintln!("Error getting Bitcoin block hash: {}", e);
-                        return Err(VerifierError::LedgerClientError("getblockhash".to_string()));
-                    }
-                },
-            };
+            let block_hash = self
+                .rpc_client
+                .get_block_hash(u64::from(block_height))
+                .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
 
             Ok((block_hash, tx_index))
         })
