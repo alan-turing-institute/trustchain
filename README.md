@@ -23,7 +23,7 @@ Trustchain delegates all DID method operations to a node on the [ION](https://id
 
 The [ION install guide](https://identity.foundation/ion/install-guide/) gives step-by-step instructions on how to setup and run your own ION node.
 
-We encountered a few problems with the official installation guide. Hence we recommend to use our modified instructions for [ION installation on Mac](./installation.md#ion-installation-on-mac) or [ION installation on Linux](./installation.md#ion-installation-on-linux).
+We encountered a few problems with the official installation guide. Hence we recommend to use our modified instructions for [ION installation on Mac](https://alan-turing-institute.github.io/trustchain/#/./installation?id=ion-installation-on-mac) or [ION installation on Linux](https://alan-turing-institute.github.io/trustchain/#/./installation?id=ion-installation-on-linux).
 
 #### Step 2. Install Rust
 Follow the [Rust install guide](https://www.rust-lang.org/tools/install).
