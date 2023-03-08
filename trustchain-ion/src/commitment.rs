@@ -79,6 +79,7 @@ impl<State> TrivialCommitment for IpfsIndexFileCommitment<State> {
 
 impl Commitment for IpfsIndexFileCommitment<Complete> {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.expected_data.as_ref().unwrap()
     }
 }
@@ -155,6 +156,7 @@ impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
 
 impl Commitment for IpfsChunkFileCommitment<Complete> {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.expected_data.as_ref().unwrap()
     }
 }
@@ -275,6 +277,7 @@ impl<State> TrivialCommitment for TxCommitment<State> {
 
 impl Commitment for TxCommitment<Complete> {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.expected_data.as_ref().unwrap()
     }
 }
@@ -368,6 +371,7 @@ impl<State> TrivialCommitment for MerkleRootCommitment<State> {
 
 impl Commitment for MerkleRootCommitment<Complete> {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.expected_data.as_ref().unwrap()
     }
 }
@@ -448,6 +452,7 @@ impl<State> TrivialCommitment for BlockHashCommitment<State> {
 
 impl Commitment for BlockHashCommitment<Complete> {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.expected_data.as_ref().unwrap()
     }
 }
@@ -549,6 +554,7 @@ impl TrivialCommitment for IONCommitment {
 // Delegate all Commitment trait methods to the wrapped ChainedCommitment.
 impl Commitment for IONCommitment {
     fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
         self.chained_commitment.expected_data()
     }
 }
