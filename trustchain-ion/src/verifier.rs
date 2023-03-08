@@ -213,8 +213,12 @@ where
     }
 
     fn fetch_core_index_file(&self, cid: &str) -> Result<Vec<u8>, VerifierError> {
-        query_ipfs(cid, &self.ipfs_client)
-            .map_err(|e| VerifierError::FailureToFetchVerificationMaterial(e.to_string()))
+        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Failed to fetch core index file".to_string(),
+                e,
+            )
+        })
     }
 
     fn fetch_prov_index_file(&self, core_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
@@ -246,10 +250,10 @@ where
     ) -> Result<Vec<u8>, VerifierError> {
         // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
         let content = decode_ipfs_content(prov_index_file).map_err(|e| {
-            VerifierError::FailureToFetchVerificationMaterial(format!(
-                "Failed to decode ION provisional index file: {}",
-                e
-            ))
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Failed to decode ION provisional index file".to_string(),
+                e.into(),
+            )
         })?;
         // Look inside the "chunks" element.
         let content = content.get(CHUNKS_KEY).ok_or_else(|| {
@@ -273,10 +277,10 @@ where
             .unwrap();
 
         query_ipfs(cid, &self.ipfs_client).map_err(|e| {
-            VerifierError::FailureToFetchVerificationMaterial(format!(
-                "Failed to fetch ION provisional index file: {}",
-                e
-            ))
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Failed to fetch ION provisional index file.".to_string(),
+                e.into(),
+            )
         })
     }
 
@@ -289,20 +293,20 @@ where
         self.rpc_client
             .get_tx_out_proof(&[tx.txid()], Some(block_hash))
             .map_err(|e| {
-                VerifierError::FailureToFetchVerificationMaterial(format!(
-                    "Failed to fetch Merkle proof via RPC: {}",
-                    e
-                ))
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to fetch Merkle proof via RPC.".to_string(),
+                    e.into(),
+                )
             })
     }
 
     fn fetch_block_header(&self, block_hash: &BlockHash) -> Result<Vec<u8>, VerifierError> {
         block_header(block_hash, Some(&self.rpc_client))
             .map_err(|e| {
-                VerifierError::FailureToFetchVerificationMaterial(format!(
-                    "Failed to fetch Bitcoin block header via RPC: {}",
-                    e
-                ))
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to fetch Bitcoin block header via RPC.".to_string(),
+                    e,
+                )
             })
             .map(|block_header| bitcoin::consensus::serialize(&block_header))
     }
@@ -313,20 +317,19 @@ where
         let suffix = get_did_suffix(did);
         self.resolver().runtime.block_on(async {
             // Query the database for a bson::Document.
-            // let doc = match block_on(Self::query_mongo(suffix)) {
-            let doc = match block_on(query_mongodb(suffix, None)) {
-                Ok(x) => x,
-                Err(e) => {
-                    eprintln!("Error querying MongoDB: {}", e);
-                    return Err(VerifierError::FailureToGetDIDOperation(did.to_owned()));
-                }
-            };
+            let doc = block_on(query_mongodb(suffix, None)).map_err(|e| {
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Error querying MongoDB".to_string(),
+                    e,
+                )
+            })?;
 
             // Extract the block height.
             let block_height: i64 = doc
                 .get_i32("txnTime")
                 .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
                 .into();
+
             // Convert to block height u32
             let block_height: u32 = block_height
                 .try_into()
