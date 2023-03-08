@@ -2,7 +2,7 @@
 
 This repo hosts the reference implementation of **Trustchain**.
 
-Trustchain is a decentralised approach to public key infrastructure, designed for applications in digital identity. In particular, it builds on the W3C standards for [decentralised identifiers (DID)](https://www.w3.org/TR/did-core/) and [verifiable credentials (VC)](https://www.w3.org/TR/vc-data-model/).
+Trustchain is a decentralised approach to public key infrastructure designed for application to digital identity. In particular, it builds on the W3C standards for [decentralised identifiers (DID)](https://www.w3.org/TR/did-core/) and [verifiable credentials (VC)](https://www.w3.org/TR/vc-data-model/).
 
 These two standards are closely linked: credential verification involves retrieval of verification material contained in the issuer's DID document. For example, the verification material may be a public key, in which case the verification method is to use the key to verify a digital signature contained in the VC.
 
