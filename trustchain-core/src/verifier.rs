@@ -56,7 +56,7 @@ pub enum VerifierError {
     InvalidBlockHash(String),
     /// Invalid block height.
     #[error("Invalid block height: {0}")]
-    InvalidBlockHeight(i32),
+    InvalidBlockHeight(i64),
     /// Invalid transaction index.
     #[error("Invalid transaction index: {0}")]
     InvalidTransactionIndex(i32),

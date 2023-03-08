@@ -338,57 +338,35 @@ where
             };
 
             // Extract the block height.
-            let block_height: u32 = match doc.get_i32("txnTime") {
-                Ok(x) => match u32::try_from(x) {
-                    Ok(y) => y,
-                    Err(_) => return Err(VerifierError::InvalidBlockHeight(x)),
-                },
-                Err(e) => {
-                    eprintln!("Failed to access txnTime: {}", e);
-                    return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                }
-            };
+            let block_height: i64 = doc
+                .get_i32("txnTime")
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+                .into();
+            // Convert to block height u32
+            let block_height: u32 = block_height
+                .try_into()
+                .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
 
             // Extract the index of the transaction inside the block.
-            let tx_number_str = match doc.get_i64("txnNumber") {
-                Ok(x) => x,
-                Err(e) => {
-                    eprintln!("Failed to access txnNumber: {}", e);
-                    return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                }
-            }
-            .to_string();
+            let tx_index = doc
+                .get_i64("txnNumber")
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+                .to_string()
+                .strip_prefix(&block_height.to_string())
+                .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+                .parse::<u32>()
+                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
 
-            let tx_index = match tx_number_str.strip_prefix(&block_height.to_string()) {
-                Some(x) => match str::parse::<u32>(x) {
-                    Ok(y) => y,
-                    Err(e) => {
-                        eprintln!("Failed to parse transaction index: {}", e);
-                        return Err(VerifierError::FailureToGetDIDOperation(suffix.to_owned()));
-                    }
-                },
-                // Includes a check that the transaction txnNumber starts with the block height.
-                None => {
-                    eprintln!(
-                        "Error: txnNumber {} should start with block height",
-                        tx_number_str
-                    );
-                    return Err(VerifierError::FailureToGetDIDOperation(did.to_owned()));
-                }
-            };
+            // If call to get_network_info fails, return error
+            self.rpc_client
+                .get_network_info()
+                .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
 
             // Convert the block height to a block hash.
-            let block_hash = match self.rpc_client.get_block_hash(u64::from(block_height)) {
-                Ok(block_hash) => block_hash,
-                // If a call to get_network_info succeeds, the issue is with the block_height.
-                Err(e) => match self.rpc_client.get_network_info() {
-                    Ok(_) => return Err(VerifierError::InvalidBlockHeight(block_height as i32)),
-                    Err(e) => {
-                        eprintln!("Error getting Bitcoin block hash: {}", e);
-                        return Err(VerifierError::LedgerClientError("getblockhash".to_string()));
-                    }
-                },
-            };
+            let block_hash = self
+                .rpc_client
+                .get_block_hash(u64::from(block_height))
+                .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
 
             Ok((block_hash, tx_index))
         })
