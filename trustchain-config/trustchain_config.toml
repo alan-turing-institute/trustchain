@@ -1,0 +1,6 @@
+[core]
+env = "TRUSTCHAIN_DATA"
+root_event_time = 42
+
+[ion]
+mongo_connection_string = "mongodb://localhost:27017/"

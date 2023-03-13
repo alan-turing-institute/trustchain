@@ -16,6 +16,7 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+trustchain-config = { path = "../trustchain-config" }
 
 
 bitcoincore-rpc = "0.16.0"
