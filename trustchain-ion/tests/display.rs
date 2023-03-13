@@ -1,20 +1,12 @@
-use did_ion::{sidetree::SidetreeClient, ION};
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::graph::TrustchainGraph;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
+use trustchain_ion::get_ion_resolver;
 
 #[test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
 fn trustchain_graph() {
     // Example DIDs for ROOT_EVENT_TIME_2378493
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
     let new_dids = vec![
         "did:ion:test:EiC9KEQyCzGFs_dJ2Iy1lgah3nTuy0ns8ZxXa9ZPZILBpQ",
         "did:ion:test:EiBwr2eTfupemVBq28VyIb8po0r_jpuHMUMFzw25Flnmrg",
@@ -35,6 +27,6 @@ fn trustchain_graph() {
         chains.push(chain);
     }
 
-    let graph = TrustchainGraph::new(&chains).unwrap();
-    println!("{}", graph.to_dot());
+    let graph = TrustchainGraph::new(&chains, 50).unwrap();
+    println!("{}", graph);
 }

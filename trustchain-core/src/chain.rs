@@ -1,11 +1,10 @@
+use crate::display::PrettyDID;
 use crate::resolver::Resolver;
-use crate::utils::{canonicalize, decode, decode_verify, hash};
-use crate::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
+use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
+use crate::ROOT_EVENT_TIME_2378493;
 use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use ssi::did::{Service, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::did_resolve::Metadata;
-use ssi::jwk::JWK;
 use ssi::{
     did::Document,
     did_resolve::{DIDResolver, DocumentMetadata},
@@ -18,10 +17,10 @@ use thiserror::Error;
 /// An error relating to a DID chain.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChainError {
-    // #[error("Invalid data. Failed to prepend DID: {0}.")]
-    // PrependFailed(String),
+    /// Resolution of DID failed.
     #[error("Failed to resolve DID: {0}.")]
     ResolutionFailure(String),
+    /// Multiple controllers for a DID.
     #[error("Found multiple controllers in DID: {0}.")]
     MultipleControllers(String),
     /// No proof value present.
@@ -37,8 +36,6 @@ pub enum ChainError {
 
 /// A chain of DIDs.
 pub trait Chain {
-    // /// Constructs a new DID chain.
-    // fn new<T: DIDResolver + Sync + Send>(did: &str, resolver: &Resolver<T>) -> Result<Box<Self>, ChainError>;
     /// Returns the length of the DID chain.
     fn len(&self) -> usize;
     /// Returns the level of the given DID in the chain.
@@ -55,8 +52,19 @@ pub trait Chain {
     fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)>;
     /// Verify all of the proofs in the chain.
     fn verify_proofs(&self) -> Result<(), ChainError>;
-    /// Return view of chain in correct order
-    fn as_vec(&self) -> &Vec<String>;
+    /// Returns a vector of DID strings ordered by the level in the chain, starting at the root (level 0).
+    fn level_vec(&self) -> &Vec<String>;
+    /// Returns a vector of Documents and Document Metadata for each DID ordered by the level in the chain, starting at the root (level 0).
+    fn to_vec(&self) -> Vec<(Document, DocumentMetadata)> {
+        self.level_vec()
+            .iter()
+            .map(|did| self.data(did).unwrap().clone())
+            .collect()
+    }
+    /// Returns whether the Chain is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Gets proof from DocumentMetadata.
@@ -79,127 +87,30 @@ fn get_proof(doc_meta: &DocumentMetadata) -> Result<&str, ChainError> {
     }
 }
 
-/// Extracts vec of public keys from a doc.
-fn extract_keys(doc: &Document) -> Vec<JWK> {
-    let mut public_keys: Vec<JWK> = Vec::new();
-    if let Some(verification_methods) = doc.verification_method.as_ref() {
-        for verification_method in verification_methods {
-            if let VerificationMethod::Map(VerificationMethodMap {
-                public_key_jwk: Some(key),
-                ..
-            }) = verification_method
-            {
-                public_keys.push(key.clone());
-            } else {
-                continue;
-            }
-        }
-    }
-    public_keys
-}
+/// Max width in chars for printing
+const MAX_WIDTH: usize = 79;
 
+/// A struct for a chain of DIDs.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DIDChain {
-    // An map from DID strings to resolved tuples.
+    // A map from DID strings to resolved tuples.
     did_map: HashMap<String, (Document, DocumentMetadata)>,
 
     // Vector to keep track of the level of each DID.
     level_vec: Vec<String>,
 }
 
-fn truncate(s: &str, max_chars: usize) -> String {
-    match s.char_indices().nth(max_chars) {
-        None => s.to_string(),
-        Some((idx, _)) => (s[..idx - 3].to_string() + "..."),
-    }
-}
-
-fn get_service_endpoint_string(doc: &Document) -> Option<String> {
-    match doc.select_service("TrustchainID") {
-        Some(Service {
-            service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(service_endpoint))),
-            ..
-        }) => Some(service_endpoint.to_string()),
-        _ => None,
-    }
-}
-
-/// Struct for displaying DID in a box.
-pub struct PrettyDID {
-    did: String,
-    level: usize,
-    endpoint: Option<String>,
-    max_width: usize,
-}
-
-/// Max width in chars for printing
-const MAX_WIDTH: usize = 79;
-
-impl PrettyDID {
-    pub fn new(doc: &Document, level: usize, max_width: usize) -> Self {
-        let endpoint = get_service_endpoint_string(doc);
-        Self {
-            did: doc.id.to_string(),
-            level,
-            endpoint,
-            max_width,
-        }
-    }
-    fn get_width(&self) -> usize {
-        format!(" DID: {} ", self.did).len().min(self.max_width)
-    }
-    fn get_text_width(&self) -> usize {
-        self.get_width() - 2
-    }
-    fn get_strings(&self) -> [String; 3] {
-        let text_width = self.get_text_width();
-        let level_string = truncate(&format!("Level: {}", self.level), text_width);
-        let did_string = truncate(&format!("DID: {}", self.did), text_width);
-        let endpoint_string = match &self.endpoint {
-            Some(s) => truncate(&format!("Endpoint: {}", s), text_width),
-            _ => truncate(&format!("Endpoint: {}", ""), text_width),
-        };
-        [level_string, did_string, endpoint_string]
-    }
-    pub fn to_node_string(&self) -> String {
-        let strings = self.get_strings();
-        strings.join("\n")
-    }
-}
-
-impl fmt::Display for PrettyDID {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Style:
-        // "+---------------+"
-        // "| level: ...    |"
-        // "| did: ...      |"  ✔
-        // "| endpoint: ... |"
-        // "+---------------+"
-        let box_width = self.get_width();
-        let text_width = box_width - 2;
-        let [level_string, did_string, endpoint_string] = self.get_strings();
-        writeln!(f, "+{}+", "-".repeat(box_width))?;
-        writeln!(f, "| {0:<1$} |   ", level_string, text_width)?;
-        writeln!(f, "| {0:<1$} |  ✔", did_string, text_width)?;
-        writeln!(f, "| {0:<1$} |   ", endpoint_string, text_width)?;
-        writeln!(f, "+{}+", "-".repeat(box_width))?;
-        Ok(())
-    }
-}
-
 impl fmt::Display for DIDChain {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Style:
         // "+----------------+"
-        // "| PrettyDID: ... |"  ✓
+        // "| PrettyDID: ... |"  ✅
         // "+----------------+"
         //        ⛓⛓⛓⛓
         // "+----------------+"
-        // "| PrettyDID: ... |"  ✓
+        // "| PrettyDID: ... |"  ✅
         // "+----------------+"
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
-        // let title = "₿ DON'T TRUST, VERIFY! ₿";
-        // writeln!(f, "{0:^1$}\n", title, box_width + 2)?;
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
             if i == 0 {
@@ -230,8 +141,6 @@ impl DIDChain {
         did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Self, ChainError> {
-        // Result<Box<Self>, ChainError> {
-
         // Construct an empty chain.
         let mut chain = DIDChain::empty();
 
@@ -253,7 +162,6 @@ impl DIDChain {
                 // Extract the controller from the DID document.
                 // If there is no controller, this is the root.
                 // If there is more than one controller, return an error.
-                // TODO: multiple controllers is a verfication error, not a chain error.
                 let udid = match controller {
                     None => {
                         chain.level_vec.reverse();
@@ -291,7 +199,7 @@ impl DIDChain {
 }
 
 impl Chain for DIDChain {
-    fn as_vec(&self) -> &Vec<String> {
+    fn level_vec(&self) -> &Vec<String> {
         &self.level_vec
     }
 
@@ -310,19 +218,11 @@ impl Chain for DIDChain {
     }
 
     fn root(&self) -> &str {
-        match self.len() > 0 {
-            true => self.level_vec.first().unwrap(),
-            // The public constructor prevents an empty chain from existing.
-            false => panic!("Empty chain!"),
-        }
+        self.level_vec.first().expect("Empty chain!")
     }
 
     fn leaf(&self) -> &str {
-        match self.len() > 0 {
-            true => self.level_vec.last().unwrap(),
-            // The public constructor prevents an empty chain from existing.
-            false => panic!("Empty chain!"),
-        }
+        self.level_vec.last().expect("Empty chain!")
     }
 
     fn verify_proofs(&self) -> Result<(), ChainError> {
@@ -340,8 +240,9 @@ impl Chain for DIDChain {
             let (udid_doc, _) = self.data(udid).unwrap();
 
             // Extract the controller proof from the document metadata.
-            let proof = get_proof(&did_doc_meta)?;
+            let proof = get_proof(did_doc_meta)?;
 
+            // TODO: consider whether to use detached JWS instead making verification one step.
             // 1. Reconstruct the actual payload.
             let actual_payload = hash(&canonicalize(&did_doc).unwrap());
 
@@ -358,7 +259,7 @@ impl Chain for DIDChain {
 
             // 2. Check the keys
             // Get keys
-            let keys = extract_keys(&udid_doc);
+            let keys = extract_keys(udid_doc);
 
             // Check at least one key valid
             let mut one_valid_key = false;
@@ -382,6 +283,7 @@ impl Chain for DIDChain {
         Ok(())
     }
 
+    /// Returns the DID immediately upstream from the given DID in the chain.
     fn upstream(&self, did: &str) -> Option<&String> {
         let index = self.level_vec.iter().position(|x| x == did).unwrap();
         if index != 0 {
@@ -391,7 +293,7 @@ impl Chain for DIDChain {
             None
         }
     }
-
+    /// Returns the DID immediately downstream from the given DID in the chain.
     fn downstream(&self, did: &str) -> Option<&String> {
         let index = self.level_vec.iter().position(|x| x == did).unwrap();
         if index != self.level_vec.len() - 1 {
@@ -401,7 +303,7 @@ impl Chain for DIDChain {
             None
         }
     }
-
+    /// Returns a tuple of the `Document` and `DocumentMetadata` of a given DID in the chain.
     fn data(&self, did: &str) -> Option<&(Document, DocumentMetadata)> {
         self.did_map.get(did)
     }
@@ -409,12 +311,13 @@ impl Chain for DIDChain {
 
 #[cfg(test)]
 mod tests {
+    use ssi::jwk::JWK;
+
     use super::*;
     use crate::data::{
-        TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
+        TEST_DID_CHAIN, TEST_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT_METADATA, TEST_ROOT_PLUS_1_DOCUMENT,
         TEST_ROOT_PLUS_1_DOCUMENT_METADATA, TEST_ROOT_PLUS_2_DOCUMENT,
-        TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_SIDETREE_DOCUMENT,
-        TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
+        TEST_ROOT_PLUS_2_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT,
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
 
@@ -457,33 +360,16 @@ mod tests {
     }
 
     // Helper function returns a resolved tuple.
-    fn resolved_tuple() -> (Document, DocumentMetadata) {
+    fn resolved_fixture(doc: &str, doc_meta: &str) -> (Document, DocumentMetadata) {
         (
-            Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load."),
-            serde_json::from_str(TEST_SIDETREE_DOCUMENT_METADATA)
-                .expect("Document failed to load."),
+            Document::from_json(doc).expect("Document failed to load."),
+            serde_json::from_str(doc_meta).expect("Document metadata failed to load."),
         )
     }
 
-    // Helper function returns a chain of three DIDs.
-    fn test_chain() -> Result<DIDChain, Box<dyn std::error::Error>> {
-        let mut chain = DIDChain::empty();
-
-        let root_doc: Document = serde_json::from_str(TEST_ROOT_DOCUMENT)?;
-        let level1_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT)?;
-        let level2_doc: Document = serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT)?;
-
-        let root_doc_meta: DocumentMetadata = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA)?;
-        let level1_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_1_DOCUMENT_METADATA)?;
-        let level2_doc_meta: DocumentMetadata =
-            serde_json::from_str(TEST_ROOT_PLUS_2_DOCUMENT_METADATA)?;
-
-        chain.prepend((level2_doc, level2_doc_meta));
-        chain.prepend((level1_doc, level1_doc_meta));
-        chain.prepend((root_doc, root_doc_meta));
-        chain.level_vec.reverse();
-        Ok(chain)
+    // Helper function returns a valid chain of three DIDs.
+    fn test_chain() -> DIDChain {
+        serde_json::from_str(TEST_DID_CHAIN).unwrap()
     }
 
     // Helper function returns an invalid chain of three DIDs.
@@ -510,46 +396,66 @@ mod tests {
     #[test]
     fn test_len_level_prepend() {
         let mut target = DIDChain::empty();
-        let expected_ddid = "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ";
+        let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
         // Check that the chain is initially empty.
         assert_eq!(target.len(), 0);
-        assert!(target.level(expected_ddid).is_none());
+        assert!(target.level(expected_root_did).is_none());
 
         // Prepend a DID to the chain
-        target.prepend(resolved_tuple());
+        target.prepend(resolved_fixture(
+            TEST_ROOT_DOCUMENT,
+            TEST_ROOT_DOCUMENT_METADATA,
+        ));
 
         // Check that the chain now has one node.
         assert_eq!(target.len(), 1);
 
         // Check that the HashMap key matches the DID.
-        assert_eq!(target.did_map.keys().len(), 1);
+        assert_eq!(target.did_map.len(), 1);
+        assert!(target.did_map.contains_key(expected_root_did));
+
+        // Check the level.
+        assert!(target.level(expected_root_did).is_some());
+        assert_eq!(target.level(expected_root_did).unwrap(), 0);
+
+        // TODO: prepend another DID and repeat the above tests.
+        let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        // Prepend a DID to the chain
+        target.prepend(resolved_fixture(
+            TEST_ROOT_PLUS_1_DOCUMENT,
+            TEST_ROOT_PLUS_1_DOCUMENT_METADATA,
+        ));
+
+        // Check that the chain now has one node.
+        assert_eq!(target.len(), 2);
+
+        // Check that the HashMap key matches the DID.
+        assert_eq!(target.did_map.len(), 2);
         assert!(target.did_map.contains_key(expected_ddid));
 
         // Check the level.
         assert!(target.level(expected_ddid).is_some());
-        assert_eq!(target.level(expected_ddid).unwrap(), 0);
-
-        // TODO: prepend another DID and repeat the above tests.
-        // let did1 = ""
+        assert_eq!(target.level(expected_ddid).unwrap(), 1);
     }
 
     #[test]
-    fn test_as_vec() {
-        let target = test_chain().unwrap();
-        let mut expected_vec = Vec::new();
-        expected_vec
-            .push("did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string()); //ROOT DID
-        expected_vec
-            .push("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()); // LEVEL ONE DID
-        expected_vec
-            .push("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()); // LEVEL TWO DID
-        assert_eq!(target.as_vec(), &expected_vec);
+    fn test_level_vec() {
+        let target = test_chain();
+        let expected_vec = vec![
+            // ROOT DID
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg".to_string(),
+            // LEVEL ONE DID
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string(),
+            // LEVEL TWO DID
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
+        ];
+        assert_eq!(target.level_vec(), &expected_vec);
     }
 
     #[test]
     fn test_root() {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         assert_eq!(
             target.root(),
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
@@ -558,7 +464,7 @@ mod tests {
 
     #[test]
     fn test_leaf() {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         assert_eq!(
             target.leaf(),
             "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
@@ -567,7 +473,7 @@ mod tests {
 
     #[test]
     fn test_verify_proofs() {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         assert!(target.verify_proofs().is_ok());
         let target = test_invalid_chain().unwrap();
         assert!(target.verify_proofs().is_err());
@@ -575,8 +481,8 @@ mod tests {
 
     #[test]
     fn test_level() {
-        // test the level returned for each node in the test chain
-        let target = test_chain().unwrap();
+        // Test the level returned for each node in the test chain
+        let target = test_chain();
         let expected_root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         assert_eq!(target.level(expected_root_did).unwrap(), 0);
 
@@ -588,7 +494,7 @@ mod tests {
 
     #[test]
     fn test_upstream() {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let expected_udid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_uudid = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -611,7 +517,7 @@ mod tests {
 
     #[test]
     fn test_downstream() {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let expected_ddid = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let expected_dddid = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -631,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_data() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let level1_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let level2_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -678,8 +584,32 @@ mod tests {
 
     #[test]
     fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
-        let target = test_chain().unwrap();
+        let target = test_chain();
         println!("{}", target);
         Ok(())
+    }
+
+    #[test]
+    fn test_to_vec() {
+        let target = test_chain();
+        let result = target.to_vec();
+        assert_eq!(result.len(), 3);
+
+        let root: &Document = &result[0].0;
+        let l1: &Document = &result[1].0;
+        let l2: &Document = &result[2].0;
+
+        assert_eq!(
+            root.id,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+        assert_eq!(
+            l1.id,
+            "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
+        );
+        assert_eq!(
+            l2.id,
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        );
     }
 }

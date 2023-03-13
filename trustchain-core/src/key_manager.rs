@@ -1,7 +1,6 @@
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
-use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -12,21 +11,29 @@ use crate::TRUSTCHAIN_DATA;
 /// An error relating to Trustchain key management.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyManagerError {
+    /// Key does not exist.
     #[error("Key does not exist.")]
     FailedToLoadKey,
+    /// Key could not be saved.
     #[error("Key could not be saved.")]
     FailedToSaveKey,
+    /// Failed to read UTF-8 data.
     #[error("Failed to read UTF-8 data.")]
     FailedToReadUTF8,
+    /// Failed to parse JSON string to JWK.
     #[error("Failed to parse JSON string to JWK.")]
     FailedToParseJWK,
+    /// Failed to create path for DID keys during save.
     #[error("Failed to create path for DID keys during save.")]
     FailedToCreateDir,
+    /// Failed to remove key.
     #[error("Failed to remove key.")]
     FailedToRemoveKey,
-    #[error("No Trustchain data environment variable.")]
+    /// No TRUSTCHAIN_DATA environment variable.
+    #[error("No TRUSTCHAIN_DATA environment variable.")]
     TrustchainDataNotPresent,
-    #[error("Many keys when should be one.")]
+    /// Expected only one key but found many.
+    #[error("Expected only one key but found many.")]
     InvalidManyKeys,
 }
 
@@ -81,25 +88,6 @@ pub trait AttestorKeyManager: KeyManager {
 }
 
 pub trait KeyManager {
-    /// Generates a new cryptographic key.
-    fn generate_key(&self) -> JWK {
-        JWK::generate_secp256k1().expect("Could not generate key.")
-    }
-
-    /// Generates a set of update, recovery and signing keys.
-    // TODO: consider droppping this function as creating keys is easier one by one.
-    fn generate_keys(&self) -> HashMap<KeyType, OneOrMany<JWK>> {
-        let update_key = self.generate_key();
-        let recovery_key = self.generate_key();
-        let signing_key = self.generate_key();
-
-        let mut map = HashMap::new();
-        map.insert(KeyType::UpdateKey, OneOrMany::One(update_key));
-        map.insert(KeyType::RecoveryKey, OneOrMany::One(recovery_key));
-        map.insert(KeyType::SigningKey, OneOrMany::One(signing_key));
-        map
-    }
-
     /// Reads a key of a given type.
     fn read_key(
         &self,
@@ -247,6 +235,7 @@ pub trait KeyManager {
         }
     }
 
+    /// Removes file from disk for `key_type` of `did_suffix`.
     fn remove_keys(&self, did_suffix: &str, key_type: &KeyType) -> Result<(), KeyManagerError> {
         // Make path
         let path = &self.get_path(did_suffix, key_type, false)?;
@@ -269,21 +258,10 @@ pub mod tests {
     use crate::data::{
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
-    use crate::init;
+    use crate::utils::{generate_key, init};
     use mockall::mock;
     use ssi::jwk::Params;
     use std::io::Read;
-    // use std::sync::Once;
-    // // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
-    // // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-    // static INIT: Once = Once::new();
-    // pub fn init() {
-    //     INIT.call_once(|| {
-    //         // initialization code here
-    //         let tempdir = tempfile::tempdir().unwrap();
-    //         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-    //     });
-    // }
 
     pub struct TestKeyManager;
 
@@ -291,11 +269,9 @@ pub mod tests {
     impl AttestorKeyManager for TestKeyManager {}
     impl ControllerKeyManager for TestKeyManager {}
 
-    /// Test for generating keys
     #[test]
     fn test_generate_key() {
-        let target = TestKeyManager;
-        let result = target.generate_key();
+        let result = generate_key();
 
         // Check for the expected elliptic curve (used by ION to generate keys).
         match result.params {
@@ -304,16 +280,6 @@ pub mod tests {
             }
             _ => panic!(),
         }
-    }
-
-    #[test]
-    fn test_generate_keys() {
-        let target = TestKeyManager;
-        let result = target.generate_keys();
-        assert_eq!(result.len(), 3);
-        assert!(result.contains_key(&KeyType::UpdateKey));
-        assert!(result.contains_key(&KeyType::RecoveryKey));
-        assert!(result.contains_key(&KeyType::SigningKey));
     }
 
     // Mock the std::io::Read trait.
@@ -424,14 +390,6 @@ pub mod tests {
         target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true)?;
 
         assert!(target.keys_exist(did_suffix, &KeyType::UpdateKey));
-
-        // Failing overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);
-        assert!(try_overwrite.is_err());
-
-        // Successful overwrite
-        let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, true);
-        assert!(try_overwrite.is_ok());
 
         // Failing overwrite
         let try_overwrite = target.save_key(did_suffix, KeyType::UpdateKey, &expected_key, false);

@@ -1,25 +1,10 @@
-use core::panic;
-
-use ssi::did_resolve::Metadata;
-use ssi::one_or_many::OneOrMany;
-
-use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
-
-// Type aliases
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
-pub fn test_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
-}
-
 use trustchain_core::verifier::Verifier;
 use trustchain_core::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
+use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 #[test]
-#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+#[ignore = "Requires a running Sidetree node listening on http://localhost:3000."]
 fn trustchain_verification() {
     // Integration test of the Trustchain resolution pipeline.
     // root - root-plus-1 - root-plus-2
@@ -30,14 +15,14 @@ fn trustchain_verification() {
     ];
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = test_resolver("http://localhost:3000/");
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     let verifier = IONVerifier::new(resolver);
 
     // Verify initial DIDs
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME);
-        println!("{}", result.as_ref().unwrap());
+        // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
 
@@ -55,7 +40,7 @@ fn trustchain_verification() {
     ];
     for did in new_dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_2378493);
-        println!("{}", result.as_ref().unwrap());
+        // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
 }

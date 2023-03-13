@@ -595,27 +595,401 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_2_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw";
 
+/// Example DID chain.
+pub const TEST_DID_CHAIN: &str = r##"
+{
+    "did_map": {
+      "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+            }
+          ],
+          "id": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "verificationMethod": [
+            {
+              "id": "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+              }
+            }
+          ],
+          "authentication": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "assertionMethod": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "keyAgreement": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "capabilityInvocation": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "capabilityDelegation": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root"
+            }
+          ]
+        },
+        {
+          "canonicalId": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "method": {
+            "updateCommitment": "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg",
+            "recoveryCommitment": "EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w",
+            "published": true
+          }
+        }
+      ],
+      "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+            }
+          ],
+          "id": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+          "controller": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "verificationMethod": [
+            {
+              "id": "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4",
+                "y": "rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY"
+              }
+            }
+          ],
+          "authentication": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "assertionMethod": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "keyAgreement": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "capabilityInvocation": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "capabilityDelegation": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root-plus-2"
+            }
+          ]
+        },
+        {
+          "method": {
+            "recoveryCommitment": "EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA",
+            "updateCommitment": "EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg",
+            "published": true
+          },
+          "proof": {
+            "proofValue": "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw",
+            "id": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+            "type": "JsonWebSignature2020"
+          },
+          "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        }
+      ],
+      "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
+            }
+          ],
+          "id": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "controller": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "verificationMethod": [
+            {
+              "id": "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU",
+                "y": "dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0"
+              }
+            }
+          ],
+          "authentication": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "assertionMethod": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "keyAgreement": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "capabilityInvocation": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "capabilityDelegation": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root-plus-1"
+            }
+          ]
+        },
+        {
+          "canonicalId": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "method": {
+            "published": true,
+            "recoveryCommitment": "EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg",
+            "updateCommitment": "EiA0-GpdeoAa4v0-K4YCHoNTjAPsoroDy7pleDIc4a3_QQ"
+          },
+          "proof": {
+            "type": "JsonWebSignature2020",
+            "proofValue": "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g",
+            "id": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+          }
+        }
+      ]
+    },
+    "level_vec": [
+      "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+      "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+      "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+    ]
+}
+"##;
+
+/// Example DID chain (reversed).
+pub const TEST_DID_CHAIN_REVERSED: &str = r##"
+{
+    "did_map": {
+      "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+            }
+          ],
+          "id": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "verificationMethod": [
+            {
+              "id": "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
+                "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
+              }
+            }
+          ],
+          "authentication": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "assertionMethod": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "keyAgreement": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "capabilityInvocation": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "capabilityDelegation": [
+            "#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root"
+            }
+          ]
+        },
+        {
+          "canonicalId": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "method": {
+            "updateCommitment": "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg",
+            "recoveryCommitment": "EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w",
+            "published": true
+          }
+        }
+      ],
+      "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+            }
+          ],
+          "id": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+          "controller": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "verificationMethod": [
+            {
+              "id": "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4",
+                "y": "rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY"
+              }
+            }
+          ],
+          "authentication": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "assertionMethod": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "keyAgreement": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "capabilityInvocation": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "capabilityDelegation": [
+            "#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root-plus-2"
+            }
+          ]
+        },
+        {
+          "method": {
+            "recoveryCommitment": "EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA",
+            "updateCommitment": "EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg",
+            "published": true
+          },
+          "proof": {
+            "proofValue": "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw",
+            "id": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+            "type": "JsonWebSignature2020"
+          },
+          "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+        }
+      ],
+      "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A": [
+        {
+          "@context": [
+            "https://www.w3.org/ns/did/v1",
+            {
+              "@base": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"
+            }
+          ],
+          "id": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "controller": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
+          "verificationMethod": [
+            {
+              "id": "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ",
+              "type": "JsonWebSignature2020",
+              "controller": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+              "publicKeyJwk": {
+                "kty": "EC",
+                "crv": "secp256k1",
+                "x": "aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU",
+                "y": "dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0"
+              }
+            }
+          ],
+          "authentication": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "assertionMethod": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "keyAgreement": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "capabilityInvocation": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "capabilityDelegation": [
+            "#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"
+          ],
+          "service": [
+            {
+              "id": "#TrustchainID",
+              "type": "Identity",
+              "serviceEndpoint": "https://identity.foundation/ion/trustchain-root-plus-1"
+            }
+          ]
+        },
+        {
+          "canonicalId": "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+          "method": {
+            "published": true,
+            "recoveryCommitment": "EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg",
+            "updateCommitment": "EiA0-GpdeoAa4v0-K4YCHoNTjAPsoroDy7pleDIc4a3_QQ"
+          },
+          "proof": {
+            "type": "JsonWebSignature2020",
+            "proofValue": "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g",
+            "id": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+          }
+        }
+      ]
+    },
+    "level_vec": [
+      "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+      "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+      "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+    ]
+}
+"##;
+
 /// Test credential: no issuer is present for the unit test
 pub const TEST_CREDENTIAL: &str = r##"{
-   "@context": [
-     "https://www.w3.org/2018/credentials/v1",
-     "https://www.w3.org/2018/credentials/examples/v1",
-     "https://w3id.org/citizenship/v1"
-   ],
-   "credentialSchema": {
-     "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
-     "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
-   },
-   "type": ["VerifiableCredential"],
-   "image": "some_base64_representation",
-   "credentialSubject": {
-     "givenName": "Jane",
-     "familyName": "Doe",
-     "degree": {
-       "type": "BachelorDegree",
-       "name": "Bachelor of Science and Arts",
-       "college": "College of Engineering"
-     }
-   }
- }
- "##;
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://www.w3.org/2018/credentials/examples/v1",
+    "https://w3id.org/citizenship/v1"
+  ],
+  "credentialSchema": {
+    "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
+    "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
+  },
+  "type": ["VerifiableCredential"],
+  "image": "some_base64_representation",
+  "credentialSubject": {
+    "givenName": "Jane",
+    "familyName": "Doe",
+    "degree": {
+      "type": "BachelorDegree",
+      "name": "Bachelor of Science and Arts",
+      "college": "College of Engineering"
+    }
+  }
+}
+"##;

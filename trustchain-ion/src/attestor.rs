@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
@@ -7,15 +5,16 @@ use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
-use trustchain_core::attestor::CredentialAttestor;
-use trustchain_core::get_did_suffix;
+use std::convert::TryFrom;
+use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
-    Subject,
+    subject::Subject,
 };
 
+/// Struct for IONAttestor.
 pub struct IONAttestor {
     did: String,
 }
@@ -31,46 +30,37 @@ impl IONAttestor {
             did: did.to_owned(),
         }
     }
-
+    /// Gets the signing keys of the attestor.
     fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
         self.read_signing_keys(self.did_suffix())
     }
 
-    /// Get the IONAttestor's signing key.
+    /// Gets the signing key with ID `key_id` of the attestor.
     fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        // let keys = self.read_signing_keys(&self.did)?;
         let keys = self.signing_keys()?;
         // If no key_id is given, return the first available key.
-        if key_id.is_none() {
-            match keys.first() {
-                Some(key) => Ok(key.to_owned()),
-                None => Err(KeyManagerError::FailedToLoadKey),
-            }
-        } else {
-            let key_id = key_id.unwrap();
+        if let Some(key_id) = key_id {
             // Iterate over the available keys.
-            for key in keys.into_iter() {
+            for key_in_loop in keys.into_iter() {
                 // If the key has a key_id which matches the given key_id, return it.
-                // Otherwise continue.
-                match key.key_id {
-                    Some(ref this_key_id) => {
-                        if this_key_id == key_id {
-                            return Ok(key);
-                        }
+                if let Some(key_in_loop_id) = &key_in_loop.key_id {
+                    if key_in_loop_id == key_id {
+                        return Ok(key_in_loop);
                     }
-                    None => continue,
                 }
             }
             // If none of the keys has a matching key_id, the required key does not exist.
             Err(KeyManagerError::FailedToLoadKey)
+        } else {
+            match keys.first() {
+                Some(key) => Ok(key.to_owned()),
+                None => Err(KeyManagerError::FailedToLoadKey),
+            }
         }
     }
     /// Get the IONAttestor's public signing key.
     pub fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        match self.signing_key(key_id) {
-            Ok(key) => Ok(key.to_public()),
-            Err(e) => Err(e),
-        }
+        Ok(self.signing_key(key_id)?.to_public())
     }
 }
 
@@ -87,7 +77,7 @@ impl AttestorData {
 }
 
 impl TryFrom<AttestorData> for IONAttestor {
-    type Error = Box<dyn std::error::Error>;
+    type Error = KeyManagerError;
 
     fn try_from(data: AttestorData) -> Result<Self, Self::Error> {
         let subject = IONAttestor { did: data.did };
@@ -107,17 +97,10 @@ impl Subject for IONAttestor {
     fn did(&self) -> &str {
         &self.did
     }
-    fn did_suffix(&self) -> &str {
-        get_did_suffix(&self.did)
-    }
 }
 
 impl Attestor for IONAttestor {
-    fn attest(
-        &self,
-        doc: &Document,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    fn attest(&self, doc: &Document, key_id: Option<&str>) -> Result<String, AttestorError> {
         let algorithm = ION::SIGNATURE_ALGORITHM;
 
         // Add controller to document
@@ -127,102 +110,69 @@ impl Attestor for IONAttestor {
         doc.controller = Some(OneOrMany::One(self.did().to_string()));
 
         // Canonicalize document
-        let doc_canon = match ION::json_canonicalization_scheme(&doc) {
-            Ok(str) => str,
-            Err(_) => {
-                return Err(Box::new(AttestorError::InvalidDocumentParameters(
-                    doc.id.clone(),
-                )))
-            }
-        };
+        let doc_canon = ION::json_canonicalization_scheme(&doc)
+            .map_err(|_| AttestorError::InvalidDocumentParameters(doc.id.clone()))?;
+
         // Hash canonicalized document
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
-        let signing_key = self.signing_key(key_id)?;
-
+        let signing_key = match self.signing_key(key_id) {
+            Ok(key) => key,
+            Err(_) => {
+                if let Some(key_id) = key_id {
+                    return Err(AttestorError::NoSigningKeyWithId(
+                        self.did().to_string(),
+                        key_id.to_string(),
+                    ));
+                } else {
+                    return Err(AttestorError::NoSigningKey(self.did().to_string()));
+                }
+            }
+        };
         // Encode and sign
         match ssi::jwt::encode_sign(algorithm, &doc_canon_hash, &signing_key) {
             Ok(str) => Ok(str),
-            Err(e) => Err(Box::new(AttestorError::SigningError(
-                doc.id.clone(),
-                e.to_string(),
-            ))),
-        }
-    }
-
-    /// Attests to a passed string slice.
-    fn attest_str(
-        &self,
-        doc: &str,
-        key_id: Option<&str>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let algorithm = ION::SIGNATURE_ALGORITHM;
-
-        // Hash canonicalized document
-        let doc_canon_hash = ION::hash(doc.as_bytes());
-
-        // Get the signing key.
-        let signing_key = self.signing_key(key_id)?;
-
-        // Encode and sign
-        // TODO: check use of jws: seems correct as payload is a hash not a JSON.
-        match ssi::jws::detached_sign_unencoded_payload(
-            algorithm,
-            doc_canon_hash.as_bytes(),
-            &signing_key,
-        ) {
-            Ok(str) => Ok(str),
-            Err(e) => Err(Box::new(AttestorError::SigningError(
-                self.did().to_string(),
-                e.to_string(),
-            ))),
+            Err(e) => Err(AttestorError::SigningError(doc.id, e.to_string())),
         }
     }
 }
 
 #[async_trait]
-impl CredentialAttestor for IONAttestor {
-    // Attests to a passed credential returning the credential with proof.
-    async fn attest_credential(
+impl Issuer for IONAttestor {
+    // Attests to a given credential returning the credential with proof. The `@context` of the credential has linked-data fields strictly checked as part of proof generation.
+    async fn sign<T: DIDResolver>(
         &self,
-        doc: &Credential,
+        credential: &Credential,
         key_id: Option<&str>,
-        resolver: &dyn DIDResolver,
-    ) -> Result<Credential, Box<dyn std::error::Error>> {
+        resolver: &T,
+    ) -> Result<Credential, IssuerError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
+
         // Generate proof
-        let proof = doc
+        let proof = credential
             .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
-            .await;
-        // Handle proof result
-        match proof {
-            Ok(proof) => {
-                let mut doc_with_proof = doc.clone();
-                doc_with_proof.add_proof(proof);
-                Ok(doc_with_proof)
-            }
-            Err(e) => Err(Box::new(e)),
-        }
+            .await?;
+
+        // Add proof to credential
+        let mut vc = credential.clone();
+        vc.add_proof(proof);
+        Ok(vc)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_resolver;
+    use crate::get_ion_resolver;
     use ssi::did::Document;
-    use ssi::jws::detached_verify;
-    use ssi::vc::Proof;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
-    use trustchain_core::init;
-    use trustchain_core::utils::canonicalize;
+    use trustchain_core::utils::init;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
         init();
-        assert_eq!(0, 0);
         let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
         let did = "did:example:did_try_from";
         let did_suffix = "did_try_from";
@@ -286,81 +236,70 @@ mod tests {
     }
 
     #[test]
-    fn test_attest_str() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_attest_credential() {
         // Initialize temp path for saving keys
         init();
 
-        // Set-up keys and attestor
-        let did = "did:example:test_attest_str";
-        let signing_keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+        // Resolver
+        let resolver = get_ion_resolver("http://localhost:3000/");
 
-        // 2. Load Attestor
-        let attestor = IONAttestor::try_from(AttestorData::new(did.to_string(), signing_keys))?;
+        // Use resolver runtime for async scope
+        resolver.runtime.block_on(async {
+            // Set-up keys and attestor
+            let did = "did:example:test_attest_credential";
+            // Attestor
+            let target = IONAttestor::try_from(AttestorData::new(
+                did.to_string(),
+                serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
+            ))
+            .unwrap();
 
-        // 3. Read credential
-        let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL)?;
+            // Load credential. Issuer is "None" here so no resolution is required.
+            let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
-        // 4. Canonicalize and attest
-        let vc_canon = canonicalize(&vc)?;
+            // Attest to doc
+            let vc_with_proof = target.sign(&vc, None, &resolver).await;
 
-        // 5. Get a detached JWS signature for VC
-        let proof = attestor.attest_str(&vc_canon, None);
-        assert!(proof.is_ok());
-
-        // Unwrap attestation proof
-        let proof = proof.unwrap();
-
-        // 6. Set proof property
-        vc.proof = Some(OneOrMany::One(Proof {
-            jws: Some(proof.clone()),
-            ..Default::default()
-        }));
-
-        // 7. Verify
-        let signing_pk = attestor.signing_key(None).unwrap().to_public();
-
-        // Check the signature is valid by passing in the payload and detached signature
-        let det_ver = detached_verify(
-            &proof,
-            ION::hash(vc_canon.as_bytes()).as_bytes(),
-            &signing_pk,
-        );
-        assert!(det_ver.is_ok());
-
-        Ok(())
+            // Check attest was ok
+            assert!(vc_with_proof.is_ok());
+        });
     }
 
     #[test]
-    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
-    fn test_attest_credential() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_signing_key() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize temp path for saving keys
         init();
 
-        // Get resolver
-        let resolver = test_resolver("http://localhost:3000/");
-
         // Set-up keys and attestor
-        let did = "did:example:test_attest_credential";
-        let keys: OneOrMany<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
-        let target = IONAttestor::try_from(AttestorData::new(did.to_string(), keys))?;
+        let did = "did:example:test_signing_key";
 
-        // Load credential
-        let doc: Credential = serde_json::from_str(TEST_CREDENTIAL)?;
+        // Load keys
+        let mut keys: Vec<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
 
-        // async function run within runtime
-        resolver.runtime.block_on(async {
-            // Get credential with proof
-            let doc_with_proof = target
-                .attest_credential(&doc, None, &resolver)
-                .await
-                .unwrap();
-
-            // Assert credential has proof
-            assert!(doc_with_proof.proof.is_some());
+        // Attach a key_id to first key only
+        keys.first_mut().map(|key| {
+            key.key_id = Some("0".to_string());
+            key
         });
+        let expected_key = keys.first().unwrap().clone();
+
+        // Target
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
+
+        // With None passed, expect first key
+        let actual_key = target.signing_key(None)?;
+        assert_eq!(expected_key, actual_key);
+
+        // With key_id passed, expect correct key returned
+        let actual_key = target.signing_key(Some("0"))?;
+        assert_eq!(expected_key, actual_key);
+
+        // With a non-matching key_id, expect KeyManagerError::FailedToLoadKey
+        let actual_key_res = target.signing_key(Some("1"));
+        let expected_res: Result<JWK, KeyManagerError> = Err(KeyManagerError::FailedToLoadKey);
+        assert_eq!(actual_key_res, expected_res);
+
         Ok(())
     }
-
-    // #[test]
-    // fn test_signing_key() {}
 }
