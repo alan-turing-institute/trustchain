@@ -83,7 +83,7 @@ where
     resolver: Resolver<T>,
     rpc_client: bitcoincore_rpc::Client,
     ipfs_client: IpfsClient,
-    ipfs_hasher: IpfsHasher,
+    // ipfs_hasher: IpfsHasher,
     bundles: HashMap<String, VerificationBundle>,
 }
 
@@ -109,13 +109,11 @@ where
         // named "testnet-core-config.json" (or "mainnet-core-config.json").
         // Similar for the MongoDB client.
         let ipfs_client = IpfsClient::default();
-        let ipfs_hasher = IpfsHasher::default();
         let bundles = HashMap::new();
         Self {
             resolver,
             rpc_client,
             ipfs_client,
-            ipfs_hasher,
             bundles,
         }
     }
@@ -147,7 +145,6 @@ where
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
     pub fn fetch_bundle(&mut self, did: &str) -> Result<(), VerifierError> {
         // TODO: if running on a Trustchain light client, make an API call to a full node to request the bundle.
-
         let (did_doc, did_doc_meta) = self.resolve_did(did)?;
         let (block_hash, tx_index) = self.locate_transaction(did)?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
@@ -159,7 +156,6 @@ where
         let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
         let block_header = self.fetch_block_header(&block_hash)?;
         // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
-
         let bundle = VerificationBundle::new(
             did_doc,
             did_doc_meta,
