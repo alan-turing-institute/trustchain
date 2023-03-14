@@ -32,14 +32,22 @@ type TransactionLocator = (BlockHash, u32);
 /// Data bundle for DID timestamp verification.
 #[derive(Serialize, Deserialize)]
 pub struct VerificationBundle {
-    did_doc: Document,               // DID Document
-    did_doc_meta: DocumentMetadata,  // DID Document Metadata
-    chunk_file: Vec<u8>,             // ION chunkFile
-    provisional_index_file: Vec<u8>, // ION provisionalIndexFile
-    core_index_file: Vec<u8>,        // ION coreIndexFile
-    transaction: Vec<u8>, // Bitcoin Transaction (the one that anchors the DID operation in the blockchain)
-    merkle_block: Vec<u8>, // MerkleBlock (containing a PartialMerkleTree and the BlockHeader)
-    block_header: Vec<u8>, // Bitcoin block header
+    /// DID Document.
+    did_doc: Document,
+    /// DID Document Metadata.
+    did_doc_meta: DocumentMetadata,
+    /// ION chunk file.
+    chunk_file: Vec<u8>,
+    /// ION provisional index file.
+    provisional_index_file: Vec<u8>,
+    /// ION core index file.
+    core_index_file: Vec<u8>,
+    /// Bitcoin Transaction (the one that anchors the DID operation in the blockchain).
+    transaction: Vec<u8>,
+    /// MerkleBlock (containing a PartialMerkleTree and the BlockHeader).
+    merkle_block: Vec<u8>,
+    /// Bitcoin block header.
+    block_header: Vec<u8>,
 }
 
 impl VerificationBundle {
