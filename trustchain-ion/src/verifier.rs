@@ -1,53 +1,33 @@
 use crate::commitment::IONCommitment;
-use crate::utils::{
-    block_header, decode_block_header, decode_ipfs_content, query_ipfs, query_mongodb,
-    reverse_endianness, transaction,
-};
+use crate::utils::{block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction};
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, CHUNKS_KEY,
-    CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, HASH_PREV_BLOCK_KEY, ION_METHOD,
-    ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY, METHOD_KEY, MONGO_COLLECTION_OPERATIONS,
-    MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE,
-    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, PROVISIONAL_INDEX_FILE_URI_KEY,
-    TIMESTAMP_KEY, UPDATE_COMMITMENT_KEY, VERSION_KEY,
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
+    CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
+    METHOD_KEY, PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
-use bitcoin::{BlockHeader, MerkleBlock};
-use bitcoincore_rpc::bitcoin::Script;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
-use flate2::read::GzDecoder;
 use futures::executor::block_on;
-use futures::TryStreamExt;
-use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
 use ipfs_hasher::IpfsHasher;
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
-use std::io::Read;
+use std::convert::TryInto;
 use std::str::FromStr;
-use trustchain_core::commitment::{Commitment, CommitmentError, DIDCommitment};
-use trustchain_core::resolver::{Resolver, ResolverError};
+use trustchain_core::commitment::{CommitmentError, DIDCommitment};
+use trustchain_core::resolver::Resolver;
 use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
 type TransactionLocator = (BlockHash, u32);
-
-/// Enum to distinguish ION file types.
-#[derive(Debug, PartialEq)]
-enum IonFileType {
-    CoreIndexFile,
-    ProvisionalIndexFile,
-    ChunkFile,
-}
 
 /// Data bundle for DID timestamp verification.
 #[derive(Serialize, Deserialize)]
@@ -400,7 +380,7 @@ where
         let (_, cid) = operation_count_plus_cid
             .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
             .unwrap();
-        return Ok(cid.to_string());
+        Ok(cid.to_string())
     }
 
     // TODO: make this a free function.
@@ -421,10 +401,10 @@ where
                 };
                 if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
                     match uc_metadata {
-                        Metadata::String(uc) => return Ok(uc.to_string()),
+                        Metadata::String(uc) => Ok(uc.to_string()),
                         _ => {
                             eprintln!("Unhandled Metadata variant. Expected String.");
-                            return Err(VerifierError::DIDMetadataError);
+                            Err(VerifierError::DIDMetadataError)
                         }
                     }
                 } else {
@@ -432,15 +412,15 @@ where
                         "Missing '{}' key in Document Metadata {} value.",
                         UPDATE_COMMITMENT_KEY, METHOD_KEY
                     );
-                    return Err(VerifierError::DIDMetadataError);
+                    Err(VerifierError::DIDMetadataError)
                 }
             } else {
                 eprintln!("Missing '{}' key in DID Document Metadata.", METHOD_KEY);
-                return Err(VerifierError::DIDMetadataError);
+                Err(VerifierError::DIDMetadataError)
             }
         } else {
             eprintln!("Missing property set in DID Document Metadata.");
-            return Err(VerifierError::DIDMetadataError);
+            Err(VerifierError::DIDMetadataError)
         }
     }
 }
@@ -479,10 +459,10 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
                 return Err(VerifierError::FailureToParseDIDContent());
             }
         };
-        return Ok(deltas);
+        Ok(deltas)
     } else {
         eprintln!("Key '{}' not found in chunk file content.", DELTAS_KEY);
-        return Err(VerifierError::FailureToParseDIDContent());
+        Err(VerifierError::FailureToParseDIDContent())
     }
 }
 
@@ -538,10 +518,10 @@ pub fn extract_doc_state(
         true => None,
         false => Some(service_endpoints),
     };
-    return Ok(DocumentState {
+    Ok(DocumentState {
         public_keys,
         services,
-    });
+    })
 }
 
 impl<T> Verifier<T> for IONVerifier<T>
@@ -584,26 +564,23 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read;
-    use std::str::FromStr;
-
     use super::*;
     use crate::{
         data::{
-            TEST_CHUNK_FILE_CONTENT, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_CONTENT,
-            TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
-            TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
+            TEST_CHUNK_FILE_CONTENT, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
+            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
         IONResolver,
     };
+    use bitcoin::MerkleBlock;
     use did_ion::{
         sidetree::{PublicKey, SidetreeClient},
         ION,
     };
+    use flate2::read::GzDecoder;
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
-    use trustchain_core::commitment::{
-        ChainedCommitment, Commitment, CommitmentChain, TrivialCommitment,
-    };
+    use std::{convert::TryFrom, io::Read, str::FromStr};
+    use trustchain_core::commitment::TrivialCommitment;
     use trustchain_core::data::TEST_ROOT_DOCUMENT_METADATA;
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
@@ -763,7 +740,7 @@ mod tests {
         let result = target.resolve_did(did);
 
         assert!(result.is_ok());
-        let (doc, doc_meta) = result.unwrap();
+        let (_, doc_meta) = result.unwrap();
 
         // Also testing the extract_update_commitment method.
         // TODO: split this into a separate test.
@@ -834,7 +811,7 @@ mod tests {
 
         assert!(target.bundles().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        target.fetch_bundle(&did);
+        target.fetch_bundle(did).unwrap();
 
         assert!(!target.bundles().is_empty());
         assert_eq!(target.bundles().len(), 1);
