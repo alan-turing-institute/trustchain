@@ -361,26 +361,20 @@ where
     }
 
     /// Extracts the ION OP_RETURN data from a Bitcoin transaction.
-    ///
+    /// Gets the output scripts that contain an OP_RETURN and extracts any that contain the
+    /// substring 'ion:' and returns an error unless precisely one such script exists.
     /// Errors:
     ///  - `VerifierError::MultipleDIDContentIdentifiers` if the transaction contains multiple ION OP_RETURN scripts
     ///  - `VerifierError::NoDIDContentIdentifier` if the transaction contains no ION OP_RETURN script
     fn op_return_data(&self, tx: &Transaction) -> Result<String, VerifierError> {
-        let tx_out_vec = &tx.output;
-        // Get the output scripts that contain an OP_RETURN.
-        let op_return_scripts: Vec<&Script> = tx_out_vec
+        let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
+        let extracted: Vec<String> = tx
+            .output
             .iter()
             .filter_map(|x| match x.script_pubkey.is_op_return() {
                 true => Some(&x.script_pubkey),
                 false => None,
             })
-            .collect();
-
-        // Iterate over the OP_RETURN scripts. Extract any that contain the
-        // substring 'ion:' and raise an error unless precisely one such script exists.
-        let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
-        let rets: Vec<String> = op_return_scripts
-            .into_iter()
             .filter_map(|script| {
                 std::str::from_utf8(script.as_ref())
                     .ok()
@@ -388,9 +382,10 @@ where
                     .map(|(_, r)| format!("{}{}", ion_substr, r))
             })
             .collect();
-        match rets.len() {
+
+        match extracted.len() {
             0 => Err(VerifierError::NoDIDContentIdentifier(tx.txid().to_string())),
-            1 => Ok(rets.first().unwrap().to_string()),
+            1 => Ok(extracted.first().unwrap().to_string()),
             _ => Err(VerifierError::MultipleDIDContentIdentifiers(
                 tx.txid().to_string(),
             )),
