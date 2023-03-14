@@ -387,47 +387,6 @@ where
             .unwrap();
         Ok(cid.to_string())
     }
-
-    // TODO: make this a free function.
-    /// Extract the Update Commitment from DID Document Metadata.
-    fn extract_update_commitment(
-        &self,
-        did_doc_meta: &DocumentMetadata,
-    ) -> Result<String, VerifierError> {
-        if let Some(property_set) = &did_doc_meta.property_set {
-            // if let Some(metadata) = property_set.get(UPDATE_COMMITMENT_KEY) {
-            if let Some(method_metadata) = property_set.get(METHOD_KEY) {
-                let method_map = match method_metadata {
-                    Metadata::Map(x) => x,
-                    _ => {
-                        eprintln!("Unhandled Metadata variant. Expected Map.");
-                        return Err(VerifierError::DIDMetadataError);
-                    }
-                };
-                if let Some(uc_metadata) = method_map.get(UPDATE_COMMITMENT_KEY) {
-                    match uc_metadata {
-                        Metadata::String(uc) => Ok(uc.to_string()),
-                        _ => {
-                            eprintln!("Unhandled Metadata variant. Expected String.");
-                            Err(VerifierError::DIDMetadataError)
-                        }
-                    }
-                } else {
-                    eprintln!(
-                        "Missing '{}' key in Document Metadata {} value.",
-                        UPDATE_COMMITMENT_KEY, METHOD_KEY
-                    );
-                    Err(VerifierError::DIDMetadataError)
-                }
-            } else {
-                eprintln!("Missing '{}' key in DID Document Metadata.", METHOD_KEY);
-                Err(VerifierError::DIDMetadataError)
-            }
-        } else {
-            eprintln!("Missing property set in DID Document Metadata.");
-            Err(VerifierError::DIDMetadataError)
-        }
-    }
 }
 
 /// Converts a VerificationBundle into an IONCommitment.
@@ -740,22 +699,9 @@ mod tests {
             "http://localhost:3000/",
         ))));
         let target = IONVerifier::new(resolver);
-
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did);
-
         assert!(result.is_ok());
-        let (_, doc_meta) = result.unwrap();
-
-        // Also testing the extract_update_commitment method.
-        // TODO: split this into a separate test.
-        let update_commitment = target.extract_update_commitment(&doc_meta);
-        assert!(update_commitment.is_ok());
-        let update_commitment = update_commitment.unwrap();
-        assert_eq!(
-            update_commitment,
-            "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"
-        );
     }
 
     #[test]
