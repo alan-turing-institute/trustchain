@@ -30,10 +30,10 @@ pub struct Incomplete;
 pub struct Complete;
 
 /// A Commitment whose hash is an IPFS content identifier (CID) for an ION Index file.
-pub struct IpfsIndexFileCommitment<State = Incomplete> {
+pub struct IpfsIndexFileCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<State>,
+    state: PhantomData<T>,
 }
 
 impl IpfsIndexFileCommitment<Incomplete> {
@@ -56,7 +56,7 @@ impl IpfsIndexFileCommitment<Complete> {
     }
 }
 
-impl<State> TrivialCommitment for IpfsIndexFileCommitment<State> {
+impl<T> TrivialCommitment for IpfsIndexFileCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         ipfs_hasher()
     }
@@ -85,11 +85,11 @@ impl Commitment for IpfsIndexFileCommitment<Complete> {
 }
 
 /// A Commitment whose hash is an IPFS content identifier (CID) for an ION chunk file.
-pub struct IpfsChunkFileCommitment<State = Incomplete> {
+pub struct IpfsChunkFileCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     delta_index: usize,
     expected_data: Option<Value>,
-    state: PhantomData<State>,
+    state: PhantomData<T>,
 }
 impl IpfsChunkFileCommitment<Incomplete> {
     pub fn new(candidate_data: Vec<u8>, delta_index: usize) -> Self {
@@ -112,7 +112,7 @@ impl IpfsChunkFileCommitment<Complete> {
     }
 }
 
-impl<State> TrivialCommitment for IpfsChunkFileCommitment<State> {
+impl<T> TrivialCommitment for IpfsChunkFileCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         ipfs_hasher()
     }
@@ -161,10 +161,10 @@ impl Commitment for IpfsChunkFileCommitment<Complete> {
 // End of IpfsCommitment.
 
 /// A Commitment whose hash is a Bitcoin transaction ID.
-pub struct TxCommitment<State = Incomplete> {
+pub struct TxCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<State>,
+    state: PhantomData<T>,
 }
 
 impl TxCommitment<Incomplete> {
@@ -187,7 +187,7 @@ impl TxCommitment<Complete> {
     }
 }
 
-impl<State> TrivialCommitment for TxCommitment<State> {
+impl<T> TrivialCommitment for TxCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data is a Bitcoin transaction, whose hash is the transaction ID.
         |x| {
@@ -282,10 +282,10 @@ impl Commitment for TxCommitment<Complete> {
 // End of TxCommitment.
 
 /// A Commitment whose hash is the root of a Merkle tree of Bitcoin transaction IDs.
-pub struct MerkleRootCommitment<State = Incomplete> {
+pub struct MerkleRootCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<State>,
+    state: PhantomData<T>,
 }
 
 impl MerkleRootCommitment<Incomplete> {
@@ -307,7 +307,7 @@ impl MerkleRootCommitment<Complete> {
     }
 }
 
-impl<State> TrivialCommitment for MerkleRootCommitment<State> {
+impl<T> TrivialCommitment for MerkleRootCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data is a Merkle proof containing a branch of transaction IDs.
         |x| {
@@ -376,10 +376,10 @@ impl Commitment for MerkleRootCommitment<Complete> {
 // End of MerkleRootCommitment.
 
 /// A Commitment whose hash is the PoW hash of a Bitcoin block.
-pub struct BlockHashCommitment<State = Incomplete> {
+pub struct BlockHashCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<State>,
+    state: PhantomData<T>,
 }
 
 impl BlockHashCommitment<Incomplete> {
@@ -401,7 +401,7 @@ impl BlockHashCommitment<Complete> {
         }
     }
 }
-impl<State> TrivialCommitment for BlockHashCommitment<State> {
+impl<T> TrivialCommitment for BlockHashCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data the block header bytes.
         |x| {
