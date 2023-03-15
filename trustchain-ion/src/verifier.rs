@@ -1,4 +1,5 @@
 use crate::commitment::IONCommitment;
+use crate::sidetree::ChunkFile;
 use crate::utils::{block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction};
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
@@ -404,30 +405,14 @@ pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment
 
 /// Converts DID content from a chunk file into a vector of Delta objects.
 pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierError> {
-    if let Some(deltas_json_array) = chunk_file_json.get(DELTAS_KEY) {
-        let deltas: Vec<Delta> = match deltas_json_array {
-            Value::Array(vec) => vec
-                .iter()
-                .filter_map(
-                    |value| match serde_json::from_value::<Delta>(value.to_owned()) {
-                        Ok(x) => Some(x),
-                        Err(e) => {
-                            eprintln!("Failed to read DocumentState from chunk file JSON: {}", e);
-                            None
-                        }
-                    },
-                )
-                .collect(),
-            _ => {
-                eprintln!("Chunk file content 'deltas' not Value::Array type.");
-                return Err(VerifierError::FailureToParseDIDContent());
-            }
-        };
-        Ok(deltas)
-    } else {
-        eprintln!("Key '{}' not found in chunk file content.", DELTAS_KEY);
-        Err(VerifierError::FailureToParseDIDContent())
-    }
+    let chunk_file: ChunkFile =
+        serde_json::from_value(chunk_file_json.to_owned()).map_err(|_| {
+            VerifierError::FailureToParseDIDContent(format!(
+                "Failed to parse chunk file: {}",
+                chunk_file_json
+            ))
+        })?;
+    Ok(chunk_file.deltas)
 }
 
 // TODO: Move this logic into the `decode_candidate_data` method inside TrivialIpfsCommitment.

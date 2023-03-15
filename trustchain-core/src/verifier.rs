@@ -45,8 +45,8 @@ pub enum VerifierError {
     #[error("Error reading DID content found at: {0}")]
     FailureToReadDIDContent(String),
     /// Failed to parse DID content.
-    #[error("Error parsing DID content.")]
-    FailureToParseDIDContent(),
+    #[error("Error parsing DID content: {0}")]
+    FailureToParseDIDContent(String),
     /// Failed to verify DID content.
     #[error("Error verifying DID content.")]
     FailureToVerifyDIDContent,

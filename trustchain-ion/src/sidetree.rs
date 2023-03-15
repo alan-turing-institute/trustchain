@@ -1,20 +1,19 @@
 use did_ion::{
-    sidetree::{Sidetree, SuffixData},
+    sidetree::{Delta, Sidetree, SuffixData},
     ION,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use trustchain_core::{commitment::CommitmentError, utils::get_did_suffix};
 
 /// Data structure for suffix data of create operations within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSuffixData {
     /// DID Suffix data.
     pub suffix_data: SuffixData,
 }
 /// Data structure for suffix data of recover and deactivate operations within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OtherOperationSuffixData {
     /// DID suffix.
@@ -24,7 +23,7 @@ pub struct OtherOperationSuffixData {
 }
 
 /// Data structure for operations contained within a [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreIndexFileOperations {
     /// Suffix data associated with create operations.
@@ -35,7 +34,7 @@ pub struct CoreIndexFileOperations {
     pub deactivate: Option<Vec<OtherOperationSuffixData>>,
 }
 /// Data structure for a Sidetree [Core Index File](https://identity.foundation/sidetree/spec/#core-index-file).
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreIndexFile {
     /// URI of associated [core proof file](https://identity.foundation/sidetree/spec/#core-proof-file).
@@ -85,9 +84,17 @@ impl CoreIndexFile {
     }
 }
 
+/// Data structure for a Sidetree [Chunk File](https://identity.foundation/sidetree/spec/#chunk-files).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkFile {
+    /// Array of [Delta Entry](https://identity.foundation/sidetree/spec/#chunk-file-delta-entry) objects.
+    pub deltas: Vec<Delta>,
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::data::TEST_CORE_INDEX_FILE_CONTENT;
+    use crate::data::{TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT};
 
     use super::*;
 
@@ -121,6 +128,7 @@ mod tests {
           ]
         }
     }"#;
+
     #[test]
     fn test_parse_core_index_file_from_sidetree() {
         let core_index_file: CoreIndexFile =
@@ -132,6 +140,11 @@ mod tests {
         let core_index_file: CoreIndexFile =
             serde_json::from_str(TEST_CORE_INDEX_FILE_CONTENT).unwrap();
         assert!(serde_json::to_string_pretty(&core_index_file).is_ok());
+    }
+    #[test]
+    fn test_parse_chunk_file_from_data() {
+        let chunk_file: ChunkFile = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
+        assert!(serde_json::to_string_pretty(&chunk_file).is_ok());
     }
     #[test]
     fn test_created_did_suffixes() {
