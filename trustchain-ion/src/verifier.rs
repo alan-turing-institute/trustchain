@@ -423,14 +423,13 @@ where
 
     fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
         self.fetch_did_commitment(did)?;
-        if !self.bundles.contains_key(did) {
-            eprintln!("Commitment not yet fetched for DID: {}", did);
-            return Err(VerifierError::VerificationMaterialNotYetFetched(
-                did.to_string(),
-            ));
-        }
-        let bundle = self.bundles.get(did).unwrap();
-        Ok(Box::new(construct_commitment(bundle)?))
+        let bundle =
+            self.bundles
+                .get(did)
+                .ok_or(VerifierError::VerificationMaterialNotYetFetched(
+                    did.to_string(),
+                ))?;
+        Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
     fn resolver(&self) -> &Resolver<T> {
