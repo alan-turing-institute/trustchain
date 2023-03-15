@@ -24,11 +24,6 @@ use crate::{
 ///
 /// By checking that the hash of the content is identical to the CID, this method
 /// verifies that the content itself must have been used to originally construct the CID.
-///
-/// Errors:
-///  - `VerifierError::FailureToGetDIDContent` if the IPFS query fails, or the decoding or JSON
-///     serialisation fails
-///  - `VerifierError::FailedContentHashVerification` if the content hash is not identical to the CID
 #[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
@@ -45,7 +40,7 @@ pub async fn query_ipfs(
         .await
 }
 
-/// Extracts a unique ION DID content identifier from a transaction.
+/// Extracts a unique ION DID content identifier (CID) from a transaction.
 pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, TrustchainBitcoinError> {
     let extracted: Vec<String> = tx
         .output
