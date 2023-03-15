@@ -18,63 +18,6 @@ use crate::{
     TIMESTAMP_KEY, VERSION_KEY,
 };
 
-// TODO: can't implement a trait (HasKeys from trustchain-core) defined
-// outside this crate for a type defined outside this crate.
-// If necessary, create a wrapper for DocumentState.
-
-// MOVED TO trustchain-core:
-// impl HasKeys for DocumentState {
-//     fn get_keys(&self) -> Option<Vec<JWK>> {
-//         let public_key_entries: Vec<PublicKeyEntry> = match &self.public_keys {
-//             Some(x) => x.to_vec(),
-//             None => return None,
-//         };
-//         let public_keys: Vec<JWK> = public_key_entries
-//             .iter()
-//             .filter_map(|entry| {
-//                 match &entry.public_key {
-//                     PublicKey::PublicKeyJwk(pub_key_jwk) => {
-//                         // Return the JWK
-//                         match JWK::try_from(pub_key_jwk.to_owned()) {
-//                             Ok(jwk) => return Some(jwk),
-//                             Err(e) => {
-//                                 eprintln!("Failed to convert PublicKeyJwk to JWK: {}", e);
-//                                 return None;
-//                             }
-//                         }
-//                     }
-//                     PublicKey::PublicKeyMultibase(_) => {
-//                         eprintln!("Unhandled PublicKey variant. Expected PublicKeyJwk.");
-//                         return None;
-//                     }
-//                 }
-//             })
-//             .collect();
-//         if public_keys.len() == 0 {
-//             return None;
-//         }
-//         return Some(public_keys);
-//     }
-// }
-
-// TODO: can't implement a trait (HasEndpoints from trustchain-core) defined
-// outside this crate for a type defined outside this crate.
-// If necessary, create a wrapper for DocumentState.
-
-// impl HasEndpoints for DocumentState {
-//     fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
-//         let service_endpoint_entries: Vec<ServiceEndpointEntry> = match &self.services {
-//             Some(x) => x.to_vec(),
-//             None => return None,
-//         };
-//         let service_endpoints: Vec<ServiceEndpoint> = service_endpoint_entries
-//             .iter()
-//             .map(|entry| entry.service_endpoint.to_owned())
-//             .collect();
-//         return Some(service_endpoints);
-//     }
-// }
-
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
 /// decompresses the content, converts it to a UTF-8 string and then to JSON.
