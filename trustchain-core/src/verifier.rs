@@ -92,11 +92,14 @@ pub enum VerifierError {
     /// Failed to find expected key in verified DID content.
     #[error("Key not found in verified content for DID: {0}")]
     KeyNotFoundInVerifiedContent(String),
+    /// Failed to find expected key in verified DID content.
+    #[error("No keys found in verified content for DID: {0}")]
+    NoKeysFoundInVerifiedContent(String),
     /// Failed to find expected service endpoint in verified DID content.
     #[error("Endpoint not found in verified content for DID: {0}")]
     EndpointNotFoundInVerifiedContent(String),
-    /// No endpoints present verified DID content.
-    #[error("No endpoints present verified content for DID: {0}")]
+    /// No endpoints found in verified DID content.
+    #[error("No endpoints found in verified content for DID: {0}")]
     NoEndpointsFoundInVerifiedContent(String),
     /// Found duplicate update commitments in different DID operations.
     #[error("Duplicate update commitments: {0}")]
@@ -199,14 +202,12 @@ impl VerifiableTimestamp {
         if let Some(expected_keys) = self.did_commitment().did_document().get_keys() {
             if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
                 if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
-                    eprintln!("Expected key not found in DID Commitment data.");
                     return Err(VerifierError::KeyNotFoundInVerifiedContent(
                         self.did_commitment().did().to_string(),
                     ));
                 }
             } else {
-                eprintln!("No candidate keys found in DID Commitment data.");
-                return Err(VerifierError::KeyNotFoundInVerifiedContent(
+                return Err(VerifierError::NoKeysFoundInVerifiedContent(
                     self.did_commitment().did().to_string(),
                 ));
             }
