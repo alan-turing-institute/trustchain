@@ -84,6 +84,34 @@ impl CoreIndexFile {
     }
 }
 
+/// Data structure for operations contained within a [Provisional Index File](https://identity.foundation/sidetree/spec/#provisional-index-file).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvisionalIndexFileOperations {
+    /// Suffix data associated with update operations.
+    pub update: Vec<OtherOperationSuffixData>,
+}
+
+/// Data structure for Chunk File URI.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChunkFileUri {
+    /// Chunk file URI.
+    pub chunk_file_uri: String,
+}
+
+/// Data structure for a Sidetree [Provisional Index File](https://identity.foundation/sidetree/spec/#provisional-index-file).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProvisionalIndexFile {
+    /// [Provisional Proof File](https://identity.foundation/sidetree/spec/#provisional-proof-file) URI associated with any update operations.
+    pub provisional_proof_file_uri: Option<String>,
+    /// Array of associated Chunk File URI.
+    pub chunks: Option<Vec<ChunkFileUri>>,
+    /// Data for any update operations.
+    pub operations: Option<ProvisionalIndexFileOperations>,
+}
+
 /// Data structure for a Sidetree [Chunk File](https://identity.foundation/sidetree/spec/#chunk-files).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -94,7 +122,9 @@ pub struct ChunkFile {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::{TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT};
+    use crate::data::{
+        TEST_CHUNK_FILE_CONTENT, TEST_CORE_INDEX_FILE_CONTENT, TEST_PROVISIONAL_INDEX_FILE_CONTENT,
+    };
 
     use super::*;
 
@@ -129,6 +159,24 @@ mod tests {
         }
     }"#;
 
+    /// Example data structure from [sidetree](https://identity.foundation/sidetree/spec/#provisional-index-file).
+    const PROVISIONAL_INDEX_FILE_STRUCTURE: &str = r#"
+    {
+        "provisionalProofFileUri": "CAS_URI",
+        "chunks": [
+          { "chunkFileUri": "CAS_URI" }
+        ],
+        "operations": {
+          "update": [
+            {
+              "didSuffix": "SUFFIX_STRING",
+              "revealValue": "MULTIHASH_OF_JWK"
+            }
+          ]
+        }
+      }
+      "#;
+
     #[test]
     fn test_parse_core_index_file_from_sidetree() {
         let core_index_file: CoreIndexFile =
@@ -140,6 +188,18 @@ mod tests {
         let core_index_file: CoreIndexFile =
             serde_json::from_str(TEST_CORE_INDEX_FILE_CONTENT).unwrap();
         assert!(serde_json::to_string_pretty(&core_index_file).is_ok());
+    }
+    #[test]
+    fn test_parse_provisional_index_file_from_sidetree() {
+        let provisional_index_file: ProvisionalIndexFile =
+            serde_json::from_str(PROVISIONAL_INDEX_FILE_STRUCTURE).unwrap();
+        assert!(serde_json::to_string_pretty(&provisional_index_file).is_ok());
+    }
+    #[test]
+    fn test_parse_provisional_index_file_from_data() {
+        let provisional_index_file: ProvisionalIndexFile =
+            serde_json::from_str(TEST_PROVISIONAL_INDEX_FILE_CONTENT).unwrap();
+        assert!(serde_json::to_string_pretty(&provisional_index_file).is_ok());
     }
     #[test]
     fn test_parse_chunk_file_from_data() {

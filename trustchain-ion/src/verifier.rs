@@ -1,10 +1,10 @@
 use crate::commitment::IONCommitment;
-use crate::sidetree::ChunkFile;
+use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction};
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
-    CHUNK_FILE_URI_KEY, DELTAS_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
-    METHOD_KEY, PROVISIONAL_INDEX_FILE_URI_KEY, UPDATE_COMMITMENT_KEY,
+    CHUNK_FILE_URI_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
+    PROVISIONAL_INDEX_FILE_URI_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -12,12 +12,11 @@ use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
 use futures::executor::block_on;
 use ipfs_api_backend_actix::IpfsClient;
-use ipfs_hasher::IpfsHasher;
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did::Document;
-use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata};
+use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -153,7 +152,7 @@ where
         let cid = self.op_return_cid(&tx)?;
         let core_index_file = self.fetch_core_index_file(&cid)?;
         let provisional_index_file = self.fetch_prov_index_file(&core_index_file)?;
-        let chunk_file = self.fetch_chunk_file(&provisional_index_file, &did_doc_meta)?;
+        let chunk_file = self.fetch_chunk_file(&provisional_index_file)?;
         let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
         let block_header = self.fetch_block_header(&block_hash)?;
         // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
@@ -229,43 +228,38 @@ where
         })
     }
 
-    fn fetch_chunk_file(
-        &self,
-        prov_index_file: &Vec<u8>,
-        did_doc_meta: &DocumentMetadata,
-    ) -> Result<Vec<u8>, VerifierError> {
+    fn fetch_chunk_file(&self, prov_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
         // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
-        let content = decode_ipfs_content(prov_index_file).map_err(|e| {
+        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
-                e.into(),
+                err.into(),
             )
         })?;
-        // Look inside the "chunks" element.
-        let content = content.get(CHUNKS_KEY).ok_or_else(|| {
-            VerifierError::FailureToFetchVerificationMaterial(format!(
-                "Expected key {CHUNKS_KEY} not found in ION provisional index file."
-            ))
-        })?;
+
+        // // Look inside the "chunks" element.
+        let prov_index_file: ProvisionalIndexFile =
+            serde_json::from_value(content).map_err(|err| {
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to parse ION provisional index file.".to_string(),
+                    err.into(),
+                )
+            })?;
 
         // In the current version of the Sidetree protocol, a single chunk entry must be present in
         // the chunks array (see https://identity.foundation/sidetree/spec/#provisional-index-file).
         // So here we only need to consider the first entry in the content. This may need to be
         // updated in future to accommodate changes to the Sidetre protocol.
-        let cid = content[0]
-            .get(CHUNK_FILE_URI_KEY)
-            .ok_or_else(|| {
-                VerifierError::FailureToFetchVerificationMaterial(format!(
-                    "Expected key {CHUNK_FILE_URI_KEY} not found in ION provisional index file."
-                ))
-            })?
-            .as_str()
-            .unwrap();
+        let chunk_file_uri = match prov_index_file.chunks.as_deref() {
+            Some([ChunkFileUri { chunk_file_uri }]) => chunk_file_uri,
+            _ => return Err(VerifierError::FailureToGetDIDContent("".to_string())),
+        };
 
-        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
+        // Get Chunk File
+        query_ipfs(chunk_file_uri, &self.ipfs_client).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch ION provisional index file.".to_string(),
-                e.into(),
+                err.into(),
             )
         })
     }
@@ -530,7 +524,6 @@ mod tests {
     use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
     use std::{convert::TryFrom, io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
-    use trustchain_core::data::TEST_ROOT_DOCUMENT_METADATA;
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
     // Note that this resolver will *not* succeed at resolving DIDs. For that, a
@@ -696,9 +689,8 @@ mod tests {
         let target = IONVerifier::new(resolver);
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
-        let did_doc_meta = serde_json::from_str(TEST_ROOT_DOCUMENT_METADATA).unwrap();
 
-        let result = target.fetch_chunk_file(&prov_index_file, &did_doc_meta);
+        let result = target.fetch_chunk_file(&prov_index_file);
         assert!(result.is_ok());
         let chunk_file_bytes = result.unwrap();
 
