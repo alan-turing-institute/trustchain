@@ -1,19 +1,14 @@
 //! Utils module.
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
-use did_ion::sidetree::{DocumentState, PublicKey, PublicKeyEntry, ServiceEndpointEntry};
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::{bson::doc, options::ClientOptions};
 use serde_json::json;
-use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
-use ssi::jwk::JWK;
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::io::Read;
-use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
@@ -108,29 +103,27 @@ pub async fn query_ipfs(
         Ok(res) => Ok(res),
         Err(e) => {
             eprintln!("Error querying IPFS: {}", e);
-            return Err(Box::new(e));
+            Err(Box::new(e))
         }
     }
 }
 
 /// Decodes an IPFS file.
-pub fn decode_ipfs_content(ipfs_file: &Vec<u8>) -> Result<serde_json::Value, TrustchainIpfsError> {
+pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<serde_json::Value, TrustchainIpfsError> {
     // Decompress the content and deserialise to JSON.
-    let mut decoder = GzDecoder::new(&ipfs_file[..]);
+    let mut decoder = GzDecoder::new(ipfs_file);
     let mut ipfs_content_str = String::new();
     match decoder.read_to_string(&mut ipfs_content_str) {
-        Ok(_) => {
-            match serde_json::from_str(&ipfs_content_str) {
-                Ok(value) => return Ok(value),
-                Err(e) => {
-                    eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                    return Err(TrustchainIpfsError::DataDecodingError);
-                }
-            };
-        }
+        Ok(_) => match serde_json::from_str(&ipfs_content_str) {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                eprintln!("Error deserialising IPFS content to JSON: {}", e);
+                Err(TrustchainIpfsError::DataDecodingError)
+            }
+        },
         Err(e) => {
             eprintln!("Error decoding IPFS content: {}", e);
-            return Err(TrustchainIpfsError::DataDecodingError);
+            Err(TrustchainIpfsError::DataDecodingError)
         }
     }
 }
@@ -206,7 +199,7 @@ pub fn block_header(
         let rpc_client = rpc_client();
         return block_header(block_hash, Some(&rpc_client));
     };
-    match client.unwrap().get_block_header(&block_hash) {
+    match client.unwrap().get_block_header(block_hash) {
         Ok(x) => Ok(x),
         Err(e) => {
             eprintln!("Error getting block header via RPC: {}", e);
@@ -231,7 +224,7 @@ pub fn decode_block_header(
     // Convert the timestamp to a u32 Unix time.
     let timestamp = match i32::from_str_radix(&timestamp_hex, 16) {
         Ok(x) => x,
-        Err(e) => {
+        Err(_) => {
             eprintln!(
                 "Failed to convert block header timestamp hex to i32: {}",
                 timestamp_hex
@@ -272,7 +265,7 @@ pub fn transaction(
         let rpc_client = rpc_client();
         return transaction(block_hash, tx_index, Some(&rpc_client));
     }
-    match client.unwrap().get_block(&block_hash) {
+    match client.unwrap().get_block(block_hash) {
         Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
         Err(e) => {
             eprintln!("Error getting Bitcoin block via RPC: {}", e);
@@ -294,7 +287,7 @@ pub fn merkle_proof(
     }
     match client
         .unwrap()
-        .get_tx_out_proof(&[tx.txid()], Some(&block_hash))
+        .get_tx_out_proof(&[tx.txid()], Some(block_hash))
     {
         Ok(x) => Ok(x),
         Err(e) => {
@@ -322,24 +315,24 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::data::{
-        TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS, TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES,
-    };
     use crate::PROVISIONAL_INDEX_FILE_URI_KEY;
-    use crate::{data::TEST_CHUNK_FILE_CONTENT, verifier::content_deltas};
     use flate2::read::GzDecoder;
     use futures::executor::block_on;
-    use serde_json::Value;
-    use ssi::jwk::Params;
-    use trustchain_core::data::{
-        TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
-        TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
+    use ssi::{
+        did::{Document, ServiceEndpoint},
+        jwk::Params,
+    };
+    use trustchain_core::{
+        data::{
+            TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
+            TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
+        },
+        utils::{HasEndpoints, HasKeys},
     };
 
     #[test]
     fn test_get_keys_from_document() {
-        let doc_json = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF).unwrap();
-        let doc = Document::from(doc_json);
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF).unwrap();
 
         let result = doc.get_keys();
         assert!(result.as_ref().is_some());
@@ -364,8 +357,7 @@ mod tests {
         }
 
         // Now test with a Document containing two keys.
-        let doc_json = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
-        let doc = Document::from(doc_json);
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
 
         let result = doc.get_keys();
         assert!(result.as_ref().is_some());
@@ -417,8 +409,7 @@ mod tests {
 
     #[test]
     fn test_get_endpoints_from_document() {
-        let doc_json = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF).unwrap();
-        let doc = Document::from(doc_json);
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF).unwrap();
 
         let result = doc.get_endpoints();
         assert!(&result.is_some());
@@ -431,8 +422,7 @@ mod tests {
         assert_eq!(uri, "https://bar.example.com");
 
         // Now test with a DID document containing two ServiceEndpoints:
-        let doc_json = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF).unwrap();
-        let doc = Document::from(doc_json);
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF).unwrap();
 
         let result = doc.get_endpoints();
         assert!(&result.is_some());
@@ -488,7 +478,7 @@ mod tests {
         let ipfs_client = IpfsClient::default();
         let result = match query_ipfs(cid, &ipfs_client) {
             Ok(x) => x,
-            Err(e) => panic!(),
+            Err(_) => panic!(),
         };
 
         // Decompress the content and deserialise to JSON.
@@ -497,11 +487,11 @@ mod tests {
         let actual: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
             Ok(_) => match serde_json::from_str(&ipfs_content_str) {
                 Ok(value) => value,
-                Err(e) => {
+                Err(_) => {
                     panic!()
                 }
             },
-            Err(e) => {
+            Err(_) => {
                 panic!()
             }
         };
