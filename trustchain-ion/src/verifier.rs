@@ -4,8 +4,8 @@ use crate::utils::{
     block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_did_cid,
 };
 use crate::{
-    TrustchainBitcoinError, BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
-    DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, DID_DELIMITER,
+    ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;

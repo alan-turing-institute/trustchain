@@ -1,6 +1,6 @@
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
-use bitcoin::{Script, Transaction};
+use bitcoin::Transaction;
 use ipfs_hasher::IpfsHasher;
 use serde_json::{json, Value};
 use ssi::did::Document;

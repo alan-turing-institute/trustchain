@@ -1,5 +1,5 @@
 //! Utils module.
-use bitcoin::{blockdata::transaction, BlockHash, BlockHeader, Transaction};
+use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
