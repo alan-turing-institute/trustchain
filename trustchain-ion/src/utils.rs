@@ -6,7 +6,7 @@ use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_actix::IpfsClient;
 use mongodb::{bson::doc, options::ClientOptions};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
 
@@ -109,23 +109,14 @@ pub async fn query_ipfs(
 }
 
 /// Decodes an IPFS file.
-pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<serde_json::Value, TrustchainIpfsError> {
+pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsError> {
     // Decompress the content and deserialise to JSON.
     let mut decoder = GzDecoder::new(ipfs_file);
     let mut ipfs_content_str = String::new();
-    match decoder.read_to_string(&mut ipfs_content_str) {
-        Ok(_) => match serde_json::from_str(&ipfs_content_str) {
-            Ok(value) => Ok(value),
-            Err(e) => {
-                eprintln!("Error deserialising IPFS content to JSON: {}", e);
-                Err(TrustchainIpfsError::DataDecodingError)
-            }
-        },
-        Err(e) => {
-            eprintln!("Error decoding IPFS content: {}", e);
-            Err(TrustchainIpfsError::DataDecodingError)
-        }
-    }
+    decoder
+        .read_to_string(&mut ipfs_content_str)
+        .map_err(TrustchainIpfsError::DataDecodingError)?;
+    serde_json::from_str(&ipfs_content_str).map_err(TrustchainIpfsError::DeserializeError)
 }
 
 /// Queries the ION MongoDB for a DID operation.
@@ -210,9 +201,7 @@ pub fn block_header(
 
 /// Decodes a Bitcoin block from 80 bytes of data into a JSON object.
 /// Format is explained [here](https://en.bitcoin.it/wiki/Block_hashing_algorithm).
-pub fn decode_block_header(
-    bytes: &[u8; 80],
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+pub fn decode_block_header(bytes: &[u8; 80]) -> Result<Value, TrustchainBitcoinError> {
     // Deconstruct the header bytes into big-endian hex. Safe to unwrap as we begin with bytes.
     let version = reverse_endianness(&hex::encode(&bytes[0..4])).unwrap();
     let hash_prev_block = reverse_endianness(&hex::encode(&bytes[4..36])).unwrap();
@@ -222,16 +211,8 @@ pub fn decode_block_header(
     let nonce = reverse_endianness(&hex::encode(&bytes[76..])).unwrap();
 
     // Convert the timestamp to a u32 Unix time.
-    let timestamp = match i32::from_str_radix(&timestamp_hex, 16) {
-        Ok(x) => x,
-        Err(_) => {
-            eprintln!(
-                "Failed to convert block header timestamp hex to i32: {}",
-                timestamp_hex
-            );
-            return Err(Box::new(TrustchainBitcoinError::DataDecodingError));
-        }
-    };
+    let timestamp = i32::from_str_radix(&timestamp_hex, 16)
+        .map_err(TrustchainBitcoinError::BlockHeaderConversionError)?;
 
     // Construct a HashMap for the block header (minus the timestamp).
     let mut map = HashMap::new();
@@ -242,13 +223,10 @@ pub fn decode_block_header(
     map.insert(NONCE_KEY, nonce);
 
     let mut json_obj = json!(map);
-    let json_map = match json_obj.as_object_mut() {
-        Some(x) => x,
-        None => {
-            eprintln!("Error decoding Bitcoin block header.");
-            return Err(Box::new(TrustchainBitcoinError::DataDecodingError));
-        }
-    };
+    let json_map = json_obj
+        .as_object_mut()
+        .ok_or(TrustchainBitcoinError::BlockHeaderDecodingError)?;
+
     // Insert the timestamp as a serde_json::Value of type Number.
     json_map.insert(TIMESTAMP_KEY.to_string(), json!(timestamp));
     Ok(json!(json_map))
@@ -484,7 +462,7 @@ mod tests {
         // Decompress the content and deserialise to JSON.
         let mut decoder = GzDecoder::new(&result[..]);
         let mut ipfs_content_str = String::new();
-        let actual: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+        let actual: Value = match decoder.read_to_string(&mut ipfs_content_str) {
             Ok(_) => match serde_json::from_str(&ipfs_content_str) {
                 Ok(value) => value,
                 Err(_) => {

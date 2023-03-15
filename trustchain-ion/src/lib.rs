@@ -8,6 +8,8 @@ pub mod resolve;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
+use std::num::ParseIntError;
+
 use did_ion::{sidetree::SidetreeClient, ION};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -21,7 +23,7 @@ pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
 }
 
 /// An error relating for Trustchain-ion crate.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum TrustchainIONError {
     #[error("Key cannot be converted to commmitment value.")]
     FailedToConvertToCommitment,
@@ -32,7 +34,7 @@ pub enum TrustchainIONError {
 }
 
 /// An error relating to a MongoDB query.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum TrustchainMongodbError {
     #[error("Query returned None.")]
     QueryReturnedNone,
@@ -41,19 +43,25 @@ pub enum TrustchainMongodbError {
 }
 
 /// An error relating to an IPFS query.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum TrustchainIpfsError {
     /// Failed to decode IPFS data.
     #[error("Failed to decode IPFS data.")]
-    DataDecodingError,
+    DataDecodingError(std::io::Error),
+    /// Failed to decode IPFS data.
+    #[error("Failed to deserialize IPFS content to JSON")]
+    DeserializeError(serde_json::Error),
 }
 
 /// An error relating to a Bitcoin RPC API call.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum TrustchainBitcoinError {
-    /// Failed to decode Bitcoin RPC data.
-    #[error("Failed to decode Bitcoin RPC data.")]
-    DataDecodingError,
+    /// Failed to convert block header timestamp hex.
+    #[error("Failed to convert block header timestamp hex.")]
+    BlockHeaderConversionError(ParseIntError),
+    /// Failed to decode block header data.
+    #[error("Failed to decode block header data.")]
+    BlockHeaderDecodingError,
 }
 
 // DID
