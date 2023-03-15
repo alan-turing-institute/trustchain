@@ -205,7 +205,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{sidetree::CoreIndexFile, PROVISIONAL_INDEX_FILE_URI_KEY};
+    use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
     use futures::executor::block_on;
     use ssi::{
