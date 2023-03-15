@@ -25,8 +25,9 @@ use crate::{
 /// By checking that the hash of the content is identical to the CID, this method
 /// verifies that the content itself must have been used to originally construct the CID.
 ///
-/// ## Errors
-///  - `VerifierError::FailureToGetDIDContent` if the IPFS query fails, or the decoding or JSON serialisation fails
+/// Errors:
+///  - `VerifierError::FailureToGetDIDContent` if the IPFS query fails, or the decoding or JSON
+///     serialisation fails
 ///  - `VerifierError::FailedContentHashVerification` if the content hash is not identical to the CID
 #[actix_rt::main]
 pub async fn query_ipfs(
@@ -204,7 +205,7 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::PROVISIONAL_INDEX_FILE_URI_KEY;
+    use crate::{sidetree::CoreIndexFile, PROVISIONAL_INDEX_FILE_URI_KEY};
     use flate2::read::GzDecoder;
     use futures::executor::block_on;
     use ssi::{
@@ -365,29 +366,17 @@ mod tests {
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
         let ipfs_client = IpfsClient::default();
-        let result = match query_ipfs(cid, &ipfs_client) {
-            Ok(x) => x,
-            Err(_) => panic!(),
-        };
+        let result = query_ipfs(cid, &ipfs_client).unwrap();
 
         // Decompress the content and deserialise to JSON.
         let mut decoder = GzDecoder::new(&result[..]);
         let mut ipfs_content_str = String::new();
-        let actual: Value = match decoder.read_to_string(&mut ipfs_content_str) {
-            Ok(_) => match serde_json::from_str(&ipfs_content_str) {
-                Ok(value) => value,
-                Err(_) => {
-                    panic!()
-                }
-            },
-            Err(_) => {
-                panic!()
-            }
-        };
+        decoder.read_to_string(&mut ipfs_content_str).unwrap();
+        let core_index_file: CoreIndexFile = serde_json::from_str(&ipfs_content_str).unwrap();
 
         // The CID is the address of a core index file, so the JSON result
         // contains the key "provisionalIndexFileUri".
-        assert!(actual.get(PROVISIONAL_INDEX_FILE_URI_KEY).is_some());
+        assert!(core_index_file.provisional_index_file_uri.is_some());
 
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
