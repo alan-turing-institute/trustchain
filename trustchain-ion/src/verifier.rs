@@ -409,64 +409,6 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     Ok(chunk_file.deltas)
 }
 
-// TODO: Move this logic into the `decode_candidate_data` method inside TrivialIpfsCommitment.
-/// Extracts public keys and endpoints from "deltas" with matching update commitment.
-pub fn extract_doc_state(
-    deltas: Vec<Delta>,
-    update_commitment: &str,
-) -> Result<DocumentState, VerifierError> {
-    let mut pub_key_entries = Vec::<PublicKeyEntry>::new();
-    let mut service_endpoints = Vec::<ServiceEndpointEntry>::new();
-
-    // Include a check that there is at most one matching update commitment in the "deltas".
-    // This catches an edge case where the same update commitment could (technically)
-    // be reused across different DID operations. This would be bad practice, but is
-    // possible. Currently we return an error in this (unlikely) case. A better fix
-    // would be to handle the edge case by deriving the DID itself by hashing the delta
-    // to find the "deltaHash" recorded in the coreIndexFile, then hashing the corresponding
-    // "suffixData", to obtain the DID itself.
-    let mut matched_update_commitment = false;
-    for delta in deltas {
-        // Ignore deltas whose update commitment does not match.
-        if delta.update_commitment != update_commitment {
-            continue;
-        }
-        // Check that at most one matching update commitment is found in the "deltas".
-        if matched_update_commitment {
-            eprintln!("Unexpected error: duplicate update commitments found in chunk file deltas.");
-            return Err(VerifierError::DuplicateDIDUpdateCommitments(
-                update_commitment.to_string(),
-            ));
-        }
-        matched_update_commitment = true;
-        for patch in delta.patches {
-            match patch {
-                did_ion::sidetree::DIDStatePatch::Replace { document } => {
-                    if let Some(mut pub_keys) = document.public_keys {
-                        pub_key_entries.append(&mut pub_keys);
-                    }
-                    if let Some(mut services) = document.services {
-                        service_endpoints.append(&mut services);
-                    }
-                }
-                _ => return Err(VerifierError::UnhandledDIDContent(format!("{:?}", patch))),
-            }
-        }
-    }
-    let public_keys = match pub_key_entries.is_empty() {
-        true => None,
-        false => Some(pub_key_entries),
-    };
-    let services = match service_endpoints.is_empty() {
-        true => None,
-        false => Some(service_endpoints),
-    };
-    Ok(DocumentState {
-        public_keys,
-        services,
-    })
-}
-
 impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
@@ -611,62 +553,6 @@ mod tests {
 
         let actual = target.op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_extract_doc_state() {
-        let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-        let deltas = content_deltas(&chunk_file_json).unwrap();
-        let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
-        let result = extract_doc_state(deltas, update_commitment).unwrap();
-
-        // Expect one public key and one service endpoint (for the given
-        // update_commitment - there are three in the chunk file JSON).
-        let public_keys = result.public_keys.unwrap();
-        let services = result.services.unwrap();
-        assert_eq!(public_keys.len(), 1);
-        assert_eq!(services.len(), 1);
-
-        // Check the public key entry in the content.
-        assert!(matches!(
-            public_keys.first().unwrap().public_key,
-            PublicKey::PublicKeyJwk { .. }
-        ));
-        let pub_key_jwk = match &public_keys.first().unwrap().public_key {
-            PublicKey::PublicKeyJwk(x) => x,
-            _ => panic!(), // Unreachable.
-        };
-        let jwk = JWK::try_from(pub_key_jwk.to_owned()).unwrap();
-        assert!(matches!(&jwk.params, Params::EC { .. }));
-
-        let ec_params = match jwk.params {
-            Params::EC(x) => x,
-            _ => panic!(), // Unreachable.
-        };
-        assert!(ec_params.x_coordinate.is_some());
-        assert!(ec_params.y_coordinate.is_some());
-        if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
-            assert_eq!(
-                serde_json::to_string(x).unwrap(),
-                "\"7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso\""
-            );
-            assert_eq!(
-                serde_json::to_string(y).unwrap(),
-                "\"kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE\""
-            );
-        };
-
-        // Check the service endpoint entry in the content.
-        assert!(matches!(
-            services.first().unwrap().service_endpoint,
-            ServiceEndpoint::URI { .. }
-        ));
-        let uri = match &services.first().unwrap().service_endpoint {
-            ServiceEndpoint::URI(x) => x,
-            _ => panic!(), // Unreachable.
-        };
-        // Check the URI.
-        assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
     }
 
     #[test]
