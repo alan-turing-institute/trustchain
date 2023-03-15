@@ -200,7 +200,7 @@ where
         query_ipfs(cid, &self.ipfs_client).map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch core index file".to_string(),
-                e,
+                e.into(),
             )
         })
     }
@@ -222,7 +222,7 @@ where
         query_ipfs(cid, &self.ipfs_client).map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch ION provisional index file.".to_string(),
-                e,
+                e.into(),
             )
         })
     }
@@ -299,7 +299,7 @@ where
             let doc = block_on(query_mongodb(suffix, None)).map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(
                     "Error querying MongoDB".to_string(),
-                    e,
+                    e.into(),
                 )
             })?;
 

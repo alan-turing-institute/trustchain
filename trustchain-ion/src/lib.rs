@@ -39,8 +39,22 @@ pub enum TrustchainIONError {
 pub enum TrustchainMongodbError {
     #[error("Query returned None.")]
     QueryReturnedNone,
-    #[error("Query returned Error.")]
-    QueryReturnedError(String),
+    #[error("Query returned Error: {0}")]
+    QueryReturnedError(mongodb::error::Error),
+    #[error("Error creating client: {0}")]
+    ErrorCreatingClient(mongodb::error::Error),
+}
+
+impl From<io::Error> for TrustchainIpfsError {
+    fn from(err: io::Error) -> Self {
+        TrustchainIpfsError::DataDecodingError(err)
+    }
+}
+
+impl From<serde_json::Error> for TrustchainIpfsError {
+    fn from(err: serde_json::Error) -> Self {
+        TrustchainIpfsError::DeserializeError(err)
+    }
 }
 
 /// An error relating to an IPFS query.
@@ -57,6 +71,12 @@ pub enum TrustchainIpfsError {
 impl From<bitcoincore_rpc::Error> for TrustchainBitcoinError {
     fn from(err: bitcoincore_rpc::Error) -> Self {
         TrustchainBitcoinError::BitcoinCoreRPCError(err)
+    }
+}
+
+impl From<ParseIntError> for TrustchainBitcoinError {
+    fn from(err: ParseIntError) -> Self {
+        TrustchainBitcoinError::BlockHeaderConversionError(err)
     }
 }
 

@@ -89,23 +89,16 @@ use crate::{
 pub async fn query_ipfs(
     cid: &str,
     client: &IpfsClient,
-) -> Result<Vec<u8>, Box<ipfs_api_backend_actix::Error>> {
+) -> Result<Vec<u8>, ipfs_api_backend_actix::Error> {
     // If necessary, construct an IPFS client.
     // TODO: this client must be configured to connect to the endpoint
     // specified as "ipfsHttpApiEndpointUri" in the ION config file
     // named "testnet-core-config.json" (or "mainnet-core-config.json").
-    match client
+    client
         .cat(cid)
         .map_ok(|chunk| chunk.to_vec())
         .try_concat()
         .await
-    {
-        Ok(res) => Ok(res),
-        Err(e) => {
-            eprintln!("Error querying IPFS: {}", e);
-            Err(Box::new(e))
-        }
-    }
 }
 
 /// Decodes an IPFS file.
@@ -113,17 +106,15 @@ pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsErro
     // Decompress the content and deserialise to JSON.
     let mut decoder = GzDecoder::new(ipfs_file);
     let mut ipfs_content_str = String::new();
-    decoder
-        .read_to_string(&mut ipfs_content_str)
-        .map_err(TrustchainIpfsError::DataDecodingError)?;
-    serde_json::from_str(&ipfs_content_str).map_err(TrustchainIpfsError::DeserializeError)
+    decoder.read_to_string(&mut ipfs_content_str)?;
+    Ok(serde_json::from_str(&ipfs_content_str)?)
 }
 
 /// Queries the ION MongoDB for a DID operation.
 pub async fn query_mongodb(
     did: &str,
     client: Option<mongodb::Client>,
-) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
+) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
     // If necessary, construct a MongoDB client.
     // TODO: this client must be configured to connect to the endpoint
     // specified as "TODO!" in the ION config file
@@ -131,37 +122,31 @@ pub async fn query_mongodb(
     let client = match client {
         Some(x) => x,
         None => {
-            let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
-            mongodb::Client::with_options(client_options)?
+            let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING)
+                .await
+                .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
+            mongodb::Client::with_options(client_options)
+                .map_err(TrustchainMongodbError::ErrorCreatingClient)?
         }
     };
 
     // MOST IMP TODO: try other queries (different to .find_one()) to see whether
     // a fuller collection of DID operations can be obtained (e.g. both create and updates).
-    let query_result: Result<std::option::Option<mongodb::bson::Document>, mongodb::error::Error> =
-        client
-            .database(MONGO_DATABASE_ION_TESTNET_CORE)
-            .collection(MONGO_COLLECTION_OPERATIONS)
-            .find_one(
-                doc! {
-                    MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
-                    MONGO_FILTER_DID_SUFFIX : did
-                },
-                None,
-            )
-            .await;
+    let query_result: Result<Option<mongodb::bson::Document>, mongodb::error::Error> = client
+        .database(MONGO_DATABASE_ION_TESTNET_CORE)
+        .collection(MONGO_COLLECTION_OPERATIONS)
+        .find_one(
+            doc! {
+                MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                MONGO_FILTER_DID_SUFFIX : did
+            },
+            None,
+        )
+        .await;
     match query_result {
         Ok(Some(doc)) => Ok(doc),
-        Ok(None) => {
-            eprintln!("Error querying MongoDB. None returned");
-            Err(Box::new(TrustchainMongodbError::QueryReturnedNone))
-        }
-        Err(e) => {
-            eprintln!("Error querying MongoDB: {}", e);
-            Err(Box::new(TrustchainMongodbError::QueryReturnedError(
-                e.to_string(),
-            )))
-        }
+        Ok(None) => Err(TrustchainMongodbError::QueryReturnedNone),
+        Err(e) => Err(TrustchainMongodbError::QueryReturnedError(e)),
     }
 }
 
@@ -205,8 +190,7 @@ pub fn decode_block_header(bytes: &[u8; 80]) -> Result<Value, TrustchainBitcoinE
     let nonce = reverse_endianness(&hex::encode(&bytes[76..])).unwrap();
 
     // Convert the timestamp to a u32 Unix time.
-    let timestamp = i32::from_str_radix(&timestamp_hex, 16)
-        .map_err(TrustchainBitcoinError::BlockHeaderConversionError)?;
+    let timestamp = i32::from_str_radix(&timestamp_hex, 16)?;
 
     // Construct a HashMap for the block header (minus the timestamp).
     let mut map = HashMap::new();
