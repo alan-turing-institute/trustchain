@@ -12,7 +12,7 @@ use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::sidetree::CoreIndexFile;
-use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness, tx_to_did_cid};
 use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
 
@@ -218,47 +218,12 @@ impl<T> TrivialCommitment for TxCommitment<T> {
                     return Err(CommitmentError::DataDecodingError);
                 }
             };
-            // Extract the OP_RETURN data from the transaction.
-            let tx_out_vec = &tx.output;
-            // Get the output scripts that contain an OP_RETURN.
-            let op_return_scripts: Vec<&Script> = tx_out_vec
-                .iter()
-                .filter_map(|x| match x.script_pubkey.is_op_return() {
-                    true => Some(&x.script_pubkey),
-                    false => None,
-                })
-                .collect();
 
-            // Iterate over the OP_RETURN scripts. Extract any that contain the
-            // substring 'ion:' and raise an error unless precisely one such script exists.
-            let mut op_return_data: Option<String> = None;
-            let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
-            for script in &op_return_scripts {
-                match std::str::from_utf8(script.as_ref()) {
-                    Ok(op_return_str) => match op_return_str.find(&ion_substr) {
-                        Some(i) => {
-                            if op_return_data.is_none() {
-                                op_return_data = Some(op_return_str[i..].to_string())
-                            // Trim any leading characters.
-                            } else {
-                                // Raise an error if multiple ION OP_RETURN scripts are found.
-                                eprintln!("Error: multiple ION OP_RETURN scripts found.");
-                                return Err(CommitmentError::DataDecodingError);
-                            }
-                        }
-                        // Ignore the script if the 'ion:' substring is not found.
-                        None => continue,
-                    },
-                    // Ignore the script if it cannot be converted to UTF-8.
-                    Err(_) => continue,
-                }
-            }
+            let op_return_data =
+                tx_to_did_cid(&tx).map_err(|_| CommitmentError::DataDecodingError)?;
+
             // Extract the IPFS content identifier from the ION OP_RETURN data.
-            let (_, operation_count_plus_cid) = op_return_data
-                .as_ref()
-                .ok_or(CommitmentError::DataDecodingError)?
-                .rsplit_once(DID_DELIMITER)
-                .unwrap();
+            let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
             let (_, cid) = operation_count_plus_cid
                 .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
                 .unwrap();

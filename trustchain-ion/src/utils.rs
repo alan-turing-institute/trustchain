@@ -1,5 +1,5 @@
 //! Utils module.
-use bitcoin::{BlockHash, BlockHeader, Transaction};
+use bitcoin::{blockdata::transaction, BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
@@ -12,10 +12,10 @@ use std::io::Read;
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
-    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY,
-    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
-    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY,
-    TIMESTAMP_KEY, VERSION_KEY,
+    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY,
+    ION_METHOD_WITH_DELIMITER, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS,
+    MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE,
+    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
 };
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
@@ -43,6 +43,34 @@ pub async fn query_ipfs(
         .map_ok(|chunk| chunk.to_vec())
         .try_concat()
         .await
+}
+
+/// Extracts a unique ION DID content identifier from a transaction.
+pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, TrustchainBitcoinError> {
+    let extracted: Vec<String> = tx
+        .output
+        .iter()
+        .filter_map(|x| match x.script_pubkey.is_op_return() {
+            true => Some(&x.script_pubkey),
+            false => None,
+        })
+        .filter_map(|script| {
+            std::str::from_utf8(script.as_ref())
+                .ok()
+                .and_then(|op_return_str| op_return_str.split_once(ION_METHOD_WITH_DELIMITER))
+                .map(|(_, r)| format!("{}{}", ION_METHOD_WITH_DELIMITER, r))
+        })
+        .collect();
+
+    match extracted.len() {
+        0 => Err(TrustchainBitcoinError::NoDIDContentIdentifier(
+            tx.txid().to_string(),
+        )),
+        1 => Ok(extracted.first().unwrap().to_string()),
+        _ => Err(TrustchainBitcoinError::MultipleDIDContentIdentifiers(
+            tx.txid().to_string(),
+        )),
+    }
 }
 
 /// Decodes an IPFS file.

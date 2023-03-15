@@ -13,7 +13,10 @@ use std::num::ParseIntError;
 use did_ion::{sidetree::SidetreeClient, ION};
 use std::io;
 use thiserror::Error;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_core::{
+    resolver::{DIDMethodWrapper, Resolver},
+    verifier::VerifierError,
+};
 
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
@@ -92,6 +95,12 @@ pub enum TrustchainBitcoinError {
     /// Wrapped bitcoincore_rpc error
     #[error("Bitcoin core RPC error: {0}")]
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
+    /// Detected multiple DID content identifiers.
+    #[error("Detected multiple DID content identifiers in tx: {0}")]
+    MultipleDIDContentIdentifiers(String),
+    /// No DID content identifier was found.
+    #[error("No DID content identifier was found in tx: {0}")]
+    NoDIDContentIdentifier(String),
 }
 
 // DID
@@ -99,6 +108,7 @@ pub const DID_DELIMITER: &str = ":";
 
 // ION
 pub const ION_METHOD: &str = "ion";
+pub const ION_METHOD_WITH_DELIMITER: &str = "ion:";
 pub const ION_OPERATION_COUNT_DELIMITER: &str = ".";
 pub const PROVISIONAL_INDEX_FILE_URI_KEY: &str = "provisionalIndexFileUri";
 pub const CHUNK_FILE_URI_KEY: &str = "chunkFileUri";

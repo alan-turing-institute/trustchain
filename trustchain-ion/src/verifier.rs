@@ -1,9 +1,11 @@
 use crate::commitment::IONCommitment;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
-use crate::utils::{block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction};
+use crate::utils::{
+    block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_did_cid,
+};
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, DID_DELIMITER,
-    ION_METHOD, ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
+    TrustchainBitcoinError, BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
+    DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -342,33 +344,9 @@ where
     /// Extracts the ION OP_RETURN data from a Bitcoin transaction.
     /// Gets the output scripts that contain an OP_RETURN and extracts any that contain the
     /// substring 'ion:' and returns an error unless precisely one such script exists.
-    /// Errors:
-    ///  - `VerifierError::MultipleDIDContentIdentifiers` if the transaction contains multiple ION OP_RETURN scripts
-    ///  - `VerifierError::NoDIDContentIdentifier` if the transaction contains no ION OP_RETURN script
     fn op_return_data(&self, tx: &Transaction) -> Result<String, VerifierError> {
-        let ion_substr = format!("{}{}", ION_METHOD, DID_DELIMITER);
-        let extracted: Vec<String> = tx
-            .output
-            .iter()
-            .filter_map(|x| match x.script_pubkey.is_op_return() {
-                true => Some(&x.script_pubkey),
-                false => None,
-            })
-            .filter_map(|script| {
-                std::str::from_utf8(script.as_ref())
-                    .ok()
-                    .and_then(|op_return_str| op_return_str.split_once(&ion_substr))
-                    .map(|(_, r)| format!("{}{}", ion_substr, r))
-            })
-            .collect();
-
-        match extracted.len() {
-            0 => Err(VerifierError::NoDIDContentIdentifier(tx.txid().to_string())),
-            1 => Ok(extracted.first().unwrap().to_string()),
-            _ => Err(VerifierError::MultipleDIDContentIdentifiers(
-                tx.txid().to_string(),
-            )),
-        }
+        tx_to_did_cid(tx)
+            .map_err(|err| VerifierError::ErrorExtractingDIDInformationFromTx(err.into()))
     }
 
     /// Extracts the IPFS content identifier from the ION OP_RETURN data
