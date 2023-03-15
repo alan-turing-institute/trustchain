@@ -9,6 +9,7 @@ use mongodb::{bson::doc, options::ClientOptions};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
+use trustchain_core::verifier::VerifierError;
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
@@ -41,7 +42,7 @@ pub async fn query_ipfs(
 }
 
 /// Extracts a unique ION DID content identifier (CID) from a transaction.
-pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, TrustchainBitcoinError> {
+pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, VerifierError> {
     let extracted: Vec<String> = tx
         .output
         .iter()
@@ -58,11 +59,9 @@ pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, TrustchainBitcoinError>
         .collect();
 
     match extracted.len() {
-        0 => Err(TrustchainBitcoinError::NoDIDContentIdentifier(
-            tx.txid().to_string(),
-        )),
+        0 => Err(VerifierError::NoDIDContentIdentifier(tx.txid().to_string())),
         1 => Ok(extracted.first().unwrap().to_string()),
-        _ => Err(TrustchainBitcoinError::MultipleDIDContentIdentifiers(
+        _ => Err(VerifierError::MultipleDIDContentIdentifiers(
             tx.txid().to_string(),
         )),
     }

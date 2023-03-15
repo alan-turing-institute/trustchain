@@ -346,7 +346,6 @@ where
     /// substring 'ion:' and returns an error unless precisely one such script exists.
     fn op_return_data(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_did_cid(tx)
-            .map_err(|err| VerifierError::ErrorExtractingDIDInformationFromTx(err.into()))
     }
 
     /// Extracts the IPFS content identifier from the ION OP_RETURN data

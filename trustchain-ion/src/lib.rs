@@ -95,12 +95,6 @@ pub enum TrustchainBitcoinError {
     /// Wrapped bitcoincore_rpc error
     #[error("Bitcoin core RPC error: {0}")]
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
-    /// Detected multiple DID content identifiers.
-    #[error("Detected multiple DID content identifiers in tx: {0}")]
-    MultipleDIDContentIdentifiers(String),
-    /// No DID content identifier was found.
-    #[error("No DID content identifier was found in tx: {0}")]
-    NoDIDContentIdentifier(String),
 }
 
 // DID

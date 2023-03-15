@@ -74,9 +74,12 @@ pub enum VerifierError {
     /// Failure of API call to PoW ledger client.
     #[error("Failed API call to PoW ledger client: {0}")]
     LedgerClientError(String),
-    /// Error extracting DID information from transaction.
-    #[error("Error extracting DID information: {0}")]
-    ErrorExtractingDIDInformationFromTx(Box<dyn Error>),
+    /// Detected multiple DID content identifiers.
+    #[error("Detected multiple DID content identifiers in tx: {0}")]
+    MultipleDIDContentIdentifiers(String),
+    /// No DID content identifier was found.
+    #[error("No DID content identifier was found in tx: {0}")]
+    NoDIDContentIdentifier(String),
     /// Failed verification of DID-related content hash.
     #[error("Content hash {0} does not match expected: {1}")]
     FailedContentHashVerification(String, String),
