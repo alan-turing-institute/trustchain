@@ -191,7 +191,7 @@ where
         transaction(block_hash, tx_index, Some(&self.rpc_client)).map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch transaction.".to_string(),
-                e,
+                e.into(),
             )
         })
     }
@@ -284,7 +284,7 @@ where
             .map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(
                     "Failed to fetch Bitcoin block header via RPC.".to_string(),
-                    e,
+                    e.into(),
                 )
             })
             .map(|block_header| bitcoin::consensus::serialize(&block_header))

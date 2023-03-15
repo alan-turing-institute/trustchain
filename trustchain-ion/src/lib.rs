@@ -11,6 +11,7 @@ pub mod verifier;
 use std::num::ParseIntError;
 
 use did_ion::{sidetree::SidetreeClient, ION};
+use std::io;
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
@@ -47,21 +48,30 @@ pub enum TrustchainMongodbError {
 pub enum TrustchainIpfsError {
     /// Failed to decode IPFS data.
     #[error("Failed to decode IPFS data.")]
-    DataDecodingError(std::io::Error),
+    DataDecodingError(io::Error),
     /// Failed to decode IPFS data.
     #[error("Failed to deserialize IPFS content to JSON")]
     DeserializeError(serde_json::Error),
+}
+
+impl From<bitcoincore_rpc::Error> for TrustchainBitcoinError {
+    fn from(err: bitcoincore_rpc::Error) -> Self {
+        TrustchainBitcoinError::BitcoinCoreRPCError(err)
+    }
 }
 
 /// An error relating to a Bitcoin RPC API call.
 #[derive(Error, Debug)]
 pub enum TrustchainBitcoinError {
     /// Failed to convert block header timestamp hex.
-    #[error("Failed to convert block header timestamp hex.")]
+    #[error("Failed to convert block header timestamp hex: {0}")]
     BlockHeaderConversionError(ParseIntError),
     /// Failed to decode block header data.
     #[error("Failed to decode block header data.")]
     BlockHeaderDecodingError,
+    /// Wrapped bitcoincore_rpc error
+    #[error("Bitcoin core RPC error: {0}")]
+    BitcoinCoreRPCError(bitcoincore_rpc::Error),
 }
 
 // DID

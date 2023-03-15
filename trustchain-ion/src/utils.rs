@@ -176,27 +176,21 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
             BITCOIN_RPC_PASSWORD.to_string(),
         ),
     )
-    .unwrap()
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
+    .unwrap()
 }
 
 /// Gets a Bitcoin block header via the RPC API.
 pub fn block_header(
     block_hash: &BlockHash,
     client: Option<&bitcoincore_rpc::Client>,
-) -> Result<BlockHeader, Box<dyn std::error::Error>> {
+) -> Result<BlockHeader, TrustchainBitcoinError> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
         let rpc_client = rpc_client();
         return block_header(block_hash, Some(&rpc_client));
     };
-    match client.unwrap().get_block_header(block_hash) {
-        Ok(x) => Ok(x),
-        Err(e) => {
-            eprintln!("Error getting block header via RPC: {}", e);
-            Err(Box::new(e))
-        }
-    }
+    Ok(client.unwrap().get_block_header(block_hash)?)
 }
 
 /// Decodes a Bitcoin block from 80 bytes of data into a JSON object.
@@ -237,19 +231,16 @@ pub fn transaction(
     block_hash: &BlockHash,
     tx_index: u32,
     client: Option<&bitcoincore_rpc::Client>,
-) -> Result<Transaction, Box<dyn std::error::Error>> {
+) -> Result<Transaction, TrustchainBitcoinError> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
         let rpc_client = rpc_client();
         return transaction(block_hash, tx_index, Some(&rpc_client));
     }
-    match client.unwrap().get_block(block_hash) {
-        Ok(block) => Ok(block.txdata[tx_index as usize].to_owned()),
-        Err(e) => {
-            eprintln!("Error getting Bitcoin block via RPC: {}", e);
-            Err(Box::new(e))
-        }
-    }
+    Ok(client
+        .unwrap()
+        .get_block(block_hash)
+        .map(|block| block.txdata[tx_index as usize].to_owned())?)
 }
 
 /// Gets a Merkle proof for the given Bitcoin transaction via the RPC API.
@@ -257,22 +248,15 @@ pub fn merkle_proof(
     tx: &Transaction,
     block_hash: &BlockHash,
     client: Option<&bitcoincore_rpc::Client>,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, TrustchainBitcoinError> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
         let rpc_client = rpc_client();
         return merkle_proof(tx, block_hash, Some(&rpc_client));
     }
-    match client
+    Ok(client
         .unwrap()
-        .get_tx_out_proof(&[tx.txid()], Some(block_hash))
-    {
-        Ok(x) => Ok(x),
-        Err(e) => {
-            eprintln!("Error getting Merkle proof via RPC: {}", e);
-            Err(Box::new(e))
-        }
-    }
+        .get_tx_out_proof(&[tx.txid()], Some(block_hash))?)
 }
 
 pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
