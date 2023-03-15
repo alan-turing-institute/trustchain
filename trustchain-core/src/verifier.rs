@@ -95,6 +95,9 @@ pub enum VerifierError {
     /// Failed to find expected service endpoint in verified DID content.
     #[error("Endpoint not found in verified content for DID: {0}")]
     EndpointNotFoundInVerifiedContent(String),
+    /// No endpoints present verified DID content.
+    #[error("No endpoints present verified content for DID: {0}")]
+    NoEndpointsFoundInVerifiedContent(String),
     /// Found duplicate update commitments in different DID operations.
     #[error("Duplicate update commitments: {0}")]
     DuplicateDIDUpdateCommitments(String),
@@ -215,14 +218,12 @@ impl VerifiableTimestamp {
                     .iter()
                     .all(|uri| candidate_endpoints.contains(uri))
                 {
-                    eprintln!("Expected endpoint not found in DID Commitment data.");
                     return Err(VerifierError::EndpointNotFoundInVerifiedContent(
                         self.did_commitment().did().to_string(),
                     ));
                 }
             } else {
-                eprintln!("No candidate endpoints found in DID Commitment data.");
-                return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+                return Err(VerifierError::NoEndpointsFoundInVerifiedContent(
                     self.did_commitment().did().to_string(),
                 ));
             }
