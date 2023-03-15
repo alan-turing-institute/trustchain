@@ -2,14 +2,13 @@ use crate::commitment::IONCommitment;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction};
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, CHUNKS_KEY,
-    CHUNK_FILE_URI_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER,
-    PROVISIONAL_INDEX_FILE_URI_KEY,
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, DID_DELIMITER,
+    ION_METHOD, ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
 use bitcoincore_rpc::RpcApi;
-use did_ion::sidetree::{Delta, DocumentState, PublicKeyEntry, ServiceEndpointEntry};
+use did_ion::sidetree::Delta;
 use futures::executor::block_on;
 use ipfs_api_backend_actix::IpfsClient;
 use mongodb::bson::doc;
@@ -442,19 +441,16 @@ mod tests {
     use super::*;
     use crate::{
         data::{
-            TEST_CHUNK_FILE_CONTENT, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
-            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
+            TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX,
+            TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
         IONResolver,
     };
     use bitcoin::MerkleBlock;
-    use did_ion::{
-        sidetree::{PublicKey, SidetreeClient},
-        ION,
-    };
+    use did_ion::{sidetree::SidetreeClient, ION};
     use flate2::read::GzDecoder;
-    use ssi::{did::ServiceEndpoint, did_resolve::HTTPDIDResolver, jwk::Params, jwk::JWK};
-    use std::{convert::TryFrom, io::Read, str::FromStr};
+    use ssi::did_resolve::HTTPDIDResolver;
+    use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
 
     // Helper function for generating a placeholder HTTP resolver for tests only.
