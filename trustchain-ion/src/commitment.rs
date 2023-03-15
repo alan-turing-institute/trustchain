@@ -14,14 +14,14 @@ use trustchain_core::utils::{HasEndpoints, HasKeys};
 use crate::sidetree::CoreIndexFile;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness, tx_to_did_cid};
 use crate::DELTAS_KEY;
-use crate::{CID_KEY, DID_DELIMITER, ION_METHOD, ION_OPERATION_COUNT_DELIMITER};
+use crate::{CID_KEY, DID_DELIMITER, ION_OPERATION_COUNT_DELIMITER};
 
 fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
     |x| Ok(IpfsHasher::default().compute(x))
 }
 
 fn ipfs_decode_candidate_data() -> fn(&[u8]) -> CommitmentResult<Value> {
-    |x| decode_ipfs_content(&x.to_owned()).map_err(|_| CommitmentError::DataDecodingError)
+    |x| decode_ipfs_content(x).map_err(|_| CommitmentError::DataDecodingFailure)
 }
 
 /// Unit struct for incomplete commitments.
@@ -133,10 +133,10 @@ impl<T> TrivialCommitment for IpfsChunkFileCommitment<T> {
                 match map.get(DELTAS_KEY) {
                     // TODO: create chunk file struct in crate::sidetree module.
                     Some(Value::Array(deltas)) => Ok(deltas.get(delta_index).unwrap().clone()),
-                    _ => Err(CommitmentError::DataDecodingError),
+                    _ => Err(CommitmentError::DataDecodingFailure),
                 }
             } else {
-                Err(CommitmentError::DataDecodingError)
+                Err(CommitmentError::DataDecodingFailure)
             }
         }))
     }
@@ -194,8 +194,10 @@ impl<T> TrivialCommitment for TxCommitment<T> {
             let tx: Transaction = match Deserialize::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
-                    eprintln!("Failed to deserialise transaction: {}", e);
-                    return Err(CommitmentError::FailedToComputeHash);
+                    return Err(CommitmentError::FailedToComputeHash(format!(
+                        "Failed to deserialise transaction: {}",
+                        e
+                    )));
                 }
             };
             Ok(tx.txid().to_string())
@@ -214,13 +216,15 @@ impl<T> TrivialCommitment for TxCommitment<T> {
             let tx: Transaction = match Deserialize::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
-                    eprintln!("Failed to deserialise transaction: {}", e);
-                    return Err(CommitmentError::DataDecodingError);
+                    return Err(CommitmentError::DataDecodingError(format!(
+                        "Failed to deserialise transaction: {}",
+                        e
+                    )));
                 }
             };
 
-            let op_return_data =
-                tx_to_did_cid(&tx).map_err(|_| CommitmentError::DataDecodingError)?;
+            let op_return_data = tx_to_did_cid(&tx)
+                .map_err(|e| CommitmentError::DataDecodingError(e.to_string()))?;
 
             // Extract the IPFS content identifier from the ION OP_RETURN data.
             let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
@@ -279,20 +283,19 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
-                    eprintln!("Failed to deserialise MerkleBlock: {:?}", e);
-                    return Err(CommitmentError::FailedToComputeHash);
+                    return Err(CommitmentError::FailedToComputeHash(format!(
+                        "Failed to deserialise MerkleBlock: {:?}",
+                        e
+                    )));
                 }
             };
             // Traverse the PartialMerkleTree to obtain the Merkle root.
             match merkle_block.txn.extract_matches(&mut vec![], &mut vec![]) {
                 Ok(merkle_root) => Ok(merkle_root.to_string()),
-                Err(e) => {
-                    eprintln!(
-                        "Failed to obtain Merkle root from PartialMerkleTree: {:?}",
-                        e
-                    );
-                    Err(CommitmentError::FailedToComputeHash)
-                }
+                Err(e) => Err(CommitmentError::FailedToComputeHash(format!(
+                    "Failed to obtain Merkle root from PartialMerkleTree: {:?}",
+                    e
+                ))),
             }
         }
     }
@@ -307,8 +310,10 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
-                    eprintln!("Failed to deserialise MerkleBlock: {:?}", e);
-                    return Err(CommitmentError::DataDecodingError);
+                    return Err(CommitmentError::DataDecodingError(format!(
+                        "Failed to deserialise MerkleBlock: {:?}",
+                        e
+                    )));
                 }
             };
             // Get the hashes in the Merkle proof as a vector of strings.
@@ -388,19 +393,22 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             if x.len() != 80 {
-                eprintln!("Error: Bitcoin block header must be 80 bytes.");
-                return Err(CommitmentError::DataDecodingError);
+                return Err(CommitmentError::DataDecodingError(
+                    "Error: Bitcoin block header must be 80 bytes.".to_string(),
+                ));
             };
-            let decoded_header = decode_block_header(
-                x.try_into()
-                    .expect("Bitcoin block header should be 80 bytes."),
-            );
+            let decoded_header = decode_block_header(x.try_into().map_err(|err| {
+                CommitmentError::DataDecodingError(format!(
+                    "Error: Bitcoin block header must be 80 bytes with error: {err}"
+                ))
+            })?);
+
             match decoded_header {
                 Ok(x) => Ok(x),
-                Err(e) => {
-                    eprintln!("Error decoding Bitcoin block header: {}.", e);
-                    Err(CommitmentError::DataDecodingError)
-                }
+                Err(e) => Err(CommitmentError::DataDecodingError(format!(
+                    "Error decoding Bitcoin block header: {}.",
+                    e
+                ))),
             }
         }
     }

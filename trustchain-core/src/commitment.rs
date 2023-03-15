@@ -14,12 +14,15 @@ pub type CommitmentResult<T> = Result<T, CommitmentError>;
 /// An error relating to Commitment verification.
 #[derive(Error, Debug)]
 pub enum CommitmentError {
+    /// Data decoding failure.
+    #[error("Data decoding failed.")]
+    DataDecodingFailure,
     /// Data decoding error.
-    #[error("Data decoding error.")]
-    DataDecodingError,
+    #[error("Data decoding error: {0}")]
+    DataDecodingError(String),
     /// Failed to compute hash.
-    #[error("Failed to compute hash.")]
-    FailedToComputeHash,
+    #[error("Failed to compute hash: {0}")]
+    FailedToComputeHash(String),
     /// Failed hash verification.
     #[error("Failed hash verification. Computed hash not equal to target.")]
     FailedHashVerification(String),
@@ -93,8 +96,10 @@ pub trait Commitment: TrivialCommitment {
         let unfiltered_candidate_data = match self.commitment_content() {
             Ok(x) => x,
             Err(e) => {
-                eprintln!("Failed to verify content. Data decoding error: {}", e);
-                return Err(CommitmentError::DataDecodingError);
+                return Err(CommitmentError::DataDecodingError(format!(
+                    "Failed to verify content. Data decoding error: {}",
+                    e
+                )));
             }
         };
 
@@ -104,8 +109,10 @@ pub trait Commitment: TrivialCommitment {
             Some(filter) => match filter(unfiltered_candidate_data.clone()) {
                 Ok(x) => x,
                 Err(e) => {
-                    eprintln!("Failed to verify content. Data decoding error: {}", e);
-                    return Err(CommitmentError::DataDecodingError);
+                    return Err(CommitmentError::DataDecodingError(format!(
+                        "Failed to verify content. Data decoding error: {}",
+                        e
+                    )));
                 }
             },
             None => unfiltered_candidate_data.clone(),
@@ -236,8 +243,9 @@ impl Commitment for ChainedCommitment {
             let this_target = match next.expected_data() {
                 serde_json::Value::String(x) => x,
                 _ => {
-                    eprintln!("Unhandled JSON Value variant. Expected String.");
-                    return Err(CommitmentError::DataDecodingError);
+                    return Err(CommitmentError::DataDecodingError(
+                        "Unhandled JSON Value variant. Expected String.".to_string(),
+                    ));
                 }
             };
             commitment.verify(this_target)?;
