@@ -414,19 +414,10 @@ where
     T: Sync + Send + DIDResolver,
 {
     fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError> {
-        let block_hash = match BlockHash::from_str(hash) {
-            Ok(x) => x,
-            Err(e) => {
-                eprintln!("Failed to convert hash string to BlockHash: {}", e);
-                return Err(VerifierError::InvalidProofOfWorkHash(hash.to_string()));
-            }
-        };
-        let block_header = match block_header(&block_hash, Some(&self.rpc_client)) {
-            Ok(x) => x,
-            Err(_) => {
-                todo!()
-            }
-        };
+        let block_hash = BlockHash::from_str(hash)
+            .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
+        let block_header = block_header(&block_hash, Some(&self.rpc_client))
+            .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
         Ok(block_header.time)
     }
 

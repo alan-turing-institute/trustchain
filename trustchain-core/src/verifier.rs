@@ -68,6 +68,9 @@ pub enum VerifierError {
     /// Failed to get the block height for DID.
     #[error("Failed to get block height for DID: {0}")]
     FailureToGetBlockHeight(String),
+    /// Failed to get the block header for block hash.
+    #[error("Failed to get block header for block hash: {0}")]
+    FailureToGetBlockHeader(String),
     /// Failure of API call to PoW ledger client.
     #[error("Failed API call to PoW ledger client: {0}")]
     LedgerClientError(String),
