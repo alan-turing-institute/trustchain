@@ -13,10 +13,7 @@ use std::num::ParseIntError;
 use did_ion::{sidetree::SidetreeClient, ION};
 use std::io;
 use thiserror::Error;
-use trustchain_core::{
-    resolver::{DIDMethodWrapper, Resolver},
-    verifier::VerifierError,
-};
+use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
