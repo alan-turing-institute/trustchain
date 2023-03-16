@@ -8,4 +8,5 @@ fn load_config() {
         trustchain_config.ion.mongo_connection_string,
         "mongodb://localhost:27017/"
     );
+    assert_eq!(trustchain_config.core.root_event_time, 1666265405);
 }

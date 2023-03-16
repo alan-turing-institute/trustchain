@@ -1,6 +1,19 @@
 [core]
-env = "TRUSTCHAIN_DATA"
-root_event_time = 42
+trustchain_data = "TRUSTCHAIN_DATA"
+trustchain_service_id_value = "TrustchainID"
+trustchain_proof_service_id_value = "trustchain-controller-proof"
+trustchain_proof_service_type_value = "TrustchainProofService"
+root_event_time = 1666265405
+root_event_time_2378493 = 1666971942
 
 [ion]
 mongo_connection_string = "mongodb://localhost:27017/"
+mongo_database_ion_testnet_core = "ion-testnet-core"
+mongo_collection_operations = "operations"
+mongo_filter_type = "type"
+mongo_create_operation = "create"
+mongo_filter_did_suffix = "didSuffix"
+
+bitcoin_connection_string = "http://localhost:18332"
+bitcoin_rpc_username = "admin"
+bitcoin_rpc_password = "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow="
