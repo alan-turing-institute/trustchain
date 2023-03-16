@@ -12,7 +12,10 @@ use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::sidetree::CoreIndexFile;
-use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness, tx_to_did_cid};
+use crate::utils::tx_to_op_return_cid;
+use crate::utils::{
+    decode_block_header, decode_ipfs_content, reverse_endianness, tx_to_op_return_data,
+};
 use crate::DELTAS_KEY;
 use crate::{CID_KEY, DID_DELIMITER, ION_OPERATION_COUNT_DELIMITER};
 
@@ -222,15 +225,9 @@ impl<T> TrivialCommitment for TxCommitment<T> {
                     )));
                 }
             };
-
-            let op_return_data = tx_to_did_cid(&tx)
+            // // Extract the IPFS content identifier from the ION OP_RETURN data.
+            let cid = tx_to_op_return_cid(&tx)
                 .map_err(|e| CommitmentError::DataDecodingError(e.to_string()))?;
-
-            // Extract the IPFS content identifier from the ION OP_RETURN data.
-            let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
-            let (_, cid) = operation_count_plus_cid
-                .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
-                .unwrap();
             Ok(json!({ CID_KEY: cid }))
         }
     }

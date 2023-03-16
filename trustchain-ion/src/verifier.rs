@@ -1,7 +1,8 @@
 use crate::commitment::IONCommitment;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{
-    block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_did_cid,
+    block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
+    tx_to_op_return_data,
 };
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, DID_DELIMITER,
@@ -345,18 +346,13 @@ where
     /// Gets the output scripts that contain an OP_RETURN and extracts any that contain the
     /// substring 'ion:' and returns an error unless precisely one such script exists.
     fn op_return_data(&self, tx: &Transaction) -> Result<String, VerifierError> {
-        tx_to_did_cid(tx)
+        tx_to_op_return_data(tx)
     }
 
     /// Extracts the IPFS content identifier from the ION OP_RETURN data
     /// inside a Bitcoin transaction.
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
-        let op_return_data = self.op_return_data(tx)?;
-        let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
-        let (_, cid) = operation_count_plus_cid
-            .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
-            .unwrap();
-        Ok(cid.to_string())
+        tx_to_op_return_cid(tx)
     }
 }
 

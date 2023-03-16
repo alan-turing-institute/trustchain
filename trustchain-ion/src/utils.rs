@@ -13,10 +13,11 @@ use trustchain_core::verifier::VerifierError;
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
-    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, HASH_PREV_BLOCK_KEY,
-    ION_METHOD_WITH_DELIMITER, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS,
-    MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION, MONGO_DATABASE_ION_TESTNET_CORE,
-    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
+    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, DID_DELIMITER, HASH_PREV_BLOCK_KEY,
+    ION_METHOD_WITH_DELIMITER, ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY,
+    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
+    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY,
+    TIMESTAMP_KEY, VERSION_KEY,
 };
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
@@ -42,7 +43,7 @@ pub async fn query_ipfs(
 }
 
 /// Extracts a unique ION DID content identifier (CID) from a transaction.
-pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, VerifierError> {
+pub fn tx_to_op_return_data(tx: &Transaction) -> Result<String, VerifierError> {
     let extracted: Vec<String> = tx
         .output
         .iter()
@@ -65,6 +66,15 @@ pub fn tx_to_did_cid(tx: &Transaction) -> Result<String, VerifierError> {
             tx.txid().to_string(),
         )),
     }
+}
+/// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
+pub fn tx_to_op_return_cid(tx: &Transaction) -> Result<String, VerifierError> {
+    let op_return_data = tx_to_op_return_data(tx)?;
+    let (_, operation_count_plus_cid) = op_return_data.rsplit_once(DID_DELIMITER).unwrap();
+    let (_, cid) = operation_count_plus_cid
+        .rsplit_once(ION_OPERATION_COUNT_DELIMITER)
+        .unwrap();
+    Ok(cid.to_string())
 }
 
 /// Decodes an IPFS file.
@@ -241,6 +251,8 @@ mod tests {
         },
         utils::{HasEndpoints, HasKeys},
     };
+
+    const TEST_TRANSACTION: &str = r#"{"version":2,"lock_time":0,"input":[{"previous_output":"5953f37dfeb8343d67cde66e752da195c38c07395d1ce03002e71a10bd04dd71:1","script_sig":"473044022021cc3feacddcdda52b0f8313d6e753c3fcd9f6aafb53e52f4e3aae5c5bdef3ba02204774e9ae6f36e9c58a635d64af99a5c2a665cb1ad992a983d0e6f7feab0c0502012103d28a65a6d49287eaf550380b3e9f71cf711069664b2c20826d77f19a0c035507","sequence":4294967295,"witness":[]}],"output":[{"value":0,"script_pubkey":"6a34696f6e3a332e516d5276675a6d344a334a5378666b3477526a453275324869325537566d6f62596e7071687148355150364a3937"},{"value":15617133,"script_pubkey":"76a914c7f6630ac4f5e2a92654163bce280931631418dd88ac"}]}"#;
 
     #[test]
     fn test_get_keys_from_document() {
@@ -444,5 +456,24 @@ mod tests {
         // Expect a different transaction ID to fail.
         let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         assert_ne!(tx.txid().to_string(), not_expected);
+    }
+
+    #[test]
+    fn test_tx_to_op_return_data() {
+        // The transaction, including OP_RETURN data, can be found on-chain:
+        // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
+        let expected = "ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
+        let actual = tx_to_op_return_data(&tx).unwrap();
+        assert_eq!(expected, actual);
+    }
+    #[test]
+    fn test_tx_to_op_return_cid() {
+        // The transaction, including OP_RETURN data, can be found on-chain:
+        // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
+        let expected = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
+        let actual = tx_to_op_return_cid(&tx).unwrap();
+        assert_eq!(expected, actual);
     }
 }
