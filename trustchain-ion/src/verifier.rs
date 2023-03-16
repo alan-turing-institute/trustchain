@@ -207,7 +207,7 @@ where
         })
     }
 
-    fn fetch_prov_index_file(&self, core_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
+    fn fetch_prov_index_file(&self, core_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
         let content = decode_ipfs_content(core_index_file).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
@@ -229,7 +229,7 @@ where
         })
     }
 
-    fn fetch_chunk_file(&self, prov_index_file: &Vec<u8>) -> Result<Vec<u8>, VerifierError> {
+    fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
         // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
         let content = decode_ipfs_content(prov_index_file).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
