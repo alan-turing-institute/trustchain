@@ -5,7 +5,7 @@ use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCom
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use serde_json::json;
-use ssi::did_resolve::{DIDResolver, ResolutionMetadata};
+use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
 /// An error relating to Trustchain verification.
@@ -87,8 +87,9 @@ pub enum VerifierError {
     #[error("Unhandled DID content: {0}")]
     UnhandledDIDContent(String),
     /// Failed to resolve DID for verification.
-    #[error("Failed to resolve DID: {0} with associated resolution metadata.")]
-    DIDResolutionError(String, ResolutionMetadata),
+    #[error("Failed to resolve DID: {0} with associated resolution metadata: {1}")]
+    // Note: ResolverError boxed to remove large Err-variant lint: <https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err>
+    DIDResolutionError(String, Box<ResolverError>),
     /// Failed to parse DID Document metadata.
     #[error("Failed to parse DID Document metadata.")]
     DIDMetadataError,

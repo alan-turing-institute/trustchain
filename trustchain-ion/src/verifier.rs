@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::str::FromStr;
 use trustchain_core::commitment::{CommitmentError, DIDCommitment};
-use trustchain_core::resolver::Resolver;
+use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 
@@ -180,7 +180,7 @@ where
         } else {
             Err(VerifierError::DIDResolutionError(
                 format!("Missing Document and/or DocumentMetadata for DID: {}", did),
-                res_meta,
+                ResolverError::FailureWithMetadata(res_meta).into(),
             ))
         }
     }
