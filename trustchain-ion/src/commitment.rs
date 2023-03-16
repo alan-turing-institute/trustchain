@@ -13,11 +13,9 @@ use trustchain_core::utils::{HasEndpoints, HasKeys};
 
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
-use crate::utils::{
-    decode_block_header, decode_ipfs_content, reverse_endianness, tx_to_op_return_data,
-};
+use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::CID_KEY;
 use crate::DELTAS_KEY;
-use crate::{CID_KEY, DID_DELIMITER, ION_OPERATION_COUNT_DELIMITER};
 
 fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
     |x| Ok(IpfsHasher::default().compute(x))

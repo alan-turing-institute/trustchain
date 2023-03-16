@@ -2,11 +2,10 @@ use crate::commitment::IONCommitment;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
-    tx_to_op_return_data,
 };
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, DID_DELIMITER,
-    ION_OPERATION_COUNT_DELIMITER, PROVISIONAL_INDEX_FILE_URI_KEY,
+    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
+    PROVISIONAL_INDEX_FILE_URI_KEY,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -342,15 +341,7 @@ where
         })
     }
 
-    /// Extracts the ION OP_RETURN data from a Bitcoin transaction.
-    /// Gets the output scripts that contain an OP_RETURN and extracts any that contain the
-    /// substring 'ion:' and returns an error unless precisely one such script exists.
-    fn op_return_data(&self, tx: &Transaction) -> Result<String, VerifierError> {
-        tx_to_op_return_data(tx)
-    }
-
-    /// Extracts the IPFS content identifier from the ION OP_RETURN data
-    /// inside a Bitcoin transaction.
+    /// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_op_return_cid(tx)
     }
@@ -470,27 +461,6 @@ mod tests {
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
         let result = target.locate_transaction(invalid_did);
         assert!(result.is_err());
-    }
-
-    #[test]
-    #[ignore = "Integration test requires Bitcoin RPC"]
-    fn test_op_return_data() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        // The transaction, including OP_RETURN data, can be found on-chain:
-        // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
-        let expected = "ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-
-        // Block 2377445.
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, Some(&target.rpc_client)).unwrap();
-
-        let actual = target.op_return_data(&tx).unwrap();
-        assert_eq!(expected, actual);
     }
 
     #[test]

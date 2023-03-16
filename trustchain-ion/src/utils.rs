@@ -42,8 +42,10 @@ pub async fn query_ipfs(
         .await
 }
 
-/// Extracts a unique ION DID content identifier (CID) from a transaction.
-pub fn tx_to_op_return_data(tx: &Transaction) -> Result<String, VerifierError> {
+/// Extracts the ION OP_RETURN data from a Bitcoin transaction. Gets the output scripts that contain
+/// an OP_RETURN and extracts any that contain the substring 'ion:' and returns an error unless
+/// precisely one such script exists.
+fn tx_to_op_return_data(tx: &Transaction) -> Result<String, VerifierError> {
     let extracted: Vec<String> = tx
         .output
         .iter()
