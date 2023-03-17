@@ -1,11 +1,11 @@
 //! Utils module.
-use crate::TRUSTCHAIN_DATA;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
+use trustchain_config::config;
 
 // Set-up tempdir and use as env var for TRUSTCHAIN_DATA
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
@@ -14,7 +14,10 @@ pub fn init() {
     INIT.call_once(|| {
         // initialization code here
         let tempdir = tempfile::tempdir().unwrap();
-        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+        std::env::set_var(
+            &config().core.trustchain_data,
+            Path::new(tempdir.as_ref().as_os_str()),
+        );
     });
 }
 
@@ -62,7 +65,7 @@ fn data_encoding_scheme(data: &[u8]) -> String {
 
 /// Gets the path for storing operations and creates directories if they do not exist.
 pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let path: String = std::env::var(TRUSTCHAIN_DATA)?;
+    let path: String = std::env::var(&config().core.trustchain_data)?;
     // Make directory and operation file name
     let path = Path::new(path.as_str()).join("operations");
     std::fs::create_dir_all(&path)?;

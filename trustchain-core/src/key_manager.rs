@@ -5,8 +5,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-
-use crate::TRUSTCHAIN_DATA;
+use trustchain_config::config;
 
 /// An error relating to Trustchain key management.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -155,7 +154,7 @@ pub trait KeyManager {
         };
 
         // Get environment for TRUSTCHAIN_DATA
-        let path: String = match std::env::var(TRUSTCHAIN_DATA) {
+        let path: String = match std::env::var(&config().core.trustchain_data) {
             Ok(val) => val,
             Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
         };

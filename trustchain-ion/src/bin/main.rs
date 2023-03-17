@@ -6,7 +6,8 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_config::config;
+use trustchain_core::{issuer::Issuer, verifier::Verifier};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     resolve::main_resolve, verifier::IONVerifier,
@@ -147,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
-                        None => ROOT_EVENT_TIME_2378493,
+                        None => config().core.root_event_time_2378493,
                     };
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
