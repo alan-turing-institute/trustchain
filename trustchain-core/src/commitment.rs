@@ -1,12 +1,12 @@
+use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
+use crate::verifier::Timestamp;
 use serde_json::{json, Value};
 use ssi::{
     did::{Document, ServiceEndpoint},
     jwk::JWK,
 };
+use std::convert::TryInto;
 use thiserror::Error;
-
-use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
-use crate::verifier::Timestamp;
 
 /// Type for commitment result.
 pub type CommitmentResult<T> = Result<T, CommitmentError>;
@@ -58,19 +58,6 @@ pub trait TrivialCommitment {
     fn filter(&self) -> Option<Box<dyn Fn(serde_json::Value) -> CommitmentResult<Value>>> {
         None
     }
-    // TODO: consider all replacements hash() and commitment_content()
-    // For both of these two functions, get rid of these "helper" methods and
-    // instead make the "inner" calls directly on the commitment object, e.g.
-    // instead of:
-    // commitment.hash()
-    // we should use:
-    // commitment.hasher()(commitment.candidate_data())
-    //
-    // and instead of:
-    // commitment.commitment_content()
-    // we should use:
-    // commitment.decode_candidate_data()(commitment.candidate_data())
-
     /// Computes the hash (commitment). This method should not be overridden by implementors.
     fn hash(&self) -> CommitmentResult<String> {
         // Call the hasher on the candidate data.
@@ -301,8 +288,7 @@ pub trait DIDCommitment: Commitment {
 /// A Commitment whose expected data is a Unix time and hasher
 /// and candidate data are obtained from a given DIDCommitment.
 pub struct TimestampCommitment {
-    timestamp: Timestamp,
-    expected_data: Option<serde_json::Value>,
+    expected_data: serde_json::Value,
     hasher: fn(&[u8]) -> CommitmentResult<String>,
     candidate_data: Vec<u8>,
     decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
@@ -319,37 +305,27 @@ impl TimestampCommitment {
         // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
         // by verifying both the DIDCommitment and the TimestampCommitment we confirm
         // that the *same* hash commits to *both* the DID Document data and the timestamp.
-
+        //
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
-
-        // TODO (consider at end of PR): the hasher, candidate_data and decoder (function) need to
-        // come from the *last*
-        // commitment in the DIDCommitment chain. But in general DIDCommitment is a Commitment,
-        // but not necessarily a CommitmentChain, so we need to implement the "last commitment" code
-        // in trustchain-ion.
-        // Therefore, DIDCommitment must have overridden methods for hasher(), candidate_data() and
-        // decode_candidate_data(). Just do this in trustchain-ion commitment.rs and we're done.
-        // BUT that won't work because DIDCommitment is implemented (in trustchain-ion) for
-        // IONCommitment, which is *both* a CommitmentChain *and* a DIDCommitment.
-        // So it needs to be a CommitmentChain for verifying the pub keys & endpoints
-        // and at the same time a TimestampCommitment.
         Ok(Self {
-            timestamp: expected_data,
-            expected_data: Some(json!(expected_data)),
+            expected_data: json!(expected_data),
             hasher: did_commitment.hasher(),
             candidate_data: did_commitment.timestamp_candidate_data()?.to_vec(),
             decode_candidate_data: did_commitment.decode_timestamp_candidate_data()?,
         })
     }
 
-    // TODO: remove if unused?
     /// Gets the timestamp as a Unix time.
     fn timestamp(&self) -> Timestamp {
-        self.timestamp
+        self.expected_data
+            .as_u64()
+            .unwrap()
+            .try_into()
+            .expect("Construction guarantees u32.")
     }
 }
-// TODO; enforce empty impossinle
+
 impl TrivialCommitment for TimestampCommitment {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         self.hasher
@@ -374,6 +350,6 @@ impl TrivialCommitment for TimestampCommitment {
 impl Commitment for TimestampCommitment {
     fn expected_data(&self) -> &serde_json::Value {
         // Safe to unwrap as a complete commitment must have expected data
-        self.expected_data.as_ref().unwrap()
+        &self.expected_data
     }
 }
