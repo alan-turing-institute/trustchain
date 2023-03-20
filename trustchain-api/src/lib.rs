@@ -3,6 +3,7 @@ use ssi::{jwk::JWK, vc::Credential};
 use std::error::Error;
 use trustchain_core::{chain::DIDChain, verifier::VerifierError};
 
+/// API for Trustchain CLI DID functionality.
 pub trait TrustchainDIDCLI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
     fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<(), Box<dyn Error>>;
@@ -23,6 +24,8 @@ pub trait TrustchainDIDCLI {
     /// Publishes operations within the operations path (queue).
     fn publish(did: &str, verbose: bool) -> Result<(), Box<dyn Error>>;
 }
+
+/// API for Trustchain CLI VC functionality.
 pub trait TrustchainVCCLI {
     /// Signs a credential
     fn sign(credential: &Credential, did: &str, key: &JWK) -> Credential;
@@ -30,8 +33,30 @@ pub trait TrustchainVCCLI {
     fn verify(credential: &Credential, did: &str, key: &JWK) -> Result<(), Box<dyn Error>>;
 }
 
-pub trait TrustchainFFI {}
+/// API for Trustchain mobile functionality.
+pub trait TrustchainMobileFFI {
+    /// Resolves a given DID assuming trust in endpoint.
+    fn did_resolve(did: String) -> String;
+    /// Verifies a given DID assuming trust in endpoint.
+    fn did_verify(did: String) -> String;
+    /// Verifies a given DID bundle providing complete verification without trust in endpoint.
+    fn did_verify_bundle(bundle_json: String) -> String;
+    /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
+    fn vc_verify_credential(credential_json: String, proof_options_json: String) -> String;
+    /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
+    fn vc_issue_presentation(
+        presentation_json: String,
+        proof_options_json: String,
+        key_json: String,
+    );
+    /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
+    fn vc_verify_presentation(presentation_json: String, proof_options_json: String) -> String;
+}
 
+/// API for Trustchain GUI functionality.
+pub trait TrustchainGUIFFI {}
+
+/// API for Trustchain server functionality.
 pub trait TrustchainHTTP {}
 
 #[cfg(test)]
