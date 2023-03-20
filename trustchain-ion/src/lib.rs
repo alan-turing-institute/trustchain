@@ -1,5 +1,6 @@
 pub mod attest;
 pub mod attestor;
+pub mod config;
 pub mod controller;
 pub mod verifier;
 

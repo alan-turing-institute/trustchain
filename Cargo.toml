@@ -1,6 +1,5 @@
 [workspace]
 members = [
     "trustchain-core",
-    "trustchain-ion",
-    "trustchain-config"
+    "trustchain-ion"
 ]

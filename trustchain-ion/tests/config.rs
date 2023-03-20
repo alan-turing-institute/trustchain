@@ -1,11 +1,11 @@
-use trustchain_config::config;
+use trustchain_core::config::core_config;
+use trustchain_ion::config::ion_config;
 
 // test using imported constants from trustchain_config.toml
 #[test]
-fn load_config() {
-    assert_eq!(
-        config().ion.mongo_connection_string,
-        "mongodb://localhost:27017/"
-    );
-    assert_eq!(config().core.root_event_time, 1666265405);
+#[ignore = "Requires a valid trustchain_config.toml file at root of directory"]
+fn load_config_from_toml() {
+    // test loading trustchain_config.toml (looks at root of directory)
+    &ion_config().mongo_connection_string;
+    core_config().root_event_time;
 }

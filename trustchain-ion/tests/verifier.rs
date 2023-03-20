@@ -1,4 +1,4 @@
-use trustchain_config::config;
+use trustchain_core::config::core_config;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
@@ -21,7 +21,7 @@ fn trustchain_verification() {
 
     // Verify initial DIDs
     for did in dids {
-        let result = verifier.verify(did, config().core.root_event_time);
+        let result = verifier.verify(did, core_config().root_event_time);
         // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
@@ -39,7 +39,7 @@ fn trustchain_verification() {
         "did:ion:test:EiCzekHARUPkqf0NRsQ6kfpcnEbwtpdTIgadTYWaggx8Rg",
     ];
     for did in new_dids {
-        let result = verifier.verify(did, config().core.root_event_time_2378493);
+        let result = verifier.verify(did, core_config().root_event_time_2378493);
         // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }

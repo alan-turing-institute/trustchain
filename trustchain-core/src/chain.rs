@@ -1,3 +1,4 @@
+use crate::config::core_config;
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
@@ -12,7 +13,6 @@ use ssi::{
 use std::collections::HashMap;
 use std::fmt;
 use thiserror::Error;
-use trustchain_config::config;
 
 /// An error relating to a DID chain.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -119,7 +119,7 @@ impl fmt::Display for DIDChain {
                     "{0:^1$}",
                     format!(
                         "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp(config().core.root_event_time_2378493 as i64, 0)
+                        Utc.timestamp(core_config().root_event_time_2378493 as i64, 0)
                     ),
                     box_width
                 )?;

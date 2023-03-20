@@ -1,7 +1,7 @@
 //! Trustchain library.
 pub mod attestor;
 pub mod chain;
-// pub mod config;
+pub mod config;
 pub mod controller;
 pub mod data;
 pub mod display;
