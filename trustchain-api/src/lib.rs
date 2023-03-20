@@ -1,7 +1,9 @@
 use did_ion::sidetree::DocumentState;
-use ssi::{jwk::JWK, vc::Credential};
+use ssi::{did_resolve::ResolutionResult, jwk::JWK, vc::Credential, vc::Presentation};
 use std::error::Error;
 use trustchain_core::{chain::DIDChain, verifier::VerifierError};
+
+// TODO: Should we implement any of these traits as subtraits/supertraits?
 
 /// API for Trustchain CLI DID functionality.
 pub trait TrustchainDIDCLI {
@@ -56,8 +58,54 @@ pub trait TrustchainMobileFFI {
 /// API for Trustchain GUI functionality.
 pub trait TrustchainGUIFFI {}
 
-/// API for Trustchain server functionality.
-pub trait TrustchainHTTP {}
+// TODO: add implementation here from Trustchain server crate.
+pub struct DIDChainResolutionResult;
+
+/// API for Trustchain server functionality. The associated handlers required for the endpoint.
+pub trait TrustchainHTTP {
+    /// Resolves a DID chain, will this include the bundle?
+    fn resolve_chain(did: &str) -> DIDChainResolutionResult;
+    /// Resolves a DID chain, will this include the bundle?
+    fn resolve_did(did: &str) -> ResolutionResult;
+
+    // TODO: should we include a separate method to return verification bundle?
+    fn resolve_bundle();
+}
+
+// TODO: implement with data required for a valid credential offer
+/// A type for describing credential offers.
+pub struct CredentialOffer;
+
+/// An API for a Trustchain verifier server.
+pub trait TrustchainIssuerHTTP {
+    // pub trait TrustchainIssuerHTTP : TrustchainHTTP + TrustchainDIDCLI + TrustchainVCCLI {
+    /// Issues an offer for a verifiable credential
+    // TODO: should this be a String or its own type (e.g. `CredentialOffer`)
+    fn generate_credential_offer(template: &Credential, credential_id: &str) -> CredentialOffer;
+    /// Issues a verfiable credential (should it return `Credential` or `String`)
+    fn issue_credential(template: &Credential, subject_id: &str, credential_id: &str)
+        -> Credential;
+}
+
+// TODO: implement in core?
+pub struct PresentationRequest;
+
+// TODO: implement in core?
+/// An error type for presentation failures
+pub enum PresentationError {
+    FailedToVerify,
+    // TODO: add other variants
+}
+
+/// An API for a Trustchain verifier server.
+pub trait TrustchainVerifierHTTP {
+    /// Constructs a presentation request (given some `presentiation_id`) to send to a credential holder from request wallet by ID
+    fn generate_presentation_request(presentation_id: &str) -> PresentationRequest;
+    /// Verifies verifiable presentation
+    fn verify_presentation(presentation: &Presentation) -> Result<(), PresentationError>;
+    /// Verifies verifiable credential
+    fn verify_credential(credential: &Credential) -> Result<(), PresentationError>;
+}
 
 #[cfg(test)]
 mod tests {
