@@ -18,11 +18,6 @@ use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize)]
-pub struct MyParams {
-    name: String,
-}
-
 pub async fn index() -> Html<String> {
     Html(
         std::fs::read_to_string(format!("{}/static/index.html", env!("CARGO_MANIFEST_DIR")))
@@ -139,11 +134,11 @@ pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DIDChainResolutionResolution {
+struct DIDChainResolutionResult {
     did_chain: Vec<ResolutionResult>,
 }
 
-impl DIDChainResolutionResolution {
+impl DIDChainResolutionResult {
     fn new(did_chain: &DIDChain) -> Self {
         Self {
             did_chain: did_chain
@@ -166,7 +161,7 @@ pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
     let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();
 
     // Convert DID chain to vec of ResolutionResults
-    let chain_resolution = DIDChainResolutionResolution::new(&chain);
+    let chain_resolution = DIDChainResolutionResult::new(&chain);
     (
         StatusCode::OK,
         Html(to_string_pretty(&chain_resolution).unwrap()),
