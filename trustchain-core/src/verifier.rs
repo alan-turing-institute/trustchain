@@ -20,9 +20,6 @@ pub enum VerifierError {
     /// Invalid root DID after self-controller reached in path.
     #[error("Invalid root DID: {0}.")]
     InvalidRoot(String),
-    // /// DID not resolvable.
-    // #[error("DID: {0} is not resolvable.")]
-    // UnresolvableDID(String),
     /// Failed to build DID chain.
     #[error("Failed to build chain: {0}.")]
     ChainBuildFailure(String),
