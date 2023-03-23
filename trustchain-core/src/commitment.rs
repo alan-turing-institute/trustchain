@@ -317,7 +317,7 @@ impl TimestampCommitment {
     }
 
     /// Gets the timestamp as a Unix time.
-    fn timestamp(&self) -> Timestamp {
+    pub fn timestamp(&self) -> Timestamp {
         self.expected_data
             .as_u64()
             .unwrap()
