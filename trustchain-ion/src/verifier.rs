@@ -100,7 +100,7 @@ where
         let client = Client::with_options(client_options)?;
 
         let query_result = client
-            .database(&ion_config().mongo_database_ion_testnet_core)
+            .database(&ion_config().mongo_database_ion_core)
             .collection(MONGO_COLLECTION_OPERATIONS)
             .find_one(
                 doc! {

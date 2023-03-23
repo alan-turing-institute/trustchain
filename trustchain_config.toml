@@ -5,7 +5,7 @@ root_event_time_2378493 = 1666971942
 
 [ion]
 mongo_connection_string = "mongodb://localhost:27017/"
-mongo_database_ion_testnet_core = "ion-testnet-core"
+mongo_database_ion_core = "ion-testnet-core"
 
 bitcoin_connection_string = "http://localhost:18332"
 bitcoin_rpc_username = "admin"
