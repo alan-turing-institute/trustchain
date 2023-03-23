@@ -57,11 +57,13 @@ pub trait TrustchainMobileFFI {
 /// API for Trustchain GUI functionality.
 pub trait TrustchainGUIFFI {
     /// Set up to mirror the CLI functionality
-    /// NOTE: There is currently an open pull request for support of the rust Result type which will add the functionality
+    /// NOTE: There is currently an [open pull request](https://github.com/fzyzcjy/flutter_rust_bridge/pull/582) for support of the rust Result type which will add the functionality
     /// of returning custom error types rather than only a custom error message (&str).
 
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
     fn create(document_state: Option<String>, verbose: bool) -> anyhow::Result<()>;
+    /// COMMENT: Could document state be typed?
+
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.
     fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()>;
     /// Resolves a given DID using a resolver available at localhost:3000
