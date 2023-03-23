@@ -26,21 +26,27 @@ pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
 /// An error relating for Trustchain-ion crate.
 #[derive(Error, Debug)]
 pub enum TrustchainIONError {
+    /// Key cannot be converted to commmitment value.
     #[error("Key cannot be converted to commmitment value.")]
     FailedToConvertToCommitment,
+    /// Commitment value could not be extracted from document metadata.
     #[error("Commitment value could not be extracted from document metadata.")]
     FailedToExtractCommitment,
-    #[error("Incorrect key type is provided.")]
+    /// Incorrect key type provided.
+    #[error("Incorrect key type provided.")]
     IncorrectKeyType,
 }
 
 /// An error relating to a MongoDB query.
 #[derive(Error, Debug)]
 pub enum TrustchainMongodbError {
+    /// Query returned `None`.
     #[error("Query returned None.")]
     QueryReturnedNone,
+    /// Query returned an `Error`.
     #[error("Query returned Error: {0}")]
     QueryReturnedError(mongodb::error::Error),
+    /// `Error` creating client.
     #[error("Error creating client: {0}")]
     ErrorCreatingClient(mongodb::error::Error),
 }
