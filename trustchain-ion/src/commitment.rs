@@ -132,7 +132,6 @@ impl<T> TrivialCommitment for IpfsChunkFileCommitment<T> {
             // TODO: Remove in future releases.
             if let Value::Object(map) = value {
                 match map.get(DELTAS_KEY) {
-                    // TODO: create chunk file struct in crate::sidetree module.
                     Some(Value::Array(deltas)) => Ok(deltas.get(delta_index).unwrap().clone()),
                     _ => Err(CommitmentError::DataDecodingFailure),
                 }
