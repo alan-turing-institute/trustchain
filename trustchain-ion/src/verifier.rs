@@ -84,7 +84,6 @@ where
     resolver: Resolver<T>,
     rpc_client: bitcoincore_rpc::Client,
     ipfs_client: IpfsClient,
-    // ipfs_hasher: IpfsHasher,
     bundles: HashMap<String, VerificationBundle>,
 }
 
