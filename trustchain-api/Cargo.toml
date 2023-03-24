@@ -10,3 +10,4 @@ edition = "2021"
 trustchain-core = { path = "../trustchain-core" }
 ssi = "0.4"
 did-ion = "0.1"
+anyhow = "1.0.70"

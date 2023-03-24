@@ -1,3 +1,4 @@
+use anyhow;
 use did_ion::sidetree::DocumentState;
 use ssi::{did_resolve::ResolutionResult, jwk::JWK, vc::Credential, vc::Presentation};
 use std::error::Error;
@@ -56,7 +57,32 @@ pub trait TrustchainMobileFFI {
 }
 
 /// API for Trustchain GUI functionality.
-pub trait TrustchainGUIFFI {}
+pub trait TrustchainGUIFFI {
+    /// Set up to mirror the CLI functionality
+    /// NOTE: There is currently an [open pull request](https://github.com/fzyzcjy/flutter_rust_bridge/pull/582) for support of the rust Result type which will add the functionality
+    /// of returning custom error types rather than only a custom error message (&str).
+
+    /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
+    fn create(document_state: Option<String>, verbose: bool) -> anyhow::Result<()>;
+    /// COMMENT: Could document state be typed?
+
+    /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.
+    fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()>;
+    /// Resolves a given DID using a resolver available at localhost:3000
+    fn resolve(did: String, verbose: bool) -> anyhow::Result<()>;
+
+    /// TODO: the below have no CLI implementation currently but are planned
+    /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
+    fn verify(did: String, verbose: bool) -> anyhow::Result<DIDChain>;
+    /// Generates an update operation and writes to operations path.
+    fn update(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()>;
+    /// Generates a recover operation and writes to operations path.
+    fn recover(did: String, verbose: bool) -> anyhow::Result<()>;
+    /// Generates a deactivate operation and writes to operations path.
+    fn deactivate(did: String, verbose: bool) -> anyhow::Result<()>;
+    /// Publishes operations within the operations path (queue).
+    fn publish(did: String, verbose: bool) -> anyhow::Result<()>;
+}
 
 // TODO: add implementation here from Trustchain server crate.
 pub struct DIDChainResolutionResult;
