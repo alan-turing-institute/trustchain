@@ -37,7 +37,10 @@ async fn main() -> std::io::Result<()> {
             get(handlers::get_verifier).post(handlers::post_verifier),
         )
         .route("/did/:id", get(handlers::get_did_resolver))
-        .route("/did/chain/:id", get(handlers::get_did_chain))
+        .route(
+            "/did/chain/:id",
+            get(handlers::MyExampleHttp::get_did_chain),
+        )
         .with_state(config.clone());
 
     // Address

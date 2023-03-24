@@ -113,6 +113,76 @@ fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> Resolution
     }
 }
 
+///////
+
+// use did_ion::sidetree::DocumentState;
+// use ssi::{did_resolve::ResolutionResult, jwk::JWK, vc::Credential, vc::Presentation};
+// use std::error::Error;
+// use trustchain_core::{chain::DIDChain, verifier::VerifierError};
+
+/// API for Trustchain server functionality. The associated handlers required for the endpoint.
+// TODO: consider whether the trait itself can be called with
+// get_did_chain() part of the trait
+pub trait TrustchainHTTP {
+    /// Resolves a DID chain, will this include the bundle?
+    fn resolve_chain(did: &str) -> DIDChainResolutionResult;
+
+    /// Resolves a DID chain, will this include the bundle?
+    fn resolve_did(did: &str) -> ResolutionResult;
+
+    // TODO: should we include a separate method to return verification bundle?
+    fn resolve_bundle(did: &str);
+}
+
+///////
+
+// Can this be a unit srt
+pub struct MyExampleHttp {}
+
+impl TrustchainHTTP for MyExampleHttp {
+    fn resolve_chain(did: &str) -> DIDChainResolutionResult {
+        // Currently just returns a static string for initial testing
+        let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();
+
+        // Convert DID chain to vec of ResolutionResults
+        DIDChainResolutionResult::new(&chain)
+    }
+
+    fn resolve_did(did: &str) -> ResolutionResult {
+        todo!()
+    }
+
+    fn resolve_bundle(did: &str) {
+        todo!()
+    }
+}
+
+impl MyExampleHttp {
+    // pub async fn get_did_chain(&self, Path(did): Path<String>) -> impl IntoResponse {
+    pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
+        info!("Received DID to get trustchain: {}", did.as_str());
+
+        // TODO: implement actual verification with trustchain-ion crate
+        // let resolver = get_ion_resolver();
+        // let verifier = Verifier::new();
+
+        // Currently just returns a static string for initial testing
+        // let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();
+
+        // Convert DID chain to vec of ResolutionResults
+        // let chain_resolution = DIDChainResolutionResult::new(&chain);
+
+        // let chain_resolution = self.resolve_chain(&did);
+
+        let chain_resolution = MyExampleHttp::resolve_chain(&did);
+
+        (
+            StatusCode::OK,
+            Html(to_string_pretty(&chain_resolution).unwrap()),
+        )
+    }
+}
+
 // #[get("/did/{did}")]
 pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
     info!("Received DID to resolve: {}", did.as_str());
@@ -134,7 +204,7 @@ pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
 }
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DIDChainResolutionResult {
+pub struct DIDChainResolutionResult {
     did_chain: Vec<ResolutionResult>,
 }
 
