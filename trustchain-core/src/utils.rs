@@ -114,11 +114,15 @@ pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
+/// Extracts keys (`JWK`) from a type.
 pub trait HasKeys {
+    /// Gets keys.
     fn get_keys(&self) -> Option<Vec<JWK>>;
 }
 
+/// Extracts endpoints (`ServiceEndpoint`) from a type.
 pub trait HasEndpoints {
+    /// Gets endpoints.
     fn get_endpoints(&self) -> Option<Vec<ServiceEndpoint>>;
 }
 
