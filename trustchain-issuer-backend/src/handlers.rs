@@ -1,6 +1,7 @@
 use crate::config::ServerConfig;
 use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
+use crate::resolution::{to_resolution_result, DIDChainResolutionResult};
 use crate::vc::generate_vc;
 use crate::EXAMPLE_VP_REQUEST;
 use axum::extract::{Path, State};
@@ -100,19 +101,6 @@ fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
     generate_vc(false, Some(subject_id), credential_id)
 }
 
-// TODO: consider  introducing as a trait in core that DIDChain implements
-fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
-    ResolutionResult {
-        context: Some(serde_json::Value::String(
-            "https://w3id.org/did-resolution/v1".to_string(),
-        )),
-        did_document: Some(doc),
-        did_resolution_metadata: None,
-        did_document_metadata: Some(doc_meta),
-        property_set: None,
-    }
-}
-
 ///////
 
 // use did_ion::sidetree::DocumentState;
@@ -201,23 +189,6 @@ pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
         StatusCode::OK,
         Html(to_string_pretty(&resolved_json).unwrap()),
     )
-}
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DIDChainResolutionResult {
-    did_chain: Vec<ResolutionResult>,
-}
-
-impl DIDChainResolutionResult {
-    fn new(did_chain: &DIDChain) -> Self {
-        Self {
-            did_chain: did_chain
-                .to_vec()
-                .into_iter()
-                .map(|(doc, doc_meta)| to_resolution_result(doc, doc_meta))
-                .collect::<Vec<_>>(),
-        }
-    }
 }
 
 pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
