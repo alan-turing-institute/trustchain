@@ -1,0 +1,18 @@
+[package]
+name = "trustchain-cli"
+version = "0.1.0"
+authors = ["Trustchain Devs"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "trustchain-cli"
+path = "src/bin/main.rs"
+
+[dependencies]
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+ssi = "0.4"
+clap = { version = "~4.0", features=["derive", "cargo"] }
+serde_json = "1.0"
