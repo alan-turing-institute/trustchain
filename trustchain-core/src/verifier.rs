@@ -26,8 +26,8 @@ pub enum VerifierError {
     /// Chain verification failed.
     #[error("Chain verification failed: {0}.")]
     InvalidChain(String),
-    /// Invalid proof-of-work hash.
-    #[error("Invalid proof-of-work hash: {0}.")]
+    /// Invalid PoW hash.
+    #[error("Invalid PoW hash: {0}.")]
     InvalidProofOfWorkHash(String),
     /// Failed to get DID operation.
     #[error("Error getting {0} DID operation.")]
@@ -105,8 +105,8 @@ pub enum VerifierError {
     /// Found duplicate update commitments in different DID operations.
     #[error("Duplicate update commitments: {0}")]
     DuplicateDIDUpdateCommitments(String),
-    /// Failed to verify Proof of Work hashes.
-    #[error("Proof of Work hashes do not match: {0}, {1}")]
+    /// Failed to verify PoW hashes.
+    #[error("PoW hashes do not match: {0}, {1}")]
     FailedProofOfWorkHashVerification(String, String),
     /// Failed to verify transaction timestamp.
     #[error("Timestamp verification failed for transaction: {0}")]
@@ -186,7 +186,7 @@ impl VerifiableTimestamp {
         )?)
     }
 
-    /// Gets the hash (proof-of-work) commitment.
+    /// Gets the hash (PoW) commitment.
     pub fn hash(&self) -> Result<String, VerifierError> {
         Ok(self.did_commitment.hash()?)
     }
@@ -249,7 +249,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let verifiable_timestamp = self.verifiable_timestamp(root)?;
         self.verify_timestamp(&verifiable_timestamp)?;
 
-        // At this point we know that the same proof of work commits to both the timestamp
+        // At this point we know that the same PoW commits to both the timestamp
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
         // It only remains to check that the verified timestamp matches the expected root timestamp.
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
@@ -260,13 +260,13 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     }
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
-    /// value for the timestamp retreived from a local proof-of-work network node.
+    /// value for the timestamp retreived from a local PoW network node.
     fn verifiable_timestamp(&mut self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
         let did_commitment = self.did_commitment(did)?;
         // Hash the DID commitment
         let hash = did_commitment.hash()?;
-        // Get the expected timestamp for the proof-of-work hash by querying a *local* node.
+        // Get the expected timestamp for the PoW hash by querying a *local* node.
         let expected_timestamp = self.expected_timestamp(&hash)?;
         Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
     }
@@ -293,7 +293,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         }
 
         // Verify both the commitments with the *same* target hash, thereby confirming
-        // that the same proof-of-work commits to both the DID Document data & the timestamp.
+        // that the same PoW commits to both the DID Document data & the timestamp.
         let hash = verifiable_timestamp.hash()?;
         did_commitment.verify(&hash)?;
         timestamp_commitment.verify(&hash)?;
@@ -301,10 +301,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         Ok(())
     }
 
-    /// Queries a local proof-of-work node to get the expected timestamp for a given proof-of-work hash.
+    /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
     fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError>;
 
-    /// Gets a block hash (proof-of-work) Commitment for the given DID.
+    /// Gets a block hash (PoW) Commitment for the given DID.
     /// The mutable reference to self enables a newly-fetched Commitment
     /// to be stored locally for faster subsequent retrieval.
     fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;

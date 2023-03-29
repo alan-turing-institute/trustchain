@@ -38,7 +38,7 @@ fn test_verifiable_timestamp() {
 
     let verifiable_timestamp = result.unwrap();
 
-    // Check that the DID commitment is the expected proof of work hash.
+    // Check that the DID commitment is the expected PoW hash.
     // See https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
     let expected_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
     assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
