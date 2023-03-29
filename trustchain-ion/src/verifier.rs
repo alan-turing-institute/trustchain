@@ -5,13 +5,14 @@ use crate::utils::{
 };
 use crate::{
     BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
-    PROVISIONAL_INDEX_FILE_URI_KEY,
+    PROVISIONAL_INDEX_FILE_URI_KEY, URL,
 };
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::Delta;
 use futures::executor::block_on;
+use futures::TryFutureExt;
 use ipfs_api_backend_actix::IpfsClient;
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
@@ -137,37 +138,62 @@ where
     pub fn verification_bundle(&mut self, did: &str) -> Result<&VerificationBundle, VerifierError> {
         // Fetch (and store) the bundle if it isn't already avaialable.
         if !self.bundles.contains_key(did) {
-            self.fetch_bundle(did)?;
+            self.fetch_bundle(did, None)?;
         }
         Ok(self.bundles.get(did).unwrap())
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
-    pub fn fetch_bundle(&mut self, did: &str) -> Result<(), VerifierError> {
-        // TODO: if running on a Trustchain light client, make an API call to a full node to request the bundle.
-        let (did_doc, did_doc_meta) = self.resolve_did(did)?;
-        let (block_hash, tx_index) = self.locate_transaction(did)?;
-        let tx = self.fetch_transaction(&block_hash, tx_index)?;
-        let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
-        let cid = self.op_return_cid(&tx)?;
-        let core_index_file = self.fetch_core_index_file(&cid)?;
-        let provisional_index_file = self.fetch_prov_index_file(&core_index_file)?;
-        let chunk_file = self.fetch_chunk_file(&provisional_index_file)?;
-        let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
-        let block_header = self.fetch_block_header(&block_hash)?;
-        // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
-        let bundle = VerificationBundle::new(
-            did_doc,
-            did_doc_meta,
-            chunk_file,
-            provisional_index_file,
-            core_index_file,
-            transaction,
-            merkle_block,
-            block_header,
-        );
+    pub fn fetch_bundle(&mut self, did: &str, endpoint: Option<URL>) -> Result<(), VerifierError> {
+        let bundle: Result<VerificationBundle, VerifierError> = match endpoint.as_ref() {
+            // If running on a Trustchain light client, make an API call to a full node to
+            // request the bundle.
+            Some(endpoint) => self.resolver.runtime.block_on(async {
+                Ok(serde_json::from_str(
+                    &reqwest::get(endpoint)
+                        .await
+                        .map_err(|e| {
+                            VerifierError::ErrorFetchingVerificationMaterial(
+                                format!("Error requesting bundle from endpoint: {endpoint}"),
+                                e.into(),
+                            )
+                        })?
+                        .text()
+                        .map_err(|e| {
+                            VerifierError::ErrorFetchingVerificationMaterial(
+                                format!("Error extracting bundle response body from endpoint: {endpoint}"),
+                                e.into(),
+                            )
+                        })
+                        .await?,
+                )?)
+            }),
+            _ => {
+                let (did_doc, did_doc_meta) = self.resolve_did(did)?;
+                let (block_hash, tx_index) = self.locate_transaction(did)?;
+                let tx = self.fetch_transaction(&block_hash, tx_index)?;
+                let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
+                let cid = self.op_return_cid(&tx)?;
+                let core_index_file = self.fetch_core_index_file(&cid)?;
+                let provisional_index_file = self.fetch_prov_index_file(&core_index_file)?;
+                let chunk_file = self.fetch_chunk_file(&provisional_index_file)?;
+                let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
+                let block_header = self.fetch_block_header(&block_hash)?;
+                // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
+                Ok(VerificationBundle::new(
+                    did_doc,
+                    did_doc_meta,
+                    chunk_file,
+                    provisional_index_file,
+                    core_index_file,
+                    transaction,
+                    merkle_block,
+                    block_header,
+                ))
+            }
+        };
         // Insert the bundle into the HashMap of bundles, keyed by the DID.
-        self.bundles.insert(did.to_string(), bundle);
+        self.bundles.insert(did.to_string(), bundle?);
         Ok(())
     }
 
@@ -553,7 +579,7 @@ mod tests {
 
         assert!(target.bundles().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        target.fetch_bundle(did).unwrap();
+        target.fetch_bundle(did, None).unwrap();
 
         assert!(!target.bundles().is_empty());
         assert_eq!(target.bundles().len(), 1);
