@@ -499,7 +499,6 @@ impl TrivialCommitment for IONCommitment {
     }
 
     fn hash(&self) -> CommitmentResult<String> {
-        // TODO: this needs to be reconsidered if replacing the use of hash() method in Commitment::verify()
         self.chained_commitment.hash()
     }
 
