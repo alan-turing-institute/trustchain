@@ -135,6 +135,9 @@ pub enum VerifierError {
     /// Wrapped chain error.
     #[error("A chain error during verification.")]
     ChainFailure(ChainError),
+    /// Wrapped serde JSON deserialization error.
+    #[error("Failed to deserialize.")]
+    FailedToDeserialize(serde_json::Error),
 }
 
 impl From<CommitmentError> for VerifierError {
@@ -152,6 +155,12 @@ impl From<ResolverError> for VerifierError {
 impl From<ChainError> for VerifierError {
     fn from(err: ChainError) -> Self {
         VerifierError::ChainFailure(err)
+    }
+}
+
+impl From<serde_json::Error> for VerifierError {
+    fn from(err: serde_json::Error) -> Self {
+        VerifierError::FailedToDeserialize(err)
     }
 }
 
