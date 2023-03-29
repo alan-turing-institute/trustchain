@@ -6,6 +6,7 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
+use trustchain_cli::api::{TrustchainDIDCLI, TrustchainVCCLI};
 use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
