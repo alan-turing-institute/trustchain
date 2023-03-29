@@ -10,6 +10,7 @@ use trustchain_core::{
     chain::DIDChain,
     issuer::Issuer,
     verifier::{Verifier, VerifierError},
+    ROOT_EVENT_TIME_2378493,
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
@@ -31,10 +32,11 @@ pub trait TrustchainDIDCLI {
         main_resolve(did, verbose)
     }
 
-    /// TODO: the below have no CLI implementation currently but are planned
+    // TODO: the below have no CLI implementation currently but are planned
     /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
     fn verify(did: &str, verbose: bool) -> Result<DIDChain, VerifierError> {
-        todo!()
+        IONVerifier::new(get_ion_resolver("http://localhost:3000/"))
+            .verify(did, ROOT_EVENT_TIME_2378493)
     }
     /// Generates an update operation and writes to operations path.
     fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
