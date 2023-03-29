@@ -6,15 +6,17 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_core::{attestor::CredentialAttestor, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     resolve::main_resolve, verifier::IONVerifier,
 };
 
 fn cli() -> Command {
-    Command::new("trustchain")
-        .about("Trustchain CLI")
+    Command::new("Trustchain CLI")
+        .about(format!("Trustchain CLI v{}\n\nTrustchain command line interface for decentralised public key infrastructure.", env!("CARGO_PKG_VERSION")))
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
@@ -47,7 +49,6 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        // TODO: consider vverbose for stepping through
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true)),
                 ),
@@ -55,13 +56,13 @@ fn cli() -> Command {
         .subcommand(
             // TODO: refactor into library code
             Command::new("vc")
-                .about("Verifiable credential functionality: attest and verify.")
+                .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
                 .subcommand(
-                    Command::new("attest")
-                        .about("Attests to a credential.")
+                    Command::new("sign")
+                        .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
@@ -121,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("vc", sub_matches)) => {
             let resolver = get_ion_resolver("http://localhost:3000/");
             match sub_matches.subcommand() {
-                Some(("attest", sub_matches)) => {
+                Some(("sign", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
@@ -136,10 +137,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
                     let attestor = IONAttestor::new(did);
                     resolver.runtime.block_on(async {
-                        let credential_with_proof = attestor
-                            .attest_credential(&credential, key_id, &resolver)
-                            .await
-                            .unwrap();
+                        let credential_with_proof =
+                            attestor.sign(&credential, key_id, &resolver).await.unwrap();
                         println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                     });
                 }

@@ -1,0 +1,30 @@
+:root {
+
+    /* Typography
+    ------------------------------------------------------------------------- */
+    /* Modular Scale */
+    --modular-scale   : 1.333;
+
+    /* Module Scale Calculations (do not edit these) */
+    --modular-scale--2: calc(var(--modular-scale--1) / var(--modular-scale));
+    --modular-scale--1: calc(var(--modular-scale-1) / var(--modular-scale));
+    --modular-scale-1 : 1rem;
+    --modular-scale-2 : calc(var(--modular-scale-1) * var(--modular-scale));
+    --modular-scale-3 : calc(var(--modular-scale-2) * var(--modular-scale));
+    --modular-scale-4 : calc(var(--modular-scale-3) * var(--modular-scale));
+    --modular-scale-5 : calc(var(--modular-scale-4) * var(--modular-scale));
+
+    /* Font size */
+    --font-size-xxxl  : var(--modular-scale-5);
+    --font-size-xxl   : var(--modular-scale-4);
+    --font-size-xl    : var(--modular-scale-3);
+    --font-size-l     : var(--modular-scale-2);
+    --font-size-m     : var(--modular-scale-1);
+    --font-size-s     : var(--modular-scale--1);
+    --font-size-xs    : var(--modular-scale--2);
+
+    /* Font family */
+    --cover-heading-font-size-min                      : var(--font-size-s);
+    --cover-heading-font-size-max                      : var(--font-size-s);
+    --cover-heading-font-weight                        : bold;
+  }

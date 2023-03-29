@@ -6,7 +6,7 @@ use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
-use trustchain_core::attestor::CredentialAttestor;
+use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
@@ -139,14 +139,14 @@ impl Attestor for IONAttestor {
 }
 
 #[async_trait]
-impl CredentialAttestor for IONAttestor {
-    // Attests to a passed credential returning the credential with proof.
-    async fn attest_credential<T: DIDResolver>(
+impl Issuer for IONAttestor {
+    // Attests to a given credential returning the credential with proof. The `@context` of the credential has linked-data fields strictly checked as part of proof generation.
+    async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
         key_id: Option<&str>,
         resolver: &T,
-    ) -> Result<Credential, AttestorError> {
+    ) -> Result<Credential, IssuerError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
@@ -254,11 +254,11 @@ mod tests {
             ))
             .unwrap();
 
-            // Load credential
+            // Load credential. Issuer is "None" here so no resolution is required.
             let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
             // Attest to doc
-            let vc_with_proof = target.attest_credential(&vc, None, &resolver).await;
+            let vc_with_proof = target.sign(&vc, None, &resolver).await;
 
             // Check attest was ok
             assert!(vc_with_proof.is_ok());
