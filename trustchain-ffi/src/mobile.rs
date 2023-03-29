@@ -1,5 +1,5 @@
-use crate::get_ion_resolver;
 use serde_json::to_string_pretty;
+use trustchain_ion::get_ion_resolver;
 
 /// Example greet function.
 pub fn greet() -> String {
