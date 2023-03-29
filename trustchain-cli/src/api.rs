@@ -2,14 +2,18 @@ use did_ion::sidetree::DocumentState;
 use ssi::{
     did_resolve::ResolutionResult,
     jwk::JWK,
-    vc::Presentation,
     vc::{Credential, URI},
+    vc::{Presentation, VerificationResult},
 };
 use std::error::Error;
-use trustchain_core::{chain::DIDChain, issuer::Issuer, verifier::VerifierError};
+use trustchain_core::{
+    chain::DIDChain,
+    issuer::Issuer,
+    verifier::{Verifier, VerifierError},
+};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    resolve::main_resolve,
+    resolve::main_resolve, verifier::IONVerifier,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -63,8 +67,28 @@ pub trait TrustchainVCCLI {
         credential
     }
     /// Verifies a credential
-    fn verify(credential: &Credential, did: &str, key: &JWK) -> Result<(), Box<dyn Error>> {
-        todo!()
+    fn verify_credential(
+        credential: &Credential,
+        signature_only: bool,
+        root_event_time: u32,
+    ) -> (VerificationResult, Option<Result<DIDChain, VerifierError>>) {
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let mut verification_result: Option<VerificationResult> = None;
+        resolver.runtime.block_on(async {
+            verification_result = Some(credential.verify(None, &resolver).await);
+        });
+        if signature_only {
+            (verification_result.unwrap(), None)
+        } else {
+            let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+            let issuer = match credential.issuer.as_ref() {
+                Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
+                _ => panic!("No issuer present in credential."),
+            };
+
+            let result = verifier.verify(issuer, root_event_time);
+            (verification_result.unwrap(), Some(result))
+        }
     }
 }
 

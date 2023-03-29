@@ -6,7 +6,10 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_cli::api::{TrustchainDIDCLI, TrustchainVCCLI};
+use trustchain_cli::{
+    api::{TrustchainDIDCLI, TrustchainVCCLI},
+    TrustchainCLI,
+};
 use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
@@ -128,20 +131,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
-                    let mut credential: Credential =
+                    let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
                             serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
                         } else {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-                    credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
-                    let attestor = IONAttestor::new(did);
-                    resolver.runtime.block_on(async {
-                        let credential_with_proof =
-                            attestor.sign(&credential, key_id, &resolver).await.unwrap();
-                        println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
-                    });
+
+                    let credential_with_proof = TrustchainCLI::sign(credential, did, key_id);
+                    println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
@@ -157,34 +156,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-                    resolver.runtime.block_on(async {
-                        let verify_result = credential.verify(None, &resolver).await;
-                        if verify_result.errors.is_empty() {
-                            println!("Proof... ✅")
-                        } else {
-                            println!(
-                                "Proof... Invalid\n{}",
-                                &to_string_pretty(&verify_result).unwrap()
-                            );
-                        }
-                    });
+
+                    let (verify_result, result) = TrustchainCLI::verify_credential(
+                        &credential,
+                        *signature_only.unwrap(),
+                        root_event_time,
+                    );
+                    if verify_result.errors.is_empty() {
+                        println!("Proof... ✅")
+                    } else {
+                        println!(
+                            "Proof... Invalid\n{}",
+                            &to_string_pretty(&verify_result).unwrap()
+                        );
+                    }
 
                     // Return if only checking signature
                     if let Some(true) = signature_only {
                         return Ok(());
                     }
 
-                    // Trustchain verify the issued credential
-                    let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+                    // // Trustchain verify the issued credential
+                    // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                         _ => panic!("No issuer present in credential."),
                     };
 
-                    let result = verifier.verify(&issuer, root_event_time);
+                    // let result = verifier.verify(&issuer, root_event_time);
 
-                    match result {
+                    match result.unwrap() {
                         Ok(chain) => {
                             println!("Issuer: {}... ✅", issuer);
                             if let Some(&verbose_count) = verbose {
