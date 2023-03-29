@@ -2,5 +2,5 @@
 members = [
     "trustchain-core",
     "trustchain-ion",
-    "trustchain-ffi-macos"
+    "trustchain-ffi"
 ]

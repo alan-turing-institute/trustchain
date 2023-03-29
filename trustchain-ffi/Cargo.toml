@@ -1,5 +1,5 @@
 [package]
-name = "trustchain-ffi-macos"
+name = "trustchain-ffi"
 version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
