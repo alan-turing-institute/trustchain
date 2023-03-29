@@ -167,7 +167,7 @@ where
             block_header,
         );
         // Insert the bundle into the HashMap of bundles, keyed by the DID.
-        let _ = &self.bundles.insert(did.to_string(), bundle);
+        self.bundles.insert(did.to_string(), bundle);
         Ok(())
     }
 
