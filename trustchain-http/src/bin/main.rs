@@ -1,7 +1,7 @@
 use axum::{routing::get, Router};
 use clap::Parser;
 use log::info;
-use trustchain_issuer_backend::{config::ServerConfig, handlers};
+use trustchain_http::{config::ServerConfig, handlers};
 
 // Process sketch:
 // 1. User visits "/issuer" page, and is displayed a QR code of a URL (with UUID) to send GET

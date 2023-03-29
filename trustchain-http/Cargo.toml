@@ -1,5 +1,5 @@
 [package]
-name = "trustchain-issuer-backend"
+name = "trustchain-http"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
-name = "trustchain-server"
+name = "trustchain-http"
 path = "src/bin/main.rs"
 
 [dependencies]
