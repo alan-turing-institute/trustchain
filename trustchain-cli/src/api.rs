@@ -66,10 +66,9 @@ pub trait TrustchainVCCLI {
         let resolver = get_ion_resolver("http://localhost:3000/");
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        resolver.runtime.block_on(async {
-            credential = attestor.sign(&credential, key_id, &resolver).await.unwrap();
-        });
-        credential
+        resolver
+            .runtime
+            .block_on(async { attestor.sign(&credential, key_id, &resolver).await.unwrap() })
     }
     /// Verifies a credential
     fn verify_credential(
