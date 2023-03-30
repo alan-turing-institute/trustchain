@@ -1,5 +1,10 @@
+use anyhow::{anyhow, Result};
 use serde_json::to_string_pretty;
+use trustchain_cli::{api::TrustchainDIDCLI, TrustchainCLI};
 use trustchain_ion::get_ion_resolver;
+
+/// Android localhost endpoint.
+const ANDROID_ENDPOINT: &str = "http://10.0.2.2:3000/";
 
 /// Example greet function.
 pub fn greet() -> String {
@@ -8,35 +13,45 @@ pub fn greet() -> String {
 
 // TODO: update to use TrustchainCLI once endpoint can be passed
 /// Example resolve interface.
-pub fn resolve(did: String) -> String {
+pub fn resolve(did: String) -> Result<String> {
     // Trustchain Resolver with android localhost
-    let resolver = get_ion_resolver("http://10.0.2.2:3000/");
+    let resolver = get_ion_resolver(ANDROID_ENDPOINT);
     // Result metadata, Document, Document metadata
     let (_, doc, _) = resolver.resolve_as_result(&did).unwrap();
-    to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
+    Ok(to_string_pretty(&doc.unwrap())?)
 }
 
-/// Resolves a given DID assuming trust in endpoint.
-fn did_resolve(did: String) -> String {
-    todo!()
+/// Resolves a given DID document assuming trust in endpoint.
+pub fn did_resolve(did: String) -> Result<String> {
+    // Trustchain Resolver with android localhost
+    TrustchainCLI::resolve(&did, ANDROID_ENDPOINT.into())
+        .map_err(|e| anyhow!(e))
+        .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
 }
 /// Verifies a given DID assuming trust in endpoint.
-fn did_verify(did: String) -> String {
+pub fn did_verify(did: String) -> Result<String> {
     todo!()
 }
 /// Verifies a given DID bundle providing complete verification without trust in endpoint.
-fn did_verify_bundle(bundle_json: String) -> String {
+pub fn did_verify_bundle(bundle_json: String) -> Result<String> {
     todo!()
 }
 /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
-fn vc_verify_credential(credential_json: String, proof_options_json: String) -> String {
+pub fn vc_verify_credential(credential_json: String, proof_options_json: String) -> Result<String> {
     todo!()
 }
 /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
-fn vc_issue_presentation(presentation_json: String, proof_options_json: String, key_json: String) {
+pub fn vc_issue_presentation(
+    presentation_json: String,
+    proof_options_json: String,
+    key_json: String,
+) {
     todo!()
 }
 /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
-fn vc_verify_presentation(presentation_json: String, proof_options_json: String) -> String {
+pub fn vc_verify_presentation(
+    presentation_json: String,
+    proof_options_json: String,
+) -> Result<String> {
     todo!()
 }

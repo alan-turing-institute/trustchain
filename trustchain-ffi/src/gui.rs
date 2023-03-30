@@ -47,7 +47,7 @@ fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<
 }
 /// Resolves a given DID using a resolver available at localhost:3000
 fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
-    let (res_meta, doc, doc_meta) = TrustchainCLI::resolve(&did)?;
+    let (res_meta, doc, doc_meta) = TrustchainCLI::resolve(&did, "http://localhost:3000/".into())?;
     // TODO: refactor conversion into trustchain-core resolve module
     Ok(serde_json::to_string_pretty(&ResolutionResult {
         context: Some(serde_json::Value::String(

@@ -10,11 +10,8 @@ use trustchain_cli::{
     api::{TrustchainDIDCLI, TrustchainVCCLI},
     TrustchainCLI,
 };
-use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
-use trustchain_ion::{
-    attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier,
-};
+use trustchain_core::ROOT_EVENT_TIME_2378493;
+use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
 
 fn cli() -> Command {
     Command::new("Trustchain CLI")
@@ -95,9 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     // Read doc state from file path
                     let doc_state = if let Some(file_path) = file_path {
-                        let f = File::open(file_path)?;
-                        let doc_state = serde_json::from_reader(f)?;
-                        Some(doc_state)
+                        Some(serde_json::from_reader(File::open(file_path)?)?)
                     } else {
                         None
                     };
@@ -118,7 +113,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainCLI::resolve(did)?;
+                    let (res_meta, doc, doc_meta) =
+                        TrustchainCLI::resolve(did, "http://localhost:3000/".into())?;
                     // Print results
                     println!("---");
                     println!("Document:");

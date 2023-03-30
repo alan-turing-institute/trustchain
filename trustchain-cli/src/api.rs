@@ -1,8 +1,5 @@
 use did_ion::sidetree::DocumentState;
 use ssi::{
-    did::Document,
-    did_resolve::{DocumentMetadata, ResolutionResult},
-    jwk::JWK,
     vc::VerificationResult,
     vc::{Credential, URI},
 };
@@ -16,7 +13,7 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier,
+    verifier::IONVerifier, URL,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -29,11 +26,10 @@ pub trait TrustchainDIDCLI {
     fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose)
     }
-    /// Resolves a given DID using a resolver available at localhost:3000
-    // TODO: update to take the endpoint as an argument with URL type
-    fn resolve(did: &str) -> ResolverResult {
+    /// Resolves a given DID using given endpoint.
+    fn resolve(did: &str, endpoint: URL) -> ResolverResult {
         // main_resolve(did, verbose)
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&endpoint);
 
         // Result metadata, Document, Document metadata
         resolver.resolve_as_result(did)

@@ -23,6 +23,9 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
+/// Type alias for URL
+pub type URL = String;
+
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
     IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
