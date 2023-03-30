@@ -1,2 +1,2 @@
-// pub mod mobile;
-// pub mod gui;
+pub mod gui;
+pub mod mobile;
