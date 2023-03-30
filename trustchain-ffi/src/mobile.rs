@@ -6,6 +6,7 @@ pub fn greet() -> String {
     "Hello from Rust! 🦀".into()
 }
 
+// TODO: update to use TrustchainCLI once endpoint can be passed
 /// Example resolve interface.
 pub fn resolve(did: String) -> String {
     // Trustchain Resolver with android localhost

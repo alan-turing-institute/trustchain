@@ -30,6 +30,7 @@ pub trait TrustchainDIDCLI {
         attest_operation(did, controlled_did, verbose)
     }
     /// Resolves a given DID using a resolver available at localhost:3000
+    // TODO: update to take the endpoint as an argument with URL type
     fn resolve(did: &str) -> ResolverResult {
         // main_resolve(did, verbose)
         let resolver = get_ion_resolver("http://localhost:3000/");
