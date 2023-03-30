@@ -14,3 +14,28 @@ pub fn resolve(did: String) -> String {
     let (_, doc, _) = resolver.resolve_as_result(&did).unwrap();
     to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
 }
+
+/// Resolves a given DID assuming trust in endpoint.
+fn did_resolve(did: String) -> String {
+    todo!()
+}
+/// Verifies a given DID assuming trust in endpoint.
+fn did_verify(did: String) -> String {
+    todo!()
+}
+/// Verifies a given DID bundle providing complete verification without trust in endpoint.
+fn did_verify_bundle(bundle_json: String) -> String {
+    todo!()
+}
+/// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
+fn vc_verify_credential(credential_json: String, proof_options_json: String) -> String {
+    todo!()
+}
+/// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
+fn vc_issue_presentation(presentation_json: String, proof_options_json: String, key_json: String) {
+    todo!()
+}
+/// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
+fn vc_verify_presentation(presentation_json: String, proof_options_json: String) -> String {
+    todo!()
+}
