@@ -1,5 +1,6 @@
 use serde_json::to_string_pretty;
-use trustchain_cli::TrustchainCLI;
+use ssi::did_resolve::ResolutionResult;
+use trustchain_cli::{api::TrustchainDIDCLI, TrustchainCLI};
 use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
@@ -45,8 +46,18 @@ fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<
     todo!()
 }
 /// Resolves a given DID using a resolver available at localhost:3000
-fn resolve(did: String, verbose: bool) -> anyhow::Result<()> {
-    todo!()
+fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
+    let (res_meta, doc, doc_meta) = TrustchainCLI::resolve(&did)?;
+    // TODO: refactor conversion into trustchain-core resolve module
+    Ok(serde_json::to_string_pretty(&ResolutionResult {
+        context: Some(serde_json::Value::String(
+            "https://w3id.org/did-resolution/v1".to_string(),
+        )),
+        did_document: doc,
+        did_resolution_metadata: Some(res_meta),
+        did_document_metadata: doc_meta,
+        property_set: None,
+    })?)
 }
 
 /// TODO: the below have no CLI implementation currently but are planned

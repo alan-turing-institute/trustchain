@@ -13,7 +13,7 @@ use trustchain_cli::{
 use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    resolve::main_resolve, verifier::IONVerifier,
+    verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -117,8 +117,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    main_resolve(did, verbose)?;
+                    let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
+                    let (res_meta, doc, doc_meta) = TrustchainCLI::resolve(did)?;
+                    // Print results
+                    println!("---");
+                    println!("Document:");
+                    if let Some(doc) = doc {
+                        println!(
+                            "{}",
+                            to_string_pretty(&doc).expect("Cannot convert to JSON.")
+                        );
+                    }
+                    println!("---");
+                    println!("Document metadata:");
+                    if let Some(doc_meta) = doc_meta {
+                        println!(
+                            "{}",
+                            to_string_pretty(&doc_meta).expect("Cannot convert to JSON.")
+                        );
+                    }
+                    println!("Result metadata:");
+                    println!(
+                        "{}",
+                        to_string_pretty(&res_meta).expect("Cannot convert to JSON.")
+                    );
                 }
                 _ => panic!("Unrecognised DID subcommand."),
             }

@@ -1,6 +1,7 @@
 use did_ion::sidetree::DocumentState;
 use ssi::{
-    did_resolve::ResolutionResult,
+    did::Document,
+    did_resolve::{DocumentMetadata, ResolutionResult},
     jwk::JWK,
     vc::VerificationResult,
     vc::{Credential, URI},
@@ -9,12 +10,13 @@ use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
     issuer::Issuer,
+    resolver::ResolverResult,
     verifier::{Verifier, VerifierError},
     ROOT_EVENT_TIME_2378493,
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    resolve::main_resolve, verifier::IONVerifier,
+    verifier::IONVerifier,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -28,8 +30,12 @@ pub trait TrustchainDIDCLI {
         attest_operation(did, controlled_did, verbose)
     }
     /// Resolves a given DID using a resolver available at localhost:3000
-    fn resolve(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        main_resolve(did, verbose)
+    fn resolve(did: &str) -> ResolverResult {
+        // main_resolve(did, verbose)
+        let resolver = get_ion_resolver("http://localhost:3000/");
+
+        // Result metadata, Document, Document metadata
+        resolver.resolve_as_result(did)
     }
 
     // TODO: the below have no CLI implementation currently but are planned
