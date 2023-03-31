@@ -430,12 +430,12 @@ mod tests {
     use super::*;
     use crate::{
         data::{
-            TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX,
-            TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
+            TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
+            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        IONResolver,
+        get_ion_resolver, IONResolver,
     };
-    use bitcoin::MerkleBlock;
+    use bitcoin::{BlockHeader, MerkleBlock};
     use did_ion::{sidetree::SidetreeClient, ION};
     use flate2::read::GzDecoder;
     use ssi::did_resolve::HTTPDIDResolver;
@@ -608,19 +608,6 @@ mod tests {
         assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
     }
 
-    // #[test]
-    // fn test_verification_bundle_serialize() {
-    //     // let verification_bundle = VerificationBundle();
-    //     // Tests: 1. is valid json
-    //     todo!();
-    // }
-
-    // #[test]
-    // fn test_verification_bundle_deserialize() {
-    //     // Tests: assert individual elements of struct
-    //     todo!();
-    // }
-
     #[test]
     fn test_chunk_file_deserialize() {
         let bytes = hex::decode(TEST_CHUNK_FILE_HEX).unwrap();
@@ -682,8 +669,12 @@ mod tests {
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
     }
 
-    // #[test]
-    // fn test_block_header_deserialize() {
-    //     todo!()
-    // }
+    #[test]
+    fn test_block_header_deserialize() {
+        let bytes = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
+        let header: BlockHeader = bitcoin::consensus::deserialize(&bytes).unwrap();
+        let expected_merkle_root =
+            "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+        assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
+    }
 }
