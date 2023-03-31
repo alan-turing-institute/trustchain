@@ -32,9 +32,6 @@ pub async fn query_ipfs(
     client: &IpfsClient,
 ) -> Result<Vec<u8>, ipfs_api_backend_actix::Error> {
     // If necessary, construct an IPFS client.
-    // TODO: this client must be configured to connect to the endpoint
-    // specified as "ipfsHttpApiEndpointUri" in the ION config file
-    // named "testnet-core-config.json" (or "mainnet-core-config.json").
     client
         .cat(cid)
         .map_ok(|chunk| chunk.to_vec())
@@ -94,9 +91,6 @@ pub async fn query_mongodb(
     client: Option<mongodb::Client>,
 ) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
     // If necessary, construct a MongoDB client.
-    // TODO: this client must be configured to connect to the endpoint
-    // specified as "TODO!" in the ION config file
-    // named "testnet-core-config.json" (or "mainnet-core-config.json").
     let client = match client {
         Some(x) => x,
         None => {
@@ -108,8 +102,9 @@ pub async fn query_mongodb(
         }
     };
 
-    // MOST IMP TODO: try other queries (different to .find_one()) to see whether
-    // a fuller collection of DID operations can be obtained (e.g. both create and updates).
+    // TODO: when extending to other operations aside from "create" consider other queries
+    // (different to .find_one()) to see whether a fuller collection of DID operations can be obtained
+    // (e.g. both create and updates).
     let query_result: Result<Option<mongodb::bson::Document>, mongodb::error::Error> = client
         .database(MONGO_DATABASE_ION_TESTNET_CORE)
         .collection(MONGO_COLLECTION_OPERATIONS)
@@ -130,8 +125,6 @@ pub async fn query_mongodb(
 
 /// Gets a Bitcoin RPC client instance.
 pub fn rpc_client() -> bitcoincore_rpc::Client {
-    // TODO: check where these config parameters (username & password)
-    // are configured in ION and use the same config file.
     bitcoincore_rpc::Client::new(
         BITCOIN_CONNECTION_STRING,
         bitcoincore_rpc::Auth::UserPass(
