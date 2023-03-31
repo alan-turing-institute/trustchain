@@ -7,9 +7,6 @@ edition = "2018"
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[[bin]]
-name = "trustchain-cli"
-path = "src/bin/main.rs"
 
 [features]
 default = ["console_error_panic_hook"]

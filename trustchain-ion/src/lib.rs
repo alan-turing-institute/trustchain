@@ -16,13 +16,15 @@ pub const BITCOIN_CONNECTION_STRING: &str = "http://localhost:18332";
 pub const BITCOIN_RPC_USERNAME: &str = "admin";
 pub const BITCOIN_RPC_PASSWORD: &str = "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow=";
 pub mod create;
-pub mod resolve;
 use did_ion::{sidetree::SidetreeClient, ION};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
+
+/// Type alias for URL
+pub type URL = String;
 
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
