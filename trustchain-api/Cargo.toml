@@ -1,20 +1,17 @@
 [package]
-name = "trustchain-cli"
+name = "trustchain-api"
 version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[[bin]]
-name = "trustchain-cli"
-path = "src/bin/main.rs"
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
-trustchain-api = { path = "../trustchain-api" }
 
 ssi = "0.4"
 clap = { version = "~4.0", features=["derive", "cargo"] }
 serde_json = "1.0"
 did-ion = "0.1.0"
-# tokio = {version = "1.20.1", features = ["full"]}

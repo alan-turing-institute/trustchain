@@ -12,7 +12,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
-trustchain-cli = { path = "../trustchain-cli" }
+trustchain-api = { path = "../trustchain-api" }
 
 anyhow = "1.0"
 flutter_rust_bridge = "1"

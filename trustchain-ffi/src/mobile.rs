@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde_json::to_string_pretty;
-use trustchain_cli::{api::TrustchainDIDCLI, TrustchainCLI};
+use trustchain_api::{api::TrustchainDIDCLI, TrustchainCLI};
 use trustchain_ion::get_ion_resolver;
 
 /// Android localhost endpoint.

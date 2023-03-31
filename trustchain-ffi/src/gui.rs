@@ -1,6 +1,6 @@
 use serde_json::to_string_pretty;
 use ssi::did_resolve::ResolutionResult;
-use trustchain_cli::{api::TrustchainDIDCLI, TrustchainCLI};
+use trustchain_api::{api::TrustchainDIDCLI, TrustchainCLI};
 use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};

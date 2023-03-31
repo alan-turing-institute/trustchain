@@ -6,7 +6,7 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_cli::{
+use trustchain_api::{
     api::{TrustchainDIDCLI, TrustchainVCCLI},
     TrustchainCLI,
 };
