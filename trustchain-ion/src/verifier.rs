@@ -129,7 +129,7 @@ where
         };
         Ok(())
     }
-
+    /// Returns the cached bundles.
     pub fn bundles(&self) -> &HashMap<String, VerificationBundle> {
         &self.bundles
     }
@@ -433,7 +433,7 @@ mod tests {
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        get_ion_resolver, IONResolver,
+        IONResolver,
     };
     use bitcoin::{BlockHeader, MerkleBlock};
     use did_ion::{sidetree::SidetreeClient, ION};
@@ -677,4 +677,9 @@ mod tests {
             "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
     }
+
+    // #[test]
+    // fn test_fetch_bundles_from_endpoint() {
+    //     todo!()
+    // }
 }
