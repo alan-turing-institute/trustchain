@@ -518,21 +518,6 @@ impl Commitment for IONCommitment {
     }
 }
 
-// TODO: remove unused commitment chain implementation
-impl CommitmentChain for IONCommitment {
-    fn commitments(&self) -> &Vec<Box<dyn Commitment>> {
-        self.chained_commitment.commitments()
-    }
-
-    fn mut_commitments(&mut self) -> &mut Vec<Box<dyn Commitment>> {
-        self.chained_commitment.mut_commitments()
-    }
-
-    fn append(&mut self, trivial_commitment: Box<dyn TrivialCommitment>) -> CommitmentResult<()> {
-        self.chained_commitment.append(trivial_commitment)
-    }
-}
-
 impl DIDCommitment for IONCommitment {
     fn did(&self) -> &str {
         &self.did_doc.id
