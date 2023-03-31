@@ -17,7 +17,7 @@ use trustchain_ion::{
 };
 
 /// API for Trustchain CLI DID functionality.
-pub trait TrustchainDIDCLI {
+pub trait TrustchainDIDAPI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
     fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<(), Box<dyn Error>> {
         create_operation(document_state, verbose)
@@ -60,7 +60,7 @@ pub trait TrustchainDIDCLI {
 }
 
 /// API for Trustchain CLI VC functionality.
-pub trait TrustchainVCCLI {
+pub trait TrustchainVCAPI {
     /// Signs a credential
     fn sign(mut credential: Credential, did: &str, key_id: Option<&str>) -> Credential {
         let resolver = get_ion_resolver("http://localhost:3000/");

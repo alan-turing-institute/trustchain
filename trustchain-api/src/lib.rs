@@ -1,8 +1,8 @@
 pub mod api;
-use crate::api::{TrustchainDIDCLI, TrustchainVCCLI};
+use crate::api::{TrustchainDIDAPI, TrustchainVCAPI};
 
 /// A type for implementing CLI traits on.
-pub struct TrustchainCLI;
+pub struct TrustchainAPI;
 
-impl TrustchainDIDCLI for TrustchainCLI {}
-impl TrustchainVCCLI for TrustchainCLI {}
+impl TrustchainDIDAPI for TrustchainAPI {}
+impl TrustchainVCAPI for TrustchainAPI {}

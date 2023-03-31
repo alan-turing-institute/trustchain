@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde_json::to_string_pretty;
-use trustchain_api::{api::TrustchainDIDCLI, TrustchainCLI};
+use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_ion::get_ion_resolver;
 
 /// Android localhost endpoint.
@@ -24,7 +24,7 @@ pub fn resolve(did: String) -> Result<String> {
 /// Resolves a given DID document assuming trust in endpoint.
 pub fn did_resolve(did: String) -> Result<String> {
     // Trustchain Resolver with android localhost
-    TrustchainCLI::resolve(&did, ANDROID_ENDPOINT.into())
+    TrustchainAPI::resolve(&did, ANDROID_ENDPOINT.into())
         .map_err(|e| anyhow!(e))
         .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
 }

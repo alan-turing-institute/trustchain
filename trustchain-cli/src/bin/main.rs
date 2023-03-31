@@ -7,8 +7,8 @@ use std::{
     io::{stdin, BufReader},
 };
 use trustchain_api::{
-    api::{TrustchainDIDCLI, TrustchainVCCLI},
-    TrustchainCLI,
+    api::{TrustchainDIDAPI, TrustchainVCAPI},
+    TrustchainAPI,
 };
 use trustchain_core::ROOT_EVENT_TIME_2378493;
 use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
@@ -114,7 +114,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
                     let (res_meta, doc, doc_meta) =
-                        TrustchainCLI::resolve(did, "http://localhost:3000/".into())?;
+                        TrustchainAPI::resolve(did, "http://localhost:3000/".into())?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -157,7 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let credential_with_proof = TrustchainCLI::sign(credential, did, key_id);
+                    let credential_with_proof = TrustchainAPI::sign(credential, did, key_id);
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let (verify_result, result) = TrustchainCLI::verify_credential(
+                    let (verify_result, result) = TrustchainAPI::verify_credential(
                         &credential,
                         *signature_only.unwrap(),
                         root_event_time,
