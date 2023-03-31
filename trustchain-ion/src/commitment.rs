@@ -158,7 +158,6 @@ impl Commitment for IpfsChunkFileCommitment<Complete> {
         self.expected_data.as_ref().unwrap()
     }
 }
-// End of IpfsCommitment.
 
 /// A Commitment whose hash is a Bitcoin transaction ID.
 pub struct TxCommitment<T = Incomplete> {
@@ -242,7 +241,6 @@ impl Commitment for TxCommitment<Complete> {
         self.expected_data.as_ref().unwrap()
     }
 }
-// End of TxCommitment.
 
 /// A Commitment whose hash is the root of a Merkle tree of Bitcoin transaction IDs.
 pub struct MerkleRootCommitment<T = Incomplete> {
@@ -337,7 +335,6 @@ impl Commitment for MerkleRootCommitment<Complete> {
         self.expected_data.as_ref().unwrap()
     }
 }
-// End of MerkleRootCommitment.
 
 /// A Commitment whose hash is the PoW hash of a Bitcoin block.
 pub struct BlockHashCommitment<T = Incomplete> {
@@ -421,7 +418,6 @@ impl Commitment for BlockHashCommitment<Complete> {
         self.expected_data.as_ref().unwrap()
     }
 }
-// End of BlockHashCommitment.
 
 /// A commitment to ION DID Document data.
 pub struct IONCommitment {
@@ -568,7 +564,6 @@ impl DIDCommitment for IONCommitment {
         Err(CommitmentError::EmptyChainedCommitment)
     }
 }
-// End of IONCommitment
 
 #[cfg(test)]
 mod tests {
