@@ -479,13 +479,6 @@ impl IONCommitment {
             chained_commitment: iterated_commitment,
         })
     }
-
-    // TODO: remove unused method?
-    fn verify(&self, target: &str) -> CommitmentResult<()> {
-        // Delegate verification to the chained commitment.
-        Commitment::verify(&self.chained_commitment, target)?;
-        Ok(())
-    }
 }
 
 // Delegate all Commitment trait methods to the wrapped ChainedCommitment.
@@ -517,8 +510,15 @@ impl Commitment for IONCommitment {
         // Safe to unwrap as a complete commitment must have expected data
         self.chained_commitment.expected_data()
     }
+    // Essential to override verify otherwise calls will consider last commitment only.
+    fn verify(&self, target: &str) -> CommitmentResult<()> {
+        // Delegate verification to the chained commitment.
+        self.chained_commitment.verify(target)?;
+        Ok(())
+    }
 }
 
+// TODO: remove unused commitment chain implementation
 impl CommitmentChain for IONCommitment {
     fn commitments(&self) -> &Vec<Box<dyn Commitment>> {
         self.chained_commitment.commitments()
