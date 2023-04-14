@@ -1,8 +1,8 @@
-use crate::TRUSTCHAIN_DATA;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 use toml;
+use trustchain_core::TRUSTCHAIN_DATA;
 
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.

@@ -113,17 +113,6 @@ impl fmt::Display for DIDChain {
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
-            if i == 0 {
-                writeln!(
-                    f,
-                    "{0:^1$}",
-                    format!(
-                        "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp(core_config().root_event_time_2378493 as i64, 0)
-                    ),
-                    box_width
-                )?;
-            }
             write!(f, "{}", PrettyDID::new(doc, i, MAX_WIDTH))?;
             let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
@@ -583,7 +572,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires a valid `trustchain_config.toml` file at root of TRUSTCHAIN_DATA directory"]
     fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
         let target = test_chain();
         println!("{}", target);

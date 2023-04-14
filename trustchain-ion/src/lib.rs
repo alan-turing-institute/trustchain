@@ -4,9 +4,6 @@ pub mod config;
 pub mod controller;
 pub mod verifier;
 
-/// Environment variable name for Trustchain data.
-pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
-
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
