@@ -583,6 +583,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires a valid `trustchain_config.toml` file at root of TRUSTCHAIN_DATA directory"]
     fn test_print_chain() -> Result<(), Box<dyn std::error::Error>> {
         let target = test_chain();
         println!("{}", target);

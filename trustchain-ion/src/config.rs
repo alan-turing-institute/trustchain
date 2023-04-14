@@ -1,3 +1,4 @@
+use crate::TRUSTCHAIN_DATA;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -6,7 +7,8 @@ use toml;
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
     pub static ref ION_CONFIG: IONConfig = parse_toml(
-        &fs::read_to_string(Path::new(env!("CARGO_WORKSPACE_DIR")).join("trustchain_config.toml"))
+        &fs::read_to_string(Path::new(std::env::var(TRUSTCHAIN_DATA).unwrap().as_str())
+                                .join("trustchain_config.toml"))
         .expect("Error reading trustchain_config.toml")
     );
 }

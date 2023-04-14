@@ -16,6 +16,9 @@ pub mod verifier;
 // WASM
 use wasm_bindgen::prelude::*;
 
+/// Environment variable name for Trustchain data.
+pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
+
 /// The value used in a DID document to identify the default Trustchain service endpoint.
 pub const TRUSTCHAIN_SERVICE_ID_VALUE: &str = "TrustchainID";
 

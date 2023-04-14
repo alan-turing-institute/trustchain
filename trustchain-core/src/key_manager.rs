@@ -1,4 +1,4 @@
-use crate::config::core_config;
+use crate::TRUSTCHAIN_DATA;
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
@@ -154,7 +154,7 @@ pub trait KeyManager {
         };
 
         // Get environment for TRUSTCHAIN_DATA
-        let path: String = match std::env::var(&core_config().trustchain_data) {
+        let path: String = match std::env::var(TRUSTCHAIN_DATA) {
             Ok(val) => val,
             Err(_) => return Err(KeyManagerError::TrustchainDataNotPresent),
         };
