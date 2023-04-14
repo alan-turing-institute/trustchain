@@ -1,6 +1,7 @@
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
+use crate::verifier::{Timestamp, Verifier, VerifierError};
 use crate::ROOT_EVENT_TIME_2378493;
 use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
@@ -98,6 +99,9 @@ pub struct DIDChain {
 
     // Vector to keep track of the level of each DID.
     level_vec: Vec<String>,
+
+    /// Timestamp for the root of the chain that can be set upon verification.
+    root_timestamp: Option<Timestamp>,
 }
 
 impl fmt::Display for DIDChain {
@@ -114,13 +118,15 @@ impl fmt::Display for DIDChain {
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
             if i == 0 {
+                let root_timestamp_str = if let Some(root_timestamp) = self.root_timestamp {
+                    format!("{}", root_timestamp)
+                } else {
+                    "UNVERIFIED".to_string()
+                };
                 writeln!(
                     f,
                     "{0:^1$}",
-                    format!(
-                        "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp(ROOT_EVENT_TIME_2378493 as i64, 0)
-                    ),
+                    format!("🕑 Root timestamp: {0} 🕑", root_timestamp_str),
                     box_width
                 )?;
             }
@@ -136,6 +142,15 @@ impl fmt::Display for DIDChain {
 }
 
 impl DIDChain {
+    pub fn verified<T: DIDResolver + Sync + Send>(
+        did: &str,
+        verifier: &mut dyn Verifier<T>,
+        root_timestamp: Timestamp,
+    ) -> Result<Self, VerifierError> {
+        let mut chain = verifier.verify(did, root_timestamp)?;
+        chain.root_timestamp = Some(root_timestamp);
+        Ok(chain)
+    }
     // Public constructor.
     pub fn new<T: DIDResolver + Sync + Send>(
         did: &str,
@@ -187,6 +202,7 @@ impl DIDChain {
         Self {
             did_map: HashMap::<String, (Document, DocumentMetadata)>::new(),
             level_vec: Vec::<String>::new(),
+            root_timestamp: None,
         }
     }
 
