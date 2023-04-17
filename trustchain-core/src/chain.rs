@@ -1,8 +1,6 @@
-use crate::config::core_config;
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
-use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;
 use ssi::{

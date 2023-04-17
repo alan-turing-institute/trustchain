@@ -30,8 +30,6 @@ pub fn core_config() -> &'static CORE_CONFIG {
 pub struct CoreConfig {
     /// Root event unix time for first Trustchain root on testnet.
     pub root_event_time: u32,
-    /// Root event unix time for second Trustchain root on testnet.
-    pub root_event_time_2378493: u32,
 }
 
 /// Wrapper struct for parsing the `core` table.
@@ -49,8 +47,7 @@ mod tests {
     fn test_deserialize() {
         let config_string = r##"
         [core]
-        root_event_time = 1666265405
-        root_event_time_2378493 = 1666971942
+        root_event_time = 1666971942
 
         [non_core]
         key = "value"
@@ -61,8 +58,7 @@ mod tests {
         assert_eq!(
             config,
             CoreConfig {
-                root_event_time: 1666265405,
-                root_event_time_2378493: 1666971942
+                root_event_time: 1666971942,
             }
         );
     }
