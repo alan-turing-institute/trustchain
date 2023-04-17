@@ -61,7 +61,7 @@ mod tests {
 
         bitcoin_connection_string = "http://localhost:18332"
         bitcoin_rpc_username = "admin"
-        bitcoin_rpc_password = "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow="
+        bitcoin_rpc_password = "bitcoin_rpc_password"
         "##;
 
         let config: IONConfig = parse_toml(config_string);
@@ -73,7 +73,7 @@ mod tests {
                 mongo_database_ion_core: "ion-testnet-core".to_string(),
                 bitcoin_connection_string: "http://localhost:18332".to_string(),
                 bitcoin_rpc_username: "admin".to_string(),
-                bitcoin_rpc_password: "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow=".to_string(),
+                bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
             }
         );
     }
