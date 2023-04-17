@@ -1,7 +1,6 @@
+use crate::config::ion_config;
 use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
-    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
-    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
+    MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE,
 };
 use bitcoincore_rpc::RpcApi;
 use futures::executor::block_on;
@@ -97,11 +96,11 @@ where
 
     /// Queries the ION MongoDB for a DID operation.
     async fn query_mongo(did: &str) -> Result<mongodb::bson::Document, Box<dyn std::error::Error>> {
-        let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING).await?;
+        let client_options = ClientOptions::parse(&ion_config().mongo_connection_string).await?;
         let client = Client::with_options(client_options)?;
 
         let query_result = client
-            .database(MONGO_DATABASE_ION_TESTNET_CORE)
+            .database(&ion_config().mongo_database_ion_core)
             .collection(MONGO_COLLECTION_OPERATIONS)
             .find_one(
                 doc! {
@@ -146,10 +145,10 @@ where
     }
     fn block_height_to_unixtime(&self, block_height: u32) -> Result<u32, VerifierError> {
         let rpc = bitcoincore_rpc::Client::new(
-            BITCOIN_CONNECTION_STRING,
+            &ion_config().bitcoin_connection_string,
             bitcoincore_rpc::Auth::UserPass(
-                BITCOIN_RPC_USERNAME.to_string(),
-                BITCOIN_RPC_PASSWORD.to_string(),
+                ion_config().bitcoin_rpc_username.to_owned(),
+                ion_config().bitcoin_rpc_password.to_owned(),
             ),
         )
         .unwrap();

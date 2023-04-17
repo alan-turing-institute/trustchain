@@ -1,7 +1,12 @@
 use trustchain_core::verifier::Verifier;
-use trustchain_core::{ROOT_EVENT_TIME, ROOT_EVENT_TIME_2378493};
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
+
+// The root event time of DID documents in `data.rs` used for unit tests and the test below.
+const ROOT_EVENT_TIME_1: u32 = 1666265405;
+// As well as covering the integration test below, this is used for our wider example Trustchain
+// testnet network with universities and government departments.
+const ROOT_EVENT_TIME_2: u32 = 1666971942;
 
 #[test]
 #[ignore = "Requires a running Sidetree node listening on http://localhost:3000."]
@@ -21,7 +26,7 @@ fn trustchain_verification() {
 
     // Verify initial DIDs
     for did in dids {
-        let result = verifier.verify(did, ROOT_EVENT_TIME);
+        let result = verifier.verify(did, ROOT_EVENT_TIME_1);
         // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
@@ -39,7 +44,7 @@ fn trustchain_verification() {
         "did:ion:test:EiCzekHARUPkqf0NRsQ6kfpcnEbwtpdTIgadTYWaggx8Rg",
     ];
     for did in new_dids {
-        let result = verifier.verify(did, ROOT_EVENT_TIME_2378493);
+        let result = verifier.verify(did, ROOT_EVENT_TIME_2);
         // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
