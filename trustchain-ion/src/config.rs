@@ -1,16 +1,14 @@
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::fs;
 use toml;
-use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_core::TRUSTCHAIN_CONFIG;
 
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
     pub static ref ION_CONFIG: IONConfig = parse_toml(
-        &fs::read_to_string(Path::new(std::env::var(TRUSTCHAIN_DATA).unwrap().as_str())
-                                .join("trustchain_config.toml"))
-        .expect("Error reading trustchain_config.toml")
-    );
+        &fs::read_to_string(std::env::var(TRUSTCHAIN_CONFIG).unwrap().as_str())
+        .expect("Error reading trustchain_config.toml"));
 }
 
 /// Parses and maps ION subfields to a new type.

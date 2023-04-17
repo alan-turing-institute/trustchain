@@ -19,6 +19,9 @@ use wasm_bindgen::prelude::*;
 /// Environment variable name for Trustchain data.
 pub const TRUSTCHAIN_DATA: &str = "TRUSTCHAIN_DATA";
 
+/// Environment variable name for Trustchain config file.
+pub const TRUSTCHAIN_CONFIG: &str = "TRUSTCHAIN_CONFIG";
+
 /// The value used in a DID document to identify the default Trustchain service endpoint.
 pub const TRUSTCHAIN_SERVICE_ID_VALUE: &str = "TrustchainID";
 
