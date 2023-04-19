@@ -1,10 +1,10 @@
 use crate::commitment::IONCommitment;
 use crate::config::ion_config;
-use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
+use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
 };
-use crate::{PROVISIONAL_INDEX_FILE_URI_KEY, URL};
+use crate::URL;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
 use bitcoincore_rpc::RpcApi;
@@ -103,10 +103,11 @@ where
         // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
         .unwrap();
 
-        // TODO: this client must be configured to connect to the endpoint
+        // This client must be configured to connect to the endpoint
         // specified as "ipfsHttpApiEndpointUri" in the ION config file
         // named "testnet-core-config.json" (or "mainnet-core-config.json").
         // Similar for the MongoDB client.
+        // TODO: add customisable endpoint configuration to `trustchain_config.toml`
         let ipfs_client = IpfsClient::default();
         let bundles = HashMap::new();
         Self {
@@ -237,14 +238,12 @@ where
                 e
             ))
         })?;
-        let cid = content
-            .get(PROVISIONAL_INDEX_FILE_URI_KEY)
-            .and_then(|value| value.as_str())
+        let provisional_index_file_uri = serde_json::from_value::<CoreIndexFile>(content.clone())?
+            .provisional_index_file_uri
             .ok_or(VerifierError::FailureToFetchVerificationMaterial(format!(
-                "Failed to find key {} in ION index file content.",
-                PROVISIONAL_INDEX_FILE_URI_KEY
+                "Missing provisional index file URI in core index file: {content}."
             )))?;
-        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
+        query_ipfs(&provisional_index_file_uri, &self.ipfs_client).map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch ION provisional index file.".to_string(),
                 e.into(),
@@ -253,7 +252,6 @@ where
     }
 
     fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
-        // TODO: use the update commitment (from the doc metadata) to identify the right chunk deltas.
         let content = decode_ipfs_content(prov_index_file).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
@@ -675,9 +673,4 @@ mod tests {
             "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
     }
-
-    // #[test]
-    // fn test_fetch_bundles_from_endpoint() {
-    //     todo!()
-    // }
 }

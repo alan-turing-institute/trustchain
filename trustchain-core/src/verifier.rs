@@ -280,7 +280,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
     }
 
-    /// TODO: docstring, and mention the to_string() conversion from u32 unix time.
+    /// Verifies a given verifiable timestamp.
     fn verify_timestamp(
         &self,
         verifiable_timestamp: &VerifiableTimestamp,

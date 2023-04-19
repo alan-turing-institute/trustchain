@@ -104,32 +104,14 @@ pub enum TrustchainBitcoinError {
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
 }
 
-// DID
-pub const DID_DELIMITER: &str = ":";
-
-// ION
-pub const ION_METHOD: &str = "ion";
-pub const ION_METHOD_WITH_DELIMITER: &str = "ion:";
-pub const ION_OPERATION_COUNT_DELIMITER: &str = ".";
-pub const PROVISIONAL_INDEX_FILE_URI_KEY: &str = "provisionalIndexFileUri";
-pub const CHUNK_FILE_URI_KEY: &str = "chunkFileUri";
-pub const CHUNKS_KEY: &str = "chunks";
-pub const DELTAS_KEY: &str = "deltas";
-pub const UPDATE_COMMITMENT_KEY: &str = "updateCommitment";
-pub const METHOD_KEY: &str = "method";
-pub const VERIFICATION_METHOD_KEY: &str = "verificationMethod";
-pub const SERVICE_KEY: &str = "service";
-
-// IPFS
-pub const CID_KEY: &str = "cid";
-
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
 pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
 
-// Bitcoin (TESTNET PORT: 18332!)
+// Bitcoin
+// TODO: consider structs for deserialization similar to trustchain_ion::sidetree module
 pub const TXID_KEY: &str = "txid";
 pub const MERKLE_ROOT_KEY: &str = "merkle_root";
 pub const VERSION_KEY: &str = "version";

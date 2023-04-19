@@ -14,8 +14,9 @@ use trustchain_core::utils::{HasEndpoints, HasKeys};
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
-use crate::CID_KEY;
-use crate::DELTAS_KEY;
+
+const CID_KEY: &str = "cid";
+const DELTAS_KEY: &str = "deltas";
 
 fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
     |x| Ok(IpfsHasher::default().compute(x))
@@ -562,7 +563,7 @@ mod tests {
     use super::*;
     use crate::{
         utils::{block_header, merkle_proof, query_ipfs, transaction},
-        CID_KEY, MERKLE_ROOT_KEY, TIMESTAMP_KEY,
+        MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
 
     #[test]

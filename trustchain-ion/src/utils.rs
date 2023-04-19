@@ -13,11 +13,14 @@ use std::io::Read;
 use trustchain_core::verifier::VerifierError;
 
 use crate::{
-    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY, DID_DELIMITER,
-    HASH_PREV_BLOCK_KEY, ION_METHOD_WITH_DELIMITER, ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY,
-    MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX,
-    MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
+    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
+    HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION,
+    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
 };
+
+const ION_METHOD_WITH_DELIMITER: &str = "ion:";
+const ION_OPERATION_COUNT_DELIMITER: &str = ".";
+const DID_DELIMITER: &str = ":";
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
