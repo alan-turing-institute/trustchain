@@ -1,15 +1,14 @@
-use trustchain_core::verifier::Verifier;
+use serde_json::json;
+use trustchain_core::commitment::Commitment;
+use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 // The root event time of DID documents in `data.rs` used for unit tests and the test below.
 const ROOT_EVENT_TIME_1: u32 = 1666265405;
-// As well as covering the integration test below, this is used for our wider example Trustchain
-// testnet network with universities and government departments.
-const ROOT_EVENT_TIME_2: u32 = 1666971942;
 
 #[test]
-#[ignore = "Requires a running Sidetree node listening on http://localhost:3000."]
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000."]
 fn trustchain_verification() {
     // Integration test of the Trustchain resolution pipeline.
     // root - root-plus-1 - root-plus-2
@@ -21,31 +20,47 @@ fn trustchain_verification() {
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = get_ion_resolver("http://localhost:3000/");
-
-    let verifier = IONVerifier::new(resolver);
-
-    // Verify initial DIDs
+    let mut verifier = IONVerifier::new(resolver);
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_1);
-        // println!("{}", result.as_ref().unwrap());
         assert!(result.is_ok());
     }
+}
 
-    // Example DIDs for ROOT_EVENT_TIME_2378493
-    let new_dids = vec![
-        "did:ion:test:EiC9KEQyCzGFs_dJ2Iy1lgah3nTuy0ns8ZxXa9ZPZILBpQ",
-        "did:ion:test:EiBwr2eTfupemVBq28VyIb8po0r_jpuHMUMFzw25Flnmrg",
-        "did:ion:test:EiBa0sTcKeJa4jZSrRsZ648qu1cyQyvnmWCpj7J_ApHMGQ",
-        "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA",
-        "did:ion:test:EiDMe2SFfJ_7eXVW7RF1ZHOkeu2M-Bre0ak2cXNBH0P-TQ",
-        "did:ion:test:EiCgM_1sQtff-iAFmOR0h3jDmYI_sMAoXduOeCdRFGBIjQ",
-        "did:ion:test:EiD488CJha35r-aRa_HvB__exWx4mV5G7XchOHypJvP_ig",
-        "did:ion:test:EiBujcSXT9rpq9FUrk-qgDuKNIaegzmSi0Ix_XXqD3woLQ",
-        "did:ion:test:EiCzekHARUPkqf0NRsQ6kfpcnEbwtpdTIgadTYWaggx8Rg",
-    ];
-    for did in new_dids {
-        let result = verifier.verify(did, ROOT_EVENT_TIME_2);
-        // println!("{}", result.as_ref().unwrap());
-        assert!(result.is_ok());
-    }
+#[test]
+#[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
+fn test_verifiable_timestamp() {
+    let resolver = get_ion_resolver("http://localhost:3000/");
+    let mut target = IONVerifier::new(resolver);
+
+    let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+    let result = target.verifiable_timestamp(did);
+
+    assert!(result.is_ok());
+
+    let verifiable_timestamp = result.unwrap();
+
+    // Check that the DID commitment is the expected PoW hash.
+    // See https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+    let expected_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+    assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
+
+    // Check that the DID timestamp is correct by comparing to the known header.
+    let timestamp: Timestamp = 1666265405;
+    assert_eq!(verifiable_timestamp.timestamp(), timestamp);
+
+    // Confirm that the same timestamp is the expected data in the TimestampCommitment.
+    assert_eq!(
+        verifiable_timestamp
+            .timestamp_commitment()
+            .unwrap()
+            .expected_data(),
+        &json!(timestamp)
+    );
+
+    // Verify the timestamp.
+    let _ = target.verify_timestamp(&verifiable_timestamp);
+    // Verify a second time to check data is not consumed
+    let actual = target.verify_timestamp(&verifiable_timestamp);
+    assert!(actual.is_ok());
 }
