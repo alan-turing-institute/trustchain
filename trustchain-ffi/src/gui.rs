@@ -7,30 +7,6 @@ use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
-/// Example greet function.
-pub fn greet() -> String {
-    "Hello from Rust! 🦀".into()
-}
-
-/// Example resolve interface.
-pub fn resolve_prototype(did: String) -> String {
-    // Trustchain Resolver with android localhost
-    let resolver = get_ion_resolver("http://127.0.0.1:3000/");
-    // Result metadata, Document, Document metadata
-    let (_, doc, _) = resolver.resolve_as_result(&did).unwrap();
-    to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
-}
-
-//"did:ion:test:EiCzekHARUPkqf0NRsQ6kfpcnEbwtpdTIgadTYWaggx8Rg"
-// ROOT_EVENT_TIME_2378493
-pub fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
-    // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = get_ion_resolver("http://localhost:3000/");
-    let verifier = IONVerifier::new(resolver);
-
-    verifier.verify(&did, root_timestamp).unwrap()
-}
-
 // TODO: implement the below functions that will be used as FFI on desktop GUI. Aim to implement the
 // functions to that they each call a TrustchainCLI method.
 //
@@ -61,7 +37,7 @@ pub fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Res
     }
 }
 /// Resolves a given DID using a resolver available at localhost:3000
-pub fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
+pub fn resolve(did: String) -> anyhow::Result<String> {
     let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(&did, "http://localhost:3000/".into())?;
     // TODO: refactor conversion into trustchain-core resolve module
     Ok(serde_json::to_string_pretty(&ResolutionResult {
