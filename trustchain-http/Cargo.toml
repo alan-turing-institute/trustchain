@@ -14,6 +14,8 @@ path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+did-ion="0.1.0"
 clap = { version = "^4", features=["derive", "env", "cargo"] }
 ssi = "0.4"
 chrono = "^0.4"
@@ -31,3 +33,4 @@ gloo-console = "0.2.3"
 base64 = "0.21.0"
 qrcode = "0.12.0"
 image = "0.23.14"
+hyper = "0.14.26"
