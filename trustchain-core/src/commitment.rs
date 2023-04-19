@@ -65,7 +65,26 @@ pub trait TrivialCommitment {
     }
     /// Gets the data content that the hash verifiably commits to. This method should not be overridden by implementors.
     fn commitment_content(&self) -> CommitmentResult<Value> {
-        self.decode_candidate_data()(self.candidate_data())
+        let unfiltered_candidate_data = self.decode_candidate_data()(self.candidate_data())?;
+        // Optionally filter the candidate data.
+        let candidate_data = match self.filter() {
+            Some(filter) => filter(unfiltered_candidate_data.clone()).map_err(|e| {
+                CommitmentError::DataDecodingError(format!(
+                    "Error filtering commitment content: {}",
+                    e
+                ))
+            }),
+            None => Ok(unfiltered_candidate_data.clone()),
+        }?;
+
+        // Check that the unfiltered candidate data contains the filtered data
+        // (to ensure no pollution from the filter closure).
+        if self.filter().is_some() && !json_contains(&unfiltered_candidate_data, &candidate_data) {
+            return Err(CommitmentError::DataDecodingError(
+                "Filtering of candidate data injects pollution.".to_string(),
+            ));
+        }
+        Ok(candidate_data)
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
     /// Converts this TrivialCommitment to a Commitment.
@@ -80,40 +99,7 @@ pub trait Commitment: TrivialCommitment {
     /// Verifies that the expected data is found in the candidate data.
     fn verify_content(&self) -> CommitmentResult<()> {
         // Get the decoded candidate data.
-        let unfiltered_candidate_data = match self.commitment_content() {
-            Ok(x) => x,
-            Err(e) => {
-                return Err(CommitmentError::DataDecodingError(format!(
-                    "Failed to verify content. Data decoding error: {}",
-                    e
-                )));
-            }
-        };
-
-        // Optionally filter the candidate data.
-        let optional_filter = self.filter();
-        let candidate_data: serde_json::Value = match &optional_filter {
-            Some(filter) => match filter(unfiltered_candidate_data.clone()) {
-                Ok(x) => x,
-                Err(e) => {
-                    return Err(CommitmentError::DataDecodingError(format!(
-                        "Failed to verify content. Data decoding error: {}",
-                        e
-                    )));
-                }
-            },
-            None => unfiltered_candidate_data.clone(),
-        };
-
-        // Check that the unfiltered candidate data contains the filtered data
-        // (to ensure no pollution from the filter closure).
-        if optional_filter.is_some() && !json_contains(&unfiltered_candidate_data, &candidate_data)
-        {
-            return Err(CommitmentError::FailedContentVerification(
-                self.expected_data().to_string(),
-                candidate_data.to_string(),
-            ));
-        }
+        let candidate_data = self.commitment_content()?;
 
         // Verify the content.
         if !json_contains(&candidate_data, self.expected_data()) {
