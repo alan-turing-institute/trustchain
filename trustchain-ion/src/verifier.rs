@@ -1,3 +1,4 @@
+use crate::config::ion_config;
 use crate::commitment::IONCommitment;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{

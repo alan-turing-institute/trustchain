@@ -1,3 +1,4 @@
+use crate::TRUSTCHAIN_DATA;
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
@@ -5,8 +6,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-
-use crate::TRUSTCHAIN_DATA;
 
 /// An error relating to Trustchain key management.
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
