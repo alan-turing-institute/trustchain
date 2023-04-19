@@ -34,7 +34,7 @@ pub struct Complete;
 pub struct IpfsIndexFileCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<T>,
+    _state: PhantomData<T>, // Dummy field for type marker
 }
 
 impl IpfsIndexFileCommitment<Incomplete> {
@@ -42,7 +42,7 @@ impl IpfsIndexFileCommitment<Incomplete> {
         Self {
             candidate_data,
             expected_data: None,
-            state: PhantomData::<Incomplete>,
+            _state: PhantomData::<Incomplete>,
         }
     }
 }
@@ -52,7 +52,7 @@ impl IpfsIndexFileCommitment<Complete> {
         Self {
             candidate_data,
             expected_data: Some(expected_data),
-            state: PhantomData::<Complete>,
+            _state: PhantomData::<Complete>,
         }
     }
 }
@@ -90,7 +90,7 @@ pub struct IpfsChunkFileCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     delta_index: usize,
     expected_data: Option<Value>,
-    state: PhantomData<T>,
+    _state: PhantomData<T>, // Dummy field for type marker
 }
 impl IpfsChunkFileCommitment<Incomplete> {
     pub fn new(candidate_data: Vec<u8>, delta_index: usize) -> Self {
@@ -98,7 +98,7 @@ impl IpfsChunkFileCommitment<Incomplete> {
             candidate_data,
             delta_index,
             expected_data: None,
-            state: PhantomData::<Incomplete>,
+            _state: PhantomData::<Incomplete>,
         }
     }
 }
@@ -108,7 +108,7 @@ impl IpfsChunkFileCommitment<Complete> {
             candidate_data,
             delta_index,
             expected_data: Some(expected_data),
-            state: PhantomData::<Complete>,
+            _state: PhantomData::<Complete>,
         }
     }
 }
@@ -163,7 +163,7 @@ impl Commitment for IpfsChunkFileCommitment<Complete> {
 pub struct TxCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<T>,
+    _state: PhantomData<T>, // Dummy field for type marker
 }
 
 impl TxCommitment<Incomplete> {
@@ -171,7 +171,7 @@ impl TxCommitment<Incomplete> {
         Self {
             candidate_data,
             expected_data: None,
-            state: PhantomData::<Incomplete>,
+            _state: PhantomData::<Incomplete>,
         }
     }
 }
@@ -181,7 +181,7 @@ impl TxCommitment<Complete> {
         Self {
             candidate_data,
             expected_data: Some(expected_data),
-            state: PhantomData::<Complete>,
+            _state: PhantomData::<Complete>,
         }
     }
 }
@@ -246,7 +246,7 @@ impl Commitment for TxCommitment<Complete> {
 pub struct MerkleRootCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<T>,
+    _state: PhantomData<T>, // Dummy field for type marker
 }
 
 impl MerkleRootCommitment<Incomplete> {
@@ -254,7 +254,7 @@ impl MerkleRootCommitment<Incomplete> {
         Self {
             candidate_data,
             expected_data: None,
-            state: PhantomData::<Incomplete>,
+            _state: PhantomData::<Incomplete>,
         }
     }
 }
@@ -263,7 +263,7 @@ impl MerkleRootCommitment<Complete> {
         Self {
             candidate_data,
             expected_data: Some(expected_data),
-            state: PhantomData::<Complete>,
+            _state: PhantomData::<Complete>,
         }
     }
 }
@@ -340,7 +340,7 @@ impl Commitment for MerkleRootCommitment<Complete> {
 pub struct BlockHashCommitment<T = Incomplete> {
     candidate_data: Vec<u8>,
     expected_data: Option<Value>,
-    state: PhantomData<T>,
+    _state: PhantomData<T>, // Dummy field for type marker
 }
 
 impl BlockHashCommitment<Incomplete> {
@@ -348,7 +348,7 @@ impl BlockHashCommitment<Incomplete> {
         Self {
             candidate_data,
             expected_data: None,
-            state: PhantomData::<Incomplete>,
+            _state: PhantomData::<Incomplete>,
         }
     }
 }
@@ -358,7 +358,7 @@ impl BlockHashCommitment<Complete> {
         Self {
             candidate_data,
             expected_data: Some(expected_data),
-            state: PhantomData::<Complete>,
+            _state: PhantomData::<Complete>,
         }
     }
 }

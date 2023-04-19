@@ -106,7 +106,7 @@ pub trait Commitment: TrivialCommitment {
         };
 
         // Check that the unfiltered candidate data contains the filtered data
-        // (to ensure no pollution from the filter closture).
+        // (to ensure no pollution from the filter closure).
         if optional_filter.is_some() && !json_contains(&unfiltered_candidate_data, &candidate_data)
         {
             return Err(CommitmentError::FailedContentVerification(
