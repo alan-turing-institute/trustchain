@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use did_ion::sidetree::DocumentState;
 use serde_json::to_string_pretty;
 use ssi::did_resolve::ResolutionResult;
 use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
@@ -37,16 +39,29 @@ pub fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
 // types rather than only a custom error message (&str).
 
 /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
-fn create(document_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
-    todo!()
+pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
+    let mut document_state: Option<DocumentState> = None;
+    if let Some(doc_string) = doc_state {
+        match serde_json::from_str(&doc_string) {
+            Ok(doc) => document_state = Some(doc),
+            Err(err) => return Err(anyhow!("{err}")),
+        }
+    }
+    match TrustchainAPI::create(document_state, verbose) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(anyhow!("{err}")),
+    }
 }
 
 /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.
-fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()> {
-    todo!()
+pub fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()> {
+    match TrustchainAPI::attest(&did, &controlled_did, verbose) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(anyhow!("{err}")),
+    }
 }
 /// Resolves a given DID using a resolver available at localhost:3000
-fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
+pub fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
     let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(&did, "http://localhost:3000/".into())?;
     // TODO: refactor conversion into trustchain-core resolve module
     Ok(serde_json::to_string_pretty(&ResolutionResult {
@@ -62,8 +77,12 @@ fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
 
 /// TODO: the below have no CLI implementation currently but are planned
 /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
-fn verify(did: String, verbose: bool) -> anyhow::Result<DIDChain> {
-    todo!()
+fn verify(did: String, verbose: bool) -> anyhow::Result<String> {
+    match TrustchainAPI::verify(&did, verbose) {
+        Ok(did_chain) => Ok(serde_json::to_string_pretty(&did_chain)
+            .expect("Serialize implimented for DIDChain struct")),
+        Err(err) => Err(anyhow!("{err}")),
+    }
 }
 /// Generates an update operation and writes to operations path.
 fn update(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<()> {
