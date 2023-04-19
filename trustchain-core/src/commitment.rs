@@ -55,7 +55,7 @@ pub trait TrivialCommitment {
     /// Gets the candidate data decoder (function).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value>;
     /// A closure for filtering candidate data. By default there is no filtering.
-    fn filter(&self) -> Option<Box<dyn Fn(serde_json::Value) -> CommitmentResult<Value>>> {
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
         None
     }
     /// Computes the hash (commitment). This method should not be overridden by implementors.
@@ -68,7 +68,7 @@ pub trait TrivialCommitment {
         let unfiltered_candidate_data = self.decode_candidate_data()(self.candidate_data())?;
         // Optionally filter the candidate data.
         let candidate_data = match self.filter() {
-            Some(filter) => filter(unfiltered_candidate_data.clone()).map_err(|e| {
+            Some(filter) => filter(&unfiltered_candidate_data).map_err(|e| {
                 CommitmentError::DataDecodingError(format!(
                     "Error filtering commitment content: {}",
                     e

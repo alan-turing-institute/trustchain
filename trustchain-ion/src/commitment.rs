@@ -122,8 +122,7 @@ impl<T> TrivialCommitment for IpfsChunkFileCommitment<T> {
         &self.candidate_data
     }
 
-    // TODO: change closure to take a reference.
-    fn filter(&self) -> Option<Box<dyn Fn(serde_json::Value) -> CommitmentResult<Value>>> {
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
         // Ignore all of the deltas in the chunk file except the one at index delta_index
         // (which is the one corresponding to the relevant DID).
         let delta_index = self.delta_index;
