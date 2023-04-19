@@ -1,7 +1,7 @@
 use axum::{routing::get, Router};
 use clap::Parser;
 use log::info;
-use trustchain_http::{config::ServerConfig, handlers};
+use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 
 // Process sketch:
 // 1. User visits "/issuer" page, and is displayed a QR code of a URL (with UUID) to send GET
@@ -26,20 +26,20 @@ async fn main() -> std::io::Result<()> {
     // Build our application with a route
     let app = Router::new()
         .route("/", get(handlers::index))
-        .route("/issuer", get(handlers::get_issuer_qrcode))
-        .route("/verifier", get(handlers::get_verifier_qrcode))
+        .route("/issuer", get(issuer::get_issuer_qrcode))
+        .route("/verifier", get(verifier::get_verifier_qrcode))
         .route(
             "/vc/issuer/:id",
-            get(handlers::get_issuer).post(handlers::post_issuer),
+            get(issuer::get_issuer).post(issuer::post_issuer),
         )
         .route(
             "/vc/verifier",
-            get(handlers::get_verifier).post(handlers::post_verifier),
+            get(verifier::get_verifier).post(verifier::post_verifier),
         )
-        .route("/did/:id", get(handlers::get_did_resolver))
+        .route("/did/:id", get(resolver::get_did_resolver))
         .route(
             "/did/chain/:id",
-            get(handlers::MyExampleHttp::get_did_chain),
+            get(resolver::TrustchainHTTPHandler::get_did_chain),
         )
         .with_state(config.clone());
 
