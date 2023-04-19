@@ -1,12 +1,10 @@
 use crate::commitment::IONCommitment;
+use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
 };
-use crate::{
-    BITCOIN_CONNECTION_STRING, BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME,
-    PROVISIONAL_INDEX_FILE_URI_KEY, URL,
-};
+use crate::{PROVISIONAL_INDEX_FILE_URI_KEY, URL};
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
 use bitcoincore_rpc::RpcApi;
@@ -96,10 +94,10 @@ where
     pub fn new(resolver: Resolver<T>) -> Self {
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
         let rpc_client = bitcoincore_rpc::Client::new(
-            BITCOIN_CONNECTION_STRING,
+            &ion_config().bitcoin_connection_string,
             bitcoincore_rpc::Auth::UserPass(
-                BITCOIN_RPC_USERNAME.to_string(),
-                BITCOIN_RPC_PASSWORD.to_string(),
+                ion_config().bitcoin_rpc_username.clone(),
+                ion_config().bitcoin_rpc_password.clone(),
             ),
         )
         // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.

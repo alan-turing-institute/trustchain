@@ -139,7 +139,3 @@ pub const HASH_PREV_BLOCK_KEY: &str = "hash_prev_block";
 pub const TIMESTAMP_KEY: &str = "timestamp";
 pub const BITS_KEY: &str = "bits";
 pub const NONCE_KEY: &str = "nonce";
-
-pub const BITCOIN_CONNECTION_STRING: &str = "http://localhost:18332";
-pub const BITCOIN_RPC_USERNAME: &str = "admin";
-pub const BITCOIN_RPC_PASSWORD: &str = "lWrkJlpj8SbnNRUJfO6qwIFEWkD+I9kL4REsFyMBlow=";

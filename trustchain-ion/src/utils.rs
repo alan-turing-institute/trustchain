@@ -1,4 +1,5 @@
 //! Utils module.
+use crate::config::ion_config;
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use flate2::read::GzDecoder;
@@ -12,12 +13,10 @@ use std::io::Read;
 use trustchain_core::verifier::VerifierError;
 
 use crate::{
-    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITCOIN_CONNECTION_STRING,
-    BITCOIN_RPC_PASSWORD, BITCOIN_RPC_USERNAME, BITS_KEY, DID_DELIMITER, HASH_PREV_BLOCK_KEY,
-    ION_METHOD_WITH_DELIMITER, ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY,
-    MONGO_COLLECTION_OPERATIONS, MONGO_CONNECTION_STRING, MONGO_CREATE_OPERATION,
-    MONGO_DATABASE_ION_TESTNET_CORE, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY,
-    TIMESTAMP_KEY, VERSION_KEY,
+    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY, DID_DELIMITER,
+    HASH_PREV_BLOCK_KEY, ION_METHOD_WITH_DELIMITER, ION_OPERATION_COUNT_DELIMITER, MERKLE_ROOT_KEY,
+    MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX,
+    MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
 };
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
@@ -94,7 +93,7 @@ pub async fn query_mongodb(
     let client = match client {
         Some(x) => x,
         None => {
-            let client_options = ClientOptions::parse(MONGO_CONNECTION_STRING)
+            let client_options = ClientOptions::parse(&ion_config().mongo_connection_string)
                 .await
                 .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
             mongodb::Client::with_options(client_options)
@@ -106,7 +105,7 @@ pub async fn query_mongodb(
     // (different to .find_one()) to see whether a fuller collection of DID operations can be obtained
     // (e.g. both create and updates).
     let query_result: Result<Option<mongodb::bson::Document>, mongodb::error::Error> = client
-        .database(MONGO_DATABASE_ION_TESTNET_CORE)
+        .database(&ion_config().mongo_database_ion_core)
         .collection(MONGO_COLLECTION_OPERATIONS)
         .find_one(
             doc! {
@@ -126,10 +125,10 @@ pub async fn query_mongodb(
 /// Gets a Bitcoin RPC client instance.
 pub fn rpc_client() -> bitcoincore_rpc::Client {
     bitcoincore_rpc::Client::new(
-        BITCOIN_CONNECTION_STRING,
+        &ion_config().bitcoin_connection_string,
         bitcoincore_rpc::Auth::UserPass(
-            BITCOIN_RPC_USERNAME.to_string(),
-            BITCOIN_RPC_PASSWORD.to_string(),
+            ion_config().bitcoin_rpc_username.clone(),
+            ion_config().bitcoin_rpc_password.clone(),
         ),
     )
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
