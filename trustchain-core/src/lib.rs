@@ -2,6 +2,7 @@
 pub mod attestor;
 pub mod chain;
 pub mod config;
+pub mod commitment;
 pub mod controller;
 pub mod data;
 pub mod display;
