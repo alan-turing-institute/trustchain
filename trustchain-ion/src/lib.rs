@@ -1,7 +1,7 @@
 pub mod attest;
 pub mod attestor;
-pub mod config;
 pub mod commitment;
+pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
