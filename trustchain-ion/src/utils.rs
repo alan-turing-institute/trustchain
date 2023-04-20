@@ -27,7 +27,6 @@ const DID_DELIMITER: &str = ":";
 ///
 /// By checking that the hash of the content is identical to the CID, this method
 /// verifies that the content itself must have been used to originally construct the CID.
-#[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
     client: &IpfsClient,
@@ -389,13 +388,13 @@ mod tests {
     //     assert_eq!(&result.len(), &2);
     // }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_query_ipfs() {
+    async fn test_query_ipfs() {
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
         let ipfs_client = IpfsClient::default();
-        let result = query_ipfs(cid, &ipfs_client).unwrap();
+        let result = query_ipfs(cid, &ipfs_client).await.unwrap();
 
         // Decompress the content and deserialise to JSON.
         let mut decoder = GzDecoder::new(&result[..]);
@@ -409,7 +408,7 @@ mod tests {
 
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        assert!(query_ipfs(cid, &ipfs_client).is_err());
+        assert!(query_ipfs(cid, &ipfs_client).await.is_err());
     }
 
     #[tokio::test]

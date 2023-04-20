@@ -566,12 +566,12 @@ mod tests {
         MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_extract_suffix_idx() {
+    async fn test_extract_suffix_idx() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let ipfs_client = IpfsClient::default();
-        let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
+        let candidate_data = query_ipfs(target, &ipfs_client).await.unwrap();
         let core_index_file_commitment = IpfsIndexFileCommitment::<Incomplete>::new(candidate_data);
         let operation_idx = serde_json::from_value::<CoreIndexFile>(
             core_index_file_commitment.commitment_content().unwrap(),
@@ -582,14 +582,14 @@ mod tests {
         assert_eq!(1, operation_idx.unwrap());
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_ipfs_commitment() {
+    async fn test_ipfs_commitment() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
         let ipfs_client = IpfsClient::default();
 
-        let candidate_data_ = query_ipfs(target, &ipfs_client).unwrap();
+        let candidate_data_ = query_ipfs(target, &ipfs_client).await.unwrap();
         let candidate_data = candidate_data_.clone();
         // In the core index file we expect to find the provisionalIndexFileUri.
         let expected_data =
@@ -752,21 +752,21 @@ mod tests {
         };
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS and Bitcoin Core"]
-    fn test_ion_commitment() {
+    async fn test_ion_commitment() {
         let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 
         let ipfs_client = IpfsClient::default();
 
         let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
-        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).unwrap();
+        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
 
         let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
-        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).unwrap();
+        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
 
         let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).unwrap();
+        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
 
         let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
