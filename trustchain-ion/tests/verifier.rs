@@ -7,9 +7,9 @@ use trustchain_ion::verifier::IONVerifier;
 // The root event time of DID documents in `data.rs` used for unit tests and the test below.
 const ROOT_EVENT_TIME_1: u32 = 1666265405;
 
-#[test]
+#[tokio::test]
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000."]
-fn trustchain_verification() {
+async fn trustchain_verification() {
     // Integration test of the Trustchain resolution pipeline.
     // root - root-plus-1 - root-plus-2
     let dids = vec![
@@ -22,19 +22,19 @@ fn trustchain_verification() {
     let resolver = get_ion_resolver("http://localhost:3000/");
     let mut verifier = IONVerifier::new(resolver);
     for did in dids {
-        let result = verifier.verify(did, ROOT_EVENT_TIME_1);
+        let result = verifier.verify(did, ROOT_EVENT_TIME_1).await;
         assert!(result.is_ok());
     }
 }
 
-#[test]
+#[tokio::test]
 #[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
-fn test_verifiable_timestamp() {
+async fn test_verifiable_timestamp() {
     let resolver = get_ion_resolver("http://localhost:3000/");
     let mut target = IONVerifier::new(resolver);
 
     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-    let result = target.verifiable_timestamp(did);
+    let result = target.verifiable_timestamp(did).await;
 
     assert!(result.is_ok());
 

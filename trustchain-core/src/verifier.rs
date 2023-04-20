@@ -4,6 +4,7 @@ use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
+use async_trait::async_trait;
 use serde_json::json;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
@@ -244,18 +245,24 @@ impl VerifiableTimestamp {
 }
 
 /// A verifier of root and downstream DIDs.
+#[async_trait]
 pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a downstream DID by tracing its chain back to the root.
-    fn verify(&mut self, did: &str, root_timestamp: Timestamp) -> Result<DIDChain, VerifierError> {
+    async fn verify(
+        &mut self,
+        did: &str,
+        root_timestamp: Timestamp,
+    ) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
-        let chain = DIDChain::new(did, self.resolver())?;
+        let resolver = self.resolver();
+        let chain = DIDChain::new(did, resolver).await?;
 
         // Verify the proofs in the chain.
         chain.verify_proofs()?;
 
         // Verify the root timestamp.
         let root = chain.root();
-        let verifiable_timestamp = self.verifiable_timestamp(root)?;
+        let verifiable_timestamp = self.verifiable_timestamp(root).await?;
         self.verify_timestamp(&verifiable_timestamp)?;
 
         // At this point we know that the same PoW commits to both the timestamp
@@ -270,7 +277,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
     /// value for the timestamp retreived from a local PoW network node.
-    fn verifiable_timestamp(&mut self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
+    async fn verifiable_timestamp(
+        &mut self,
+        did: &str,
+    ) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
         let did_commitment = self.did_commitment(did)?;
         // Hash the DID commitment

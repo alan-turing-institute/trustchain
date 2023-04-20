@@ -4,8 +4,7 @@ use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
-use ipfs_api::IpfsApi;
-use ipfs_api_backend_actix::IpfsClient;
+use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use mongodb::{bson::doc, options::ClientOptions};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -32,7 +31,7 @@ const DID_DELIMITER: &str = ":";
 pub async fn query_ipfs(
     cid: &str,
     client: &IpfsClient,
-) -> Result<Vec<u8>, ipfs_api_backend_actix::Error> {
+) -> Result<Vec<u8>, ipfs_api_backend_hyper::Error> {
     // If necessary, construct an IPFS client.
     client
         .cat(cid)
@@ -236,7 +235,6 @@ mod tests {
     use super::*;
     use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
-    use futures::executor::block_on;
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
@@ -414,22 +412,13 @@ mod tests {
         assert!(query_ipfs(cid, &ipfs_client).is_err());
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
-    fn test_query_mongodb() {
+    async fn test_query_mongodb() {
         let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        // Make runtime
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        runtime.block_on(async {
-            let doc = block_on(query_mongodb(suffix, None)).unwrap();
-
-            let block_height: i32 = doc.get_i32("txnTime").unwrap();
-            assert_eq!(block_height, 2377445);
-        });
+        let doc = query_mongodb(suffix, None).await.unwrap();
+        let block_height: i32 = doc.get_i32("txnTime").unwrap();
+        assert_eq!(block_height, 2377445);
     }
 
     #[test]

@@ -15,7 +15,7 @@ use crate::get_ion_resolver;
 
 // Function to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
-pub fn attest_operation(
+pub async fn attest_operation(
     did: &str,
     controlled_did: &str,
     verbose: bool,
@@ -33,7 +33,7 @@ pub fn attest_operation(
     let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Extract resolution items
-    let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did) {
+    let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did).await {
         Ok((res, Some(doc), Some(doc_meta))) => (res, doc, doc_meta),
         Err(e) => {
             return Err(Box::new(e));

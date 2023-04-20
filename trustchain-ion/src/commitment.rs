@@ -557,7 +557,7 @@ mod tests {
 
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
-    use ipfs_api_backend_actix::IpfsClient;
+    use ipfs_api_backend_hyper::IpfsClient;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
