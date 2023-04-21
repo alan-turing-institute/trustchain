@@ -24,7 +24,7 @@ pub fn resolve_prototype(did: String) -> String {
 pub fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = get_ion_resolver("http://localhost:3000/");
-    let verifier = IONVerifier::new(resolver);
+    let mut verifier = IONVerifier::new(resolver);
 
     verifier.verify(&did, root_timestamp).unwrap()
 }
