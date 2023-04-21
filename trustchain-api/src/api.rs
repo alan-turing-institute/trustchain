@@ -6,10 +6,10 @@ use ssi::{
 use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
+    config::core_config,
     issuer::Issuer,
     resolver::ResolverResult,
     verifier::{Verifier, VerifierError},
-    ROOT_EVENT_TIME_2378493,
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
@@ -39,7 +39,7 @@ pub trait TrustchainDIDAPI {
     /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
     fn verify(did: &str, verbose: bool) -> Result<DIDChain, VerifierError> {
         IONVerifier::new(get_ion_resolver("http://localhost:3000/"))
-            .verify(did, ROOT_EVENT_TIME_2378493)
+            .verify(did, core_config().root_event_time)
     }
     /// Generates an update operation and writes to operations path.
     fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
@@ -83,7 +83,7 @@ pub trait TrustchainVCAPI {
         if signature_only {
             (verification_result, None)
         } else {
-            let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+            let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
             let issuer = match credential.issuer.as_ref() {
                 Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                 _ => panic!("No issuer present in credential."),
@@ -97,6 +97,4 @@ pub trait TrustchainVCAPI {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}
