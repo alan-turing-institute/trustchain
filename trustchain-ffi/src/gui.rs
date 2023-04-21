@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use did_ion::sidetree::DocumentState;
 use serde_json::to_string_pretty;
 use ssi::did_resolve::ResolutionResult;
+use thiserror::Error;
 use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
@@ -13,15 +14,23 @@ use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 // NOTE: There is currently an [open pull request](https://github.com/fzyzcjy/flutter_rust_bridge/pull/582)
 // for support of the rust Result type which will add the functionality of returning custom error
 // types rather than only a custom error message (&str).
-
+#[derive(Error, Debug)]
+enum FFIGUIError {
+    #[error("Failed to deserialise: {0}.")]
+    FailedToDeserialise(serde_json::Error),
+    #[error("Failed to deserialise: {1} \n Info: {0}")]
+    FailedToDeserialiseVerbose(String, serde_json::Error),
+}
 /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
 pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
     let mut document_state: Option<DocumentState> = None;
     if let Some(doc_string) = doc_state {
         match serde_json::from_str(&doc_string) {
             Ok(doc) => document_state = Some(doc),
-            Err(err) => return Err(anyhow!("{err}")),
+            // Err(err) => return Err(anyhow!("serde_json: {err}")),
+            Err(err) => return Err(FFIGUIError::FailedToDeserialise(err).into()),
         }
+        // document_state = Some(serde_json::from_str(&doc_string).unwrap())
     }
     match TrustchainAPI::create(document_state, verbose) {
         Ok(_) => Ok(()),
