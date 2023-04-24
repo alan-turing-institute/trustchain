@@ -31,7 +31,6 @@ pub async fn query_ipfs(
     cid: &str,
     client: &IpfsClient,
 ) -> Result<Vec<u8>, ipfs_api_backend_hyper::Error> {
-    // If necessary, construct an IPFS client.
     client
         .cat(cid)
         .map_ok(|chunk| chunk.to_vec())

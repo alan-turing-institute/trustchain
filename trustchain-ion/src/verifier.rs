@@ -154,26 +154,27 @@ where
         let bundle: Result<VerificationBundle, VerifierError> = match endpoint.as_ref() {
             // If running on a Trustchain light client, make an API call to a full node to
             // request the bundle.
-            Some(endpoint) => Ok(serde_json::from_str(
-                &reqwest::get(endpoint)
-                    .await
-                    .map_err(|e| {
-                        VerifierError::ErrorFetchingVerificationMaterial(
-                            format!("Error requesting bundle from endpoint: {endpoint}"),
-                            e.into(),
-                        )
-                    })?
-                    .text()
-                    .map_err(|e| {
-                        VerifierError::ErrorFetchingVerificationMaterial(
-                            format!(
+            Some(endpoint) => {
+                let response = reqwest::get(endpoint).await.map_err(|e| {
+                    VerifierError::ErrorFetchingVerificationMaterial(
+                        format!("Error requesting bundle from endpoint: {endpoint}"),
+                        e.into(),
+                    )
+                })?;
+                Ok(serde_json::from_str::<VerificationBundle>(
+                    &response
+                        .text()
+                        .map_err(|e| {
+                            VerifierError::ErrorFetchingVerificationMaterial(
+                                format!(
                                 "Error extracting bundle response body from endpoint: {endpoint}"
                             ),
-                            e.into(),
-                        )
-                    })
-                    .await?,
-            )?),
+                                e.into(),
+                            )
+                        })
+                        .await?,
+                )?)
+            }
             _ => {
                 let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
                 let (block_hash, tx_index) = self.locate_transaction(did).await?;
@@ -421,9 +422,8 @@ where
         Ok(block_header.time)
     }
 
-    fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
-        // TODO: consider whether `fetch_did_commitment` can be made async and to await so  non-blocking.
-        futures::executor::block_on(self.fetch_did_commitment(did))?;
+    async fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
+        self.fetch_did_commitment(did).await?;
         let bundle =
             self.bundles
                 .get(did)
@@ -609,7 +609,7 @@ mod tests {
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
         assert!(target.bundles().is_empty());
-        let result = target.did_commitment(did).unwrap();
+        let result = target.did_commitment(did).await.unwrap();
 
         // Check that the verification bundle for the commitment is now stored in the Verifier.
         assert!(!target.bundles().is_empty());
