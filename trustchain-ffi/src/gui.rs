@@ -16,7 +16,7 @@ use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 // types rather than only a custom error message (&str).
 #[derive(Error, Debug)]
 enum FFIGUIError {
-    #[error("Failed to deserialise: {0}.")]
+    #[error("JSON Deserialisation Error: {0}.")]
     FailedToDeserialise(serde_json::Error),
     #[error("Failed to deserialise: {1} \n Info: {0}")]
     FailedToDeserialiseVerbose(String, serde_json::Error),
@@ -27,8 +27,8 @@ pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
     if let Some(doc_string) = doc_state {
         match serde_json::from_str(&doc_string) {
             Ok(doc) => document_state = Some(doc),
-            // Err(err) => return Err(anyhow!("serde_json: {err}")),
-            Err(err) => return Err(FFIGUIError::FailedToDeserialise(err).into()),
+            // Err(err) => return Err(FFIGUIError::FailedToDeserialise(err).into()),
+            Err(err) => return Err(anyhow!("{}",FFIGUIError::FailedToDeserialise(err).to_string())),
         }
         // document_state = Some(serde_json::from_str(&doc_string).unwrap())
     }
@@ -62,7 +62,7 @@ pub fn resolve(did: String) -> anyhow::Result<String> {
 
 /// TODO: the below have no CLI implementation currently but are planned
 /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
-fn verify(did: String, verbose: bool) -> anyhow::Result<String> {
+pub fn verify(did: String, verbose: bool) -> anyhow::Result<String> {
     match TrustchainAPI::verify(&did, verbose) {
         Ok(did_chain) => Ok(serde_json::to_string_pretty(&did_chain)
             .expect("Serialize implimented for DIDChain struct")),
