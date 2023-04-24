@@ -446,10 +446,9 @@ mod tests {
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        get_ion_resolver, IONResolver,
+        get_ion_resolver,
     };
     use bitcoin::{BlockHeader, MerkleBlock};
-    use did_ion::{sidetree::SidetreeClient, ION};
     use flate2::read::GzDecoder;
     use ssi::did_resolve::HTTPDIDResolver;
     use std::{io::Read, str::FromStr};
@@ -526,9 +525,7 @@ mod tests {
     #[ignore = "Integration test requires ION"]
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         let target = IONVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
@@ -585,9 +582,7 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         let mut target = IONVerifier::new(resolver);
 
         assert!(target.bundles().is_empty());
