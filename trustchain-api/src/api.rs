@@ -37,7 +37,7 @@ pub trait TrustchainDIDAPI {
 
     // TODO: the below have no CLI implementation currently but are planned
     /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
-    fn verify(did: &str, verbose: bool) -> Result<DIDChain, VerifierError> {
+    fn verify(did: &str) -> Result<DIDChain, VerifierError> {
         IONVerifier::new(get_ion_resolver("http://localhost:3000/"))
             .verify(did, core_config().root_event_time)
     }
