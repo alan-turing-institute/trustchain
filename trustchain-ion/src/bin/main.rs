@@ -6,7 +6,8 @@ use std::{
     fs::File,
     io::{stdin, BufReader},
 };
-use trustchain_core::{issuer::Issuer, verifier::Verifier, ROOT_EVENT_TIME_2378493};
+use trustchain_core::config::core_config;
+use trustchain_core::{issuer::Issuer, verifier::Verifier};
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     resolve::main_resolve, verifier::IONVerifier,
@@ -79,7 +80,8 @@ fn cli() -> Command {
         )
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
 
     match matches.subcommand() {
@@ -109,12 +111,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
-                    attest_operation(did, controlled_did, verbose)?;
+                    attest_operation(did, controlled_did, verbose).await?;
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    main_resolve(did, verbose)?;
+                    main_resolve(did, verbose).await?;
                 }
                 _ => panic!("Unrecognised DID subcommand."),
             }
@@ -136,18 +138,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         };
                     credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
                     let attestor = IONAttestor::new(did);
-                    resolver.runtime.block_on(async {
-                        let credential_with_proof =
-                            attestor.sign(&credential, key_id, &resolver).await.unwrap();
-                        println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
-                    });
+                    let credential_with_proof =
+                        attestor.sign(&credential, key_id, &resolver).await.unwrap();
+                    println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
-                        None => ROOT_EVENT_TIME_2378493,
+                        None => core_config().root_event_time,
                     };
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
@@ -156,17 +156,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-                    resolver.runtime.block_on(async {
-                        let verify_result = credential.verify(None, &resolver).await;
-                        if verify_result.errors.is_empty() {
-                            println!("Proof... ✅")
-                        } else {
-                            println!(
-                                "Proof... Invalid\n{}",
-                                &to_string_pretty(&verify_result).unwrap()
-                            );
-                        }
-                    });
+
+                    let verify_result = credential.verify(None, &resolver).await;
+                    if verify_result.errors.is_empty() {
+                        println!("Proof... ✅")
+                    } else {
+                        println!(
+                            "Proof... Invalid\n{}",
+                            &to_string_pretty(&verify_result).unwrap()
+                        );
+                    }
 
                     // Return if only checking signature
                     if let Some(true) = signature_only {
@@ -174,14 +173,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // Trustchain verify the issued credential
-                    let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+                    let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                         _ => panic!("No issuer present in credential."),
                     };
 
-                    let result = verifier.verify(&issuer, root_event_time);
+                    let result = verifier.verify(&issuer, root_event_time).await;
 
                     match result {
                         Ok(chain) => {
@@ -189,7 +188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if let Some(&verbose_count) = verbose {
                                 if verbose_count > 1 {
                                     let (_, doc, doc_meta) =
-                                        resolver.resolve_as_result(&issuer).unwrap();
+                                        resolver.resolve_as_result(&issuer).await.unwrap();
                                     println!("---");
                                     println!("Issuer DID doc:");
                                     println!(

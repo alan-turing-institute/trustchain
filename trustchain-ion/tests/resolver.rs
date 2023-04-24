@@ -4,9 +4,9 @@ use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
 use trustchain_ion::get_ion_resolver;
 
-#[test]
+#[tokio::test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
-fn trustchain_resolution() {
+async fn trustchain_resolution() {
     // Integration test of the Trustchain resolution pipeline.
 
     let did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
@@ -15,7 +15,7 @@ fn trustchain_resolution() {
     let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Resolve DID Document & Metadata.
-    let result = resolver.resolve_as_result(did);
+    let result = resolver.resolve_as_result(did).await;
 
     // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.

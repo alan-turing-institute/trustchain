@@ -37,8 +37,8 @@ const TEST_UNSIGNED_VC: &str = r##"{
 "##;
 
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
-#[test]
-fn test_sign_credential() {
+#[tokio::test]
+async fn test_sign_credential() {
     // 1. Set-up
     let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
 
@@ -52,28 +52,27 @@ fn test_sign_credential() {
     let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
 
     // 4. Generate VC and verify
-    resolver.runtime.block_on(async {
-        // Use attest_credential method instead of generating and adding proof
-        let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
-        // Verify: expect no warnings or errors
-        let verification_result = vc_with_proof.verify(None, &resolver).await;
-        assert!(verification_result.warnings.is_empty());
-        assert!(verification_result.errors.is_empty());
+    // Use attest_credential method instead of generating and adding proof
+    let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
-        // Change credential to make signature invalid
-        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+    // Verify: expect no warnings or errors
+    let verification_result = vc_with_proof.verify(None, &resolver).await;
+    assert!(verification_result.warnings.is_empty());
+    assert!(verification_result.errors.is_empty());
 
-        // Verify: expect no warnings and a signature error as VC has changed
-        let verification_result = vc_with_proof.verify(None, &resolver).await;
-        assert!(verification_result.warnings.is_empty());
-        assert_eq!(verification_result.errors, vec!["signature error"]);
-    });
+    // Change credential to make signature invalid
+    vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+
+    // Verify: expect no warnings and a signature error as VC has changed
+    let verification_result = vc_with_proof.verify(None, &resolver).await;
+    assert!(verification_result.warnings.is_empty());
+    assert_eq!(verification_result.errors, vec!["signature error"]);
 }
 
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
-#[test]
-fn test_sign_credential_failure() {
+#[tokio::test]
+async fn test_sign_credential_failure() {
     // 1. Set-up (with a DID *not* matching the issuer field in the credential).
     let did = "did:ion:test:EiDMe2SFfJ_7eXVW7RF1ZHOkeu2M-Bre0ak2cXNBH0P-TQ";
 
@@ -87,13 +86,12 @@ fn test_sign_credential_failure() {
     let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
 
     // 4. Generate VC and verify
-    resolver.runtime.block_on(async {
-        // Sign credential (expect failure).
-        let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
-        assert!(vc_with_proof.is_err());
-        assert!(matches!(
-            vc_with_proof,
-            Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
-        ));
-    });
+
+    // Sign credential (expect failure).
+    let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
+    assert!(vc_with_proof.is_err());
+    assert!(matches!(
+        vc_with_proof,
+        Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
+    ));
 }

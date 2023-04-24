@@ -1,8 +1,6 @@
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
-use crate::ROOT_EVENT_TIME_2378493;
-use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;
 use ssi::{
@@ -113,17 +111,6 @@ impl fmt::Display for DIDChain {
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
-            if i == 0 {
-                writeln!(
-                    f,
-                    "{0:^1$}",
-                    format!(
-                        "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp(ROOT_EVENT_TIME_2378493 as i64, 0)
-                    ),
-                    box_width
-                )?;
-            }
             write!(f, "{}", PrettyDID::new(doc, i, MAX_WIDTH))?;
             let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
@@ -137,7 +124,7 @@ impl fmt::Display for DIDChain {
 
 impl DIDChain {
     // Public constructor.
-    pub fn new<T: DIDResolver + Sync + Send>(
+    pub async fn new<T: DIDResolver + Sync + Send>(
         did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Self, ChainError> {
@@ -150,7 +137,7 @@ impl DIDChain {
         // Loop up the DID chain until the root is reached or an error occurs.
         loop {
             // Resolve the current DID.
-            let resolved = resolver.resolve_as_result(&ddid);
+            let resolved = resolver.resolve_as_result(&ddid).await;
 
             if let Ok((_, Some(ddoc), Some(ddoc_meta))) = resolved {
                 // Clone the controller information before moving ddoc into the chain.
