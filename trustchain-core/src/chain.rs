@@ -1,8 +1,6 @@
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
-use crate::ROOT_EVENT_TIME_2378493;
-use chrono::{TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;
 use ssi::{
@@ -113,18 +111,6 @@ impl fmt::Display for DIDChain {
         let box_width = format!(" DID: {} ", self.root()).len().min(MAX_WIDTH);
         for (i, did) in self.level_vec.iter().enumerate() {
             let doc = &self.data(did).unwrap().0;
-            if i == 0 {
-                writeln!(
-                    f,
-                    "{0:^1$}",
-                    format!(
-                        "🕑 Root timestamp: {0} 🕑",
-                        Utc.timestamp_opt(ROOT_EVENT_TIME_2378493 as i64, 0)
-                            .unwrap()
-                    ),
-                    box_width
-                )?;
-            }
             write!(f, "{}", PrettyDID::new(doc, i, MAX_WIDTH))?;
             let link_string = "⛓⛓⛓⛓";
             if self.downstream(did).is_some() {
