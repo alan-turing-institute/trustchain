@@ -11,6 +11,12 @@ use thiserror::Error;
 /// Type for commitment result.
 pub type CommitmentResult<T> = Result<T, CommitmentError>;
 
+/// Type for commitment function.
+pub type CommitmentFunction = dyn Fn(&serde_json::Value) -> CommitmentResult<Value>;
+
+/// Type for the decoder function.
+pub type CommitmentDecoder = fn(&[u8]) -> CommitmentResult<Value>;
+
 /// An error relating to Commitment verification.
 #[derive(Error, Debug)]
 pub enum CommitmentError {
@@ -55,7 +61,7 @@ pub trait TrivialCommitment {
     /// Gets the candidate data decoder (function).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value>;
     /// A closure for filtering candidate data. By default there is no filtering.
-    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
+    fn filter(&self) -> Option<Box<CommitmentFunction>> {
         None
     }
     /// Computes the hash (commitment). This method should not be overridden by implementors.
@@ -266,9 +272,7 @@ pub trait DIDCommitment: Commitment {
     /// Get the candidate data in which we expect to find a timestamp.
     fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]>;
     /// Gets the decoder (function) for the timestamp candidate data.
-    fn decode_timestamp_candidate_data(
-        &self,
-    ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>>;
+    fn decode_timestamp_candidate_data(&self) -> CommitmentResult<CommitmentDecoder>;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher
