@@ -28,7 +28,12 @@ pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
         match serde_json::from_str(&doc_string) {
             Ok(doc) => document_state = Some(doc),
             // Err(err) => return Err(FFIGUIError::FailedToDeserialise(err).into()),
-            Err(err) => return Err(anyhow!("{}",FFIGUIError::FailedToDeserialise(err).to_string())),
+            Err(err) => {
+                return Err(anyhow!(
+                    "{}",
+                    FFIGUIError::FailedToDeserialise(err).to_string()
+                ))
+            }
         }
         // document_state = Some(serde_json::from_str(&doc_string).unwrap())
     }
@@ -63,7 +68,7 @@ pub fn resolve(did: String) -> anyhow::Result<String> {
 /// TODO: the below have no CLI implementation currently but are planned
 /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
 pub fn verify(did: String, verbose: bool) -> anyhow::Result<String> {
-    match TrustchainAPI::verify(&did, verbose) {
+    match TrustchainAPI::verify(&did) {
         Ok(did_chain) => Ok(serde_json::to_string_pretty(&did_chain)
             .expect("Serialize implimented for DIDChain struct")),
         Err(err) => Err(anyhow!("{err}")),
