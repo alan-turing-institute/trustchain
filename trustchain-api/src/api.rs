@@ -76,14 +76,14 @@ pub trait TrustchainVCAPI {
         signature_only: bool,
         root_event_time: u32,
     ) -> (VerificationResult, Option<Result<DIDChain, VerifierError>>) {
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver("http://10.0.2.2:3000/");
         let verification_result = resolver
             .runtime
             .block_on(async { credential.verify(None, &resolver).await });
         if signature_only {
             (verification_result, None)
         } else {
-            let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+            let mut verifier = IONVerifier::new(get_ion_resolver("http://10.0.2.2:3000/"));
             let issuer = match credential.issuer.as_ref() {
                 Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                 _ => panic!("No issuer present in credential."),
