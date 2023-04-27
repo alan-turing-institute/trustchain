@@ -184,7 +184,6 @@ pub const TEST_CHAIN: &str = r##"
 }
 "##;
 
-
 pub const TEST_ROOT_PLUS_2_RESOLVED: &str = r##"{
   "@context": "https://w3id.org/did-resolution/v1",
   "didDocument": {

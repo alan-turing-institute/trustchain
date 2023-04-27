@@ -69,12 +69,11 @@ impl TrustchainVerifierHTTPHandler {
             "http://{}:{}/vc/verifier",
             config.host_reference, config.port
         );
-    
+
         // Respond with the QR code as a png embedded in html
         Html(str_to_qr_code_html(&address_str, "Verifier"))
     }
 }
-
 
 // #[cfg(test)]
 // mod tests {}

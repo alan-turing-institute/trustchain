@@ -14,18 +14,16 @@ use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT
 use trustchain_core::{
     chain::{Chain, DIDChain},
     config::core_config,
-    utils::canonicalize
+    utils::canonicalize,
 };
 
 use crate::data::TEST_ROOT_PLUS_2_RESOLVED;
 
+use async_trait::async_trait;
 use did_ion::{sidetree::SidetreeClient, ION};
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::verifier::IONVerifier;
 use trustchain_ion::{get_ion_resolver, IONResolver};
-use async_trait::async_trait;
-
-
 
 #[async_trait]
 pub trait TrustchainHTTP {
@@ -61,8 +59,8 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         info!("{:?}", result);
         let chain = match result {
             Ok(chain) => chain,
-            _ => panic!()
-        };  //XYZ
+            _ => panic!(),
+        }; //XYZ
 
         // Currently just returns a static string for initial testing
         // let chain: DIDChain = serde_json::from_str(TEST_CHAIN).unwrap();  //XYZ
@@ -81,7 +79,6 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         let result = resolver.resolve_as_result(did).await;
         info!("Resolved result");
 
-
         let (res_meta, result_doc, result_doc_meta) = match result {
             Ok(x) => x,
             Err(e) => panic!(),
@@ -99,7 +96,6 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 }
 
 impl TrustchainHTTPHandler {
-    
     pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
         info!("Received DID to get trustchain: {}", did.as_str());
 
@@ -130,7 +126,7 @@ impl TrustchainHTTPHandler {
         // let resolved_json = to_resolution_result(doc, doc_meta);  //XYZ
 
         // Call resolve_did() here instead of loading test documents
-        let resolved_json = TrustchainHTTPHandler::resolve_did(did.as_str()).await;  //XYZ
+        let resolved_json = TrustchainHTTPHandler::resolve_did(did.as_str()).await; //XYZ
 
         // Arbitrary delay for testing
         let delay = time::Duration::from_millis(500);
@@ -154,7 +150,6 @@ impl TrustchainHTTPHandler {
     }
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DIDChainResolutionResult {
@@ -172,7 +167,6 @@ impl DIDChainResolutionResult {
         }
     }
 }
-
 
 // #[cfg(test)]
 // mod tests {

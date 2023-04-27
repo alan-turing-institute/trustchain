@@ -1,7 +1,7 @@
 use crate::config::ServerConfig;
 use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
-use crate::resolver::{DIDChainResolutionResult};
+use crate::resolver::DIDChainResolutionResult;
 use crate::resolver::TrustchainHTTPHandler;
 use crate::vc::generate_vc;
 use crate::EXAMPLE_VP_REQUEST;
@@ -58,17 +58,16 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 }
 
 impl TrustchainIssuerHTTPHandler {
-    
     pub async fn get_issuer_qrcode(State(config): State<ServerConfig>) -> Html<String> {
         // Generate a UUID
         let id = Uuid::new_v4().to_string();
-    
+
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "http://{}:{}/vc/issuer/{id}",
             config.host_reference, config.port
         );
-    
+
         // Respond with the QR code as a png embedded in html
         Html(str_to_qr_code_html(&address_str, "Issuer"))
     }
@@ -89,7 +88,7 @@ impl TrustchainIssuerHTTPHandler {
     fn handle_get_vc(id: &str) -> String {
         generate_vc(true, None, id)
     }
-    
+
     fn handle_post_vc(subject_id: &str, credential_id: &str) -> String {
         generate_vc(false, Some(subject_id), credential_id)
     }
@@ -109,7 +108,6 @@ impl TrustchainIssuerHTTPHandler {
 //             .unwrap(),
 //     )
 // }
-
 
 // #[cfg(test)]
 // mod tests {}
