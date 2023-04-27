@@ -240,8 +240,8 @@ pub const TEST_ROOT_PLUS_2_RESOLVED: &str = r##"{
     "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
     "method": {
       "published": true,
-      "recoveryCommitment": "EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA",
-      "updateCommitment": "EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg"
+      "updateCommitment": "EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg",
+      "recoveryCommitment": "EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA"
     }
   }
 }"##;

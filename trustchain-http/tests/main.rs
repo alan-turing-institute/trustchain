@@ -1,5 +1,8 @@
+use axum::http::request;
 use axum::{routing::get, Router};
+use reqwest;
 use ssi::did_resolve::ResolutionResult;
+use trustchain_core::utils::canonicalize;
 use trustchain_http::data::TEST_ROOT_PLUS_2_RESOLVED;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 
@@ -66,26 +69,17 @@ async fn not_found() {
 #[tokio::test]
 async fn resolve_did() {
     let expected_body = TEST_ROOT_PLUS_2_RESOLVED;
-
     let (base, shutdown) = serve(&ServerConfig::default());
-    let client = hyper::Client::builder().build_http::<hyper::Body>();
-    let uri = (base + "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q")
-        .parse::<hyper::Uri>()
-        .unwrap();
-    let resp = client.get(uri).await.unwrap();
-    let body_str = String::from_utf8(
-        hyper::body::to_bytes(resp.into_body())
-            .await
-            .unwrap()
-            .to_vec(),
+    let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
+    let target = serde_json::from_str::<ResolutionResult>(
+        &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
     )
     .unwrap();
-    let body_res_result: ResolutionResult = serde_json::from_str(&body_str).unwrap();
-    println!("{}", body_str);
+    let expected = serde_json::from_str::<ResolutionResult>(expected_body).unwrap();
+    // TODO: consider whether exact form of string is required to match
     assert_eq!(
-        serde_json::to_string(&body_res_result).unwrap(),
-        serde_json::to_string(&serde_json::from_str::<ResolutionResult>(expected_body).unwrap())
-            .unwrap()
+        canonicalize(&target).unwrap(),
+        canonicalize(&expected).unwrap()
     );
     shutdown();
 }

@@ -133,6 +133,7 @@ impl TrustchainHTTPHandler {
         std::thread::sleep(delay);
         (
             StatusCode::OK,
+            // TODO: consider form of string for response, should it be canonicalized?
             Html(to_string_pretty(&resolved_json).unwrap()),
         )
     }
