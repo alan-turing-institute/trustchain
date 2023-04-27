@@ -29,3 +29,13 @@ impl std::fmt::Display for ServerConfig {
         Ok(())
     }
 }
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
+            host_reference: IpAddr::from_str(DEFAULT_HOST).unwrap(),
+            port: DEFAULT_PORT,
+        }
+    }
+}
