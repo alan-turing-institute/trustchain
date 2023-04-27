@@ -26,17 +26,17 @@ async fn main() -> std::io::Result<()> {
     // Build our application with a route
     let app = Router::new()
         .route("/", get(handlers::index))
-        .route("/issuer", get(issuer::get_issuer_qrcode))
-        .route("/verifier", get(verifier::get_verifier_qrcode))
+        .route("/issuer", get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode))
+        .route("/verifier", get(verifier::TrustchainVerifierHTTPHandler::get_verifier_qrcode))
         .route(
             "/vc/issuer/:id",
-            get(issuer::get_issuer).post(issuer::post_issuer),
+            get(issuer::TrustchainIssuerHTTPHandler::get_issuer).post(issuer::TrustchainIssuerHTTPHandler::post_issuer),
         )
         .route(
             "/vc/verifier",
-            get(verifier::get_verifier).post(verifier::post_verifier),
+            get(verifier::TrustchainVerifierHTTPHandler::get_verifier).post(verifier::TrustchainVerifierHTTPHandler::post_verifier),
         )
-        .route("/did/:id", get(resolver::get_did_resolver))
+        .route("/did/:id", get(resolver::TrustchainHTTPHandler::get_did_resolver))
         .route(
             "/did/chain/:id",
             get(resolver::TrustchainHTTPHandler::get_did_chain),
