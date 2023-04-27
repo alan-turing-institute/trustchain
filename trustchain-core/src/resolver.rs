@@ -13,7 +13,7 @@ use tokio::runtime::Runtime;
 use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
 /// An error relating to Trustchain resolution.
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug)]
 pub enum ResolverError {
     /// Controller is already present in DID document.
     #[error("Controller is already present in DID document.")]
@@ -36,6 +36,9 @@ pub enum ResolverError {
     /// DID is not found.
     #[error("DID: {0} is not found.")]
     DIDNotFound(String),
+    /// General resolver error with resolution metadata.
+    #[error("Resolver error with resolution metadata.")]
+    FailureWithMetadata(ResolutionMetadata),
 }
 
 /// Type for resolver result.
@@ -217,6 +220,10 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     return Err(ResolverError::MultipleTrustchainProofService);
                 } else {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
+                    let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
+                    if did_res_meta_error == eof_err_msg {
+                        eprintln!("HINT: If using HTTP for resolution, ensure a valid client is in use.");
+                    }
                     panic!();
                 }
             } else {
@@ -498,11 +505,12 @@ mod tests {
 
         // Attempt to add the controller.
         let result = resolver.add_controller(did_doc, &controller_did);
-        let expected: Result<Document, ResolverError> =
-            Err(ResolverError::ControllerAlreadyPresent);
 
         // Confirm error.
-        assert_eq!(result, expected);
+        assert!(matches!(
+            result,
+            Err(ResolverError::ControllerAlreadyPresent)
+        ));
     }
 
     #[test]
@@ -593,10 +601,10 @@ mod tests {
         let result = resolver.get_proof_service(&did_doc);
 
         // Expect an error due to the presence of multiple proof services.
-        let expected: Result<&Service, ResolverError> =
-            Err(ResolverError::MultipleTrustchainProofService);
-
-        assert_eq!(result, expected);
+        assert!(matches!(
+            result,
+            Err(ResolverError::MultipleTrustchainProofService)
+        ));
     }
 
     #[test]
@@ -615,11 +623,11 @@ mod tests {
 
         let result = resolver.get_proof_service(&did_doc);
 
-        // Expect an error due to the absence of any proof services.
-        let expected: Result<&Service, ResolverError> =
-            Err(ResolverError::NoTrustchainProofService);
-
-        assert_eq!(result, expected);
+        // // Expect an error due to the absence of any proof services.
+        assert!(matches!(
+            result,
+            Err(ResolverError::NoTrustchainProofService)
+        ));
     }
 
     #[test]
@@ -639,10 +647,10 @@ mod tests {
         let result = resolver.get_proof_service(&did_doc);
 
         // Expect an error due to the absence of any proof services.
-        let expected: Result<&Service, ResolverError> =
-            Err(ResolverError::NoTrustchainProofService);
-
-        assert_eq!(result, expected);
+        assert!(matches!(
+            result,
+            Err(ResolverError::NoTrustchainProofService)
+        ));
     }
 
     #[test]
@@ -845,9 +853,9 @@ mod tests {
         );
 
         // Check for the correct error.
-        match output {
-            Err(e) => assert_eq!(e, ResolverError::MultipleTrustchainProofService),
-            _ => panic!(),
-        }
+        assert!(matches!(
+            output,
+            Err(ResolverError::MultipleTrustchainProofService)
+        ));
     }
 }
