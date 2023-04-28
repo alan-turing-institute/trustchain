@@ -68,17 +68,15 @@ async fn not_found() {
 
 #[tokio::test]
 async fn resolve_did() {
-    let expected_body = TEST_ROOT_PLUS_2_RESOLVED;
+    let expected = serde_json::from_str::<ResolutionResult>(TEST_ROOT_PLUS_2_RESOLVED).unwrap();
     let (base, shutdown) = serve(&ServerConfig::default());
     let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
-    let target = serde_json::from_str::<ResolutionResult>(
+    let actual = serde_json::from_str::<ResolutionResult>(
         &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
     )
     .unwrap();
-    let expected = serde_json::from_str::<ResolutionResult>(expected_body).unwrap();
-    // TODO: consider whether exact form of string is required to match
     assert_eq!(
-        canonicalize(&target).unwrap(),
+        canonicalize(&actual).unwrap(),
         canonicalize(&expected).unwrap()
     );
     shutdown();
