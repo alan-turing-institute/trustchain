@@ -438,7 +438,7 @@ mod tests {
 
         // Call add_controller on the Resolver to get the result.
         let result = resolver
-            .add_controller(did_doc, &controller_did)
+            .add_controller(did_doc, controller_did)
             .expect("Different Controller already present.");
 
         // Check there *is* a controller field in the resulting DID document.
@@ -474,7 +474,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Attempt to add the controller.
-        let result = resolver.add_controller(did_doc, &controller_did);
+        let result = resolver.add_controller(did_doc, controller_did);
 
         // Confirm error.
         assert!(matches!(
@@ -513,7 +513,7 @@ mod tests {
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Check that precisely one service is present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 1 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 1_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -538,7 +538,7 @@ mod tests {
             .expect("Document failed to load.");
 
         // Check that two services are present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 2_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -563,7 +563,7 @@ mod tests {
             .expect("Document failed to load.");
 
         // Check that two services are present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 2_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -639,7 +639,7 @@ mod tests {
 
         // Get the controller DID from the proof service.
         let controller = resolver
-            .get_from_proof_service(&service, "controller")
+            .get_from_proof_service(service, "controller")
             .unwrap();
 
         // Check the controller DID matches the expected value.
@@ -723,7 +723,7 @@ mod tests {
         // Get the controller from the proof service property in the Sidetree-resolved DID document.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
         let controller = resolver
-            .get_from_proof_service(&proof_service, "controller")
+            .get_from_proof_service(proof_service, "controller")
             .unwrap();
 
         // Transform the DID document by resolving into Trustchain format.
@@ -769,11 +769,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call function and get output result type
-        let output = resolver.transform_as_result(
-            input_res_meta.clone(),
-            input_doc.clone(),
-            input_doc_meta.clone(),
-        );
+        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Result should be Ok variant with returned data
         if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
@@ -816,11 +812,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call the resolve function and get output Result type.
-        let output = resolver.transform_as_result(
-            input_res_meta.clone(),
-            input_doc.clone(),
-            input_doc_meta.clone(),
-        );
+        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Check for the correct error.
         assert!(matches!(
