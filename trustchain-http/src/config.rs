@@ -1,4 +1,6 @@
 use std::{net::IpAddr, str::FromStr};
+
+use trustchain_ion::{verifier::IONVerifier, IONResolver};
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
 
@@ -18,6 +20,11 @@ pub struct ServerConfig {
     #[arg(default_value_t = DEFAULT_PORT)]
     pub port: u16,
 }
+
+// TODO: consider global app state with verifier
+// pub struct AppState {
+//     pub verifier: IONVerifier<IONResolver>,
+// }
 
 impl std::fmt::Display for ServerConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

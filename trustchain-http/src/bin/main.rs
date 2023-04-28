@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use axum::{routing::get, routing::post, Router};
 use clap::Parser;
 use log::info;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
@@ -19,6 +19,11 @@ async fn main() -> std::io::Result<()> {
 
     // Get config from CLI
     let config: ServerConfig = Parser::parse();
+
+    // TODO: consider global app state
+    // let mut app_state = AppState {
+    //     verifier: IONVerifier::new(get_ion_resolver("http://localhost:3000/")),
+    // };
 
     // Print config
     info!("{}", config);
@@ -53,6 +58,7 @@ async fn main() -> std::io::Result<()> {
             get(resolver::TrustchainHTTPHandler::get_did_chain),
         )
         .with_state(config.clone());
+    // .with_state(app_state);
 
     // Address
     let addr = format!("{}:{}", config.host, config.port).parse().unwrap();

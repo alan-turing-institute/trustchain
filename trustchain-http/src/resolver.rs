@@ -19,11 +19,11 @@ use trustchain_core::{
 };
 
 use crate::data::TEST_ROOT_PLUS_2_RESOLVED;
+use crate::errors::TrustchainHTTPError;
 
 use async_trait::async_trait;
 use did_ion::{sidetree::SidetreeClient, ION};
-use thiserror::Error;
-use trustchain_core::verifier::Verifier;
+use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::verifier::IONVerifier;
 use trustchain_ion::{get_ion_resolver, IONResolver};
 
@@ -41,17 +41,15 @@ impl EmptyResponse for ResolutionResult {
     }
 }
 
-// TODO: refine error variants and move to seperate module
-#[derive(Error, Debug)]
-pub enum TrustchainHTTPError {
-    #[error("Some internal error.")]
-    InternalError,
-}
-
 #[async_trait]
 pub trait TrustchainHTTP {
     /// Resolves a DID chain, will this include the bundle?
-    async fn resolve_chain(did: &str) -> DIDChainResolutionResult;
+    // TODO: return as Result<DIDChainResolutionResult, TrustchainHTTPError>
+    async fn resolve_chain(
+        did: &str,
+        // verifier: &mut IONVerifier<IONResolver>,
+        root_event_time: Timestamp,
+    ) -> DIDChainResolutionResult;
 
     /// Resolves a DID chain, will this include the bundle?
     async fn resolve_did(did: &str) -> Result<ResolutionResult, TrustchainHTTPError>;
@@ -64,7 +62,11 @@ pub struct TrustchainHTTPHandler {}
 
 #[async_trait]
 impl TrustchainHTTP for TrustchainHTTPHandler {
-    async fn resolve_chain(did: &str) -> DIDChainResolutionResult {
+    async fn resolve_chain(
+        did: &str,
+        // verifier: &mut IONVerifier<IONResolver>,
+        root_event_time: Timestamp,
+    ) -> DIDChainResolutionResult {
         debug!("Resolving chain...");
 
         // Trustchain verify the issued credential
@@ -72,7 +74,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 
         debug!("Created verifier...");
         // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
-        let result = verifier.verify(did, core_config().root_event_time).await;
+        let result = verifier.verify(did, root_event_time).await;
 
         debug!("Verified did...");
         debug!("{:?}", result);
@@ -93,11 +95,13 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         let result = resolver
             .resolve_as_result(did)
             .await
-            .map_err(|_| TrustchainHTTPError::InternalError)?;
+            .map_err(|_| TrustchainHTTPError::InternalError(StatusCode::INTERNAL_SERVER_ERROR))?;
         debug!("Resolved result");
         match result {
             (_, Some(doc), Some(doc_meta)) => Ok(Self::to_resolution_result(doc, doc_meta)),
-            _ => Err(TrustchainHTTPError::InternalError),
+            _ => Err(TrustchainHTTPError::InternalError(
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )),
         }
     }
 
@@ -108,20 +112,29 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 
 impl TrustchainHTTPHandler {
     /// Handles get request for DID chain resolution.
-    pub async fn get_did_chain(Path(did): Path<String>) -> impl IntoResponse {
+    pub async fn get_did_chain(
+        Path(did): Path<String>,
+        // TODO: consider making the verifier available from a shared app state to make use of cache
+        // https://docs.rs/axum/latest/axum/index.html#sharing-state-with-handlers
+        // State(mut app_state): State<AppState>,
+    ) -> impl IntoResponse {
         debug!("Received DID to get trustchain: {}", did.as_str());
-        let chain_resolution = TrustchainHTTPHandler::resolve_chain(&did).await;
+        // TODO: update the endpoint to take form data with the rootevent time from a POST?
+        let chain_resolution = TrustchainHTTPHandler::resolve_chain(
+            &did,
+            // TODO: a shared verifier would be passed here to the trait API
+            // &mut app_state.verifier,
+            core_config().root_event_time,
+        )
+        .await;
         (StatusCode::OK, Json(chain_resolution))
     }
     /// Handles get request for DID resolve API.
     pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
         debug!("Received DID to resolve: {}", did.as_str());
         match TrustchainHTTPHandler::resolve_did(did.as_str()).await {
-            Ok(resolved_json) => (StatusCode::OK, Json(resolved_json)),
-            Err(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ResolutionResult::empty_response()),
-            ),
+            Ok(resolved_json) => Ok((StatusCode::OK, Json(resolved_json))),
+            Err(e @ TrustchainHTTPError::InternalError(code)) => Err((code, Html(e.to_string()))),
         }
     }
 
