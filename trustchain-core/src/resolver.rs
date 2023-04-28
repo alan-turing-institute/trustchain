@@ -262,12 +262,8 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Removes Trustchain proof service from passed document.
+    /// Removes Trustchain proof service from passed document if it exists.
     fn remove_proof_service(&self, mut doc: Document) -> Document {
-        // Check if the Trustchain proof service exists in document
-        // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
-        // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
-        // let mut doc = doc_with_proof.clone();
         if doc.service.is_some() {
             let idx_result = self.get_proof_idx(&doc);
             if let Ok(idx) = idx_result {
@@ -277,8 +273,6 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     doc.service = None;
                 }
             }
-            // Currently just return doc as it is if there is either zero or multiple
-            // proof services
         }
         doc
     }
