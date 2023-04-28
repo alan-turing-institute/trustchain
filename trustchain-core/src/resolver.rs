@@ -198,26 +198,26 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         self.runtime.block_on(async {
             // sidetree resolved resolution metadata, document and document metadata
             let (did_res_meta, did_doc, did_doc_meta) =
-                block_on(self.resolve(&did.to_string(), &ResolutionInputMetadata::default()));
+                block_on(self.resolve(did, &ResolutionInputMetadata::default()));
 
             // Handle error cases based on string content of the resolution metadata
             if let Some(did_res_meta_error) = &did_res_meta.error {
                 if did_res_meta_error
                     .starts_with("Error sending HTTP request: error sending request for url")
                 {
-                    return Err(ResolverError::ConnectionFailure);
+                    Err(ResolverError::ConnectionFailure)
                 } else if did_res_meta_error == "invalidDid" {
-                    return Err(ResolverError::NonExistentDID(did.to_string()));
+                    Err(ResolverError::NonExistentDID(did.to_string()))
                 } else if did_res_meta_error == "notFound" {
-                    return Err(ResolverError::DIDNotFound(did.to_string()));
+                    Err(ResolverError::DIDNotFound(did.to_string()))
                 } else if did_res_meta_error
                     == "Failed to convert to Truschain document and metadata."
                 {
-                    return Err(ResolverError::FailedToConvertToTrustchain);
+                    Err(ResolverError::FailedToConvertToTrustchain)
                 } else if did_res_meta_error
                     == "Multiple Trustchain proof service entries are present."
                 {
-                    return Err(ResolverError::MultipleTrustchainProofService);
+                    Err(ResolverError::MultipleTrustchainProofService)
                 } else {
                     eprintln!("Unhandled error message: {}", did_res_meta_error);
                     let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
@@ -227,7 +227,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
                     panic!();
                 }
             } else {
-                return Ok((did_res_meta, did_doc, did_doc_meta));
+                Ok((did_res_meta, did_doc, did_doc_meta))
             }
         })
     }
@@ -262,25 +262,16 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Removes Trustchain proof service from passed document.
+    /// Removes Trustchain proof service from passed document if it exists.
     fn remove_proof_service(&self, mut doc: Document) -> Document {
-        // Check if the Trustchain proof service exists in document
-        // https://docs.rs/ssi/latest/ssi/did/struct.Document.html#method.select_service
-        // https://docs.rs/ssi/latest/src/ssi/did.rs.html#1251-1262
-        // let mut doc = doc_with_proof.clone();
         if doc.service.is_some() {
             let idx_result = self.get_proof_idx(&doc);
-            match idx_result {
-                Ok(idx) => {
-                    let services = doc.service.as_mut().unwrap();
-                    services.remove(idx);
-                    if services.len() == 0 {
-                        doc.service = None;
-                    }
+            if let Ok(idx) = idx_result {
+                let services = doc.service.as_mut().unwrap();
+                services.remove(idx);
+                if services.is_empty() {
+                    doc.service = None;
                 }
-                // Currently just return doc as it is if there is either zero or multiple
-                // proof services
-                Err(_) => (),
             }
         }
         doc
@@ -311,37 +302,32 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         let proof_service = self.get_proof_service(doc);
 
         // Handle result
-        match proof_service {
-            // If there is exactly one proof service, add it to metadata
-            Ok(proof_service) => {
-                // Get proof value and controller (uDID)
-                let proof_value = self.get_from_proof_service(proof_service, "proofValue");
-                let controller = self.get_from_proof_service(proof_service, "controller");
-                // If not None, add to new HashMap
-                if let (Some(property_set), Some(proof_value), Some(controller)) =
-                    (doc_meta.property_set.as_mut(), proof_value, controller)
-                {
-                    // Make new HashMap; add keys and values
-                    let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
-                    proof_hash_map
-                        .insert(String::from("id"), Metadata::String(controller.to_owned()));
-                    proof_hash_map.insert(
-                        String::from("type"),
-                        Metadata::String("JsonWebSignature2020".to_string()),
-                    );
-                    proof_hash_map.insert(
-                        String::from("proofValue"),
-                        Metadata::String(proof_value.to_owned()),
-                    );
+        if let Ok(proof_service) = proof_service {
+            // Get proof value and controller (uDID)
+            let proof_value = self.get_from_proof_service(proof_service, "proofValue");
+            let controller = self.get_from_proof_service(proof_service, "controller");
+            // If not None, add to new HashMap
+            if let (Some(property_set), Some(proof_value), Some(controller)) =
+                (doc_meta.property_set.as_mut(), proof_value, controller)
+            {
+                // Make new HashMap; add keys and values
+                let mut proof_hash_map: HashMap<String, Metadata> = HashMap::new();
+                proof_hash_map.insert(String::from("id"), Metadata::String(controller.to_owned()));
+                proof_hash_map.insert(
+                    String::from("type"),
+                    Metadata::String("JsonWebSignature2020".to_string()),
+                );
+                proof_hash_map.insert(
+                    String::from("proofValue"),
+                    Metadata::String(proof_value.to_owned()),
+                );
 
-                    // Insert new HashMap of Metadata::Map()
-                    property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
-                    return doc_meta;
-                }
+                // Insert new HashMap of Metadata::Map()
+                property_set.insert(String::from("proof"), Metadata::Map(proof_hash_map));
+                return doc_meta;
             }
-            // If there are zero or multiple proof services, do nothing
-            Err(_) => (),
         }
+        // If there are zero or multiple proof services, do nothing
         doc_meta
     }
 
@@ -372,8 +358,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         doc_meta: DocumentMetadata,
     ) -> DocumentMetadata {
         // Add proof property to the DID Document Metadata (if it exists).
-        let doc_meta = self.add_proof(doc, doc_meta);
-        doc_meta
+        self.add_proof(doc, doc_meta)
     }
 
     /// Converts a DID Document from a resolved DID to the Trustchain resolved format.
@@ -391,9 +376,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
             .expect("Controller already present in document.");
 
         // Remove the proof service from the document.
-        let doc_clone = self.remove_proof_service(doc_clone);
-
-        doc_clone
+        self.remove_proof_service(doc_clone)
     }
 
     /// Converts DID Document + Metadata to the Trustchain resolved format.
@@ -412,7 +395,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         };
 
         if let Ok(service) = service {
-            let controller_did = self.get_from_proof_service(&service, "controller");
+            let controller_did = self.get_from_proof_service(service, "controller");
 
             // Convert doc
             let doc = self.transform_doc(&sidetree_doc, controller_did.unwrap().as_str());

@@ -2,7 +2,7 @@
 name = "trustchain-ion"
 version = "0.1.0"
 authors = ["Trustchain Devs"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -11,64 +11,33 @@ crate-type = ["cdylib", "rlib"]
 name = "trustchain-cli"
 path = "src/bin/main.rs"
 
-[features]
-default = ["console_error_panic_hook"]
-
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
-
-
-
-wasm-bindgen = "0.2.63"
-
-# The `console_error_panic_hook` crate provides better debugging of panics by
-# logging them with `console.error`. This is great for development, but requires
-# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
-# code size when deploying.
-console_error_panic_hook = { version = "0.1.6", optional = true }
-
-# `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
-# compared to the default allocator's ~10K. It is slower than the default
-# allocator, however.
-#
-# Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
-# wee_alloc = { version = "0.4.5", optional = true }
-
+actix-rt = "2.7.0"
+async-trait = "0.1"
+bitcoin = "0.29.2"
+bitcoincore-rpc = "0.16.0"
+canonical_json = "0.4.0"
 clap = { version = "~4.0", features=["derive", "cargo"] }
 did-ion="0.1.0"
-tokio = {version = "1.20.1", features = ["full"]}
+flate2 = "1.0.24"
 futures = "0.3.21"
-async-trait = "0.1"
-ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
-serde_json = "1.0"
-canonical_json = "0.4.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_jcs = "0.1.0"
-thiserror = "1.0"
-mongodb = "2.3.1"
-lazy_static="1.4.0"
-toml="0.7.2"
-actix-rt = "2.7.0"
+hex = "0.4.3"
 ipfs-api-backend-actix = "0.6"
 ipfs-api = "0.16.0"
 ipfs-hasher = "0.13.0"
-flate2 = "1.0.24"
-bitcoin = "0.29.2"
-bitcoincore-rpc = "0.16.0"
-sha256 = "1.1.1"
-hex = "0.4.3"
+lazy_static="1.4.0"
+mongodb = "2.3.1"
 reqwest = "0.11"
-
-[target.'cfg(target_os = "android")'.dependencies.reqwest]
-version = "0.11"
-features = ["json", "native-tls-vendored"]
-
+serde = { version = "1.0", features = ["derive"] }
+serde_jcs = "0.1.0"
+serde_json = "1.0"
+sha256 = "1.1.1"
+ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
+thiserror = "1.0"
+toml="0.7.2"
+tokio = {version = "1.20.1", features = ["full"]}
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.13"
 glob = "0.3"
 mockall = "0.11.2"
-# wasm-pack profile option not used currently
-# [profile.release]
-# # Tell `rustc` to optimize for small code size.
-# opt-level = "s"
