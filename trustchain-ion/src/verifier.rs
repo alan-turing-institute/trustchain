@@ -51,7 +51,6 @@ pub struct VerificationBundle {
 }
 
 impl VerificationBundle {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         did_doc: Document,
         did_doc_meta: DocumentMetadata,
