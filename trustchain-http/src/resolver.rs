@@ -1,5 +1,5 @@
-use crate::config::AppState;
 use crate::errors::TrustchainHTTPError;
+use crate::state::AppState;
 use crate::HTTPVerifier;
 use async_trait::async_trait;
 use axum::extract::{Path, State};

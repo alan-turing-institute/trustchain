@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use crate::config::{AppState, ServerConfig};
+use crate::config::ServerConfig;
 use crate::qrcode::str_to_qr_code_html;
+use crate::state::AppState;
 use crate::EXAMPLE_VP_REQUEST;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;

@@ -3,8 +3,7 @@ use clap::Parser;
 use log::info;
 use std::sync::Arc;
 use trustchain_http::{
-    config::{AppState, ServerConfig},
-    handlers, issuer, resolver, verifier,
+    config::ServerConfig, handlers, issuer, resolver, state::AppState, verifier,
 };
 
 // Process sketch:

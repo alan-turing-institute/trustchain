@@ -3,8 +3,8 @@ use reqwest;
 use ssi::did_resolve::ResolutionResult;
 use std::sync::Arc;
 use trustchain_core::utils::canonicalize;
-use trustchain_http::config::AppState;
 use trustchain_http::data::TEST_ROOT_PLUS_2_RESOLVED;
+use trustchain_http::state::AppState;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 
 // Setup based on https://github.com/spruceid/didkit/blob/main/http/tests/main.rs

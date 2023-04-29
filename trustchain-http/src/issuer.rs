@@ -1,9 +1,9 @@
-use crate::config::AppState;
 use crate::config::ServerConfig;
 use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
 use crate::resolver::DIDChainResolutionResult;
 use crate::resolver::TrustchainHTTPHandler;
+use crate::state::AppState;
 use crate::vc::generate_vc;
 use crate::EXAMPLE_VP_REQUEST;
 use axum::extract::{Path, State};
