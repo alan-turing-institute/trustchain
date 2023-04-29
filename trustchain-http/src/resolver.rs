@@ -20,20 +20,6 @@ use trustchain_core::{
 };
 use trustchain_ion::IONResolver;
 
-// TODO: Move to utils, add doc comment
-trait EmptyResponse {
-    fn empty_response() -> Self;
-}
-
-impl EmptyResponse for ResolutionResult {
-    fn empty_response() -> Self {
-        Self {
-            context: None,
-            ..Default::default()
-        }
-    }
-}
-
 #[async_trait]
 pub trait TrustchainHTTP {
     /// Resolves a DID chain, will this include the bundle?
