@@ -1,5 +1,4 @@
 use axum::{routing::get, Router};
-use reqwest;
 use ssi::did_resolve::ResolutionResult;
 use std::sync::Arc;
 use trustchain_core::utils::canonicalize;

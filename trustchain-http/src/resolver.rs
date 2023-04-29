@@ -18,7 +18,7 @@ use trustchain_core::{
     chain::{Chain, DIDChain},
     config::core_config,
 };
-use trustchain_ion::get_ion_resolver;
+use trustchain_ion::IONResolver;
 
 // TODO: Move to utils, add doc comment
 trait EmptyResponse {
@@ -45,7 +45,10 @@ pub trait TrustchainHTTP {
     ) -> DIDChainResolutionResult;
 
     /// Resolves a DID chain, will this include the bundle?
-    async fn resolve_did(did: &str) -> Result<ResolutionResult, TrustchainHTTPError>;
+    async fn resolve_did(
+        did: &str,
+        resolver: &IONResolver,
+    ) -> Result<ResolutionResult, TrustchainHTTPError>;
 
     // TODO: should we include a separate method to return verification bundle?
     fn resolve_bundle(did: &str);
@@ -73,10 +76,11 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         DIDChainResolutionResult::new(&chain)
     }
 
-    async fn resolve_did(did: &str) -> Result<ResolutionResult, TrustchainHTTPError> {
+    async fn resolve_did(
+        did: &str,
+        resolver: &IONResolver,
+    ) -> Result<ResolutionResult, TrustchainHTTPError> {
         debug!("Resolving...");
-        let resolver = get_ion_resolver("http://localhost:3000/");
-        debug!("Created resolver");
         let result = resolver
             .resolve_as_result(did)
             .await
@@ -113,9 +117,14 @@ impl TrustchainHTTPHandler {
         (StatusCode::OK, Json(chain_resolution))
     }
     /// Handles get request for DID resolve API.
-    pub async fn get_did_resolver(Path(did): Path<String>) -> impl IntoResponse {
+    pub async fn get_did_resolver(
+        Path(did): Path<String>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
         debug!("Received DID to resolve: {}", did.as_str());
-        match TrustchainHTTPHandler::resolve_did(did.as_str()).await {
+        let verifier = app_state.verifier.read().await;
+        let resolver = verifier.resolver();
+        match TrustchainHTTPHandler::resolve_did(did.as_str(), resolver).await {
             Ok(resolved_json) => Ok((StatusCode::OK, Json(resolved_json))),
             Err(e @ TrustchainHTTPError::InternalError(code)) => Err((code, Html(e.to_string()))),
         }
@@ -156,15 +165,17 @@ impl DIDChainResolutionResult {
 mod tests {
     use trustchain_core::utils::canonicalize;
 
-    use crate::data::TEST_ROOT_PLUS_2_RESOLVED;
+    use crate::{config::ServerConfig, data::TEST_ROOT_PLUS_2_RESOLVED};
 
     use super::*;
 
     #[tokio::test]
     async fn test_get_did_resolver() {
-        let response = TrustchainHTTPHandler::get_did_resolver(Path(
-            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
-        ))
+        let shared_state = Arc::new(AppState::new(&ServerConfig::default()));
+        let response = TrustchainHTTPHandler::get_did_resolver(
+            Path("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            State(shared_state),
+        )
         .await
         .into_response();
         let status = response.status();
