@@ -42,7 +42,7 @@ pub trait TrustchainHTTP {
         did: &str,
         verifier: &mut HTTPVerifier,
         root_event_time: Timestamp,
-    ) -> DIDChainResolutionResult;
+    ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
     /// Resolves a DID chain, will this include the bundle?
     async fn resolve_did(
@@ -62,18 +62,13 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         did: &str,
         verifier: &mut HTTPVerifier,
         root_event_time: Timestamp,
-    ) -> DIDChainResolutionResult {
+    ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
         // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
-        let result = verifier.verify(did, root_event_time).await;
+        let chain = verifier.verify(did, root_event_time).await?;
         debug!("Verified did...");
-        debug!("{:?}", result);
-        let chain = match result {
-            Ok(chain) => chain,
-            _ => panic!(),
-        };
-        // Convert DID chain to vec of ResolutionResults
-        DIDChainResolutionResult::new(&chain)
+        debug!("{:?}", chain);
+        Ok(DIDChainResolutionResult::new(&chain))
     }
 
     async fn resolve_did(
@@ -81,16 +76,13 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         resolver: &IONResolver,
     ) -> Result<ResolutionResult, TrustchainHTTPError> {
         debug!("Resolving...");
-        let result = resolver
-            .resolve_as_result(did)
-            .await
-            .map_err(|_| TrustchainHTTPError::InternalError(StatusCode::INTERNAL_SERVER_ERROR))?;
-        debug!("Resolved result");
+        let result = resolver.resolve_as_result(did).await?;
+
+        debug!("Resolved result: {:?}", result);
         match result {
             (_, Some(doc), Some(doc_meta)) => Ok(Self::to_resolution_result(doc, doc_meta)),
-            _ => Err(TrustchainHTTPError::InternalError(
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )),
+            // TODO: convert to resolver error
+            _ => Err(TrustchainHTTPError::InternalError),
         }
     }
 
@@ -107,14 +99,14 @@ impl TrustchainHTTPHandler {
     ) -> impl IntoResponse {
         debug!("Received DID to get trustchain: {}", did.as_str());
         let mut verifier = app_state.verifier.write().await;
-        let chain_resolution = TrustchainHTTPHandler::resolve_chain(
+        TrustchainHTTPHandler::resolve_chain(
             &did,
             &mut verifier,
             // TODO: update the endpoint to take form data with the rootevent time from a POST?
             core_config().root_event_time,
         )
-        .await;
-        (StatusCode::OK, Json(chain_resolution))
+        .await
+        .map(|chain| (StatusCode::OK, Json(chain)))
     }
     /// Handles get request for DID resolve API.
     pub async fn get_did_resolver(
@@ -123,11 +115,9 @@ impl TrustchainHTTPHandler {
     ) -> impl IntoResponse {
         debug!("Received DID to resolve: {}", did.as_str());
         let verifier = app_state.verifier.read().await;
-        let resolver = verifier.resolver();
-        match TrustchainHTTPHandler::resolve_did(did.as_str(), resolver).await {
-            Ok(resolved_json) => Ok((StatusCode::OK, Json(resolved_json))),
-            Err(e @ TrustchainHTTPError::InternalError(code)) => Err((code, Html(e.to_string()))),
-        }
+        TrustchainHTTPHandler::resolve_did(did.as_str(), verifier.resolver())
+            .await
+            .map(|resolved_json| (StatusCode::OK, Json(resolved_json)))
     }
 
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
