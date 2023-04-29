@@ -1,8 +1,9 @@
-use axum::http::request;
 use axum::{routing::get, Router};
 use reqwest;
 use ssi::did_resolve::ResolutionResult;
+use std::sync::Arc;
 use trustchain_core::utils::canonicalize;
+use trustchain_http::config::AppState;
 use trustchain_http::data::TEST_ROOT_PLUS_2_RESOLVED;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 
@@ -10,6 +11,7 @@ use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier
 
 // TODO: Wrap and import this for reuse here and in main - add get_app to lib.rs
 fn serve(config: &ServerConfig) -> (String, impl FnOnce()) {
+    let shared_state = Arc::new(AppState::new(config));
     let app = Router::new()
         .route("/", get(handlers::index))
         .route(
@@ -38,7 +40,7 @@ fn serve(config: &ServerConfig) -> (String, impl FnOnce()) {
             "/did/chain/:id",
             get(resolver::TrustchainHTTPHandler::get_did_chain),
         )
-        .with_state(config.to_owned());
+        .with_state(shared_state);
 
     let addr = ([127, 0, 0, 1], 0).into();
     let server = axum::Server::bind(&addr).serve(app.into_make_service());

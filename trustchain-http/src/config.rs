@@ -1,6 +1,9 @@
+use crate::HTTPVerifier;
 use std::{net::IpAddr, str::FromStr};
+use tokio::sync::Mutex;
+use trustchain_ion::get_ion_resolver;
 
-use trustchain_ion::{verifier::IONVerifier, IONResolver};
+const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
 
@@ -21,11 +24,6 @@ pub struct ServerConfig {
     pub port: u16,
 }
 
-// TODO: consider global app state with verifier
-// pub struct AppState {
-//     pub verifier: IONVerifier<IONResolver>,
-// }
-
 impl std::fmt::Display for ServerConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -43,6 +41,24 @@ impl Default for ServerConfig {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
             host_reference: IpAddr::from_str(DEFAULT_HOST).unwrap(),
             port: DEFAULT_PORT,
+        }
+    }
+}
+
+pub struct AppState {
+    pub host_reference: IpAddr,
+    pub port: u16,
+    pub verifier: Mutex<HTTPVerifier>,
+}
+
+impl AppState {
+    pub fn new(config: &ServerConfig) -> Self {
+        Self {
+            host_reference: config.host_reference,
+            port: config.port,
+            verifier: Mutex::new(HTTPVerifier::new(get_ion_resolver(
+                DEFAULT_VERIFIER_ENDPOINT,
+            ))),
         }
     }
 }

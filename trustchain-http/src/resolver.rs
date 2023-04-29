@@ -1,31 +1,24 @@
+use crate::config::AppState;
+use crate::errors::TrustchainHTTPError;
+use crate::HTTPVerifier;
+use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
-use base64::engine::Config;
-use core::time;
-use log::{debug, info, log, Level};
+use log::{debug, info, log};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string, to_string_pretty};
 use ssi::{
     did::Document,
     did_resolve::{DocumentMetadata, ResolutionResult},
 };
-use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
+use std::sync::Arc;
+use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_core::{
     chain::{Chain, DIDChain},
     config::core_config,
-    utils::canonicalize,
 };
-
-use crate::data::TEST_ROOT_PLUS_2_RESOLVED;
-use crate::errors::TrustchainHTTPError;
-
-use async_trait::async_trait;
-use did_ion::{sidetree::SidetreeClient, ION};
-use trustchain_core::verifier::{Timestamp, Verifier};
-use trustchain_ion::verifier::IONVerifier;
-use trustchain_ion::{get_ion_resolver, IONResolver};
+use trustchain_ion::get_ion_resolver;
 
 // TODO: Move to utils, add doc comment
 trait EmptyResponse {
@@ -47,7 +40,7 @@ pub trait TrustchainHTTP {
     // TODO: return as Result<DIDChainResolutionResult, TrustchainHTTPError>
     async fn resolve_chain(
         did: &str,
-        // verifier: &mut IONVerifier<IONResolver>,
+        verifier: &mut HTTPVerifier,
         root_event_time: Timestamp,
     ) -> DIDChainResolutionResult;
 
@@ -64,18 +57,12 @@ pub struct TrustchainHTTPHandler {}
 impl TrustchainHTTP for TrustchainHTTPHandler {
     async fn resolve_chain(
         did: &str,
-        // verifier: &mut IONVerifier<IONResolver>,
+        verifier: &mut HTTPVerifier,
         root_event_time: Timestamp,
     ) -> DIDChainResolutionResult {
-        debug!("Resolving chain...");
-
-        // Trustchain verify the issued credential
-        let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
-
-        debug!("Created verifier...");
+        debug!("Verifying...");
         // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
         let result = verifier.verify(did, root_event_time).await;
-
         debug!("Verified did...");
         debug!("{:?}", result);
         let chain = match result {
@@ -88,9 +75,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 
     async fn resolve_did(did: &str) -> Result<ResolutionResult, TrustchainHTTPError> {
         debug!("Resolving...");
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         debug!("Created resolver");
         let result = resolver
             .resolve_as_result(did)
@@ -114,16 +99,14 @@ impl TrustchainHTTPHandler {
     /// Handles get request for DID chain resolution.
     pub async fn get_did_chain(
         Path(did): Path<String>,
-        // TODO: consider making the verifier available from a shared app state to make use of cache
-        // https://docs.rs/axum/latest/axum/index.html#sharing-state-with-handlers
-        // State(mut app_state): State<AppState>,
+        State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         debug!("Received DID to get trustchain: {}", did.as_str());
-        // TODO: update the endpoint to take form data with the rootevent time from a POST?
+        let mut verifier = app_state.verifier.lock().await;
         let chain_resolution = TrustchainHTTPHandler::resolve_chain(
             &did,
-            // TODO: a shared verifier would be passed here to the trait API
-            // &mut app_state.verifier,
+            &mut verifier,
+            // TODO: update the endpoint to take form data with the rootevent time from a POST?
             core_config().root_event_time,
         )
         .await;

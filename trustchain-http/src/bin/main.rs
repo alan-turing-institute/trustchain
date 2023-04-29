@@ -1,7 +1,11 @@
-use axum::{routing::get, routing::post, Router};
+use axum::{routing::get, Router};
 use clap::Parser;
 use log::info;
-use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
+use std::sync::Arc;
+use trustchain_http::{
+    config::{AppState, ServerConfig},
+    handlers, issuer, resolver, verifier,
+};
 
 // Process sketch:
 // 1. User visits "/issuer" page, and is displayed a QR code of a URL (with UUID) to send GET
@@ -20,10 +24,8 @@ async fn main() -> std::io::Result<()> {
     // Get config from CLI
     let config: ServerConfig = Parser::parse();
 
-    // TODO: consider global app state
-    // let mut app_state = AppState {
-    //     verifier: IONVerifier::new(get_ion_resolver("http://localhost:3000/")),
-    // };
+    // Create shared state
+    let shared_state = Arc::new(AppState::new(&config));
 
     // Print config
     info!("{}", config);
@@ -57,8 +59,7 @@ async fn main() -> std::io::Result<()> {
             "/did/chain/:id",
             get(resolver::TrustchainHTTPHandler::get_did_chain),
         )
-        .with_state(config.clone());
-    // .with_state(app_state);
+        .with_state(shared_state);
 
     // Address
     let addr = format!("{}:{}", config.host, config.port).parse().unwrap();

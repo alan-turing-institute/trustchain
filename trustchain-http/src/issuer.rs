@@ -1,3 +1,4 @@
+use crate::config::AppState;
 use crate::config::ServerConfig;
 use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
@@ -16,6 +17,7 @@ use serde_json::to_string_pretty;
 use ssi::did::Document;
 use ssi::did_resolve::{DocumentMetadata, ResolutionResult};
 use ssi::vc::Credential;
+use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
 use uuid::Uuid;
@@ -58,7 +60,7 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 }
 
 impl TrustchainIssuerHTTPHandler {
-    pub async fn get_issuer_qrcode(State(config): State<ServerConfig>) -> Html<String> {
+    pub async fn get_issuer_qrcode(State(config): State<Arc<AppState>>) -> Html<String> {
         // Generate a UUID
         let id = Uuid::new_v4().to_string();
 

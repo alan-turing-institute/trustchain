@@ -1,4 +1,6 @@
-use crate::config::ServerConfig;
+use std::sync::Arc;
+
+use crate::config::{AppState, ServerConfig};
 use crate::qrcode::str_to_qr_code_html;
 use crate::EXAMPLE_VP_REQUEST;
 use axum::extract::{Path, State};
@@ -63,7 +65,7 @@ impl TrustchainVerifierHTTPHandler {
         (StatusCode::OK, "Received!")
     }
 
-    pub async fn get_verifier_qrcode(State(config): State<ServerConfig>) -> Html<String> {
+    pub async fn get_verifier_qrcode(State(config): State<Arc<AppState>>) -> Html<String> {
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "http://{}:{}/vc/verifier",
