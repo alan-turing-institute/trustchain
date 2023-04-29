@@ -102,7 +102,7 @@ impl TrustchainHTTPHandler {
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         debug!("Received DID to get trustchain: {}", did.as_str());
-        let mut verifier = app_state.verifier.lock().await;
+        let mut verifier = app_state.verifier.write().await;
         let chain_resolution = TrustchainHTTPHandler::resolve_chain(
             &did,
             &mut verifier,
