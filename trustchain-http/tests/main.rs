@@ -70,16 +70,13 @@ async fn not_found() {
 
 #[tokio::test]
 async fn resolve_did() {
-    let expected = serde_json::from_str::<ResolutionResult>(TEST_ROOT_PLUS_2_RESOLVED).unwrap();
+    let expected = TEST_ROOT_PLUS_2_RESOLVED;
     let (base, shutdown) = serve(&ServerConfig::default());
     let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
     let actual = serde_json::from_str::<ResolutionResult>(
         &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
     )
     .unwrap();
-    assert_eq!(
-        canonicalize(&actual).unwrap(),
-        canonicalize(&expected).unwrap()
-    );
+    assert_eq!(canonicalize(&actual).unwrap(), expected);
     shutdown();
 }

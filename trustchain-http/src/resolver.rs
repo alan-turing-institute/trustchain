@@ -152,21 +152,33 @@ impl DIDChainResolutionResult {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use trustchain_core::utils::canonicalize;
 
-//     #[tokio::test]
-//     async fn test_get_did_resolver() {
-//         let response = TrustchainHTTPHandler::get_did_resolver(Path("/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()))
-//             .await
-//             .into_response();
+    use crate::data::TEST_ROOT_PLUS_2_RESOLVED;
 
-//         let status = response.status().clone();
-//         let body_str = String::from_utf8(hyper::body::to_bytes(response.into_body()).await.unwrap().to_vec()).unwrap();
+    use super::*;
 
-//         assert_eq!(status, StatusCode::OK);
-
-//         assert_eq!(canonicalize(&body_str).unwrap(), canonicalize(TEST_ROOT_PLUS_2_RESOLVED).unwrap())
-//     }
-// }
+    #[tokio::test]
+    async fn test_get_did_resolver() {
+        let response = TrustchainHTTPHandler::get_did_resolver(Path(
+            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
+        ))
+        .await
+        .into_response();
+        let status = response.status();
+        assert_eq!(status, StatusCode::OK);
+        let body = serde_json::from_str::<ResolutionResult>(
+            &String::from_utf8(
+                hyper::body::to_bytes(response.into_body())
+                    .await
+                    .unwrap()
+                    .to_vec(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(canonicalize(&body).unwrap(), TEST_ROOT_PLUS_2_RESOLVED)
+    }
+}
