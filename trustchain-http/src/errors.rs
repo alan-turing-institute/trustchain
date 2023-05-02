@@ -40,12 +40,12 @@ impl From<VerifierError> for TrustchainHTTPError {
     }
 }
 
-// See axum IntoRespone examples, e.g.:
-// https://github.com/tokio-rs/axum/blob/main/examples/customize-extractor-error/src/derive_from_request.rs
+// See axum IntoRespone example:
+// https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
 
 impl IntoResponse for TrustchainHTTPError {
     fn into_response(self) -> axum::response::Response {
-        // TODO: determin correct status codes for errors
+        // TODO: determine correct status codes for errors
         let (status, err_message) = match self {
             err @ TrustchainHTTPError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())

@@ -60,14 +60,14 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 }
 
 impl TrustchainIssuerHTTPHandler {
-    pub async fn get_issuer_qrcode(State(config): State<Arc<AppState>>) -> Html<String> {
+    pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
         // Generate a UUID
         let id = Uuid::new_v4().to_string();
 
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "http://{}:{}/vc/issuer/{id}",
-            config.host_reference, config.port
+            app_state.config.host_reference, app_state.config.port
         );
 
         // Respond with the QR code as a png embedded in html

@@ -1,6 +1,5 @@
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
-use crate::HTTPVerifier;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -8,32 +7,35 @@ use axum::response::{Html, IntoResponse};
 use axum::Json;
 use log::{debug, info, log};
 use serde::{Deserialize, Serialize};
+use ssi::did_resolve::DIDResolver;
 use ssi::{
     did::Document,
     did_resolve::{DocumentMetadata, ResolutionResult},
 };
 use std::sync::Arc;
+use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_core::{
     chain::{Chain, DIDChain},
     config::core_config,
 };
-use trustchain_ion::IONResolver;
+use trustchain_ion::verifier::IONVerifier;
+
+// TODO: Potentially add IntoResponse impl for DIDChainResolutionResult to simplify return
 
 #[async_trait]
 pub trait TrustchainHTTP {
-    /// Resolves a DID chain, will this include the bundle?
-    // TODO: return as Result<DIDChainResolutionResult, TrustchainHTTPError>
-    async fn resolve_chain(
+    /// Resolves a DID chain.
+    async fn resolve_chain<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &mut HTTPVerifier,
+        verifier: &mut IONVerifier<T>,
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
-    /// Resolves a DID chain, will this include the bundle?
-    async fn resolve_did(
+    /// Resolves a DID document.
+    async fn resolve_did<T: DIDResolver + Send + Sync>(
         did: &str,
-        resolver: &IONResolver,
+        resolver: &Resolver<T>,
     ) -> Result<ResolutionResult, TrustchainHTTPError>;
 
     // TODO: should we include a separate method to return verification bundle?
@@ -44,9 +46,9 @@ pub struct TrustchainHTTPHandler {}
 
 #[async_trait]
 impl TrustchainHTTP for TrustchainHTTPHandler {
-    async fn resolve_chain(
+    async fn resolve_chain<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &mut HTTPVerifier,
+        verifier: &mut IONVerifier<T>,
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
@@ -57,9 +59,9 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         Ok(DIDChainResolutionResult::new(&chain))
     }
 
-    async fn resolve_did(
+    async fn resolve_did<T: DIDResolver + Send + Sync>(
         did: &str,
-        resolver: &IONResolver,
+        resolver: &Resolver<T>,
     ) -> Result<ResolutionResult, TrustchainHTTPError> {
         debug!("Resolving...");
         let result = resolver.resolve_as_result(did).await?;
@@ -67,7 +69,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         debug!("Resolved result: {:?}", result);
         match result {
             (_, Some(doc), Some(doc_meta)) => Ok(Self::to_resolution_result(doc, doc_meta)),
-            // TODO: convert to resolver error
+            // TODO: convert to (unknown) resolver error
             _ => Err(TrustchainHTTPError::InternalError),
         }
     }
@@ -147,7 +149,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_did_resolver() {
-        let shared_state = Arc::new(AppState::new(&ServerConfig::default()));
+        let shared_state = Arc::new(AppState::new(ServerConfig::default()));
         let response = TrustchainHTTPHandler::get_did_resolver(
             Path("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             State(shared_state),

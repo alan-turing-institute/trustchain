@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use crate::config::ServerConfig;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
 use crate::EXAMPLE_VP_REQUEST;
@@ -10,6 +7,7 @@ use axum::response::{Html, IntoResponse};
 use axum::Json;
 use log::info;
 use ssi::vc::{Credential, Presentation};
+use std::sync::Arc;
 
 // TODO: implement in core?
 pub struct PresentationRequest;
@@ -66,11 +64,11 @@ impl TrustchainVerifierHTTPHandler {
         (StatusCode::OK, "Received!")
     }
 
-    pub async fn get_verifier_qrcode(State(config): State<Arc<AppState>>) -> Html<String> {
+    pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "http://{}:{}/vc/verifier",
-            config.host_reference, config.port
+            app_state.config.host_reference, app_state.config.port
         );
 
         // Respond with the QR code as a png embedded in html

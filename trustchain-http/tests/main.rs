@@ -9,7 +9,7 @@ use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier
 // Setup based on https://github.com/spruceid/didkit/blob/main/http/tests/main.rs
 
 // TODO: Wrap and import this for reuse here and in main - add get_app to lib.rs
-fn serve(config: &ServerConfig) -> (String, impl FnOnce()) {
+fn serve(config: ServerConfig) -> (String, impl FnOnce()) {
     let shared_state = Arc::new(AppState::new(config));
     let app = Router::new()
         .route("/", get(handlers::index))
@@ -58,7 +58,7 @@ fn serve(config: &ServerConfig) -> (String, impl FnOnce()) {
 
 #[tokio::test]
 async fn not_found() {
-    let (base, shutdown) = serve(&ServerConfig::default());
+    let (base, shutdown) = serve(ServerConfig::default());
     let client = hyper::Client::builder().build_http::<hyper::Body>();
     let uri = (base + "/nonexistent-path").parse::<hyper::Uri>().unwrap();
     let resp = client.get(uri).await.unwrap();
@@ -70,7 +70,7 @@ async fn not_found() {
 #[tokio::test]
 async fn resolve_did() {
     let expected = TEST_ROOT_PLUS_2_RESOLVED;
-    let (base, shutdown) = serve(&ServerConfig::default());
+    let (base, shutdown) = serve(ServerConfig::default());
     let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
     let actual = serde_json::from_str::<ResolutionResult>(
         &reqwest::get(&uri).await.unwrap().text().await.unwrap(),

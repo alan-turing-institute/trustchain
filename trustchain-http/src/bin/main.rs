@@ -23,11 +23,14 @@ async fn main() -> std::io::Result<()> {
     // Get config from CLI
     let config: ServerConfig = Parser::parse();
 
-    // Create shared state
-    let shared_state = Arc::new(AppState::new(&config));
-
     // Print config
     info!("{}", config);
+
+    // Address
+    let addr = format!("{}:{}", config.host, config.port).parse().unwrap();
+
+    // Create shared state
+    let shared_state = Arc::new(AppState::new(config));
 
     // Build our application with a route
     let app = Router::new()
@@ -59,9 +62,6 @@ async fn main() -> std::io::Result<()> {
             get(resolver::TrustchainHTTPHandler::get_did_chain),
         )
         .with_state(shared_state);
-
-    // Address
-    let addr = format!("{}:{}", config.host, config.port).parse().unwrap();
 
     // Logging
     tracing::debug!("listening on {}", addr);
