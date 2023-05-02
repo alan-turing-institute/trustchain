@@ -22,8 +22,8 @@ pub extern "C" fn wire_resolve(port_: i64, did: *mut wire_uint_8_list) {
 }
 
 #[no_mangle]
-pub extern "C" fn wire_verify(port_: i64, did: *mut wire_uint_8_list, verbose: bool) {
-    wire_verify_impl(port_, did, verbose)
+pub extern "C" fn wire_verify(port_: i64, did: *mut wire_uint_8_list) {
+    wire_verify_impl(port_, did)
 }
 
 // Section: allocate functions

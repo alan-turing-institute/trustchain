@@ -72,11 +72,7 @@ fn wire_resolve_impl(port_: MessagePort, did: impl Wire2Api<String> + UnwindSafe
         },
     )
 }
-fn wire_verify_impl(
-    port_: MessagePort,
-    did: impl Wire2Api<String> + UnwindSafe,
-    verbose: impl Wire2Api<bool> + UnwindSafe,
-) {
+fn wire_verify_impl(port_: MessagePort, did: impl Wire2Api<String> + UnwindSafe) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
             debug_name: "verify",
@@ -85,8 +81,7 @@ fn wire_verify_impl(
         },
         move || {
             let api_did = did.wire2api();
-            let api_verbose = verbose.wire2api();
-            move |task_callback| verify(api_did, api_verbose)
+            move |task_callback| verify(api_did)
         },
     )
 }
