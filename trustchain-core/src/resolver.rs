@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use futures::executor::block_on;
 use serde_json::Value;
 use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
@@ -8,7 +7,6 @@ use ssi::did_resolve::{
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use thiserror::Error;
-use tokio::runtime::Runtime;
 
 use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
@@ -93,8 +91,6 @@ unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
-    /// Runtime for calling async functions.
-    pub runtime: Runtime,
     /// Resolver for performing DID Method resolutions.
     wrapped_resolver: T,
 }
@@ -120,14 +116,7 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
 impl<T: DIDResolver + Sync + Send> Resolver<T> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
-        // Make runtime
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
         Self {
-            runtime,
             wrapped_resolver: resolver,
         }
     }
@@ -194,42 +183,40 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
 
     /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID as a `Result` type.
-    pub fn resolve_as_result(&self, did: &str) -> ResolverResult {
-        self.runtime.block_on(async {
-            // sidetree resolved resolution metadata, document and document metadata
-            let (did_res_meta, did_doc, did_doc_meta) =
-                block_on(self.resolve(did, &ResolutionInputMetadata::default()));
+    pub async fn resolve_as_result(&self, did: &str) -> ResolverResult {
+        // sidetree resolved resolution metadata, document and document metadata
+        let (did_res_meta, did_doc, did_doc_meta) =
+            self.resolve(did, &ResolutionInputMetadata::default()).await;
 
-            // Handle error cases based on string content of the resolution metadata
-            if let Some(did_res_meta_error) = &did_res_meta.error {
-                if did_res_meta_error
-                    .starts_with("Error sending HTTP request: error sending request for url")
-                {
-                    Err(ResolverError::ConnectionFailure)
-                } else if did_res_meta_error == "invalidDid" {
-                    Err(ResolverError::NonExistentDID(did.to_string()))
-                } else if did_res_meta_error == "notFound" {
-                    Err(ResolverError::DIDNotFound(did.to_string()))
-                } else if did_res_meta_error
-                    == "Failed to convert to Truschain document and metadata."
-                {
-                    Err(ResolverError::FailedToConvertToTrustchain)
-                } else if did_res_meta_error
-                    == "Multiple Trustchain proof service entries are present."
-                {
-                    Err(ResolverError::MultipleTrustchainProofService)
-                } else {
-                    eprintln!("Unhandled error message: {}", did_res_meta_error);
-                    let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
-                    if did_res_meta_error == eof_err_msg {
-                        eprintln!("HINT: If using HTTP for resolution, ensure a valid client is in use.");
-                    }
-                    panic!();
-                }
+        // Handle error cases based on string content of the resolution metadata
+        if let Some(did_res_meta_error) = &did_res_meta.error {
+            if did_res_meta_error
+                .starts_with("Error sending HTTP request: error sending request for url")
+            {
+                Err(ResolverError::ConnectionFailure)
+            } else if did_res_meta_error == "invalidDid" {
+                Err(ResolverError::NonExistentDID(did.to_string()))
+            } else if did_res_meta_error == "notFound" {
+                Err(ResolverError::DIDNotFound(did.to_string()))
+            } else if did_res_meta_error == "Failed to convert to Truschain document and metadata."
+            {
+                Err(ResolverError::FailedToConvertToTrustchain)
+            } else if did_res_meta_error == "Multiple Trustchain proof service entries are present."
+            {
+                Err(ResolverError::MultipleTrustchainProofService)
             } else {
-                Ok((did_res_meta, did_doc, did_doc_meta))
+                eprintln!("Unhandled error message: {}", did_res_meta_error);
+                let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
+                if did_res_meta_error == eof_err_msg {
+                    eprintln!(
+                        "HINT: If using HTTP for resolution, ensure a valid client is in use."
+                    );
+                }
+                panic!();
             }
-        })
+        } else {
+            Ok((did_res_meta, did_doc, did_doc_meta))
+        }
     }
 
     /// Gets a result of an index of a single Trustchain proof service, otherwise relevant error.
@@ -451,7 +438,7 @@ mod tests {
 
         // Call add_controller on the Resolver to get the result.
         let result = resolver
-            .add_controller(did_doc, &controller_did)
+            .add_controller(did_doc, controller_did)
             .expect("Different Controller already present.");
 
         // Check there *is* a controller field in the resulting DID document.
@@ -487,7 +474,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Attempt to add the controller.
-        let result = resolver.add_controller(did_doc, &controller_did);
+        let result = resolver.add_controller(did_doc, controller_did);
 
         // Confirm error.
         assert!(matches!(
@@ -526,7 +513,7 @@ mod tests {
             Document::from_json(TEST_SIDETREE_DOCUMENT).expect("Document failed to load.");
 
         // Check that precisely one service is present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 1 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 1_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -551,7 +538,7 @@ mod tests {
             .expect("Document failed to load.");
 
         // Check that two services are present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 2_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -576,7 +563,7 @@ mod tests {
             .expect("Document failed to load.");
 
         // Check that two services are present in the DID document.
-        assert_eq!((&did_doc).service.as_ref().unwrap().len(), 2 as usize);
+        assert_eq!(did_doc.service.as_ref().unwrap().len(), 2_usize);
 
         // Construct a Resolver instance.
         let resolver = Resolver::new(get_http_resolver());
@@ -652,7 +639,7 @@ mod tests {
 
         // Get the controller DID from the proof service.
         let controller = resolver
-            .get_from_proof_service(&service, "controller")
+            .get_from_proof_service(service, "controller")
             .unwrap();
 
         // Check the controller DID matches the expected value.
@@ -736,7 +723,7 @@ mod tests {
         // Get the controller from the proof service property in the Sidetree-resolved DID document.
         let proof_service = resolver.get_proof_service(&did_doc).unwrap();
         let controller = resolver
-            .get_from_proof_service(&proof_service, "controller")
+            .get_from_proof_service(proof_service, "controller")
             .unwrap();
 
         // Transform the DID document by resolving into Trustchain format.
@@ -782,11 +769,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call function and get output result type
-        let output = resolver.transform_as_result(
-            input_res_meta.clone(),
-            input_doc.clone(),
-            input_doc_meta.clone(),
-        );
+        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Result should be Ok variant with returned data
         if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
@@ -829,11 +812,7 @@ mod tests {
         let resolver = Resolver::new(get_http_resolver());
 
         // Call the resolve function and get output Result type.
-        let output = resolver.transform_as_result(
-            input_res_meta.clone(),
-            input_doc.clone(),
-            input_doc_meta.clone(),
-        );
+        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Check for the correct error.
         assert!(matches!(

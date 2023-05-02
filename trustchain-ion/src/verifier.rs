@@ -5,13 +5,13 @@ use crate::utils::{
     block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
 };
 use crate::URL;
+use async_trait::async_trait;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
 use bitcoincore_rpc::RpcApi;
 use did_ion::sidetree::Delta;
-use futures::executor::block_on;
 use futures::TryFutureExt;
-use ipfs_api_backend_actix::IpfsClient;
+use ipfs_api_backend_hyper::IpfsClient;
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -118,12 +118,12 @@ where
     }
 
     /// Fetches the DID commitment.
-    fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
+    async fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
         // TODO: handle the possibility that the DID has been updated since previously fetched.
 
         // If the corresponding VerificationBundle is already available, do nothing.
         if !self.bundles.contains_key(did) {
-            self.verification_bundle(did)?;
+            self.verification_bundle(did).await?;
         };
         Ok(())
     }
@@ -133,48 +133,56 @@ where
     }
 
     /// Returns a DID verification bundle.
-    pub fn verification_bundle(&mut self, did: &str) -> Result<&VerificationBundle, VerifierError> {
+    pub async fn verification_bundle(
+        &mut self,
+        did: &str,
+    ) -> Result<&VerificationBundle, VerifierError> {
         // Fetch (and store) the bundle if it isn't already avaialable.
         if !self.bundles.contains_key(did) {
-            self.fetch_bundle(did, None)?;
+            self.fetch_bundle(did, None).await?;
         }
         Ok(self.bundles.get(did).unwrap())
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
-    pub fn fetch_bundle(&mut self, did: &str, endpoint: Option<URL>) -> Result<(), VerifierError> {
+    pub async fn fetch_bundle(
+        &mut self,
+        did: &str,
+        endpoint: Option<URL>,
+    ) -> Result<(), VerifierError> {
         let bundle: Result<VerificationBundle, VerifierError> = match endpoint.as_ref() {
             // If running on a Trustchain light client, make an API call to a full node to
             // request the bundle.
-            Some(endpoint) => self.resolver.runtime.block_on(async {
-                Ok(serde_json::from_str(
-                    &reqwest::get(endpoint)
-                        .await
-                        .map_err(|e| {
-                            VerifierError::ErrorFetchingVerificationMaterial(
-                                format!("Error requesting bundle from endpoint: {endpoint}"),
-                                e.into(),
-                            )
-                        })?
+            Some(endpoint) => {
+                let response = reqwest::get(endpoint).await.map_err(|e| {
+                    VerifierError::ErrorFetchingVerificationMaterial(
+                        format!("Error requesting bundle from endpoint: {endpoint}"),
+                        e.into(),
+                    )
+                })?;
+                Ok(serde_json::from_str::<VerificationBundle>(
+                    &response
                         .text()
                         .map_err(|e| {
                             VerifierError::ErrorFetchingVerificationMaterial(
-                                format!("Error extracting bundle response body from endpoint: {endpoint}"),
+                                format!(
+                                "Error extracting bundle response body from endpoint: {endpoint}"
+                            ),
                                 e.into(),
                             )
                         })
                         .await?,
                 )?)
-            }),
+            }
             _ => {
-                let (did_doc, did_doc_meta) = self.resolve_did(did)?;
-                let (block_hash, tx_index) = self.locate_transaction(did)?;
+                let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
+                let (block_hash, tx_index) = self.locate_transaction(did).await?;
                 let tx = self.fetch_transaction(&block_hash, tx_index)?;
                 let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
                 let cid = self.op_return_cid(&tx)?;
-                let core_index_file = self.fetch_core_index_file(&cid)?;
-                let provisional_index_file = self.fetch_prov_index_file(&core_index_file)?;
-                let chunk_file = self.fetch_chunk_file(&provisional_index_file)?;
+                let core_index_file = self.fetch_core_index_file(&cid).await?;
+                let provisional_index_file = self.fetch_prov_index_file(&core_index_file).await?;
+                let chunk_file = self.fetch_chunk_file(&provisional_index_file).await?;
                 let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
                 let block_header = self.fetch_block_header(&block_hash)?;
                 // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
@@ -196,8 +204,8 @@ where
     }
 
     /// Resolves the given DID to obtain the DID Document and Document Metadata.
-    fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did)?;
+    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
         if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
             Ok((doc, doc_meta))
         } else {
@@ -221,16 +229,21 @@ where
         })
     }
 
-    fn fetch_core_index_file(&self, cid: &str) -> Result<Vec<u8>, VerifierError> {
-        query_ipfs(cid, &self.ipfs_client).map_err(|e| {
-            VerifierError::ErrorFetchingVerificationMaterial(
-                "Failed to fetch core index file".to_string(),
-                e.into(),
-            )
-        })
+    async fn fetch_core_index_file(&self, cid: &str) -> Result<Vec<u8>, VerifierError> {
+        query_ipfs(cid, &self.ipfs_client)
+            .map_err(|e| {
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to fetch core index file".to_string(),
+                    e.into(),
+                )
+            })
+            .await
     }
 
-    fn fetch_prov_index_file(&self, core_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
+    async fn fetch_prov_index_file(
+        &self,
+        core_index_file: &[u8],
+    ) -> Result<Vec<u8>, VerifierError> {
         let content = decode_ipfs_content(core_index_file).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
@@ -242,15 +255,17 @@ where
             .ok_or(VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Missing provisional index file URI in core index file: {content}."
             )))?;
-        query_ipfs(&provisional_index_file_uri, &self.ipfs_client).map_err(|e| {
-            VerifierError::ErrorFetchingVerificationMaterial(
-                "Failed to fetch ION provisional index file.".to_string(),
-                e.into(),
-            )
-        })
+        query_ipfs(&provisional_index_file_uri, &self.ipfs_client)
+            .map_err(|e| {
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to fetch ION provisional index file.".to_string(),
+                    e.into(),
+                )
+            })
+            .await
     }
 
-    fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
+    async fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
         let content = decode_ipfs_content(prov_index_file).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
@@ -277,12 +292,14 @@ where
         };
 
         // Get Chunk File
-        query_ipfs(chunk_file_uri, &self.ipfs_client).map_err(|err| {
-            VerifierError::ErrorFetchingVerificationMaterial(
-                "Failed to fetch ION provisional index file.".to_string(),
-                err.into(),
-            )
-        })
+        query_ipfs(chunk_file_uri, &self.ipfs_client)
+            .map_err(|err| {
+                VerifierError::ErrorFetchingVerificationMaterial(
+                    "Failed to fetch ION provisional index file.".to_string(),
+                    err.into(),
+                )
+            })
+            .await
     }
 
     /// Fetches a Merkle proof directly from a Bitcoin node.
@@ -314,51 +331,50 @@ where
 
     /// Returns the location on the ledger of the transaction embedding
     /// the most recent ION operation for the given DID.
-    fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
+    async fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
         let suffix = get_did_suffix(did);
-        self.resolver().runtime.block_on(async {
-            // Query the database for a bson::Document.
-            let doc = block_on(query_mongodb(suffix, None)).map_err(|e| {
-                VerifierError::ErrorFetchingVerificationMaterial(
-                    "Error querying MongoDB".to_string(),
-                    e.into(),
-                )
-            })?;
 
-            // Extract the block height.
-            let block_height: i64 = doc
-                .get_i32("txnTime")
-                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-                .into();
+        // Query the database for a bson::Document.
+        let doc = query_mongodb(suffix, None).await.map_err(|e| {
+            VerifierError::ErrorFetchingVerificationMaterial(
+                "Error querying MongoDB".to_string(),
+                e.into(),
+            )
+        })?;
 
-            // Convert to block height u32
-            let block_height: u32 = block_height
-                .try_into()
-                .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
+        // Extract the block height.
+        let block_height: i64 = doc
+            .get_i32("txnTime")
+            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+            .into();
 
-            // Extract the index of the transaction inside the block.
-            let tx_index = doc
-                .get_i64("txnNumber")
-                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-                .to_string()
-                .strip_prefix(&block_height.to_string())
-                .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
-                .parse::<u32>()
-                .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
+        // Convert to block height u32
+        let block_height: u32 = block_height
+            .try_into()
+            .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
 
-            // If call to get_network_info fails, return error
-            self.rpc_client
-                .get_network_info()
-                .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
+        // Extract the index of the transaction inside the block.
+        let tx_index = doc
+            .get_i64("txnNumber")
+            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+            .to_string()
+            .strip_prefix(&block_height.to_string())
+            .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+            .parse::<u32>()
+            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
 
-            // Convert the block height to a block hash.
-            let block_hash = self
-                .rpc_client
-                .get_block_hash(u64::from(block_height))
-                .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+        // If call to get_network_info fails, return error
+        self.rpc_client
+            .get_network_info()
+            .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
 
-            Ok((block_hash, tx_index))
-        })
+        // Convert the block height to a block hash.
+        let block_hash = self
+            .rpc_client
+            .get_block_hash(u64::from(block_height))
+            .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+
+        Ok((block_hash, tx_index))
     }
 
     /// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
@@ -392,6 +408,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     Ok(chunk_file.deltas)
 }
 
+#[async_trait]
 impl<T> Verifier<T> for IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
@@ -404,8 +421,8 @@ where
         Ok(block_header.time)
     }
 
-    fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
-        self.fetch_did_commitment(did)?;
+    async fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
+        self.fetch_did_commitment(did).await?;
         let bundle =
             self.bundles
                 .get(did)
@@ -428,10 +445,9 @@ mod tests {
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        IONResolver,
+        get_ion_resolver,
     };
     use bitcoin::{BlockHeader, MerkleBlock};
-    use did_ion::{sidetree::SidetreeClient, ION};
     use flate2::read::GzDecoder;
     use ssi::did_resolve::HTTPDIDResolver;
     use std::{io::Read, str::FromStr};
@@ -444,14 +460,14 @@ mod tests {
         HTTPDIDResolver::new("http://localhost:3000/")
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
-    fn test_locate_transaction() {
+    async fn test_locate_transaction() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
+        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
         // Block 1902377
         let expected_block_hash =
             BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
@@ -460,7 +476,7 @@ mod tests {
         assert_eq!(transaction_index, 118);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
+        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
         // Block 2377445
         let expected_block_hash =
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
@@ -469,7 +485,7 @@ mod tests {
         assert_eq!(transaction_index, 3);
 
         let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).unwrap();
+        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
         // Block 2377339
         let expected_block_hash =
             BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
@@ -479,7 +495,7 @@ mod tests {
 
         // Invalid DID
         let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-        let result = target.locate_transaction(invalid_did);
+        let result = target.locate_transaction(invalid_did).await;
         assert!(result.is_err());
     }
 
@@ -504,28 +520,26 @@ mod tests {
         assert_eq!(expected, actual);
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires ION"]
-    fn test_resolve_did() {
+    async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         let target = IONVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let result = target.resolve_did(did);
+        let result = target.resolve_did(did).await;
         assert!(result.is_ok());
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_fetch_chunk_file() {
+    async fn test_fetch_chunk_file() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
-        let result = target.fetch_chunk_file(&prov_index_file);
+        let result = target.fetch_chunk_file(&prov_index_file).await;
         assert!(result.is_ok());
         let chunk_file_bytes = result.unwrap();
 
@@ -539,14 +553,14 @@ mod tests {
         assert!(value.as_object().unwrap().contains_key("deltas"));
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_fetch_core_index_file() {
+    async fn test_fetch_core_index_file() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let result = target.fetch_core_index_file(cid);
+        let result = target.fetch_core_index_file(cid).await;
         assert!(result.is_ok());
         let core_index_file_bytes = result.unwrap();
 
@@ -563,37 +577,33 @@ mod tests {
             .contains_key("provisionalIndexFileUri"));
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    fn test_fetch_bundle() {
+    async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         let mut target = IONVerifier::new(resolver);
 
         assert!(target.bundles().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        target.fetch_bundle(did, None).unwrap();
+        target.fetch_bundle(did, None).await.unwrap();
 
         assert!(!target.bundles().is_empty());
         assert_eq!(target.bundles().len(), 1);
         assert!(target.bundles().contains_key(did));
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    fn test_commitment() {
+    async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-            "http://localhost:3000/",
-        ))));
+        let resolver = get_ion_resolver("http://localhost:3000/");
         let mut target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
         assert!(target.bundles().is_empty());
-        let result = target.did_commitment(did).unwrap();
+        let result = target.did_commitment(did).await.unwrap();
 
         // Check that the verification bundle for the commitment is now stored in the Verifier.
         assert!(!target.bundles().is_empty());

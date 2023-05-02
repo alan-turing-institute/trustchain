@@ -13,7 +13,6 @@ path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
-actix-rt = "2.7.0"
 async-trait = "0.1"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"
@@ -23,8 +22,7 @@ did-ion="0.1.0"
 flate2 = "1.0.24"
 futures = "0.3.21"
 hex = "0.4.3"
-ipfs-api-backend-actix = "0.6"
-ipfs-api = "0.16.0"
+ipfs-api-backend-hyper = {version="0.6", features = ["with-send-sync"]}
 ipfs-hasher = "0.13.0"
 lazy_static="1.4.0"
 mongodb = "2.3.1"

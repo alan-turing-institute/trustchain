@@ -1,17 +1,14 @@
-use did_ion::{sidetree::SidetreeClient, ION};
 use serde_json::to_string_pretty as to_json;
 
-use crate::IONResolver;
+use crate::get_ion_resolver;
 
 // Binary to resolve a passed DID from the command line.
-pub fn main_resolve(did: &str, _verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn main_resolve(did: &str, _verbose: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(
-        "http://localhost:3000/",
-    ))));
+    let resolver = get_ion_resolver("http://localhost:3000/");
 
     // Result metadata, Document, Document metadata
-    let result = resolver.resolve_as_result(did);
+    let result = resolver.resolve_as_result(did).await;
     let (res_meta, doc, doc_meta) = match result {
         Ok(x) => x,
         Err(e) => {

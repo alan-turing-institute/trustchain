@@ -235,34 +235,31 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_attest_credential() {
+    #[tokio::test]
+    async fn test_attest_credential() {
         // Initialize temp path for saving keys
         init();
 
         // Resolver
         let resolver = get_ion_resolver("http://localhost:3000/");
 
-        // Use resolver runtime for async scope
-        resolver.runtime.block_on(async {
-            // Set-up keys and attestor
-            let did = "did:example:test_attest_credential";
-            // Attestor
-            let target = IONAttestor::try_from(AttestorData::new(
-                did.to_string(),
-                serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
-            ))
-            .unwrap();
+        // Set-up keys and attestor
+        let did = "did:example:test_attest_credential";
+        // Attestor
+        let target = IONAttestor::try_from(AttestorData::new(
+            did.to_string(),
+            serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
+        ))
+        .unwrap();
 
-            // Load credential. Issuer is "None" here so no resolution is required.
-            let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        // Load credential. Issuer is "None" here so no resolution is required.
+        let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
-            // Attest to doc
-            let vc_with_proof = target.sign(&vc, None, &resolver).await;
+        // Attest to doc
+        let vc_with_proof = target.sign(&vc, None, &resolver).await;
 
-            // Check attest was ok
-            assert!(vc_with_proof.is_ok());
-        });
+        // Check attest was ok
+        assert!(vc_with_proof.is_ok());
     }
 
     #[test]
