@@ -33,11 +33,11 @@ fn serve(config: ServerConfig) -> (String, impl FnOnce()) {
         )
         .route(
             "/did/:id",
-            get(resolver::TrustchainHTTPHandler::get_did_resolver),
+            get(resolver::TrustchainHTTPHandler::get_did_resolution),
         )
         .route(
             "/did/chain/:id",
-            get(resolver::TrustchainHTTPHandler::get_did_chain),
+            get(resolver::TrustchainHTTPHandler::get_chain_resolution),
         )
         .with_state(shared_state);
 

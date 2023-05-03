@@ -25,18 +25,18 @@ use trustchain_ion::verifier::IONVerifier;
 
 #[async_trait]
 pub trait TrustchainHTTP {
+    /// Resolves a DID document.
+    async fn resolve_did<T: DIDResolver + Send + Sync>(
+        did: &str,
+        resolver: &Resolver<T>,
+    ) -> Result<ResolutionResult, TrustchainHTTPError>;
+
     /// Resolves a DID chain.
     async fn resolve_chain<T: DIDResolver + Send + Sync>(
         did: &str,
         verifier: &mut IONVerifier<T>,
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
-
-    /// Resolves a DID document.
-    async fn resolve_did<T: DIDResolver + Send + Sync>(
-        did: &str,
-        resolver: &Resolver<T>,
-    ) -> Result<ResolutionResult, TrustchainHTTPError>;
 
     // TODO: should we include a separate method to return verification bundle?
     fn resolve_bundle(did: &str);
@@ -46,19 +46,6 @@ pub struct TrustchainHTTPHandler {}
 
 #[async_trait]
 impl TrustchainHTTP for TrustchainHTTPHandler {
-    async fn resolve_chain<T: DIDResolver + Send + Sync>(
-        did: &str,
-        verifier: &mut IONVerifier<T>,
-        root_event_time: Timestamp,
-    ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
-        debug!("Verifying...");
-        // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
-        let chain = verifier.verify(did, root_event_time).await?;
-        debug!("Verified did...");
-        debug!("{:?}", chain);
-        Ok(DIDChainResolutionResult::new(&chain))
-    }
-
     async fn resolve_did<T: DIDResolver + Send + Sync>(
         did: &str,
         resolver: &Resolver<T>,
@@ -74,14 +61,41 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         }
     }
 
+    async fn resolve_chain<T: DIDResolver + Send + Sync>(
+        did: &str,
+        verifier: &mut IONVerifier<T>,
+        root_event_time: Timestamp,
+    ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
+        debug!("Verifying...");
+        // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
+        let chain = verifier.verify(did, root_event_time).await?;
+        debug!("Verified did...");
+        debug!("{:?}", chain);
+        Ok(DIDChainResolutionResult::new(&chain))
+    }
+
     fn resolve_bundle(did: &str) {
         todo!()
     }
 }
 
 impl TrustchainHTTPHandler {
+    /// Handles get request for DID resolve API.
+    pub async fn get_did_resolution(
+        Path(did): Path<String>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
+        debug!("Received DID to resolve: {}", did.as_str());
+        // TODO: add parsing of resolution request returning "BAD_REQUEST" if format incorrect
+
+        let verifier = app_state.verifier.read().await;
+        TrustchainHTTPHandler::resolve_did(did.as_str(), verifier.resolver())
+            .await
+            .map(|resolved_json| (StatusCode::OK, Json(resolved_json)))
+    }
+
     /// Handles get request for DID chain resolution.
-    pub async fn get_did_chain(
+    pub async fn get_chain_resolution(
         Path(did): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
@@ -95,17 +109,6 @@ impl TrustchainHTTPHandler {
         )
         .await
         .map(|chain| (StatusCode::OK, Json(chain)))
-    }
-    /// Handles get request for DID resolve API.
-    pub async fn get_did_resolver(
-        Path(did): Path<String>,
-        State(app_state): State<Arc<AppState>>,
-    ) -> impl IntoResponse {
-        debug!("Received DID to resolve: {}", did.as_str());
-        let verifier = app_state.verifier.read().await;
-        TrustchainHTTPHandler::resolve_did(did.as_str(), verifier.resolver())
-            .await
-            .map(|resolved_json| (StatusCode::OK, Json(resolved_json)))
     }
 
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
@@ -150,7 +153,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_did_resolver() {
         let shared_state = Arc::new(AppState::new(ServerConfig::default()));
-        let response = TrustchainHTTPHandler::get_did_resolver(
+        let response = TrustchainHTTPHandler::get_did_resolution(
             Path("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             State(shared_state),
         )
