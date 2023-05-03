@@ -3,6 +3,7 @@ pub mod data;
 pub mod errors;
 pub mod handlers;
 pub mod issuer;
+pub mod middleware;
 pub mod qrcode;
 pub mod resolver;
 pub mod state;
