@@ -57,6 +57,7 @@ async fn main() -> std::io::Result<()> {
             "/did/:id",
             get(resolver::TrustchainHTTPHandler::get_did_resolution),
         )
+        // TODO: add parsing of resolution request returning "BAD_REQUEST" if format incorrect using middleware
         .route(
             "/did/chain/:id",
             get(resolver::TrustchainHTTPHandler::get_chain_resolution),

@@ -1,7 +1,7 @@
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
@@ -67,16 +67,20 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
-        // TODO: Decide whether to pass root_timestamp as argument to api, or use a server config
         let chain = verifier.verify(did, root_event_time).await?;
         debug!("Verified did...");
-        debug!("{:?}", chain);
         Ok(DIDChainResolutionResult::new(&chain))
     }
 
     fn resolve_bundle(did: &str) {
         todo!()
     }
+}
+
+#[derive(Deserialize, Debug)]
+/// Struct for deserializing `root_event_time` from handler's query param.
+pub struct RootEventTime {
+    root_event_time: Timestamp,
 }
 
 impl TrustchainHTTPHandler {
@@ -86,8 +90,6 @@ impl TrustchainHTTPHandler {
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         debug!("Received DID to resolve: {}", did.as_str());
-        // TODO: add parsing of resolution request returning "BAD_REQUEST" if format incorrect
-
         let verifier = app_state.verifier.read().await;
         TrustchainHTTPHandler::resolve_did(did.as_str(), verifier.resolver())
             .await
@@ -97,18 +99,14 @@ impl TrustchainHTTPHandler {
     /// Handles get request for DID chain resolution.
     pub async fn get_chain_resolution(
         Path(did): Path<String>,
+        Query(root_event_time): Query<RootEventTime>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         debug!("Received DID to get trustchain: {}", did.as_str());
         let mut verifier = app_state.verifier.write().await;
-        TrustchainHTTPHandler::resolve_chain(
-            &did,
-            &mut verifier,
-            // TODO: update the endpoint to take form data with the rootevent time from a POST?
-            core_config().root_event_time,
-        )
-        .await
-        .map(|chain| (StatusCode::OK, Json(chain)))
+        TrustchainHTTPHandler::resolve_chain(&did, &mut verifier, root_event_time.root_event_time)
+            .await
+            .map(|chain| (StatusCode::OK, Json(chain)))
     }
 
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
