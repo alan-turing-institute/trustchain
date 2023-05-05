@@ -20,6 +20,7 @@ use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::str::FromStr;
+use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::commitment::{CommitmentError, DIDCommitment};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
@@ -381,6 +382,12 @@ where
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_op_return_cid(tx)
     }
+
+    /// Checks whether a cached bundle is present for the root associated with a given DID.
+    pub async fn root_is_cached(&self, did: &str) -> Result<bool, VerifierError> {
+        let chain = DIDChain::new(did, &self.resolver()).await?;
+        Ok(self.bundles.contains_key(chain.root()))
+    }
 }
 
 /// Converts a VerificationBundle into an IONCommitment.
@@ -681,5 +688,26 @@ mod tests {
         let expected_merkle_root =
             "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
+    }
+
+    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[tokio::test]
+    async fn test_root_is_cached() {
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let mut target = IONVerifier::new(resolver);
+
+        let root_did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+
+        // Initially the root bundle is not cached.
+        assert!(!target.root_is_cached(did).await.unwrap());
+
+        // Fetching the bundle for the downstream DID does not change the root DID status.
+        target.fetch_bundle(did, None).await.unwrap();
+        assert!(!target.root_is_cached(did).await.unwrap());
+
+        // Fetching the bundle for the `root_did` caches the root.
+        target.fetch_bundle(root_did, None).await.unwrap();
+        assert!(target.root_is_cached(did).await.unwrap());
     }
 }
