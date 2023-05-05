@@ -281,49 +281,6 @@ mod tests {
         assert_eq!(result.as_ref().unwrap().len(), 2);
     }
 
-    // #[test]
-    // fn test_get_keys_from_document_state() {
-    //     let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-    //     let deltas = content_deltas(&chunk_file_json).unwrap();
-    //     // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
-    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
-
-    //     let result = doc_state.get_keys();
-    //     assert!(result.as_ref().is_some());
-    //     assert_eq!(result.as_ref().unwrap().len(), 1);
-
-    //     // Check the values of the key's x & y coordinates.
-    //     if let Params::EC(ec_params) = &result.unwrap().first().unwrap().params {
-    //         assert!(ec_params.x_coordinate.is_some());
-    //         assert!(ec_params.y_coordinate.is_some());
-    //         if let (Some(x), Some(y)) = (&ec_params.x_coordinate, &ec_params.y_coordinate) {
-    //             assert_eq!(
-    //                 serde_json::to_string(x).unwrap(),
-    //                 "\"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU\""
-    //             );
-    //             assert_eq!(
-    //                 serde_json::to_string(y).unwrap(),
-    //                 "\"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0\""
-    //             );
-    //         };
-    //     } else {
-    //         panic!();
-    //     }
-
-    //     // Now test with a DocumentState containing two keys.
-    //     let chunk_file_json: Value =
-    //         serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_KEYS).unwrap();
-    //     let deltas = content_deltas(&chunk_file_json).unwrap();
-    //     // Note: this is the update commitment for the *second* delta in TEST_CHUNK_FILE_CONTENT.
-    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
-
-    //     let result = doc_state.get_keys();
-    //     assert!(result.as_ref().is_some());
-    //     assert_eq!(result.as_ref().unwrap().len(), 2);
-    // }
-
     #[test]
     fn test_get_endpoints_from_document() {
         let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF).unwrap();
@@ -355,37 +312,6 @@ mod tests {
         };
         assert_eq!(uri, "https://bar.example.com");
     }
-
-    // #[test]
-    // fn test_get_endpoints_from_document_state() {
-    //     let chunk_file_json: Value = serde_json::from_str(TEST_CHUNK_FILE_CONTENT).unwrap();
-    //     let deltas = content_deltas(&chunk_file_json).unwrap();
-    //     let update_commitment = "EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg";
-    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
-
-    //     let result = doc_state.get_endpoints();
-    //     assert!(&result.is_some());
-    //     let result = result.unwrap();
-    //     assert_eq!(&result.len(), &1);
-    //     let uri = match result.first().unwrap() {
-    //         ServiceEndpoint::URI(x) => x,
-    //         _ => panic!(),
-    //     };
-
-    //     assert_eq!(uri, "https://identity.foundation/ion/trustchain-root");
-
-    //     // Now test with DocumentState containing two service endpoints.
-    //     let chunk_file_json: Value =
-    //         serde_json::from_str(TEST_CHUNK_FILE_CONTENT_MULTIPLE_SERVICES).unwrap();
-    //     let deltas = content_deltas(&chunk_file_json).unwrap();
-    //     let update_commitment = "EiC0EdwzQcqMYNX_3aqoZNUau4AKOL3gXQ5Pz3ATi1q_iA";
-    //     let doc_state = extract_doc_state(deltas, update_commitment).unwrap();
-
-    //     let result = doc_state.get_endpoints();
-    //     assert!(&result.is_some());
-    //     let result = result.unwrap();
-    //     assert_eq!(&result.len(), &2);
-    // }
 
     #[tokio::test]
     #[ignore = "integration test requires IPFS"]
