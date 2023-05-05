@@ -5,7 +5,7 @@ use ssi::one_or_many::OneOrMany;
 use trustchain_ion::get_ion_resolver;
 
 #[tokio::test]
-#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000."]
 async fn trustchain_resolution() {
     // Integration test of the Trustchain resolution pipeline.
 

@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires MongoDB"]
+    #[ignore = "integration test requires MongoDB"]
     async fn test_locate_transaction() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
@@ -507,7 +507,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin RPC"]
+    #[ignore = "integration test requires Bitcoin RPC"]
     fn test_op_return_cid() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
@@ -528,7 +528,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires ION"]
+    #[ignore = "integration test requires ION"]
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
@@ -539,7 +539,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS"]
+    #[ignore = "integration test requires IPFS"]
     async fn test_fetch_chunk_file() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS"]
+    #[ignore = "integration test requires IPFS"]
     async fn test_fetch_core_index_file() {
         let resolver = Resolver::new(get_http_resolver());
         let target = IONVerifier::new(resolver);
@@ -585,7 +585,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
@@ -601,7 +601,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
@@ -690,7 +690,7 @@ mod tests {
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
     }
 
-    #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     #[tokio::test]
     async fn test_root_is_cached() {
         let resolver = get_ion_resolver("http://localhost:3000/");

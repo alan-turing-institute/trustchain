@@ -28,7 +28,7 @@ async fn trustchain_verification() {
 }
 
 #[tokio::test]
-#[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
+#[ignore = "integration test requires ION, Bitcoin RPC & IPFS"]
 async fn test_verifiable_timestamp() {
     let resolver = get_ion_resolver("http://localhost:3000/");
     let mut target = IONVerifier::new(resolver);

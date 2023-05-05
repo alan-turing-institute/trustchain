@@ -388,7 +388,7 @@ mod tests {
     // }
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS"]
+    #[ignore = "integration test requires IPFS"]
     async fn test_query_ipfs() {
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
@@ -411,7 +411,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires MongoDB"]
+    #[ignore = "integration test requires MongoDB"]
     async fn test_query_mongodb() {
         let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let doc = query_mongodb(suffix, None).await.unwrap();
@@ -420,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin"]
+    #[ignore = "integration test requires Bitcoin"]
     fn test_transaction() {
         // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
         // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f

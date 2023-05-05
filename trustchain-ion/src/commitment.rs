@@ -567,7 +567,7 @@ mod tests {
     };
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS"]
+    #[ignore = "integration test requires IPFS"]
     async fn test_extract_suffix_idx() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let ipfs_client = IpfsClient::default();
@@ -583,7 +583,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS"]
+    #[ignore = "integration test requires IPFS"]
     async fn test_ipfs_commitment() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
@@ -621,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin Core"]
+    #[ignore = "integration test requires Bitcoin Core"]
     fn test_tx_commitment() {
         let target = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
 
@@ -661,7 +661,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin Core"]
+    #[ignore = "integration test requires Bitcoin Core"]
     fn test_merkle_root_commitment() {
         // The commitment target is the Merkle root from the block header.
         // For the testnet block at height 2377445, the Merkle root is:
@@ -706,7 +706,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Integration test requires Bitcoin Core"]
+    #[ignore = "integration test requires Bitcoin Core"]
     fn test_block_hash_commitment() {
         // The commitment target is the block hash.
         let target = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
@@ -753,7 +753,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Integration test requires IPFS and Bitcoin Core"]
+    #[ignore = "integration test requires IPFS and Bitcoin Core"]
     async fn test_ion_commitment() {
         let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 

@@ -3,7 +3,7 @@ use trustchain_core::graph::TrustchainGraph;
 use trustchain_ion::get_ion_resolver;
 
 #[tokio::test]
-#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000."]
 async fn trustchain_graph() {
     // Example DIDs for ROOT_EVENT_TIME_2378493
     let resolver = get_ion_resolver("http://localhost:3000/");
