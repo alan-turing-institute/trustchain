@@ -385,7 +385,7 @@ where
 
     /// Checks whether a cached bundle is present for the root associated with a given DID.
     pub async fn root_is_cached(&self, did: &str) -> Result<bool, VerifierError> {
-        let chain = DIDChain::new(did, &self.resolver()).await?;
+        let chain = DIDChain::new(did, self.resolver()).await?;
         Ok(self.bundles.contains_key(chain.root()))
     }
 }
