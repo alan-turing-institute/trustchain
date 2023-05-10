@@ -105,12 +105,12 @@ pub fn hash(data: &str) -> String {
 }
 
 /// Extracts payload from JWT and verifies signature.
-pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> {
+pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi_jws::Error> {
     ssi::jwt::decode_verify(jwt, key)
 }
 
 /// Extracts and decodes the payload from the JWT.
-pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
+pub fn decode(jwt: &str) -> Result<String, ssi_jws::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 

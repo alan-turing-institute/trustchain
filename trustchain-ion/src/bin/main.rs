@@ -1,7 +1,10 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
-use ssi::vc::{Credential, URI};
+use ssi::{
+    jsonld::ContextLoader,
+    vc::{Credential, URI},
+};
 use std::{
     fs::File,
     io::{stdin, BufReader},
@@ -157,7 +160,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let verify_result = credential.verify(None, &resolver).await;
+                    let verify_result = credential
+                        .verify(None, &resolver, &mut ContextLoader::default())
+                        .await;
                     if verify_result.errors.is_empty() {
                         println!("Proof... ✅")
                     } else {
