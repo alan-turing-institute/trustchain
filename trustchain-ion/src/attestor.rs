@@ -1,6 +1,6 @@
+use crate::ion::IONTest as ION;
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;

@@ -13,6 +13,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+anyhow = "1.0"
 async-trait = "0.1"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"

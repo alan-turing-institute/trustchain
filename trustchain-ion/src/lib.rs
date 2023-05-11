@@ -5,13 +5,15 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod ion;
 pub mod resolve;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
 use std::num::ParseIntError;
 
-use did_ion::{sidetree::SidetreeClient, ION};
+use crate::ion::IONTest as ION;
+use did_ion::sidetree::SidetreeClient;
 use std::io;
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};

@@ -1,7 +1,7 @@
+use crate::ion::IONTest as ION;
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
-use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
 use trustchain_core::controller::Controller;
