@@ -43,7 +43,11 @@ pub fn generate_vc(is_offer: bool, subject_id: Option<&str>, credential_id: &str
         serde_json::from_reader(std::fs::read(file_str).unwrap().as_bytes()).unwrap();
 
     // Add passed credential_id
-    credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", credential_id)));
+    credential.id = Some(ssi::vc::StringOrURI::String(format!(
+        "urn:uuid:{}",
+        credential_id
+    )));
+
     let now = chrono::offset::Utc::now();
     credential.issuance_date = Some(VCDateTime::from(now));
 
