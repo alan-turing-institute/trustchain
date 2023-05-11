@@ -96,8 +96,8 @@ async fn test_sign_credential_failure() {
     assert!(vc_with_proof.is_err());
     assert!(matches!(
         vc_with_proof,
-        Err(IssuerError::LDP(
-            ssi::ldp::Error::VerificationMethodMismatch
-        ))
+        Err(IssuerError::LDP(ssi::ldp::Error::DID(
+            ssi::did::Error::KeyMismatch
+        )))
     ));
 }
