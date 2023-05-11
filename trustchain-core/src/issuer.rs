@@ -8,17 +8,26 @@ use thiserror::Error;
 /// An error relating to a Trustchain Issuer.
 #[derive(Error, Debug)]
 pub enum IssuerError {
-    /// Wrapped error for SSI error.
-    #[error("A wrapped variant for an SSI error.")]
-    SSI(ssi::error::Error),
+    /// Wrapped error for ssi-vc error.
+    #[error("A wrapped variant for an SSI VC error.")]
+    VC(ssi::vc::Error),
+    /// Wrapped error for ssi-ldp error.
+    #[error("A wrapped variant for an SSI LDP error.")]
+    LDP(ssi::ldp::Error),
     /// Wrapped error for key manager error.
     #[error("A wrapped variant for a key manager error.")]
     KeyManager(KeyManagerError),
 }
 
-impl From<ssi::error::Error> for IssuerError {
-    fn from(err: ssi::error::Error) -> Self {
-        IssuerError::SSI(err)
+impl From<ssi::vc::Error> for IssuerError {
+    fn from(err: ssi::vc::Error) -> Self {
+        IssuerError::VC(err)
+    }
+}
+
+impl From<ssi::ldp::Error> for IssuerError {
+    fn from(err: ssi::ldp::Error) -> Self {
+        IssuerError::LDP(err)
     }
 }
 

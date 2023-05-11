@@ -13,12 +13,13 @@ path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+anyhow = "1.0"
 async-trait = "0.1"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"
 canonical_json = "0.4.0"
-clap = { version = "~4.0", features=["derive", "cargo"] }
-did-ion="0.1.0"
+clap = { version = "^4.1", features=["derive", "cargo"] }
+did-ion="0.2.0"
 flate2 = "1.0.24"
 futures = "0.3.21"
 hex = "0.4.3"
@@ -31,7 +32,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
 sha256 = "1.1.1"
-ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
+ssi = { version = "0.6", features = ["http-did", "secp256k1"] }
 thiserror = "1.0"
 toml="0.7.2"
 tokio = {version = "1.20.1", features = ["full"]}

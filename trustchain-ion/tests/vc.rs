@@ -1,4 +1,4 @@
-use ssi::ldp::now_ms;
+use ssi::{jsonld::ContextLoader, ldp::now_ms};
 use std::convert::TryFrom;
 use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_ion::attestor::IONAttestor;
@@ -57,7 +57,9 @@ async fn test_sign_credential() {
     let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
 
     // Verify: expect no warnings or errors
-    let verification_result = vc_with_proof.verify(None, &resolver).await;
+    let verification_result = vc_with_proof
+        .verify(None, &resolver, &mut ContextLoader::default())
+        .await;
     assert!(verification_result.warnings.is_empty());
     assert!(verification_result.errors.is_empty());
 
@@ -65,7 +67,9 @@ async fn test_sign_credential() {
     vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
 
     // Verify: expect no warnings and a signature error as VC has changed
-    let verification_result = vc_with_proof.verify(None, &resolver).await;
+    let verification_result = vc_with_proof
+        .verify(None, &resolver, &mut ContextLoader::default())
+        .await;
     assert!(verification_result.warnings.is_empty());
     assert_eq!(verification_result.errors, vec!["signature error"]);
 }
@@ -92,6 +96,8 @@ async fn test_sign_credential_failure() {
     assert!(vc_with_proof.is_err());
     assert!(matches!(
         vc_with_proof,
-        Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
+        Err(IssuerError::LDP(ssi::ldp::Error::DID(
+            ssi::did::Error::KeyMismatch
+        )))
     ));
 }

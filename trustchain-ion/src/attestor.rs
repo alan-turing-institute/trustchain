@@ -1,8 +1,9 @@
+use crate::ion::IONTest as ION;
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
@@ -152,7 +153,12 @@ impl Issuer for IONAttestor {
 
         // Generate proof
         let proof = credential
-            .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
+            .generate_proof(
+                &signing_key,
+                &LinkedDataProofOptions::default(),
+                resolver,
+                &mut ContextLoader::default(),
+            )
             .await?;
 
         // Add proof to credential
@@ -214,9 +220,9 @@ mod tests {
 
         // Check signature
         let proof_result = result?;
-        let valid_decoded: Result<String, ssi::error::Error> =
+        let valid_decoded: Result<String, ssi::jws::Error> =
             ssi::jwt::decode_verify(&proof_result, valid_key);
-        let invalid_decoded: Result<String, ssi::error::Error> =
+        let invalid_decoded: Result<String, ssi::jws::Error> =
             ssi::jwt::decode_verify(&proof_result, invalid_key);
         assert!(valid_decoded.is_ok());
         assert!(invalid_decoded.is_err());
