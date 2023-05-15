@@ -20,6 +20,7 @@ use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{CommitmentError, DIDCommitment};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
@@ -82,7 +83,7 @@ where
     resolver: Resolver<T>,
     rpc_client: bitcoincore_rpc::Client,
     ipfs_client: IpfsClient,
-    bundles: HashMap<String, VerificationBundle>,
+    bundles: Mutex<HashMap<String, Arc<VerificationBundle>>>,
 }
 
 impl<T> IONVerifier<T>
@@ -108,7 +109,7 @@ where
         // Similar for the MongoDB client.
         // TODO: add customisable endpoint configuration to `trustchain_config.toml`
         let ipfs_client = IpfsClient::default();
-        let bundles = HashMap::new();
+        let bundles = Mutex::new(HashMap::new());
         Self {
             resolver,
             rpc_client,
@@ -118,39 +119,34 @@ where
     }
 
     /// Fetches the DID commitment.
-    async fn fetch_did_commitment(&mut self, did: &str) -> Result<(), VerifierError> {
+    async fn fetch_did_commitment(&self, did: &str) -> Result<(), VerifierError> {
         // TODO: handle the possibility that the DID has been updated since previously fetched.
-
         // If the corresponding VerificationBundle is already available, do nothing.
-        if !self.bundles.contains_key(did) {
+        if !self.bundles.lock().unwrap().contains_key(did) {
             self.verification_bundle(did).await?;
         };
         Ok(())
     }
-    /// Returns the cached bundles.
-    pub fn bundles(&self) -> &HashMap<String, VerificationBundle> {
-        &self.bundles
-    }
 
     /// Returns a DID verification bundle.
     pub async fn verification_bundle(
-        &mut self,
+        &self,
         did: &str,
-    ) -> Result<&VerificationBundle, VerifierError> {
+    ) -> Result<Arc<VerificationBundle>, VerifierError> {
         // Fetch (and store) the bundle if it isn't already avaialable.
-        if !self.bundles.contains_key(did) {
+        if !self.bundles.lock().unwrap().contains_key(did) {
             self.fetch_bundle(did, None).await?;
         }
-        Ok(self.bundles.get(did).unwrap())
+        Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
     pub async fn fetch_bundle(
-        &mut self,
+        &self,
         did: &str,
         endpoint: Option<URL>,
     ) -> Result<(), VerifierError> {
-        let bundle: Result<VerificationBundle, VerifierError> = match endpoint.as_ref() {
+        let bundle = match endpoint.as_ref() {
             // If running on a Trustchain light client, make an API call to a full node to
             // request the bundle.
             Some(endpoint) => {
@@ -160,7 +156,7 @@ where
                         e.into(),
                     )
                 })?;
-                Ok(serde_json::from_str::<VerificationBundle>(
+                serde_json::from_str::<VerificationBundle>(
                     &response
                         .text()
                         .map_err(|e| {
@@ -172,7 +168,7 @@ where
                             )
                         })
                         .await?,
-                )?)
+                )?
             }
             _ => {
                 let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
@@ -186,7 +182,7 @@ where
                 let merkle_block = self.fetch_merkle_block(&block_hash, &tx)?;
                 let block_header = self.fetch_block_header(&block_hash)?;
                 // TODO: Consider extracting the block header (bytes) from the MerkleBlock to avoid one RPC call.
-                Ok(VerificationBundle::new(
+                VerificationBundle::new(
                     did_doc,
                     did_doc_meta,
                     chunk_file,
@@ -195,11 +191,14 @@ where
                     transaction,
                     merkle_block,
                     block_header,
-                ))
+                )
             }
         };
         // Insert the bundle into the HashMap of bundles, keyed by the DID.
-        self.bundles.insert(did.to_string(), bundle?);
+        self.bundles
+            .lock()
+            .unwrap()
+            .insert(did.to_string(), Arc::new(bundle));
         Ok(())
     }
 
@@ -384,7 +383,9 @@ where
 }
 
 /// Converts a VerificationBundle into an IONCommitment.
-pub fn construct_commitment(bundle: &VerificationBundle) -> Result<IONCommitment, CommitmentError> {
+pub fn construct_commitment(
+    bundle: Arc<VerificationBundle>,
+) -> Result<IONCommitment, CommitmentError> {
     IONCommitment::new(
         bundle.did_doc.clone(),
         bundle.chunk_file.clone(),
@@ -421,14 +422,11 @@ where
         Ok(block_header.time)
     }
 
-    async fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
+    async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
         self.fetch_did_commitment(did).await?;
-        let bundle =
-            self.bundles
-                .get(did)
-                .ok_or(VerifierError::VerificationMaterialNotYetFetched(
-                    did.to_string(),
-                ))?;
+        let bundle = self.bundles.lock().unwrap().get(did).cloned().ok_or(
+            VerifierError::VerificationMaterialNotYetFetched(did.to_string()),
+        )?;
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
@@ -582,15 +580,15 @@ mod tests {
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let mut target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver);
 
-        assert!(target.bundles().is_empty());
+        assert!(target.bundles.lock().unwrap().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         target.fetch_bundle(did, None).await.unwrap();
 
-        assert!(!target.bundles().is_empty());
-        assert_eq!(target.bundles().len(), 1);
-        assert!(target.bundles().contains_key(did));
+        assert!(!target.bundles.lock().unwrap().is_empty());
+        assert_eq!(target.bundles.lock().unwrap().len(), 1);
+        assert!(target.bundles.lock().unwrap().contains_key(did));
     }
 
     #[tokio::test]
@@ -598,17 +596,17 @@ mod tests {
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let mut target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
-        assert!(target.bundles().is_empty());
+        assert!(target.bundles.lock().unwrap().is_empty());
         let result = target.did_commitment(did).await.unwrap();
 
         // Check that the verification bundle for the commitment is now stored in the Verifier.
-        assert!(!target.bundles().is_empty());
-        assert_eq!(target.bundles().len(), 1);
-        let bundle = target.bundles.get(did).unwrap();
+        assert!(!target.bundles.lock().unwrap().is_empty());
+        assert_eq!(target.bundles.lock().unwrap().len(), 1);
+        let bundle = target.bundles.lock().unwrap().get(did).cloned().unwrap();
         let commitment = construct_commitment(bundle).unwrap();
         assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
     }
