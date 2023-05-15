@@ -56,8 +56,9 @@ fn serve(config: ServerConfig) -> (String, impl FnOnce()) {
     (url, shutdown)
 }
 
+// Resolution integration tests
 #[tokio::test]
-async fn not_found() {
+async fn test_not_found() {
     let (base, shutdown) = serve(ServerConfig::default());
     let client = hyper::Client::builder().build_http::<hyper::Body>();
     let uri = (base + "/nonexistent-path").parse::<hyper::Uri>().unwrap();
@@ -68,7 +69,8 @@ async fn not_found() {
 }
 
 #[tokio::test]
-async fn resolve_did() {
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_resolve_did() {
     let expected = TEST_ROOT_PLUS_2_RESOLVED;
     let (base, shutdown) = serve(ServerConfig::default());
     let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
@@ -78,4 +80,42 @@ async fn resolve_did() {
     .unwrap();
     assert_eq!(canonicalize(&actual).unwrap(), expected);
     shutdown();
+}
+
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_resolve_chain() {
+    todo!("Implement a test of the chain endpoint handler.")
+}
+
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_resolve_bundle() {
+    todo!("Implement a test of the bundle endpoint handler.")
+}
+
+// Issuer integration tests
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_get_issuer_offer() {
+    todo!()
+}
+
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_post_issuer_credential() {
+    todo!()
+}
+
+// Verifier integration tests
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_get_verifier_request() {
+    todo!()
+}
+
+#[tokio::test]
+#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+async fn test_post_verifier_credential() {
+    todo!()
 }
