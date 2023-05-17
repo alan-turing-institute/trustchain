@@ -19,7 +19,7 @@ use trustchain_core::{
     chain::{Chain, DIDChain},
     config::core_config,
 };
-use trustchain_ion::verifier::IONVerifier;
+use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
 // TODO: Potentially add IntoResponse impl for DIDChainResolutionResult to simplify return
 
@@ -39,7 +39,10 @@ pub trait TrustchainHTTP {
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
     // TODO: should we include a separate method to return verification bundle?
-    fn resolve_bundle(did: &str);
+    async fn resolve_bundle<T: DIDResolver + Send + Sync>(
+        did: &str,
+        verifier: &mut IONVerifier<T>,
+    ) -> Result<VerificationBundleResolutionResult, TrustchainHTTPError>;
 }
 
 pub struct TrustchainHTTPHandler {}
@@ -72,8 +75,12 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         Ok(DIDChainResolutionResult::new(&chain))
     }
 
-    fn resolve_bundle(did: &str) {
-        todo!()
+    async fn resolve_bundle<T: DIDResolver + Send + Sync>(
+        did: &str,
+        verifier: &mut IONVerifier<T>,
+    ) -> Result<VerificationBundleResolutionResult, TrustchainHTTPError> {
+        let bundle = verifier.verification_bundle(did).await?;
+        Ok(VerificationBundleResolutionResult::new(bundle))
     }
 }
 
@@ -118,6 +125,20 @@ impl TrustchainHTTPHandler {
             did_resolution_metadata: None,
             did_document_metadata: Some(doc_meta),
             property_set: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationBundleResolutionResult {
+    bundle: VerificationBundle,
+}
+
+impl VerificationBundleResolutionResult {
+    pub fn new(bundle: &VerificationBundle) -> Self {
+        Self {
+            bundle: bundle.to_owned(),
         }
     }
 }
