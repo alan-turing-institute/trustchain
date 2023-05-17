@@ -85,6 +85,10 @@ async fn main() -> std::io::Result<()> {
             "/did/chain/:id",
             get(resolver::TrustchainHTTPHandler::get_chain_resolution),
         )
+        .route(
+            "/did/bundle/:id",
+            get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+        )
         .with_state(shared_state);
 
     // Logging

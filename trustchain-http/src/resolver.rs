@@ -116,6 +116,17 @@ impl TrustchainHTTPHandler {
             .map(|chain| (StatusCode::OK, Json(chain)))
     }
 
+    pub async fn get_verification_bundle(
+        Path(did): Path<String>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
+        debug!("Received DID to get verification bundle: {}", did.as_str());
+        let mut verifier = app_state.verifier.write().await;
+        TrustchainHTTPHandler::resolve_bundle(&did, &mut verifier)
+            .await
+            .map(|bundle| (StatusCode::OK, Json(bundle)))
+    }
+
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
         ResolutionResult {
             context: Some(serde_json::Value::String(
@@ -164,10 +175,21 @@ impl DIDChainResolutionResult {
 #[cfg(test)]
 mod tests {
     use trustchain_core::utils::canonicalize;
+    use trustchain_ion::get_ion_resolver;
 
     use crate::{config::ServerConfig, data::TEST_ROOT_PLUS_2_RESOLVED};
 
     use super::*;
+
+    // #[tokio::test]
+    // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
+    // async fn test_fetch_bundle() {
+    //     let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
+    //     let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
+    //     let result = verifier.fetch_bundle(did, Some("http://127.0.0.1:8081/did/bundle".to_string())).await;
+    //     println!("{:?}", result);
+    //     assert!(result.is_ok());
+    // }
 
     #[tokio::test]
     async fn test_get_did_resolver() {
