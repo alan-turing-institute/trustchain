@@ -118,22 +118,12 @@ where
         }
     }
 
-    /// Fetches the DID commitment.
-    async fn fetch_did_commitment(&self, did: &str) -> Result<(), VerifierError> {
-        // TODO: handle the possibility that the DID has been updated since previously fetched.
-        // If the corresponding VerificationBundle is already available, do nothing.
-        if !self.bundles.lock().unwrap().contains_key(did) {
-            self.verification_bundle(did).await?;
-        };
-        Ok(())
-    }
-
     /// Returns a DID verification bundle.
     pub async fn verification_bundle(
         &self,
         did: &str,
     ) -> Result<Arc<VerificationBundle>, VerifierError> {
-        // Fetch (and store) the bundle if it isn't already avaialable.
+        // Fetch (and store) the bundle if it isn't already available.
         if !self.bundles.lock().unwrap().contains_key(did) {
             self.fetch_bundle(did, None).await?;
         }
@@ -141,6 +131,8 @@ where
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
+    // TODO: offline functionality will require interfacing with a persistent cache instead of the
+    // in-memory verifier HashMap.
     pub async fn fetch_bundle(
         &self,
         did: &str,
@@ -423,10 +415,7 @@ where
     }
 
     async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
-        self.fetch_did_commitment(did).await?;
-        let bundle = self.bundles.lock().unwrap().get(did).cloned().ok_or(
-            VerifierError::VerificationMaterialNotYetFetched(did.to_string()),
-        )?;
+        let bundle = self.verification_bundle(did).await?;
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
