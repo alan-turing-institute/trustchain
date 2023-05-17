@@ -20,7 +20,7 @@ async fn trustchain_verification() {
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = get_ion_resolver("http://localhost:3000/");
-    let mut verifier = IONVerifier::new(resolver);
+    let verifier = IONVerifier::new(resolver);
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_1).await;
         assert!(result.is_ok());
@@ -31,7 +31,7 @@ async fn trustchain_verification() {
 #[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
 async fn test_verifiable_timestamp() {
     let resolver = get_ion_resolver("http://localhost:3000/");
-    let mut target = IONVerifier::new(resolver);
+    let target = IONVerifier::new(resolver);
 
     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
     let result = target.verifiable_timestamp(did).await;
