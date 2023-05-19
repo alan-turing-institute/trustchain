@@ -249,7 +249,7 @@ impl VerifiableTimestamp {
 pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a downstream DID by tracing its chain back to the root.
     async fn verify(
-        &mut self,
+        &self,
         did: &str,
         root_timestamp: Timestamp,
     ) -> Result<DIDChain, VerifierError> {
@@ -277,10 +277,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
     /// value for the timestamp retreived from a local PoW network node.
-    async fn verifiable_timestamp(
-        &mut self,
-        did: &str,
-    ) -> Result<VerifiableTimestamp, VerifierError> {
+    async fn verifiable_timestamp(&self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
         let did_commitment = self.did_commitment(did).await?;
         // Hash the DID commitment
@@ -326,7 +323,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Gets a block hash (PoW) Commitment for the given DID.
     /// The mutable reference to self enables a newly-fetched Commitment
     /// to be stored locally for faster subsequent retrieval.
-    async fn did_commitment(&mut self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
+    async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

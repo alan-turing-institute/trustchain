@@ -173,7 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // Trustchain verify the issued credential
-                    let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+                    let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
