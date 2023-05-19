@@ -40,3 +40,10 @@ impl Default for ServerConfig {
         }
     }
 }
+
+impl ServerConfig {
+    /// Provides formatted string of server config address.
+    pub fn to_address(&self) -> String {
+        format!("{}:{}", self.host, self.port).parse().unwrap()
+    }
+}

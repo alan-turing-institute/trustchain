@@ -25,9 +25,10 @@ async fn main() -> std::io::Result<()> {
 
     // Print config
     info!("{}", config);
+    let addr = config.to_address();
 
     // Init server
-    let (addr, _shutdown) = server::serve(config);
+    server::server(config).await.unwrap();
 
     // Logging
     tracing::debug!("listening on {}", addr);
