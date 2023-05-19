@@ -31,7 +31,7 @@ use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 type TransactionLocator = (BlockHash, u32);
 
 /// Data bundle for DID timestamp verification.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VerificationBundle {
     /// DID Document.
     did_doc: Document,
