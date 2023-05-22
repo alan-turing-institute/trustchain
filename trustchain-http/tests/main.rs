@@ -1,9 +1,15 @@
 use axum::{routing::get, Router};
+use axum_test_helper::TestClient;
+use hyper::StatusCode;
+use serde::{Deserialize, Serialize};
 use ssi::did_resolve::ResolutionResult;
+use std::error::Error;
+use std::str::FromStr;
 use std::sync::Arc;
-use trustchain_core::utils::canonicalize;
+use tower::ServiceExt;
+use trustchain_core::utils::{canonicalize, canonicalize_str};
 use trustchain_http::data::{TEST_ROOT_PLUS_2_BUNDLE, TEST_ROOT_PLUS_2_RESOLVED};
-use trustchain_http::server::server;
+use trustchain_http::server::{router, server};
 use trustchain_http::state::AppState;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 use trustchain_ion::verifier::VerificationBundle;
@@ -43,15 +49,15 @@ async fn test_not_found() {
 #[tokio::test]
 #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
 async fn test_resolve_did() {
-    let expected = TEST_ROOT_PLUS_2_RESOLVED;
-    let (base, shutdown) = server_graceful(ServerConfig::default());
-    let uri = format!("{base}/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
-    let actual = serde_json::from_str::<ResolutionResult>(
-        &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
+    let app = router(ServerConfig::default());
+    let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+    let client = TestClient::new(app);
+    let response = client.get(&uri).send().await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        canonicalize_str::<ResolutionResult>(&response.text().await).unwrap(),
+        canonicalize_str::<ResolutionResult>(TEST_ROOT_PLUS_2_RESOLVED).unwrap()
     )
-    .unwrap();
-    assert_eq!(canonicalize(&actual).unwrap(), expected);
-    shutdown();
 }
 
 #[tokio::test]
@@ -102,19 +108,15 @@ async fn test_post_verifier_credential() {
 #[tokio::test]
 // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
 async fn test_get_bundle() {
-    let (base, shutdown) = server_graceful(ServerConfig::default());
-    let uri =
-        format!("{base}/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
-    let actual = serde_json::from_str::<VerificationBundle>(
-        &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
-    )
-    .unwrap();
+    let app = router(ServerConfig::default());
+    let uri = "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+    let client = TestClient::new(app);
+    let response = client.get(&uri).send().await;
+    assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(
-        canonicalize(&actual).unwrap(),
-        canonicalize(&serde_json::from_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE).unwrap())
-            .unwrap()
+        canonicalize_str::<VerificationBundle>(&response.text().await).unwrap(),
+        canonicalize_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE).unwrap()
     );
-    shutdown();
 }
 
 #[tokio::test]
@@ -123,6 +125,11 @@ async fn test_get_bundle() {
 async fn test_fetch_bundle() {
     // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
     // let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
+
+    let router = router(ServerConfig::default());
+
+    let client = TestClient::new(router);
+    let res = client.get("/").send().await;
 
     // let result = verifier.fetch_bundle(did, Some("http://127.0.0.1:8081/did/bundle".to_string())).await;
     let result = serde_json::from_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE);

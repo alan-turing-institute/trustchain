@@ -7,12 +7,10 @@ use hyper::server::conn::AddrIncoming;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 
-/// General method to spawn a Trustchain server given ServerConfig and create a shutdown closure for
-/// use in binaries and tests. Setup based on [`didkit-http`](https://github.com/spruceid/didkit/blob/main/http/tests/main.rs).
-pub fn server(config: ServerConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
-    let addr = format!("{}:{}", config.host, config.port).parse().unwrap();
+/// Constructs a router given a ServerConfig.
+pub fn router(config: ServerConfig) -> Router {
     let shared_state = Arc::new(AppState::new(config));
-    let app = Router::new()
+    Router::new()
         .route("/", get(handlers::index))
         .route(
             "/issuer",
@@ -45,8 +43,12 @@ pub fn server(config: ServerConfig) -> axum::Server<AddrIncoming, IntoMakeServic
             "/did/bundle/:id",
             get(resolver::TrustchainHTTPHandler::get_verification_bundle),
         )
-        .with_state(shared_state);
+        .with_state(shared_state)
+}
 
-    let server = axum::Server::bind(&addr).serve(app.into_make_service());
-    server
+/// General method to spawn a Trustchain server given ServerConfig.
+pub fn server(config: ServerConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
+    let addr = config.to_socket_address();
+    let app = router(config);
+    axum::Server::bind(&addr).serve(app.into_make_service())
 }

@@ -1,4 +1,7 @@
-use std::{net::IpAddr, str::FromStr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+};
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
@@ -45,5 +48,11 @@ impl ServerConfig {
     /// Provides formatted string of server config address.
     pub fn to_address(&self) -> String {
         format!("{}:{}", self.host, self.port).parse().unwrap()
+    }
+    /// Provides `SocketAdd` of server config address.
+    pub fn to_socket_address(&self) -> SocketAddr {
+        format!("{}:{}", self.host, self.port)
+            .parse::<SocketAddr>()
+            .unwrap()
     }
 }
