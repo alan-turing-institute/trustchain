@@ -1,13 +1,18 @@
 use crate::qrcode::str_to_qr_code_html;
+use crate::resolver::RootEventTime;
 use crate::state::AppState;
 use crate::EXAMPLE_VP_REQUEST;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
 use log::info;
+use serde::{Deserialize, Serialize};
+use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
+use trustchain_ion::verifier::IONVerifier;
+use trustchain_ion::IONResolver;
 
 // TODO: implement in core?
 pub struct PresentationRequest;
@@ -26,7 +31,10 @@ pub trait TrustchainVerifierHTTP {
     /// Verifies verifiable presentation
     fn verify_presentation(presentation: &Presentation) -> Result<(), PresentationError>;
     /// Verifies verifiable credential
-    fn verify_credential(credential: &Credential) -> Result<(), PresentationError>;
+    fn verify_credential<T: DIDResolver + Send + Sync>(
+        credential: &Credential,
+        verifier: &IONVerifier<T>,
+    ) -> Result<(), PresentationError>;
 }
 
 pub struct TrustchainVerifierHTTPHandler;
@@ -40,9 +48,22 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {
         todo!()
     }
 
-    fn verify_credential(credential: &Credential) -> Result<(), PresentationError> {
+    fn verify_credential<T: DIDResolver + Send + Sync>(
+        credential: &Credential,
+        verifier: &IONVerifier<T>,
+    ) -> Result<(), PresentationError> {
+        // 1. Verify signature on credential is valid given key
+        // Use the resolver from the verifier inside:
+        //    credential.verify(None, verifier.resolver())
+        // 2. Verify did of issuer is valide (same as chain resolution)
         todo!()
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct PostVerifier {
+    pub credential: Credential,
+    pub root_event_time: RootEventTime,
 }
 
 impl TrustchainVerifierHTTPHandler {
@@ -54,11 +75,19 @@ impl TrustchainVerifierHTTPHandler {
         Html(EXAMPLE_VP_REQUEST.to_string())
     }
 
-    pub async fn post_verifier(Json(info): Json<Credential>) -> impl IntoResponse {
+    // pub async fn post_verifier(Json(info): Json<Credential>) -> impl IntoResponse {
+    pub async fn post_verifier(
+        Json(info): Json<Credential>,
+        // TODO: replace
+        // Json(info): Json<PostVerifier>,
+        // Query(root_event_time): Query<RootEventTime>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
         info!(
             "Received credential at presentation:\n{}",
             serde_json::to_string_pretty(&info).unwrap()
         );
+
         // TODO: check whether a specific response body is required
         // See [here](https://w3c-ccg.github.io/vc-api/#prove-presentation)
         (StatusCode::OK, "Received!")
