@@ -79,19 +79,6 @@ async fn test_resolve_bundle() {
     todo!("Implement a test of the bundle endpoint handler.")
 }
 
-// Issuer integration tests
-#[tokio::test]
-#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-async fn test_get_issuer_offer() {
-    todo!()
-}
-
-#[tokio::test]
-#[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-async fn test_post_issuer_credential() {
-    todo!()
-}
-
 // Verifier integration tests
 #[tokio::test]
 #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
