@@ -8,7 +8,6 @@ pub mod qrcode;
 pub mod resolver;
 pub mod server;
 pub mod state;
-pub mod vc;
 pub mod verifier;
 
 /// Issuer DID

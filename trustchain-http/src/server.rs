@@ -1,7 +1,7 @@
 // use axum::{routing::get, Router, middleware::{self, Next}, extract::{FromRequest, Request}};
 use crate::middleware::validate_did;
 use crate::{config::ServerConfig, handlers, issuer, resolver, state::AppState, verifier};
-use axum::routing::IntoMakeService;
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use hyper::server::conn::AddrIncoming;
 use std::sync::Arc;
@@ -23,8 +23,12 @@ pub fn router(config: ServerConfig) -> Router {
         .route(
             "/vc/issuer/:id",
             get(issuer::TrustchainIssuerHTTPHandler::get_issuer)
-                .post(issuer::TrustchainIssuerHTTPHandler::post_issuer),
+                .post(issuer::TrustchainIssuerHTTPHandler::post_issuer), // .with_state(shared_state.clone()),
         )
+        // .route(
+        // "/vc/issuer/:id",
+        // post(issuer::TrustchainIssuerHTTPHandler::post_issuer),
+        // )
         .route(
             "/vc/verifier",
             get(verifier::TrustchainVerifierHTTPHandler::get_verifier)
