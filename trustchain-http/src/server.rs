@@ -22,11 +22,7 @@ pub fn router(config: ServerConfig) -> Router {
         )
         .route(
             "/vc/issuer/:id",
-            get(issuer::TrustchainIssuerHTTPHandler::get_issuer),
-        )
-        .route(
-            "/vc/issuer/:id",
-            post({
+            get(issuer::TrustchainIssuerHTTPHandler::get_issuer).post({
                 let state = shared_state.clone();
                 move |(id, vc_info)| {
                     issuer::TrustchainIssuerHTTPHandler::post_issuer((id, vc_info), state)
