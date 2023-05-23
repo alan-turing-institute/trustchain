@@ -146,33 +146,19 @@ impl TrustchainIssuerHTTPHandler {
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
-        let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
-            &TEMPLATE,
-            None,
-            &id,
-            app_state.verifier.resolver(),
-        )
-        .await;
-        (StatusCode::OK, Json(credential_signed))
-
-        // TODO: currently does not satisfy trait bound. Consider passing credential cache as Extension.
-        // let credential = app_state
-        //     .credentials
-        //     .get(&id)
-        //     .ok_or(TrustchainHTTPError::CredentialDoesNotExist);
-        // match credential {
-        //     Ok(credential) => {
-        //         let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
-        //             credential,
-        //             None,
-        //             &id,
-        //             app_state.verifier.resolver(),
-        //         )
-        //         .await;
-        //         Ok((StatusCode::OK, Json(credential_signed)))
-        //     }
-        //     Err(e) => Err(e),
-        // }
+        match app_state.credentials.get(&id) {
+            Some(credential) => {
+                let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
+                    credential,
+                    None,
+                    &id,
+                    app_state.verifier.resolver(),
+                )
+                .await;
+                Ok((StatusCode::OK, Json(credential_signed)))
+            }
+            None => Err(TrustchainHTTPError::CredentialDoesNotExist),
+        }
     }
 }
 
