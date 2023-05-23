@@ -1,3 +1,4 @@
+use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
 use crate::ISSUER_DID;
@@ -10,6 +11,7 @@ use chrono::Utc;
 use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use ssi::did_resolve::DIDResolver;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
@@ -109,8 +111,8 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 
 impl TrustchainIssuerHTTPHandler {
     pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
-        // Generate a UUID
-        let id = Uuid::new_v4().to_string();
+        // TODO: update to take query param entered by user.
+        let id = "7426a2e8-f932-11ed-968a-4bb02079f142".to_string();
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "http://{}:{}/vc/issuer/{id}",
@@ -121,13 +123,22 @@ impl TrustchainIssuerHTTPHandler {
     }
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
-    pub async fn get_issuer(Path(id): Path<String>) -> impl IntoResponse {
-        (
-            StatusCode::OK,
-            Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
-                &TEMPLATE, &id,
-            )),
-        )
+    pub async fn get_issuer(
+        Path(id): Path<String>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
+        app_state
+            .credentials
+            .get(&id)
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)
+            .map(|credential| {
+                (
+                    StatusCode::OK,
+                    Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
+                        credential, &id,
+                    )),
+                )
+            })
     }
     /// Receives subject DID in response to offer and returns signed credential.
     pub async fn post_issuer(
@@ -135,7 +146,6 @@ impl TrustchainIssuerHTTPHandler {
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
-        println!("{:?}", vc_info);
         let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
             &TEMPLATE,
             None,
@@ -144,6 +154,25 @@ impl TrustchainIssuerHTTPHandler {
         )
         .await;
         (StatusCode::OK, Json(credential_signed))
+
+        // TODO: currently does not satisfy trait bound. Consider passing credential cache as Extension.
+        // let credential = app_state
+        //     .credentials
+        //     .get(&id)
+        //     .ok_or(TrustchainHTTPError::CredentialDoesNotExist);
+        // match credential {
+        //     Ok(credential) => {
+        //         let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
+        //             credential,
+        //             None,
+        //             &id,
+        //             app_state.verifier.resolver(),
+        //         )
+        //         .await;
+        //         Ok((StatusCode::OK, Json(credential_signed)))
+        //     }
+        //     Err(e) => Err(e),
+        // }
     }
 }
 

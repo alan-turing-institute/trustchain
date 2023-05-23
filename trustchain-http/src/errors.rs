@@ -20,6 +20,8 @@ pub enum TrustchainHTTPError {
     CommitmentError(CommitmentError),
     #[error("Trustchain Resolver error: {0}")]
     ResolverError(ResolverError),
+    #[error("Credential does not exist.")]
+    CredentialDoesNotExist,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -58,6 +60,9 @@ impl IntoResponse for TrustchainHTTPError {
             }
             err @ TrustchainHTTPError::ResolverError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::CredentialDoesNotExist => {
+                (StatusCode::BAD_REQUEST, err.to_string())
             }
         };
         let body = Json(json!({ "error": err_message }));
