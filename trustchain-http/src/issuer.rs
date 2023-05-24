@@ -1,5 +1,4 @@
 use crate::config::ServerConfig;
-use crate::data::TEST_CHAIN;
 use crate::qrcode::str_to_qr_code_html;
 use crate::resolver::DIDChainResolutionResult;
 use crate::resolver::TrustchainHTTPHandler;
@@ -19,7 +18,6 @@ use ssi::did_resolve::{DocumentMetadata, ResolutionResult};
 use ssi::vc::Credential;
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::data::{TEST_ROOT_PLUS_2_DOCUMENT, TEST_ROOT_PLUS_2_DOCUMENT_METADATA};
 use uuid::Uuid;
 
 // TODO: implement with data required for a valid credential offer
@@ -111,5 +109,18 @@ impl TrustchainIssuerHTTPHandler {
 //     )
 // }
 
-// #[cfg(test)]
-// mod tests {}
+#[cfg(test)]
+mod tests {
+    // Issuer integration tests
+    #[tokio::test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    async fn test_get_issuer_offer() {
+        todo!()
+    }
+
+    #[tokio::test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    async fn test_post_issuer_credential() {
+        todo!()
+    }
+}
