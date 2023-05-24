@@ -50,6 +50,9 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
+            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_)) => {
+                (StatusCode::OK, err.to_string())
+            }
             err @ TrustchainHTTPError::VerifierError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
