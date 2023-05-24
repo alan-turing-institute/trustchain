@@ -1,16 +1,12 @@
-use axum::{routing::get, Router};
 use axum_test_helper::TestClient;
 use hyper::StatusCode;
-use serde::{Deserialize, Serialize};
 use ssi::did_resolve::ResolutionResult;
-use std::error::Error;
-use std::str::FromStr;
-use std::sync::Arc;
-use tower::ServiceExt;
 use trustchain_core::utils::{canonicalize, canonicalize_str};
-use trustchain_http::data::{TEST_ROOT_PLUS_2_BUNDLE, TEST_ROOT_PLUS_2_RESOLVED};
+use trustchain_http::data::{
+    TEST_CHAIN, TEST_CHAIN_RESOLVED, TEST_ROOT_PLUS_2_BUNDLE, TEST_ROOT_PLUS_2_RESOLVED,
+};
+use trustchain_http::resolver::DIDChainResolutionResult;
 use trustchain_http::server::{router, server};
-use trustchain_http::state::AppState;
 use trustchain_http::{config::ServerConfig, handlers, issuer, resolver, verifier};
 use trustchain_ion::verifier::VerificationBundle;
 
@@ -37,13 +33,11 @@ fn server_graceful(config: ServerConfig) -> (String, impl FnOnce()) {
 // Resolution integration tests
 #[tokio::test]
 async fn test_not_found() {
-    let (base, shutdown) = server_graceful(ServerConfig::default());
-    let client = hyper::Client::builder().build_http::<hyper::Body>();
-    let uri = (base + "/nonexistent-path").parse::<hyper::Uri>().unwrap();
-    let resp = client.get(uri).await.unwrap();
-    assert_eq!(resp.status(), 404);
-
-    shutdown();
+    let app = router(ServerConfig::default());
+    let uri = "/nonexistent-path".to_string();
+    let client = TestClient::new(app);
+    let response = client.get(&uri).send().await;
+    assert_eq!(response.status(), 404);
 }
 
 #[tokio::test]
@@ -62,15 +56,16 @@ async fn test_resolve_did() {
 
 #[tokio::test]
 #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-// TODO: same format as resolve DID and bundle test
 async fn test_resolve_chain() {
-    // let (base, shutdown) = server_graceful(ServerConfig::default());
-    // let uri =
-    // format!("{base}/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q");
-    // let actual = serde_json::from_str::<DIDChainResolutionResult>(
-    //     &reqwest::get(&uri).await.unwrap().text().await.unwrap(),
-    // )
-    // .unwrap();
+    let app = router(ServerConfig::default());
+    let uri = "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405".to_string();
+    let client = TestClient::new(app);
+    let response = client.get(&uri).send().await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        canonicalize_str::<DIDChainResolutionResult>(&response.text().await).unwrap(),
+        canonicalize_str::<DIDChainResolutionResult>(TEST_CHAIN_RESOLVED).unwrap()
+    )
 }
 
 #[tokio::test]
