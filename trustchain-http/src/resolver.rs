@@ -21,8 +21,7 @@ use trustchain_core::{
 };
 use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
-// TODO: Potentially add IntoResponse impl for DIDChainResolutionResult to simplify return
-
+/// TODO
 #[async_trait]
 pub trait TrustchainHTTP {
     /// Resolves a DID document.
@@ -38,7 +37,8 @@ pub trait TrustchainHTTP {
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
-    // TODO: should we include a separate method to return verification bundle?
+    /// TODO: should we include a separate method to return verification bundle?
+    /// TODO
     async fn resolve_bundle<T: DIDResolver + Send + Sync>(
         did: &str,
         verifier: &IONVerifier<T>,
@@ -118,7 +118,7 @@ impl TrustchainHTTPHandler {
         .await
         .map(|chain| (StatusCode::OK, Json(chain)))
     }
-
+    /// TODO
     pub async fn get_verification_bundle(
         Path(did): Path<String>,
         State(app_state): State<Arc<AppState>>,
@@ -128,7 +128,7 @@ impl TrustchainHTTPHandler {
             .await
             .map(|bundle| (StatusCode::OK, Json(bundle)))
     }
-
+    /// TODO
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
         ResolutionResult {
             context: Some(serde_json::Value::String(
@@ -171,7 +171,6 @@ mod tests {
 
     use super::*;
 
-    // Resolution integration tests
     #[tokio::test]
     async fn test_not_found() {
         let app = router(ServerConfig::default());
@@ -193,6 +192,7 @@ mod tests {
             canonicalize_str::<ResolutionResult>(&response.text().await).unwrap(),
             canonicalize_str::<ResolutionResult>(TEST_ROOT_PLUS_2_RESOLVED).unwrap()
         )
+        // TODO: add failing test
     }
 
     #[tokio::test]
@@ -207,6 +207,7 @@ mod tests {
             canonicalize_str::<DIDChainResolutionResult>(&response.text().await).unwrap(),
             canonicalize_str::<DIDChainResolutionResult>(TEST_ROOT_PLUS_2_CHAIN).unwrap()
         )
+        // TODO: add failing test
     }
 
     #[tokio::test]
@@ -222,10 +223,10 @@ mod tests {
             canonicalize_str::<VerificationBundle>(&response.text().await).unwrap(),
             canonicalize_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE).unwrap()
         );
+        // TODO: add failing test
     }
 
     #[tokio::test]
-    // TODO: implement with server_graceful
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_fetch_bundle() {
         // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
@@ -236,7 +237,9 @@ mod tests {
         let client = TestClient::new(router);
         let res = client.get("/").send().await;
 
-        // let result = verifier.fetch_bundle(did, Some("http://127.0.0.1:8081/did/bundle".to_string())).await;
+        // let result = verifier
+        //     .fetch_bundle(did, Some("http://127.0.0.1:8081/did/bundle".to_string()))
+        //     .await;
         let result = serde_json::from_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE);
         println!("{:?}", result);
         assert!(result.is_ok());
