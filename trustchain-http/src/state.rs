@@ -1,7 +1,6 @@
 use crate::config::ServerConfig;
 use ssi::vc::Credential;
 use std::collections::HashMap;
-use tokio::sync::RwLock;
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 

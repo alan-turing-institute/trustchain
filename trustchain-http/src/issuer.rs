@@ -1,17 +1,14 @@
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
-use crate::ISSUER_DID;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
 use chrono::Utc;
-use lazy_static::lazy_static;
 use log::info;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use ssi::did_resolve::DIDResolver;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
@@ -21,18 +18,6 @@ use trustchain_core::issuer::Issuer;
 use trustchain_core::resolver::Resolver;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::attestor::IONAttestor;
-use uuid::Uuid;
-
-lazy_static! {
-    static ref TEMPLATE: Credential = {
-        let home = std::env::var("HOME").unwrap();
-        let file_str = format!("{home}/.trustchain/credentials/credential_template.jsonld");
-        serde_json::from_str(
-            &std::fs::read_to_string(file_str).expect("No template credential file."),
-        )
-        .unwrap()
-    };
-}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,8 +36,8 @@ impl CredentialOffer {
             expires: Some(VCDateTime::from(Utc::now() + chrono::Duration::minutes(60))),
         }
     }
-    pub fn generate(template: &Credential, id: &str) -> Self {
-        let mut credential: Credential = template.to_owned();
+    pub fn generate(credential: &Credential, id: &str) -> Self {
+        let mut credential: Credential = credential.to_owned();
         credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", id)));
         Self::new(credential)
     }
@@ -74,8 +59,9 @@ pub trait TrustchainIssuerHTTP {
         credential: &Credential,
         subject_id: Option<&str>,
         credential_id: &str,
+        issuer_did: &str,
         resolver: &Resolver<T>,
-    ) -> Credential;
+    ) -> Result<Credential, TrustchainHTTPError>;
 }
 
 /// Type for implementing the TrustchainIssuerHTTP trait that will contain additional handler methods.
@@ -91,8 +77,9 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         credential: &Credential,
         subject_id: Option<&str>,
         credential_id: &str,
+        issuer_did: &str,
         resolver: &Resolver<T>,
-    ) -> Credential {
+    ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential.to_owned();
         credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", credential_id)));
         let now = chrono::offset::Utc::now();
@@ -104,9 +91,9 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         }
 
         // TODO: Load the issuer DID from config instead of const, see lib.rs
-        let issuer = IONAttestor::new(ISSUER_DID);
-
-        issuer.sign(&credential, None, resolver).await.unwrap()
+        // let issuer = IONAttestor::new(ISSUER_DID);
+        let issuer = IONAttestor::new(issuer_did);
+        Ok(issuer.sign(&credential, None, resolver).await?)
     }
 }
 
@@ -147,15 +134,21 @@ impl TrustchainIssuerHTTPHandler {
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
+        let issuer_did = app_state
+            .config
+            .issuer_did
+            .as_ref()
+            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
         match app_state.credentials.get(&id) {
             Some(credential) => {
                 let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
                     credential,
                     None,
                     &id,
+                    issuer_did,
                     app_state.verifier.resolver(),
                 )
-                .await;
+                .await?;
                 Ok((StatusCode::OK, Json(credential_signed)))
             }
             None => Err(TrustchainHTTPError::CredentialDoesNotExist),
@@ -165,12 +158,28 @@ impl TrustchainIssuerHTTPHandler {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{config::ServerConfig, server::TrustchainRouter, state::AppState};
+    // use super::*;
+    use crate::{
+        config::ServerConfig,
+        errors::TrustchainHTTPError,
+        issuer::{CredentialOffer, VcInfo},
+        server::TrustchainRouter,
+        state::AppState,
+    };
     use axum_test_helper::TestClient;
     use hyper::StatusCode;
+    use lazy_static::lazy_static;
+    use serde_json::json;
     use std::sync::Arc;
     use trustchain_core::utils::canonicalize;
+
+    lazy_static! {
+        /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
+        pub static ref TEST_HTTP_CONFIG: ServerConfig = ServerConfig {
+            issuer_did: Some("did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA".to_string()),
+            ..Default::default()
+        };
+    }
 
     const CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
@@ -199,7 +208,7 @@ mod tests {
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_get_issuer_offer() {
         let state = Arc::new(AppState::new_with_cache(
-            ServerConfig::default(),
+            TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
         ));
         let app = TrustchainRouter::from(state.clone()).router();
@@ -240,11 +249,10 @@ mod tests {
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
-            ServerConfig::default(),
+            TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
         )))
         .router();
-        // TODO: add issuer for tests to be loaded from a test config.
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
         let uri = format!("/vc/issuer/{uid}");
         let client = TestClient::new(app);

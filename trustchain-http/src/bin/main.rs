@@ -21,6 +21,7 @@ async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
 
     // Get config from CLI
+    // TODO: update to load from trustchain_config.toml
     let config: ServerConfig = Parser::parse();
 
     // Print config
