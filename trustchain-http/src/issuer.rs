@@ -164,41 +164,92 @@ impl TrustchainIssuerHTTPHandler {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::{config::ServerConfig, server::router, state::AppState};
     use axum_test_helper::TestClient;
     use hyper::StatusCode;
+    use std::sync::Arc;
+    use trustchain_core::utils::canonicalize;
 
-    use crate::{config::ServerConfig, issuer::VcInfo, server::router};
-
-    // TODO: add test flexibility with credential offer and to be signed created in tests
+    const CREDENTIALS: &str = r#"{
+        "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
+            "@context" : [
+               "https://www.w3.org/2018/credentials/v1",
+               "https://www.w3.org/2018/credentials/examples/v1"
+            ],
+            "credentialSubject" : {
+               "degree" : {
+                  "college" : "University of Oxbridge",
+                  "name" : "Bachelor of Arts",
+                  "type" : "BachelorDegree"
+               },
+               "familyName" : "Bloggs",
+               "givenName" : "Jane"
+            },
+            "type" : [
+               "VerifiableCredential"
+            ]
+         }
+    }
+    "#;
 
     // Issuer integration tests
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_get_issuer_offer() {
-        let app = router(ServerConfig::default());
-        let uid = "abc";
+        let state = Arc::new(AppState::new_with_cache(
+            ServerConfig::default(),
+            serde_json::from_str(CREDENTIALS).unwrap(),
+        ));
+        let app = router(state.clone());
+        // Get offer for valid credential
+        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let uri = format!("/vc/issuer/{uid}");
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
-        println!("{:?}", response.text().await);
-        // assert_eq!(
-        //     canonicalize_str::<VerificationBundle>(&response.text().await).unwrap(),
-        //     canonicalize_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE).unwrap()
-        // );
+        let mut actual_offer = response.json::<CredentialOffer>().await;
+        let mut expected_offer =
+            CredentialOffer::generate(state.credentials.get(&uid).unwrap(), &uid);
+
+        // Set expiry to None as will be different
+        expected_offer.expires = None;
+        actual_offer.expires = None;
+
+        // Check offers are equal
+        assert_eq!(
+            canonicalize(&expected_offer).unwrap(),
+            canonicalize(&actual_offer).unwrap()
+        );
+
+        // Try to get an offer for non-existent credential
+        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
+        let uri = format!("/vc/issuer/{uid}");
+        let app = router(state.clone());
+        let client = TestClient::new(app);
+        let response = client.get(&uri).send().await;
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response.text().await,
+            json!({"error":TrustchainHTTPError::CredentialDoesNotExist.to_string()}).to_string()
+        );
     }
 
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
-        let app = router(ServerConfig::default());
-        let uid = "abc";
+        let app = router(Arc::new(AppState::new_with_cache(
+            ServerConfig::default(),
+            serde_json::from_str(CREDENTIALS).unwrap(),
+        )));
+        let uid = "7426a2e8-f932-11ed-968a-4bb02079f141".to_string();
         let uri = format!("/vc/issuer/{uid}");
         let client = TestClient::new(app);
         let response = client
             .post(&uri)
             .json(&VcInfo {
-                subject_id: "abc".to_string(),
+                subject_id: "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
+                    .to_string(),
             })
             .send()
             .await;

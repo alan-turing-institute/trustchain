@@ -49,7 +49,7 @@ async fn test_not_found() {
 #[tokio::test]
 #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
 async fn test_resolve_did() {
-    let app = router(ServerConfig::default());
+    let app = router(Arc::new(AppState::new(ServerConfig::default())));
     let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
     let client = TestClient::new(app);
     let response = client.get(&uri).send().await;
@@ -95,7 +95,7 @@ async fn test_post_verifier_credential() {
 #[tokio::test]
 // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
 async fn test_get_bundle() {
-    let app = router(ServerConfig::default());
+    let app = router(Arc::new(AppState::new(ServerConfig::default())));
     let uri = "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
     let client = TestClient::new(app);
     let response = client.get(&uri).send().await;
@@ -113,9 +113,9 @@ async fn test_fetch_bundle() {
     // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
     // let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
 
-    let router = router(ServerConfig::default());
+    let app = router(Arc::new(AppState::new(ServerConfig::default())));
 
-    let client = TestClient::new(router);
+    let client = TestClient::new(app);
     let res = client.get("/").send().await;
 
     // let result = verifier.fetch_bundle(did, Some("http://127.0.0.1:8081/did/bundle".to_string())).await;

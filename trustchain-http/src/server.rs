@@ -8,8 +8,8 @@ use std::sync::Arc;
 use tower::ServiceBuilder;
 
 /// Constructs a router given a ServerConfig.
-pub fn router(config: ServerConfig) -> Router {
-    let shared_state = Arc::new(AppState::new(config));
+// pub fn router(config: ServerConfig) -> Router {
+pub fn router(shared_state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(handlers::index))
         .route(
@@ -53,6 +53,7 @@ pub fn router(config: ServerConfig) -> Router {
 /// General method to spawn a Trustchain server given ServerConfig.
 pub fn server(config: ServerConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
     let addr = config.to_socket_address();
-    let app = router(config);
+    let shared_state = Arc::new(AppState::new(config));
+    let app = router(shared_state);
     axum::Server::bind(&addr).serve(app.into_make_service())
 }
