@@ -103,6 +103,7 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
             }
         }
 
+        // TODO: Load the issuer DID from config instead of const, see lib.rs
         let issuer = IONAttestor::new(ISSUER_DID);
 
         issuer.sign(&credential, None, resolver).await.unwrap()
@@ -165,7 +166,7 @@ impl TrustchainIssuerHTTPHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{config::ServerConfig, server::router, state::AppState};
+    use crate::{config::ServerConfig, server::TrustchainRouter, state::AppState};
     use axum_test_helper::TestClient;
     use hyper::StatusCode;
     use std::sync::Arc;
@@ -201,7 +202,7 @@ mod tests {
             ServerConfig::default(),
             serde_json::from_str(CREDENTIALS).unwrap(),
         ));
-        let app = router(state.clone());
+        let app = TrustchainRouter::from(state.clone()).router();
         // Get offer for valid credential
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let uri = format!("/vc/issuer/{uid}");
@@ -225,7 +226,7 @@ mod tests {
         // Try to get an offer for non-existent credential
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
         let uri = format!("/vc/issuer/{uid}");
-        let app = router(state.clone());
+        let app = TrustchainRouter::from(state.clone()).router();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
@@ -238,11 +239,13 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
-        let app = router(Arc::new(AppState::new_with_cache(
+        let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             ServerConfig::default(),
             serde_json::from_str(CREDENTIALS).unwrap(),
-        )));
-        let uid = "7426a2e8-f932-11ed-968a-4bb02079f141".to_string();
+        )))
+        .router();
+        // TODO: add issuer for tests to be loaded from a test config.
+        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
         let uri = format!("/vc/issuer/{uid}");
         let client = TestClient::new(app);
         let response = client
