@@ -1,3 +1,4 @@
+//TODO: Consider removing TEST_CHAIN if not in use
 pub const TEST_CHAIN: &str = r##"
 {
     "did_map": {
