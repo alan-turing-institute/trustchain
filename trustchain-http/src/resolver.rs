@@ -162,7 +162,7 @@ impl DIDChainResolutionResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::{config::ServerConfig, server::TrustchainRouter};
+    use crate::{config::HTTPConfig, server::TrustchainRouter};
     use axum_test_helper::TestClient;
     use trustchain_core::utils::canonicalize_str;
     const TEST_ROOT_PLUS_2_RESOLVED: &str = r##"{"@context":"https://w3id.org/did-resolution/v1","didDocument":{"@context":["https://www.w3.org/ns/did/v1",{"@base":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"}],"assertionMethod":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"authentication":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityDelegation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityInvocation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"controller":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","id":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","keyAgreement":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"service":[{"id":"#TrustchainID","serviceEndpoint":"https://identity.foundation/ion/trustchain-root-plus-2","type":"Identity"}],"verificationMethod":[{"controller":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","id":"#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI","publicKeyJwk":{"crv":"secp256k1","kty":"EC","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY"},"type":"JsonWebSignature2020"}]},"didDocumentMetadata":{"canonicalId":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","method":{"published":true,"recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA","updateCommitment":"EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg"},"proof":{"id":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","proofValue":"eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw","type":"JsonWebSignature2020"}}}"##;
@@ -173,7 +173,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_not_found() {
-        let app = TrustchainRouter::from(ServerConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).router();
         let uri = "/nonexistent-path".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -183,7 +183,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_did() {
-        let app = TrustchainRouter::from(ServerConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).router();
         let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -198,7 +198,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
-        let app = TrustchainRouter::from(ServerConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).router();
         let uri = "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -213,7 +213,7 @@ mod tests {
     #[tokio::test]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_get_bundle() {
-        let app = TrustchainRouter::from(ServerConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).router();
         let uri =
             "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
@@ -232,7 +232,7 @@ mod tests {
         // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
         // let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
 
-        let router = TrustchainRouter::from(ServerConfig::default()).router();
+        let router = TrustchainRouter::from(HTTPConfig::default()).router();
 
         let client = TestClient::new(router);
         let res = client.get("/").send().await;

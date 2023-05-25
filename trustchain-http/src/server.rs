@@ -1,6 +1,6 @@
 // use axum::{routing::get, Router, middleware::{self, Next}, extract::{FromRequest, Request}};
 use crate::middleware::validate_did;
-use crate::{config::ServerConfig, handlers, issuer, resolver, state::AppState, verifier};
+use crate::{config::HTTPConfig, handlers, issuer, resolver, state::AppState, verifier};
 use axum::routing::IntoMakeService;
 use axum::{middleware, routing::get, Router};
 use hyper::server::conn::AddrIncoming;
@@ -19,8 +19,8 @@ impl From<Arc<AppState>> for TrustchainRouter {
     }
 }
 
-impl From<ServerConfig> for TrustchainRouter {
-    fn from(config: ServerConfig) -> Self {
+impl From<HTTPConfig> for TrustchainRouter {
+    fn from(config: HTTPConfig) -> Self {
         let app_state = Arc::new(AppState::new(config));
         Self {
             router: Self::generate_router(app_state),
@@ -78,7 +78,7 @@ impl TrustchainRouter {
 }
 
 /// General method to spawn a Trustchain server given ServerConfig.
-pub fn server(config: ServerConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
+pub fn server(config: HTTPConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
     let addr = config.to_socket_address();
     let shared_state = Arc::new(AppState::new(config));
     let app = TrustchainRouter::from(shared_state).router();

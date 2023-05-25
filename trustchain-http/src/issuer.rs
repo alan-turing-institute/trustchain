@@ -157,7 +157,7 @@ impl TrustchainIssuerHTTPHandler {
 mod tests {
     use super::*;
     use crate::{
-        config::ServerConfig,
+        config::HTTPConfig,
         errors::TrustchainHTTPError,
         // issuer::{CredentialOffer, VcInfo},
         server::TrustchainRouter,
@@ -177,7 +177,7 @@ mod tests {
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
-        pub static ref TEST_HTTP_CONFIG: ServerConfig = ServerConfig {
+        pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
             issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             ..Default::default()
         };

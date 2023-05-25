@@ -13,7 +13,7 @@ const DEFAULT_PORT: u16 = 8081;
 
 /// Server config.
 #[derive(clap::Parser, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ServerConfig {
+pub struct HTTPConfig {
     /// Hostname for server
     #[clap(short = 's', long)]
     #[arg(default_value_t = IpAddr::from_str(DEFAULT_HOST).unwrap())]
@@ -31,13 +31,13 @@ pub struct ServerConfig {
     pub issuer_did: Option<String>,
 }
 
-impl std::fmt::Display for ServerConfig {
+impl std::fmt::Display for HTTPConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{:?}", self)
     }
 }
 
-impl Default for ServerConfig {
+impl Default for HTTPConfig {
     fn default() -> Self {
         Self {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
@@ -48,7 +48,7 @@ impl Default for ServerConfig {
     }
 }
 
-impl ServerConfig {
+impl HTTPConfig {
     /// Provides formatted string of server config address.
     pub fn to_address(&self) -> String {
         format!("{}:{}", self.host, self.port).parse().unwrap()
@@ -63,13 +63,13 @@ impl ServerConfig {
 
 lazy_static! {
     /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
-    pub static ref HTTP_CONFIG: ServerConfig = parse_toml(
+    pub static ref HTTP_CONFIG: HTTPConfig = parse_toml(
         &fs::read_to_string(std::env::var(TRUSTCHAIN_CONFIG).unwrap().as_str())
         .expect("Error reading trustchain_config.toml"));
 }
 
 /// Parses and returns core configuration.
-fn parse_toml(toml_str: &str) -> ServerConfig {
+fn parse_toml(toml_str: &str) -> HTTPConfig {
     toml::from_str::<Config>(toml_str)
         .expect("Error parsing trustchain_config.toml")
         .http
@@ -84,7 +84,7 @@ pub fn http_config() -> &'static HTTP_CONFIG {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Config {
     /// HTTP configuration data.
-    http: ServerConfig,
+    http: HTTPConfig,
 }
 
 #[cfg(test)]
@@ -104,15 +104,15 @@ mod tests {
         key = "value"
         "##;
 
-        let config: ServerConfig = parse_toml(config_string);
+        let config: HTTPConfig = parse_toml(config_string);
 
         assert_eq!(
             config,
-            ServerConfig {
+            HTTPConfig {
                 issuer_did: Some(
                     "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA".to_string()
                 ),
-                ..ServerConfig::default()
+                ..HTTPConfig::default()
             }
         );
     }
