@@ -58,7 +58,6 @@ pub trait TrustchainIssuerHTTP {
     async fn issue_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         subject_id: Option<&str>,
-        credential_id: &str,
         issuer_did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError>;
@@ -76,12 +75,13 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
     async fn issue_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         subject_id: Option<&str>,
-        credential_id: &str,
         issuer_did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential.to_owned();
-        credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", credential_id)));
+        credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
+            issuer_did.to_string(),
+        )));
         let now = chrono::offset::Utc::now();
         credential.issuance_date = Some(VCDateTime::from(now));
         if let Some(subject_id_str) = subject_id {
@@ -89,9 +89,6 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
                 subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
             }
         }
-
-        // TODO: Load the issuer DID from config instead of const, see lib.rs
-        // let issuer = IONAttestor::new(ISSUER_DID);
         let issuer = IONAttestor::new(issuer_did);
         Ok(issuer.sign(&credential, None, resolver).await?)
     }
@@ -112,25 +109,26 @@ impl TrustchainIssuerHTTPHandler {
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
     pub async fn get_issuer(
-        Path(id): Path<String>,
+        Path(credential_id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         app_state
             .credentials
-            .get(&id)
+            .get(&credential_id)
             .ok_or(TrustchainHTTPError::CredentialDoesNotExist)
             .map(|credential| {
                 (
                     StatusCode::OK,
                     Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
-                        credential, &id,
+                        credential,
+                        &credential_id,
                     )),
                 )
             })
     }
     /// Receives subject DID in response to offer and returns signed credential.
     pub async fn post_issuer(
-        (Path(id), Json(vc_info)): (Path<String>, Json<VcInfo>),
+        (Path(credential_id), Json(vc_info)): (Path<String>, Json<VcInfo>),
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
@@ -139,12 +137,11 @@ impl TrustchainIssuerHTTPHandler {
             .issuer_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
-        match app_state.credentials.get(&id) {
+        match app_state.credentials.get(&credential_id) {
             Some(credential) => {
                 let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
                     credential,
-                    None,
-                    &id,
+                    Some(&vc_info.subject_id),
                     issuer_did,
                     app_state.verifier.resolver(),
                 )
@@ -158,11 +155,11 @@ impl TrustchainIssuerHTTPHandler {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use super::*;
     use crate::{
         config::ServerConfig,
         errors::TrustchainHTTPError,
-        issuer::{CredentialOffer, VcInfo},
+        // issuer::{CredentialOffer, VcInfo},
         server::TrustchainRouter,
         state::AppState,
     };
@@ -170,13 +167,18 @@ mod tests {
     use hyper::StatusCode;
     use lazy_static::lazy_static;
     use serde_json::json;
+    use ssi::{
+        one_or_many::OneOrMany,
+        vc::{Credential, CredentialSubject, Issuer, URI},
+    };
     use std::sync::Arc;
-    use trustchain_core::utils::canonicalize;
+    use trustchain_core::{utils::canonicalize, verifier::Verifier};
+    use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: ServerConfig = ServerConfig {
-            issuer_did: Some("did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA".to_string()),
+            issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             ..Default::default()
         };
     }
@@ -187,6 +189,7 @@ mod tests {
                "https://www.w3.org/2018/credentials/v1",
                "https://www.w3.org/2018/credentials/examples/v1"
             ],
+            "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
             "credentialSubject" : {
                "degree" : {
                   "college" : "University of Oxbridge",
@@ -253,18 +256,41 @@ mod tests {
             serde_json::from_str(CREDENTIALS).unwrap(),
         )))
         .router();
-        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
+        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
+        let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
         let uri = format!("/vc/issuer/{uid}");
         let client = TestClient::new(app);
         let response = client
             .post(&uri)
             .json(&VcInfo {
-                subject_id: "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
-                    .to_string(),
+                subject_id: expected_subject_id.to_string(),
             })
             .send()
             .await;
+        // Test response
         assert_eq!(response.status(), StatusCode::OK);
-        println!("{:?}", response.text().await);
+        let credential = response.json::<Credential>().await;
+
+        // Test credential subject ID
+        match credential.credential_subject {
+            OneOrMany::One(CredentialSubject {
+                id: Some(URI::String(ref actual_subject_id)),
+                property_set: _,
+            }) => assert_eq!(actual_subject_id.to_string(), expected_subject_id),
+            _ => panic!(),
+        }
+
+        // Test signature
+        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+        let verify_credential_result = credential.verify(None, verifier.resolver()).await;
+        assert!(verify_credential_result.errors.is_empty());
+
+        // Test valid Trustchain issuer DID
+        match credential.issuer {
+            Some(Issuer::URI(URI::String(issuer))) => {
+                assert!(verifier.verify(&issuer, 1666265405).await.is_ok())
+            }
+            _ => panic!("No issuer present."),
+        }
     }
 }

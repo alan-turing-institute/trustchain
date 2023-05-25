@@ -26,19 +26,14 @@ pub struct ServerConfig {
     #[clap(short = 'p', long)]
     #[arg(default_value_t = DEFAULT_PORT)]
     pub port: u16,
-    /// Issuer did
+    /// Optional issuer DID
     #[clap(short = 'd', long)]
     pub issuer_did: Option<String>,
 }
 
 impl std::fmt::Display for ServerConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Host: {} | Host reference: {} | Port: {}",
-            self.host, self.host_reference, self.port
-        )?;
-        Ok(())
+        writeln!(f, "{:?}", self)
     }
 }
 
