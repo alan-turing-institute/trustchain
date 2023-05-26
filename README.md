@@ -10,9 +10,10 @@ Trustchain enables the creation of DIDs which are themselves verifiable. Via thi
 
 More information about the concept and state of development can be found on our [wiki](https://github.com/alan-turing-institute/trustchain/wiki). The following links may be of particular interest:
 - [Trustchain on Github pages](https://alan-turing-institute.github.io/trustchain/#/)
+- [Trustchain preprint](https://arxiv.org/abs/2305.08533)
 - [Trustchain FAQ](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-FAQ)
-- [Slides & Videos](https://github.com/alan-turing-institute/trustchain/wiki#communication)
-- [Technical Notes](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes)
+- [Slides & videos](https://github.com/alan-turing-institute/trustchain/wiki#presentations)
+- [Technical notes](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes)
 
 ## Installation guide
 
