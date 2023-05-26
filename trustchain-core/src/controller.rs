@@ -1,3 +1,4 @@
+//! DID controller API.
 use crate::attestor::Attestor;
 use crate::key_manager::KeyManagerError;
 use crate::utils::get_did_suffix;

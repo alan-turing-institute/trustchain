@@ -1,4 +1,4 @@
-//! Utils module.
+//! Core utilities.
 use crate::TRUSTCHAIN_DATA;
 use serde::Serialize;
 use sha2::{Digest, Sha256};

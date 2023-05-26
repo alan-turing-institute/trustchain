@@ -1,5 +1,6 @@
+//! Test fixtures for crate.
 #![allow(dead_code)]
-pub const TEST_SIDETREE_DOCUMENT: &str = r##"
+pub(crate) const TEST_SIDETREE_DOCUMENT: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
