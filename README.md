@@ -17,7 +17,7 @@ More information about the concept and state of development can be found on our 
 
 ## Installation guide
 
-This brief guide is intended for experienced users/developers who want to get started quickly.
+This brief guide is intended for experienced users/developers who want to get started quickly. See the [full guide](https://alan-turing-institute.github.io/trustchain/#/installation?id=installation-amp-usage) for more detailed, platform-specific instructions.
 
 #### Step 1. Install ION
 Trustchain delegates all DID method operations to a node on the [ION](https://identity.foundation/ion/) network.
