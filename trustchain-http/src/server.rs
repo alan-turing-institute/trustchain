@@ -1,7 +1,8 @@
+use crate::attestor;
 // use axum::{routing::get, Router, middleware::{self, Next}, extract::{FromRequest, Request}};
 use crate::middleware::validate_did;
 use crate::{config::HTTPConfig, handlers, issuer, resolver, state::AppState, verifier};
-use axum::routing::IntoMakeService;
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use hyper::server::conn::AddrIncoming;
 use std::sync::Arc;
@@ -65,6 +66,10 @@ impl TrustchainRouter {
                 .route(
                     "/did/bundle/:id",
                     get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+                )
+                .route(
+                    "/did/attestor/initiate",
+                    post(attestor::TrustchainAttestorHTTPHandler::post_initiation),
                 )
                 .with_state(shared_state),
         }
