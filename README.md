@@ -55,7 +55,7 @@ Verifiable credential subcommands:
 trustchain-cli vc --help
 ```
 
-## Testing:
+## Testing
 Run unit tests with:
 ```
 cargo test
