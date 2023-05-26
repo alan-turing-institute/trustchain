@@ -7,7 +7,7 @@ use trustchain_core::{
     verifier::VerifierError,
 };
 
-// TODO: refine error variants
+// TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
 pub enum TrustchainHTTPError {
     #[error("Internal error.")]

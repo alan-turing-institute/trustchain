@@ -6,6 +6,7 @@ use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 
 const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
 
+/// A shared app state for handlers.
 pub struct AppState {
     pub config: HTTPConfig,
     pub verifier: IONVerifier<IONResolver>,

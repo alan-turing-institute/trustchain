@@ -214,7 +214,7 @@ mod tests {
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
         ));
-        let app = TrustchainRouter::from(state.clone()).router();
+        let app = TrustchainRouter::from(state.clone()).into_router();
         // Get offer for valid credential
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let uri = format!("/vc/issuer/{uid}");
@@ -238,7 +238,7 @@ mod tests {
         // Try to get an offer for non-existent credential
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
         let uri = format!("/vc/issuer/{uid}");
-        let app = TrustchainRouter::from(state.clone()).router();
+        let app = TrustchainRouter::from(state.clone()).into_router();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
@@ -255,7 +255,7 @@ mod tests {
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
         )))
-        .router();
+        .into_router();
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
         let uri = format!("/vc/issuer/{uid}");

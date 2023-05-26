@@ -173,7 +173,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_not_found() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/nonexistent-path".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -183,7 +183,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_did() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -198,7 +198,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -213,7 +213,7 @@ mod tests {
     #[tokio::test]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_get_bundle() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).router();
+        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri =
             "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
@@ -232,7 +232,7 @@ mod tests {
         // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000"));
         // let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
 
-        let router = TrustchainRouter::from(HTTPConfig::default()).router();
+        let router = TrustchainRouter::from(HTTPConfig::default()).into_router();
 
         let client = TestClient::new(router);
         let res = client.get("/").send().await;
