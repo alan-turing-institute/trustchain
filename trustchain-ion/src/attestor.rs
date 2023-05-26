@@ -1,3 +1,4 @@
+//! Implementation of `Attestor` API for ION DID method.
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;

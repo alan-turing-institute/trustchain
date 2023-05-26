@@ -1,3 +1,4 @@
+//! Trustchain library for ION DID method.
 pub mod attest;
 pub mod attestor;
 pub mod commitment;

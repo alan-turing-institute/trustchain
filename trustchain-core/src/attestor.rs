@@ -1,3 +1,4 @@
+//! DID attestor API.
 use crate::subject::Subject;
 use ssi::did::Document;
 use thiserror::Error;

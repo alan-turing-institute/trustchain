@@ -1,3 +1,4 @@
+//! Data structures for deserializing sidetree IPFS data.
 use did_ion::{
     sidetree::{Delta, Sidetree, SuffixData},
     ION,

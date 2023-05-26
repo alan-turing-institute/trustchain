@@ -1,3 +1,4 @@
+//! Implementation of `Verifier` API for ION DID method.
 use crate::commitment::IONCommitment;
 use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
@@ -75,7 +76,7 @@ impl VerificationBundle {
     }
 }
 
-/// Struct for Trustchain Verifier implementation via the ION DID method.
+/// Trustchain Verifier implementation via the ION DID method.
 pub struct IONVerifier<T>
 where
     T: Sync + Send + DIDResolver,
