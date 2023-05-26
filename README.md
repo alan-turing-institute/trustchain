@@ -20,7 +20,7 @@ More information about the concept and state of development can be found on our 
 This brief guide is intended for experienced users/developers who want to get started quickly. See the [full guide](https://alan-turing-institute.github.io/trustchain/#/installation?id=installation-amp-usage) for more detailed, platform-specific instructions.
 
 #### Step 1. Install ION
-Trustchain delegates all DID method operations to a node on the [ION](https://identity.foundation/ion/) network.
+Trustchain delegates all DID method operations to a wrapped node on the [ION](https://identity.foundation/ion/) network.
 
 The [ION install guide](https://identity.foundation/ion/install-guide/) gives step-by-step instructions on how to setup and run your own ION node.
 
@@ -40,14 +40,6 @@ Install the Trustchain CLI with:
 ```shell
 cargo install --path trustchain-ion
 ```
-Run tests:
-```
-cargo test
-```
-To include integration tests, which will fail unless a running ION node is reachable on localhost, use:
-```
-cargo test -- --include-ignored
-```
 
 ## Usage Guide
 Once installed, the CLI is callable with:
@@ -61,6 +53,16 @@ truscthain-cli did --help
 Verifiable credential subcommands:
 ```
 trustchain-cli vc --help
+```
+
+## Testing:
+Run unit tests with:
+```
+cargo test
+```
+To include integration tests, which will fail unless a running ION node is reachable on localhost, use:
+```
+cargo test -- --include-ignored
 ```
 
 ## License & disclaimer
