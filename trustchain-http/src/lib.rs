@@ -1,5 +1,4 @@
 pub mod config;
-pub mod data;
 pub mod errors;
 pub mod handlers;
 pub mod issuer;
@@ -8,10 +7,10 @@ pub mod qrcode;
 pub mod resolver;
 pub mod server;
 pub mod state;
-pub mod vc;
 pub mod verifier;
 
 /// Issuer DID
+// TODO: add issuer/verifier configuration as used for core/ion crates
 pub const ISSUER_DID: &str = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
 
 /// Example VP request used by demo.spruceid.com

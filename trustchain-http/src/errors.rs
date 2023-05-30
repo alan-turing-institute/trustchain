@@ -1,15 +1,13 @@
-use axum::{
-    response::{Html, IntoResponse},
-    Json,
-};
+use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, resolver::ResolverError, verifier::VerifierError,
+    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError,
+    verifier::VerifierError,
 };
 
-// TODO: refine error variants
+// TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
 pub enum TrustchainHTTPError {
     #[error("Internal error.")]
@@ -20,6 +18,12 @@ pub enum TrustchainHTTPError {
     CommitmentError(CommitmentError),
     #[error("Trustchain Resolver error: {0}")]
     ResolverError(ResolverError),
+    #[error("Trustchain issuer error: {0}")]
+    IssuerError(IssuerError),
+    #[error("Credential does not exist.")]
+    CredentialDoesNotExist,
+    #[error("No issuer available.")]
+    NoCredentialIssuer,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -39,6 +43,11 @@ impl From<VerifierError> for TrustchainHTTPError {
         TrustchainHTTPError::VerifierError(err)
     }
 }
+impl From<IssuerError> for TrustchainHTTPError {
+    fn from(err: IssuerError) -> Self {
+        TrustchainHTTPError::IssuerError(err)
+    }
+}
 
 // See axum IntoRespone example:
 // https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
@@ -50,7 +59,13 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
+            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_)) => {
+                (StatusCode::OK, err.to_string())
+            }
             err @ TrustchainHTTPError::VerifierError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::IssuerError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CommitmentError(_) => {
@@ -58,6 +73,12 @@ impl IntoResponse for TrustchainHTTPError {
             }
             err @ TrustchainHTTPError::ResolverError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::CredentialDoesNotExist => {
+                (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            err @ TrustchainHTTPError::NoCredentialIssuer => {
+                (StatusCode::BAD_REQUEST, err.to_string())
             }
         };
         let body = Json(json!({ "error": err_message }));

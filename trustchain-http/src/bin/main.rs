@@ -1,7 +1,8 @@
 // use axum::{routing::get, Router, middleware::{self, Next}, extract::{FromRequest, Request}};
 use clap::Parser;
 use log::info;
-use trustchain_http::config::ServerConfig;
+use trustchain_core::config;
+use trustchain_http::config::HTTP_CONFIG;
 // use tower_http::validate_request::{ValidateRequestHeaderLayer, ValidateRequest};
 
 use trustchain_http::server;
@@ -21,7 +22,7 @@ async fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt::init();
 
     // Get config from CLI
-    let config: ServerConfig = Parser::parse();
+    let config = HTTP_CONFIG.clone();
 
     // Print config
     info!("{}", config);
