@@ -52,9 +52,10 @@ impl TrustchainRouter {
                     "/vc/verifier",
                     get(verifier::TrustchainVerifierHTTPHandler::get_verifier).post({
                         let state = shared_state.clone();
-                        move |credential| {
+                        move |verification_info| {
                             verifier::TrustchainVerifierHTTPHandler::post_verifier(
-                                credential, state,
+                                verification_info,
+                                state,
                             )
                         }
                     }),

@@ -58,7 +58,7 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
 /// Struct for deserializing credential and corresponding root event time.
 pub struct PostVerifier {
     pub credential: Credential,
-    pub root_event_time: RootEventTime,
+    pub root_event_time: Timestamp,
 }
 
 impl TrustchainVerifierHTTPHandler {
@@ -79,7 +79,7 @@ impl TrustchainVerifierHTTPHandler {
 
         TrustchainVerifierHTTPHandler::verify_credential(
             &verification_info.credential,
-            verification_info.root_event_time.root_event_time,
+            verification_info.root_event_time,
             &app_state.verifier,
         )
         .await
