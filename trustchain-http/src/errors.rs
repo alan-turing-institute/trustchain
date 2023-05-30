@@ -26,6 +26,8 @@ pub enum TrustchainHTTPError {
     NoCredentialIssuer,
     #[error("Failed to verify credential.")]
     FailedToVerifyCredential,
+    #[error("Invalid signature.")]
+    InvalidSignature,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -83,6 +85,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
             err @ TrustchainHTTPError::FailedToVerifyCredential => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::InvalidSignature => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };

@@ -87,7 +87,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 #[derive(Deserialize, Serialize, Debug)]
 /// Struct for deserializing `root_event_time` from handler's query param.
 pub struct RootEventTime {
-    root_event_time: Timestamp,
+    pub root_event_time: Timestamp,
 }
 
 impl TrustchainHTTPHandler {
