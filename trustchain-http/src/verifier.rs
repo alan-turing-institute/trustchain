@@ -2,7 +2,8 @@ use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::resolver::RootEventTime;
 use crate::state::AppState;
-use crate::EXAMPLE_VP_REQUEST;
+use crate::{verifier, EXAMPLE_VP_REQUEST};
+use async_trait::async_trait;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
@@ -12,36 +13,38 @@ use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
+use trustchain_core::verifier::Verifier;
 use trustchain_ion::verifier::IONVerifier;
 use trustchain_ion::IONResolver;
 
 pub struct PresentationRequest;
 
 /// An API for a Trustchain verifier server.
+#[async_trait]
 pub trait TrustchainVerifierHTTP {
     /// Constructs a presentation request (given some `presentiation_id`) to send to a credential holder from request wallet by ID
     fn generate_presentation_request(presentation_id: &str) -> PresentationRequest;
     /// Verifies verifiable presentation
-    fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError>;
+    async fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError>;
     /// Verifies verifiable credential
-    fn verify_credential<T: DIDResolver + Send + Sync>(
+    async fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError>;
 }
 
 pub struct TrustchainVerifierHTTPHandler;
-
+#[async_trait]
 impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {
     fn generate_presentation_request(presentation_id: &str) -> PresentationRequest {
         todo!()
     }
 
-    fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError> {
+    async fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError> {
         todo!()
     }
 
-    fn verify_credential<T: DIDResolver + Send + Sync>(
+    async fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
@@ -49,6 +52,7 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {
         // Use the resolver from the verifier inside:
         //    credential.verify(None, verifier.resolver())
         // 2. Verify did of issuer is valide (same as chain resolution)
+        // verifier.verify(did, root)
         todo!()
     }
 }
@@ -61,26 +65,27 @@ struct PostVerifier {
 
 impl TrustchainVerifierHTTPHandler {
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
-    // TODO: identify how to handle multiple string variables
-    pub async fn get_verifier() -> Html<String> {
-        // Return the presentation request
-        // (StatusCode::OK, Json(EXAMPLE_VP_REQUEST))
-        Html(EXAMPLE_VP_REQUEST.to_string())
+    // TODO: refine to allow a specific ID for the request to be passed
+    pub async fn get_verifier() -> impl IntoResponse {
+        (StatusCode::OK, Json(EXAMPLE_VP_REQUEST))
     }
-
-    // pub async fn post_verifier(Json(info): Json<Credential>) -> impl IntoResponse {
+    /// Handler for credential received from POST.
     pub async fn post_verifier(
-        Json(info): Json<Credential>,
+        Json(credential): Json<Credential>,
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!(
             "Received credential at presentation:\n{}",
-            serde_json::to_string_pretty(&info).unwrap()
+            serde_json::to_string_pretty(&credential).unwrap()
         );
-
-        // TODO: check whether a specific response body is required
-        // See [here](https://w3c-ccg.github.io/vc-api/#prove-presentation)
-        (StatusCode::OK, "Received!")
+        TrustchainVerifierHTTPHandler::verify_credential(&credential, &app_state.verifier)
+            .await
+            .map(|_| {
+                (
+                    StatusCode::CREATED,
+                    Html("Presentation successfully proved!"),
+                )
+            })
     }
 
     pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
