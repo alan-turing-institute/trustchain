@@ -1,3 +1,4 @@
+use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::resolver::RootEventTime;
 use crate::state::AppState;
@@ -14,27 +15,19 @@ use std::sync::Arc;
 use trustchain_ion::verifier::IONVerifier;
 use trustchain_ion::IONResolver;
 
-// TODO: implement in core?
 pub struct PresentationRequest;
-
-// TODO: implement in core?
-/// An error type for presentation failures
-pub enum PresentationError {
-    FailedToVerify,
-    // TODO: add other variants
-}
 
 /// An API for a Trustchain verifier server.
 pub trait TrustchainVerifierHTTP {
     /// Constructs a presentation request (given some `presentiation_id`) to send to a credential holder from request wallet by ID
     fn generate_presentation_request(presentation_id: &str) -> PresentationRequest;
     /// Verifies verifiable presentation
-    fn verify_presentation(presentation: &Presentation) -> Result<(), PresentationError>;
+    fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError>;
     /// Verifies verifiable credential
     fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         verifier: &IONVerifier<T>,
-    ) -> Result<(), PresentationError>;
+    ) -> Result<(), TrustchainHTTPError>;
 }
 
 pub struct TrustchainVerifierHTTPHandler;
@@ -44,14 +37,14 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {
         todo!()
     }
 
-    fn verify_presentation(presentation: &Presentation) -> Result<(), PresentationError> {
+    fn verify_presentation(presentation: &Presentation) -> Result<(), TrustchainHTTPError> {
         todo!()
     }
 
     fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         verifier: &IONVerifier<T>,
-    ) -> Result<(), PresentationError> {
+    ) -> Result<(), TrustchainHTTPError> {
         // 1. Verify signature on credential is valid given key
         // Use the resolver from the verifier inside:
         //    credential.verify(None, verifier.resolver())
@@ -78,10 +71,7 @@ impl TrustchainVerifierHTTPHandler {
     // pub async fn post_verifier(Json(info): Json<Credential>) -> impl IntoResponse {
     pub async fn post_verifier(
         Json(info): Json<Credential>,
-        // TODO: replace
-        // Json(info): Json<PostVerifier>,
-        // Query(root_event_time): Query<RootEventTime>,
-        State(app_state): State<Arc<AppState>>,
+        app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!(
             "Received credential at presentation:\n{}",
