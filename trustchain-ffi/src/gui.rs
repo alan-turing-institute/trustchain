@@ -96,3 +96,14 @@ fn deactivate(did: String, verbose: bool) -> anyhow::Result<()> {
 fn publish(did: String, verbose: bool) -> anyhow::Result<()> {
     todo!()
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolution() {
+        println!("{}",resolve("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()).unwrap());
+    }
+}
