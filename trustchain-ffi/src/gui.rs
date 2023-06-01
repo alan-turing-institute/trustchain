@@ -1,8 +1,9 @@
 use anyhow::anyhow;
 use did_ion::sidetree::DocumentState;
 use ssi::did_resolve::ResolutionResult;
+use ssi::vc::Credential;
 use thiserror::Error;
-use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
+use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI, api::TrustchainVCAPI};
 use trustchain_core::resolver::ResolverError;
 use trustchain_core::verifier::VerifierError;
 
@@ -96,6 +97,22 @@ fn deactivate(did: String, verbose: bool) -> anyhow::Result<()> {
 fn publish(did: String, verbose: bool) -> anyhow::Result<()> {
     todo!()
 }
+
+pub fn vc_sign(serial_credential: String, did: String, key_id: Option<String>) -> anyhow::Result<String> {
+    // TODO: handle optional key_id
+    let mut credential: Credential;
+    match serde_json::from_str(&serial_credential) {
+        Ok(cred) => credential = cred,
+        Err(err) => return Err(anyhow!("{}",FFIGUIError::FailedToDeserialise(err))),
+    }
+    credential = TrustchainAPI::sign(credential, &did, None);
+    Ok(serde_json::to_string_pretty(&credential)
+    .expect("Serialise implimented for Credential struct"))
+}
+
+// pub fn vc_verify(serial_credential: String, signature_only: bool, root_event_time: u32) -> anyhow::Result<String> {
+
+// }
 
 
 #[cfg(test)]

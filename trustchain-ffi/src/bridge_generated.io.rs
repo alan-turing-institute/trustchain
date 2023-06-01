@@ -26,6 +26,16 @@ pub extern "C" fn wire_verify(port_: i64, did: *mut wire_uint_8_list) {
     wire_verify_impl(port_, did)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_vc_sign(
+    port_: i64,
+    serial_credential: *mut wire_uint_8_list,
+    did: *mut wire_uint_8_list,
+    key_id: *mut wire_uint_8_list,
+) {
+    wire_vc_sign_impl(port_, serial_credential, did, key_id)
+}
+
 // Section: allocate functions
 
 #[no_mangle]

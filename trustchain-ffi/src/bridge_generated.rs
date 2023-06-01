@@ -85,6 +85,26 @@ fn wire_verify_impl(port_: MessagePort, did: impl Wire2Api<String> + UnwindSafe)
         },
     )
 }
+fn wire_vc_sign_impl(
+    port_: MessagePort,
+    serial_credential: impl Wire2Api<String> + UnwindSafe,
+    did: impl Wire2Api<String> + UnwindSafe,
+    key_id: impl Wire2Api<Option<String>> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "vc_sign",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_serial_credential = serial_credential.wire2api();
+            let api_did = did.wire2api();
+            let api_key_id = key_id.wire2api();
+            move |task_callback| vc_sign(api_serial_credential, api_did, api_key_id)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks
