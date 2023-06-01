@@ -19,7 +19,7 @@ use trustchain_ion::{
 /// API for Trustchain CLI DID functionality.
 pub trait TrustchainDIDAPI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
-    fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<(), Box<dyn Error>> {
+    fn create(document_state: Option<DocumentState>, verbose: bool) -> Result<String, Box<dyn Error>> {
         create_operation(document_state, verbose)
     }
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.

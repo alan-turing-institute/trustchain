@@ -28,7 +28,7 @@ enum FFIGUIError {
     FailedToVerifyDID(VerifierError),
 }
 /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
-pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
+pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<String> {
     let mut document_state: Option<DocumentState> = None;
     if let Some(doc_string) = doc_state {
         match serde_json::from_str(&doc_string) {
@@ -37,7 +37,7 @@ pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<()> {
         }
     }
     match TrustchainAPI::create(document_state, verbose) {
-        Ok(_) => Ok(()),
+        Ok(filename) => Ok(filename),
         Err(err) => Err(anyhow!("{}",FFIGUIError::FailedToCreateDID(err))),
     }
 }
