@@ -1,3 +1,4 @@
+//! DID issuer API.
 use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;

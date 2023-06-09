@@ -1,3 +1,4 @@
+//! DID subject API.
 use crate::utils::get_did_suffix;
 
 /// A DID Subject.

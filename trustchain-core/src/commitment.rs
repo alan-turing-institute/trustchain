@@ -1,3 +1,4 @@
+//! Commitment scheme API with default implementation.
 use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
 use serde_json::{json, Value};

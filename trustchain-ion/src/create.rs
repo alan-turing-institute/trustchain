@@ -1,3 +1,4 @@
+//! ION operation for DID creation.
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
 use did_ion::sidetree::DIDStatePatch;
@@ -108,10 +109,7 @@ pub fn create_operation(
     // Write create operation to push to ION server
     let path = get_operations_path()?;
     let filename = format!("create_operation_{}.json", controlled_did_suffix);
-    std::fs::write(
-        path.join(&filename),
-        to_json(&operation).unwrap(),
-    )?;
+    std::fs::write(path.join(&filename), to_json(&operation).unwrap())?;
 
     Ok(filename)
 }
