@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde_json::to_string_pretty;
+use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_ion::get_ion_resolver;
 
@@ -13,21 +14,27 @@ pub fn greet() -> String {
 
 // TODO: update to use TrustchainCLI once endpoint can be passed
 /// Example resolve interface.
-pub async fn resolve(did: String) -> Result<String> {
-    // Trustchain Resolver with android localhost
-    let resolver = get_ion_resolver(ANDROID_ENDPOINT);
-    // Result metadata, Document, Document metadata
-    let (_, doc, _) = resolver.resolve_as_result(&did).await.unwrap();
-    Ok(to_string_pretty(&doc.unwrap())?)
+pub fn resolve(did: String) -> Result<String> {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // Trustchain Resolver with android localhost
+        let resolver = get_ion_resolver(ANDROID_ENDPOINT);
+        // Result metadata, Document, Document metadata
+        let (_, doc, _) = resolver.resolve_as_result(&did).await.unwrap();
+        Ok(to_string_pretty(&doc.unwrap())?)
+    })
 }
 
 /// Resolves a given DID document assuming trust in endpoint.
-pub async fn did_resolve(did: String) -> Result<String> {
-    // Trustchain Resolver with android localhost
-    TrustchainAPI::resolve(&did, ANDROID_ENDPOINT.into())
-        .await
-        .map_err(|e| anyhow!(e))
-        .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
+pub fn did_resolve(did: String) -> Result<String> {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // Trustchain Resolver with android localhost
+        TrustchainAPI::resolve(&did, ANDROID_ENDPOINT.into())
+            .await
+            .map_err(|e| anyhow!(e))
+            .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
+    })
 }
 /// Verifies a given DID assuming trust in endpoint.
 pub fn did_verify(did: String) -> Result<String> {

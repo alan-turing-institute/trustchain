@@ -1,5 +1,6 @@
 use serde_json::to_string_pretty;
 use ssi::did_resolve::ResolutionResult;
+use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
@@ -11,22 +12,28 @@ pub fn greet() -> String {
 }
 
 /// Example resolve interface.
-pub async fn resolve_prototype(did: String) -> String {
-    // Trustchain Resolver with android localhost
-    let resolver = get_ion_resolver("http://127.0.0.1:3000/");
-    // Result metadata, Document, Document metadata
-    let (_, doc, _) = resolver.resolve_as_result(&did).await.unwrap();
-    to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
+pub fn resolve_prototype(did: String) -> String {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // Trustchain Resolver with android localhost
+        let resolver = get_ion_resolver("http://127.0.0.1:3000/");
+        // Result metadata, Document, Document metadata
+        let (_, doc, _) = resolver.resolve_as_result(&did).await.unwrap();
+        to_string_pretty(&doc.unwrap()).expect("Cannot convert to JSON.")
+    })
 }
 
 //"did:ion:test:EiCzekHARUPkqf0NRsQ6kfpcnEbwtpdTIgadTYWaggx8Rg"
 // ROOT_EVENT_TIME_2378493
-pub async fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
-    // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = get_ion_resolver("http://localhost:3000/");
-    let mut verifier = IONVerifier::new(resolver);
+pub fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let verifier = IONVerifier::new(resolver);
 
-    verifier.verify(&did, root_timestamp).await.unwrap()
+        verifier.verify(&did, root_timestamp).await.unwrap()
+    })
 }
 
 // TODO: implement the below functions that will be used as FFI on desktop GUI. Aim to implement the
@@ -46,19 +53,22 @@ fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<
     todo!()
 }
 /// Resolves a given DID using a resolver available at localhost:3000
-async fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
-    let (res_meta, doc, doc_meta) =
-        TrustchainAPI::resolve(&did, "http://localhost:3000/".into()).await?;
-    // TODO: refactor conversion into trustchain-core resolve module
-    Ok(serde_json::to_string_pretty(&ResolutionResult {
-        context: Some(serde_json::Value::String(
-            "https://w3id.org/did-resolution/v1".to_string(),
-        )),
-        did_document: doc,
-        did_resolution_metadata: Some(res_meta),
-        did_document_metadata: doc_meta,
-        property_set: None,
-    })?)
+fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        let (res_meta, doc, doc_meta) =
+            TrustchainAPI::resolve(&did, "http://localhost:3000/".into()).await?;
+        // TODO: refactor conversion into trustchain-core resolve module
+        Ok(serde_json::to_string_pretty(&ResolutionResult {
+            context: Some(serde_json::Value::String(
+                "https://w3id.org/did-resolution/v1".to_string(),
+            )),
+            did_document: doc,
+            did_resolution_metadata: Some(res_meta),
+            did_document_metadata: doc_meta,
+            property_set: None,
+        })?)
+    })
 }
 
 /// TODO: the below have no CLI implementation currently but are planned
