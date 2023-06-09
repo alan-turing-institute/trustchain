@@ -1,3 +1,4 @@
+//! Chain API and `DIDChain` type with default implementation.
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
@@ -124,7 +125,7 @@ impl fmt::Display for DIDChain {
 
 impl DIDChain {
     // Public constructor.
-    pub fn new<T: DIDResolver + Sync + Send>(
+    pub async fn new<T: DIDResolver + Sync + Send>(
         did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Self, ChainError> {
@@ -137,7 +138,7 @@ impl DIDChain {
         // Loop up the DID chain until the root is reached or an error occurs.
         loop {
             // Resolve the current DID.
-            let resolved = resolver.resolve_as_result(&ddid);
+            let resolved = resolver.resolve_as_result(&ddid).await;
 
             if let Ok((_, Some(ddoc), Some(ddoc_meta))) = resolved {
                 // Clone the controller information before moving ddoc into the chain.

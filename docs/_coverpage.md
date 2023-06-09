@@ -1,6 +1,6 @@
 # Trustchain
 
-> Decentralised public key infrastructure
+> Trustworthy decentralised public key infrastructure
 
 <img height="80vh" hspace="0"/>
 

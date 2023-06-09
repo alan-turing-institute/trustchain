@@ -1,11 +1,10 @@
-//! Utils module.
+//! ION-related utilities.
 use crate::config::ion_config;
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
-use ipfs_api::IpfsApi;
-use ipfs_api_backend_actix::IpfsClient;
+use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use mongodb::{bson::doc, options::ClientOptions};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -28,12 +27,10 @@ const DID_DELIMITER: &str = ":";
 ///
 /// By checking that the hash of the content is identical to the CID, this method
 /// verifies that the content itself must have been used to originally construct the CID.
-#[actix_rt::main]
 pub async fn query_ipfs(
     cid: &str,
     client: &IpfsClient,
-) -> Result<Vec<u8>, ipfs_api_backend_actix::Error> {
-    // If necessary, construct an IPFS client.
+) -> Result<Vec<u8>, ipfs_api_backend_hyper::Error> {
     client
         .cat(cid)
         .map_ok(|chunk| chunk.to_vec())
@@ -80,7 +77,7 @@ pub fn tx_to_op_return_cid(tx: &Transaction) -> Result<String, VerifierError> {
 
 /// Decodes an IPFS file.
 pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsError> {
-    // Decompress the content and deserialise to JSON.
+    // Decompress the content and deserialize to JSON.
     let mut decoder = GzDecoder::new(ipfs_file);
     let mut ipfs_content_str = String::new();
     decoder.read_to_string(&mut ipfs_content_str)?;
@@ -236,7 +233,6 @@ mod tests {
     use super::*;
     use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
-    use futures::executor::block_on;
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
@@ -391,15 +387,15 @@ mod tests {
     //     assert_eq!(&result.len(), &2);
     // }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_query_ipfs() {
+    async fn test_query_ipfs() {
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
         let ipfs_client = IpfsClient::default();
-        let result = query_ipfs(cid, &ipfs_client).unwrap();
+        let result = query_ipfs(cid, &ipfs_client).await.unwrap();
 
-        // Decompress the content and deserialise to JSON.
+        // Decompress the content and deserialize to JSON.
         let mut decoder = GzDecoder::new(&result[..]);
         let mut ipfs_content_str = String::new();
         decoder.read_to_string(&mut ipfs_content_str).unwrap();
@@ -411,25 +407,16 @@ mod tests {
 
         // Expect an invalid CID to fail.
         let cid = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        assert!(query_ipfs(cid, &ipfs_client).is_err());
+        assert!(query_ipfs(cid, &ipfs_client).await.is_err());
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
-    fn test_query_mongodb() {
+    async fn test_query_mongodb() {
         let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        // Make runtime
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        runtime.block_on(async {
-            let doc = block_on(query_mongodb(suffix, None)).unwrap();
-
-            let block_height: i32 = doc.get_i32("txnTime").unwrap();
-            assert_eq!(block_height, 2377445);
-        });
+        let doc = query_mongodb(suffix, None).await.unwrap();
+        let block_height: i32 = doc.get_i32("txnTime").unwrap();
+        assert_eq!(block_height, 2377445);
     }
 
     #[test]

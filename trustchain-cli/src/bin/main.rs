@@ -80,7 +80,8 @@ fn cli() -> Command {
         )
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
 
     match matches.subcommand() {
@@ -108,13 +109,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     // TODO: pass optional key_id
-                    attest_operation(did, controlled_did, verbose)?;
+                    attest_operation(did, controlled_did, verbose).await?;
                 }
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
                     let (res_meta, doc, doc_meta) =
-                        TrustchainAPI::resolve(did, "http://localhost:3000/".into())?;
+                        TrustchainAPI::resolve(did, "http://localhost:3000/".into()).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -157,7 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let credential_with_proof = TrustchainAPI::sign(credential, did, key_id);
+                    let credential_with_proof = TrustchainAPI::sign(credential, did, key_id).await;
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -179,7 +180,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &credential,
                         *signature_only.unwrap(),
                         root_event_time,
-                    );
+                    )
+                    .await;
                     if verify_result.errors.is_empty() {
                         println!("Proof... ✅")
                     } else {
@@ -210,7 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if let Some(&verbose_count) = verbose {
                                 if verbose_count > 1 {
                                     let (_, doc, doc_meta) =
-                                        resolver.resolve_as_result(&issuer).unwrap();
+                                        resolver.resolve_as_result(&issuer).await.unwrap();
                                     println!("---");
                                     println!("Issuer DID doc:");
                                     println!(

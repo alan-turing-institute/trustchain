@@ -1,3 +1,4 @@
+//! Key management API with default implementations.
 use crate::TRUSTCHAIN_DATA;
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
@@ -97,7 +98,7 @@ pub trait KeyManager {
         let path = &self.get_path(did_suffix, key_type, false)?;
 
         // Open the file
-        let file = File::open(&path);
+        let file = File::open(path);
 
         // Read from the file and return
         if let Ok(file) = file {
@@ -125,7 +126,7 @@ pub trait KeyManager {
         let buf: &mut String = &mut String::new();
         let read_result = reader.read_to_string(buf);
 
-        // Read the string as a serialised JWK instance.
+        // Read the string as a serialized JWK instance.
         let jwk_result = match read_result {
             Ok(_) => from_str::<OneOrMany<JWK>>(buf),
             Err(_) => return Err(KeyManagerError::FailedToReadUTF8),
@@ -211,7 +212,7 @@ pub trait KeyManager {
         }
 
         // Make directory if non-existent
-        match std::fs::create_dir_all(&directory) {
+        match std::fs::create_dir_all(directory) {
             Ok(_) => (),
             Err(_) => return Err(KeyManagerError::FailedToCreateDir),
         };
