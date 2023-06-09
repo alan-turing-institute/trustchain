@@ -1,3 +1,4 @@
+//! Implementation of `Commitment` API for ION DID method.
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
@@ -194,7 +195,7 @@ impl<T> TrivialCommitment for TxCommitment<T> {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::FailedToComputeHash(format!(
-                        "Failed to deserialise transaction: {}",
+                        "Failed to deserialize transaction: {}",
                         e
                     )));
                 }
@@ -207,16 +208,16 @@ impl<T> TrivialCommitment for TxCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Bitcoin transaction, then
+    /// Deserializes the candidate data into a Bitcoin transaction, then
     /// extracts and returns the IPFS content identifier in the OP_RETURN data.
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
-            // Deserialise the transaction from the candidate data.
+            // Deserialize the transaction from the candidate data.
             let tx: Transaction = match Deserialize::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::DataDecodingError(format!(
-                        "Failed to deserialise transaction: {}",
+                        "Failed to deserialize transaction: {}",
                         e
                     )));
                 }
@@ -276,7 +277,7 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
                 Ok(mb) => mb,
                 Err(e) => {
                     return Err(CommitmentError::FailedToComputeHash(format!(
-                        "Failed to deserialise MerkleBlock: {:?}",
+                        "Failed to deserialize MerkleBlock: {:?}",
                         e
                     )));
                 }
@@ -296,14 +297,14 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Merkle proof.
+    /// Deserializes the candidate data into a Merkle proof.
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
                     return Err(CommitmentError::DataDecodingError(format!(
-                        "Failed to deserialise MerkleBlock: {:?}",
+                        "Failed to deserialize MerkleBlock: {:?}",
                         e
                     )));
                 }
@@ -380,7 +381,7 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Block header (as JSON).
+    /// Deserializes the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             if x.len() != 80 {
@@ -557,7 +558,7 @@ mod tests {
 
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
-    use ipfs_api_backend_actix::IpfsClient;
+    use ipfs_api_backend_hyper::IpfsClient;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
@@ -566,12 +567,12 @@ mod tests {
         MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_extract_suffix_idx() {
+    async fn test_extract_suffix_idx() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let ipfs_client = IpfsClient::default();
-        let candidate_data = query_ipfs(target, &ipfs_client).unwrap();
+        let candidate_data = query_ipfs(target, &ipfs_client).await.unwrap();
         let core_index_file_commitment = IpfsIndexFileCommitment::<Incomplete>::new(candidate_data);
         let operation_idx = serde_json::from_value::<CoreIndexFile>(
             core_index_file_commitment.commitment_content().unwrap(),
@@ -582,14 +583,14 @@ mod tests {
         assert_eq!(1, operation_idx.unwrap());
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
-    fn test_ipfs_commitment() {
+    async fn test_ipfs_commitment() {
         let target = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
         let ipfs_client = IpfsClient::default();
 
-        let candidate_data_ = query_ipfs(target, &ipfs_client).unwrap();
+        let candidate_data_ = query_ipfs(target, &ipfs_client).await.unwrap();
         let candidate_data = candidate_data_.clone();
         // In the core index file we expect to find the provisionalIndexFileUri.
         let expected_data =
@@ -752,21 +753,21 @@ mod tests {
         };
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore = "Integration test requires IPFS and Bitcoin Core"]
-    fn test_ion_commitment() {
+    async fn test_ion_commitment() {
         let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 
         let ipfs_client = IpfsClient::default();
 
         let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
-        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).unwrap();
+        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
 
         let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
-        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).unwrap();
+        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
 
         let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).unwrap();
+        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
 
         let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();

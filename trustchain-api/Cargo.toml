@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 
+async-trait = "0.1"
 ssi = "0.4"
 clap = { version = "~4.0", features=["derive", "cargo"] }
 serde_json = "1.0"

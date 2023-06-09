@@ -1,3 +1,4 @@
+//! Implementation of `Controller` API for ION DID method.
 use crate::attestor::IONAttestor;
 use crate::TrustchainIONError;
 use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidetree};
