@@ -117,6 +117,12 @@ impl TrustchainIssuerHTTPHandler {
             .get(&credential_id)
             .ok_or(TrustchainHTTPError::CredentialDoesNotExist)
             .map(|credential| {
+                // TODO: move adding issuer inside `generate_credential_offer()` with `issuer_did`
+                // passed to `generate_credential_offer()`.
+                // let mut credential = credential.to_owned();
+                // credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
+                //     app_state.config.issuer_did.as_ref().unwrap().to_string(),
+                // )));
                 (
                     StatusCode::OK,
                     Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
