@@ -189,7 +189,7 @@ mod tests {
         one_or_many::OneOrMany,
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
-    use std::sync::Arc;
+    use std::{collections::HashMap, sync::Arc};
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
     use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
@@ -231,6 +231,7 @@ mod tests {
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
         ));
         let app = TrustchainRouter::from(state.clone()).into_router();
         // Get offer for valid credential
@@ -275,6 +276,7 @@ mod tests {
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
         )))
         .into_router();
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();

@@ -16,6 +16,8 @@ use std::sync::Arc;
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::verifier::IONVerifier;
 
+// https://w3c-ccg.github.io/vp-request-spec/
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PresentationRequest;
 
 /// An API for a Trustchain verifier server.

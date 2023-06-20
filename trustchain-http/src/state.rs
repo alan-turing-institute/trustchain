@@ -1,4 +1,4 @@
-use crate::config::HTTPConfig;
+use crate::{config::HTTPConfig, verifier::PresentationRequest};
 use ssi::vc::Credential;
 use std::collections::HashMap;
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
@@ -11,6 +11,7 @@ pub struct AppState {
     pub config: HTTPConfig,
     pub verifier: IONVerifier<IONResolver>,
     pub credentials: HashMap<String, Credential>,
+    pub presentation_requests: HashMap<String, PresentationRequest>,
 }
 
 impl AppState {
@@ -23,18 +24,30 @@ impl AppState {
                 .as_slice(),
         )
         .expect("Credential cache could not be deserialized.");
+        let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
+            std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
+                .expect("Credential cache does not exist.")
+                .as_slice(),
+        )
+        .expect("Credential cache could not be deserialized.");
         Self {
             config,
             verifier,
             credentials,
+            presentation_requests,
         }
     }
-    pub fn new_with_cache(config: HTTPConfig, credentials: HashMap<String, Credential>) -> Self {
+    pub fn new_with_cache(
+        config: HTTPConfig,
+        credentials: HashMap<String, Credential>,
+        presentation_requests: HashMap<String, PresentationRequest>,
+    ) -> Self {
         let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
         Self {
             config,
             verifier,
             credentials,
+            presentation_requests,
         }
     }
 }
@@ -47,6 +60,6 @@ mod tests {
     #[test]
     fn test_create_app_state() {
         AppState::new(HTTPConfig::default());
-        AppState::new_with_cache(HTTPConfig::default(), HashMap::new());
+        AppState::new_with_cache(HTTPConfig::default(), HashMap::new(), HashMap::new());
     }
 }
