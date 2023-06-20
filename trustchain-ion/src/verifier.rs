@@ -142,12 +142,14 @@ where
             // If running on a Trustchain light client, make an API call to a full node to
             // request the bundle.
             Some(endpoint) => {
-                let response = reqwest::get(endpoint).await.map_err(|e| {
-                    VerifierError::ErrorFetchingVerificationMaterial(
-                        format!("Error requesting bundle from endpoint: {endpoint}"),
-                        e.into(),
-                    )
-                })?;
+                let response = reqwest::get(format!("{endpoint}{did}"))
+                    .await
+                    .map_err(|e| {
+                        VerifierError::ErrorFetchingVerificationMaterial(
+                            format!("Error requesting bundle from endpoint: {endpoint}"),
+                            e.into(),
+                        )
+                    })?;
                 serde_json::from_str::<VerificationBundle>(
                     &response
                         .text()
