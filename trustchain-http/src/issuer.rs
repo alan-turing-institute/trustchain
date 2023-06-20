@@ -44,7 +44,6 @@ impl CredentialOffer {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct VcInfo {
     subject_id: String,
 }
@@ -53,7 +52,11 @@ pub struct VcInfo {
 #[async_trait]
 pub trait TrustchainIssuerHTTP {
     /// Issues an offer for a verifiable credential
-    fn generate_credential_offer(template: &Credential, id: &str) -> CredentialOffer;
+    fn generate_credential_offer(
+        template: &Credential,
+        id: &str,
+        issuer_did: &str,
+    ) -> CredentialOffer;
     /// Issues a verifiable credential (should it return `Credential` or `String`)
     async fn issue_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
@@ -68,8 +71,16 @@ pub struct TrustchainIssuerHTTPHandler;
 
 #[async_trait]
 impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
-    fn generate_credential_offer(template: &Credential, id: &str) -> CredentialOffer {
-        CredentialOffer::generate(template, id)
+    fn generate_credential_offer(
+        template: &Credential,
+        id: &str,
+        issuer_did: &str,
+    ) -> CredentialOffer {
+        let mut credential = template.to_owned();
+        credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
+            issuer_did.to_string(),
+        )));
+        CredentialOffer::generate(&credential, id)
     }
 
     async fn issue_credential<T: DIDResolver + Send + Sync>(
@@ -112,6 +123,12 @@ impl TrustchainIssuerHTTPHandler {
         Path(credential_id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
+        let issuer_did = app_state
+            .config
+            .issuer_did
+            .as_ref()
+            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
+
         app_state
             .credentials
             .get(&credential_id)
@@ -122,6 +139,7 @@ impl TrustchainIssuerHTTPHandler {
                     Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
                         credential,
                         &credential_id,
+                        issuer_did,
                     )),
                 )
             })
@@ -222,8 +240,11 @@ mod tests {
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         let mut actual_offer = response.json::<CredentialOffer>().await;
-        let mut expected_offer =
-            CredentialOffer::generate(state.credentials.get(&uid).unwrap(), &uid);
+        let mut credential = state.credentials.get(&uid).unwrap().clone();
+        credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
+            state.config.issuer_did.as_ref().unwrap().to_string(),
+        )));
+        let mut expected_offer = CredentialOffer::generate(&credential, &uid);
 
         // Set expiry to None as will be different
         expected_offer.expires = None;
