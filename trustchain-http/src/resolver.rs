@@ -21,7 +21,7 @@ use trustchain_core::{
 };
 use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
-/// TODO
+/// A HTTP API for resolving DID documents, chains, and verification bundles.
 #[async_trait]
 pub trait TrustchainHTTP {
     /// Resolves a DID document.
@@ -38,7 +38,7 @@ pub trait TrustchainHTTP {
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
     /// TODO: should we include a separate method to return verification bundle?
-    /// TODO
+    /// Resolves a DID verification bundle.
     async fn resolve_bundle<T: DIDResolver + Send + Sync>(
         did: &str,
         verifier: &IONVerifier<T>,
@@ -118,7 +118,7 @@ impl TrustchainHTTPHandler {
         .await
         .map(|chain| (StatusCode::OK, Json(chain)))
     }
-    /// TODO
+    /// Handles get request for DID verification bundle resolution
     pub async fn get_verification_bundle(
         Path(did): Path<String>,
         State(app_state): State<Arc<AppState>>,
@@ -128,7 +128,7 @@ impl TrustchainHTTPHandler {
             .await
             .map(|bundle| (StatusCode::OK, Json(bundle)))
     }
-    /// TODO
+    /// Converts a DID document and metadata to a `ResolutionResult` type.
     pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
         ResolutionResult {
             context: Some(serde_json::Value::String(
@@ -206,8 +206,21 @@ mod tests {
         assert_eq!(
             canonicalize_str::<DIDChainResolutionResult>(&response.text().await).unwrap(),
             canonicalize_str::<DIDChainResolutionResult>(TEST_ROOT_PLUS_2_CHAIN).unwrap()
+        );
+
+        // Test for case where incorrect root_event_time for the root of the given DID, expected to
+        // return Ok but with a JSON containing the wrapped Trustchain error.
+        let incorrect_root_event_time = "001234500";
+        let uri_incorrect_root = format!(
+            "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={incorrect_root_event_time}"
         )
-        // TODO: add failing test
+        .to_string();
+        let response = client.get(&uri_incorrect_root).send().await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.text().await,
+            r#"{"error":"Trustchain Verifier error: Invalid root DID: did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg."}"#.to_string()
+        )
     }
 
     #[tokio::test]
