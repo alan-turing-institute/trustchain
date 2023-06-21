@@ -24,6 +24,8 @@ pub enum TrustchainHTTPError {
     CredentialDoesNotExist,
     #[error("No issuer available.")]
     NoCredentialIssuer,
+    #[error("Attestation request failed.")]
+    FailedAttestationRequest,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -79,6 +81,9 @@ impl IntoResponse for TrustchainHTTPError {
             }
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            err @ TrustchainHTTPError::FailedAttestationRequest => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };
         let body = Json(json!({ "error": err_message }));

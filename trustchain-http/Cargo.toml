@@ -36,11 +36,13 @@ image = "0.23.14"
 hyper = "0.14.26"
 reqwest = "0.11.16"
 async-trait = "0.1"
+sha2 = "0.10"
 thiserror="1.0"
 tower = "0.4"
 tower-http = { version = "0.4.0", features = ["map-request-body", "util"] }
 toml="0.7.2"
 lazy_static="1.4.0"
+hex = "0.4.3"
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"
