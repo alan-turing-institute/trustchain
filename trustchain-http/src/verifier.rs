@@ -1,7 +1,7 @@
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
 use crate::EXAMPLE_VP_REQUEST;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
 use axum::Json;
@@ -32,15 +32,15 @@ pub trait TrustchainVerifierHTTP {
 pub struct TrustchainVerifierHTTPHandler;
 
 impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {
-    fn generate_presentation_request(presentation_id: &str) -> PresentationRequest {
+    fn generate_presentation_request(_presentation_id: &str) -> PresentationRequest {
         todo!()
     }
 
-    fn verify_presentation(presentation: &Presentation) -> Result<(), PresentationError> {
+    fn verify_presentation(_presentation: &Presentation) -> Result<(), PresentationError> {
         todo!()
     }
 
-    fn verify_credential(credential: &Credential) -> Result<(), PresentationError> {
+    fn verify_credential(_credential: &Credential) -> Result<(), PresentationError> {
         todo!()
     }
 }
