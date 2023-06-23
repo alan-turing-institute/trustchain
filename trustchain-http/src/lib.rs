@@ -1,12 +1,12 @@
 pub mod config;
 pub mod errors;
-pub mod handlers;
 pub mod issuer;
 pub mod middleware;
 pub mod qrcode;
 pub mod resolver;
 pub mod server;
 pub mod state;
+pub mod static_handlers;
 pub mod verifier;
 
 /// Issuer DID
