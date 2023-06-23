@@ -1,3 +1,4 @@
+//! DID resolution and `DIDResolver` implementation.
 use async_trait::async_trait;
 use serde_json::Value;
 use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};

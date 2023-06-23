@@ -1,3 +1,4 @@
+//! Chain API and `DIDChain` type with default implementation.
 use crate::display::PrettyDID;
 use crate::resolver::Resolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};

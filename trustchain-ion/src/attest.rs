@@ -1,3 +1,4 @@
+//! ION operation for DID attestation.
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
