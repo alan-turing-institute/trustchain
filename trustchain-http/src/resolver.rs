@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_did() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405".to_string();
@@ -233,6 +233,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_get_bundle() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
@@ -258,6 +259,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_fetch_bundle() {
         // Using internals of the `TestClient` to make address available in test
