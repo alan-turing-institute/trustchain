@@ -21,6 +21,7 @@ use trustchain_ion::attestor::IONAttestor;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+/// Data type for a credential offer.
 pub struct CredentialOffer {
     pub type_: Option<String>,
     pub credential_preview: Credential,
@@ -36,6 +37,7 @@ impl CredentialOffer {
             expires: Some(VCDateTime::from(Utc::now() + chrono::Duration::minutes(60))),
         }
     }
+    /// Generates credential offer.
     pub fn generate(credential: &Credential, id: &str) -> Self {
         let mut credential: Credential = credential.to_owned();
         credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", id)));
@@ -44,6 +46,7 @@ impl CredentialOffer {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// Type for deserializing information provided by holder in issuing POST request.
 pub struct VcInfo {
     subject_id: String,
 }
@@ -106,6 +109,7 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 }
 
 impl TrustchainIssuerHTTPHandler {
+    /// Generates QR code to display to holder to receive requested credential.
     pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
         // TODO: update to take query param entered by user.
         let id = "7426a2e8-f932-11ed-968a-4bb02079f142".to_string();
@@ -175,11 +179,7 @@ impl TrustchainIssuerHTTPHandler {
 mod tests {
     use super::*;
     use crate::{
-        config::HTTPConfig,
-        errors::TrustchainHTTPError,
-        // issuer::{CredentialOffer, VcInfo},
-        server::TrustchainRouter,
-        state::AppState,
+        config::HTTPConfig, errors::TrustchainHTTPError, server::TrustchainRouter, state::AppState,
     };
     use axum_test_helper::TestClient;
     use hyper::StatusCode;
