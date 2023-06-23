@@ -32,7 +32,7 @@ use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 type TransactionLocator = (BlockHash, u32);
 
 /// Data bundle for DID timestamp verification.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VerificationBundle {
     /// DID Document.
     did_doc: Document,
@@ -143,12 +143,14 @@ where
             // If running on a Trustchain light client, make an API call to a full node to
             // request the bundle.
             Some(endpoint) => {
-                let response = reqwest::get(endpoint).await.map_err(|e| {
-                    VerifierError::ErrorFetchingVerificationMaterial(
-                        format!("Error requesting bundle from endpoint: {endpoint}"),
-                        e.into(),
-                    )
-                })?;
+                let response = reqwest::get(format!("{endpoint}{did}"))
+                    .await
+                    .map_err(|e| {
+                        VerifierError::ErrorFetchingVerificationMaterial(
+                            format!("Error requesting bundle from endpoint: {endpoint}"),
+                            e.into(),
+                        )
+                    })?;
                 serde_json::from_str::<VerificationBundle>(
                     &response
                         .text()
