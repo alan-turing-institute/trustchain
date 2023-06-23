@@ -1,4 +1,3 @@
-// use axum::{routing::get, Router, middleware::{self, Next}, extract::{FromRequest, Request}};
 use crate::middleware::validate_did;
 use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
 use axum::routing::IntoMakeService;
