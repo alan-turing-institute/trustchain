@@ -9,9 +9,5 @@ pub mod state;
 pub mod static_handlers;
 pub mod verifier;
 
-/// Issuer DID
-// TODO: add issuer/verifier configuration as used for core/ion crates
-pub const ISSUER_DID: &str = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
-
 /// Example VP request used by demo.spruceid.com
-pub const EXAMPLE_VP_REQUEST: &str = r#"{ "type": "VerifiablePresentationRequest", "query": [ { "type": "QueryByExample", "credentialQuery": { "reason": "Sign in", "example": { "@context": [ "https:\/\/www.w3.org\/2018\/credentials\/v1" ], "type": "VerifiableCredential" } } } ], "challenge": "4f34494e-43d4-4e08-8b72-d634650daf44", "domain": "demo.spruceid.com" }"#;
+pub const EXAMPLE_VP_REQUEST: &str = r#"{ "type": "VerifiablePresentationRequest", "query": [ { "type": "QueryByExample", "credentialQuery": { "reason": "Request credential", "example": { "@context": [ "https://www.w3.org/2018/credentials/v1" ], "type": "VerifiableCredential" } } } ], "challenge": "a877fb0a-11dd-11ee-9df7-9be7abdeee2d", "domain": "https://alan-turing-institute.github.io/trustchain" }"#;
