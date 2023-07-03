@@ -1,7 +1,7 @@
 use crate::{errors::TrustchainHTTPError, state::AppState};
 use async_trait::async_trait;
 use axum::{
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Response},
     Json,
 };
 use hyper::StatusCode;
@@ -56,6 +56,7 @@ fn write_attestation_info(attestation_info: &AttestationInfo) -> Result<(), Trus
     Ok(())
 }
 
+/// Returns unique path name for a specific attestation request derived from public key for the interaction.
 fn attestion_request_path(pub_key: &str) -> Result<PathBuf, TrustchainHTTPError> {
     // Root path in TRUSTCHAIN_DATA
     let path: String = std::env::var(TRUSTCHAIN_DATA)
@@ -114,23 +115,32 @@ impl TrustchainAttestorHTTP for TrustchainAttestorHTTPHandler {
 }
 
 impl TrustchainAttestorHTTPHandler {
-    /// Receives subject DID in response to offer and returns signed credential.
+    /// Processes initial attestation request and provided data
     pub async fn post_initiation(
         Json(attestation_info): Json<AttestationInfo>,
         // app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received attestation info: {:?}", attestation_info);
 
-        // Set-up path on server as hash of public key
-
-        // Print received info to log and expect admin person to check?
-        (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel."))
+        match write_attestation_info(&attestation_info) {
+            Ok(()) => {
+                (
+                    StatusCode::OK,
+                    Html("Received request. Please wait for operator to contact you through an alternative channel."),
+                )
+            }
+            Err(_error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html("Attestation request failed."),
+            ),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{config::HTTPConfig, server::TrustchainRouter};
+    use axum::extract;
     use axum_test_helper::TestClient;
     use lazy_static::lazy_static;
     use trustchain_core::utils::init;
@@ -178,6 +188,7 @@ mod tests {
     }
 
     // Attestor integration tests
+    // TODO: make test better
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_initiation() {
