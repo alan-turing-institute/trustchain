@@ -48,7 +48,7 @@ trustchain-cli --help
 ```
 DID subcommands:
 ```
-truscthain-cli did --help
+trustchain-cli did --help
 ```
 Verifiable credential subcommands:
 ```
