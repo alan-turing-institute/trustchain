@@ -6,6 +6,8 @@ use axum::{
 };
 use hyper::StatusCode;
 use log::{debug, info, log};
+use rand::Rng;
+use rand::{distributions::Alphanumeric, thread_rng};
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
 use sha2::{Digest, Sha256};
@@ -70,6 +72,19 @@ fn attestion_request_path(pub_key: &str) -> Result<PathBuf, TrustchainHTTPError>
 pub fn attestation_request_id(pub_key: &str) -> String {
     hex::encode(Sha256::digest(pub_key))
 }
+// generate_nonce copied from (they rely on newer version of ssi: v0.6.0,
+// WIP issue for TC: https://github.com/alan-turing-institute/trustchain/issues/85
+// https://github.com/spruceid/oidc4vci-rs/blob/main/src/nonce.rs
+fn generate_nonce() -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect()
+}
+// TODO: format correctly and convert to bytes??
+
+// Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -122,18 +137,7 @@ impl TrustchainAttestorHTTPHandler {
     ) -> impl IntoResponse {
         info!("Received attestation info: {:?}", attestation_info);
 
-        match write_attestation_info(&attestation_info) {
-            Ok(()) => {
-                (
-                    StatusCode::OK,
-                    Html("Received request. Please wait for operator to contact you through an alternative channel."),
-                )
-            }
-            Err(_error) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Html("Attestation request failed."),
-            ),
-        }
+        write_attestation_info(&attestation_info).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")))
     }
 }
 
@@ -160,6 +164,12 @@ mod tests {
     #[test]
     fn test_key() {
         let key: JWK = serde_json::from_str(TEST_KEY).unwrap();
+    }
+
+    #[test]
+    fn test_generate_nonce() {
+        let nonce = generate_nonce();
+        assert_eq!(nonce.len(), 32);
     }
 
     #[test]
