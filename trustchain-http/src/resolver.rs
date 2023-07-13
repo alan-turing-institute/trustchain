@@ -268,8 +268,10 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
         let port = addr.port();
-        let mut http_config = HTTPConfig::default();
-        http_config.port = port;
+        let http_config = HTTPConfig {
+            port,
+            ..Default::default()
+        };
         assert_eq!(http_config.host.to_string(), addr.ip().to_string());
 
         // Run server
@@ -281,11 +283,12 @@ mod tests {
         });
 
         // Make a verifier instance and fetch bundle from server bundle endpoint
-        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+        let verifier = IONVerifier::with_endpoint(
+            get_ion_resolver("http://localhost:3000/"),
+            format!("http://127.0.0.1:{}/did/bundle/", port),
+        );
         let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
-        let result = verifier
-            .fetch_bundle(did, Some(format!("http://127.0.0.1:{}/did/bundle/", port)))
-            .await;
+        let result = verifier.fetch_bundle(did).await;
 
         assert!(result.is_ok());
     }
