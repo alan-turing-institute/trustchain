@@ -19,6 +19,7 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
+// TODO: Make this a wrapped string type and impl validation
 pub type URL = String;
 
 /// Test resolver
