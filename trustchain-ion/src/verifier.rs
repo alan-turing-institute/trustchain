@@ -77,11 +77,13 @@ impl VerificationBundle {
     }
 }
 
-pub struct Full;
-pub struct Mobile;
+/// Full client zero sized type for marker in `IONVerifier`.
+pub struct FullClient;
+/// Light client zero sized type for marker in `IONVerifier`.
+pub struct LightClient;
 
 /// Trustchain Verifier implementation via the ION DID method.
-pub struct IONVerifier<T, U = Full>
+pub struct IONVerifier<T, U = FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -93,11 +95,12 @@ where
     _marker: PhantomData<U>,
 }
 
-impl<T> IONVerifier<T, Full>
+impl<T> IONVerifier<T, FullClient>
 where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
+    // TODO: refactor to use config struct over direct config file lookup
     pub fn new(resolver: Resolver<T>) -> Self {
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
         let rpc_client = bitcoincore_rpc::Client::new(
@@ -330,8 +333,21 @@ where
 
         Ok((block_hash, tx_index))
     }
+
+    /// Returns a DID verification bundle.
+    // TODO: can we avoid duplication of this method among type states?
+    pub async fn verification_bundle(
+        &self,
+        did: &str,
+    ) -> Result<Arc<VerificationBundle>, VerifierError> {
+        // Fetch (and store) the bundle if it isn't already available.
+        if !self.bundles.lock().unwrap().contains_key(did) {
+            self.fetch_bundle(did).await?;
+        }
+        Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
+    }
 }
-impl<T> IONVerifier<T, Mobile>
+impl<T> IONVerifier<T, LightClient>
 where
     T: Send + Sync + DIDResolver,
 {
@@ -386,13 +402,8 @@ where
             .insert(did.to_string(), Arc::new(bundle));
         Ok(())
     }
-}
-
-impl<T> IONVerifier<T>
-where
-    T: Send + Sync + DIDResolver,
-{
     /// Returns a DID verification bundle.
+    /// TODO: can we avoid duplication of this method among type states?
     pub async fn verification_bundle(
         &self,
         did: &str,
@@ -403,7 +414,12 @@ where
         }
         Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
     }
+}
 
+impl<T, U> IONVerifier<T, U>
+where
+    T: Send + Sync + DIDResolver,
+{
     /// Resolves the given DID to obtain the DID Document and Document Metadata.
     async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
         let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
@@ -451,7 +467,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
 }
 
 #[async_trait]
-impl<T> Verifier<T> for IONVerifier<T>
+impl<T> Verifier<T> for IONVerifier<T, FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -461,6 +477,30 @@ where
         let block_header = block_header(&block_hash, Some(self.rpc_client()))
             .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
         Ok(block_header.time)
+    }
+
+    async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
+        let bundle = self.verification_bundle(did).await?;
+        Ok(construct_commitment(bundle).map(Box::new)?)
+    }
+
+    fn resolver(&self) -> &Resolver<T> {
+        &self.resolver
+    }
+}
+
+#[async_trait]
+impl<T> Verifier<T> for IONVerifier<T, LightClient>
+where
+    T: Sync + Send + DIDResolver,
+{
+    fn expected_timestamp(&self, _hash: &str) -> Result<Timestamp, VerifierError> {
+        // let block_hash = BlockHash::from_str(hash)
+        //     .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
+        // let block_header = block_header(&block_hash, Some(self.rpc_client()))
+        //     .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
+        // Ok(block_header.time)
+        todo!()
     }
 
     async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
