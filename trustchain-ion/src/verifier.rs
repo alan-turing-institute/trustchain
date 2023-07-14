@@ -334,8 +334,8 @@ where
         Ok((block_hash, tx_index))
     }
 
-    /// Returns a DID verification bundle.
     // TODO: can we avoid duplication of this method among type states?
+    /// Gets a DID verification bundle, including a fetch if not already cached.
     pub async fn verification_bundle(
         &self,
         did: &str,
