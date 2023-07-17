@@ -16,6 +16,8 @@ use trustchain_core::{
 };
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
+use crate::options::{EndpointOptions, ProofOptions};
+
 /// Android localhost endpoint.
 const ANDROID_ENDPOINT: &str = "http://10.0.2.2:3000/";
 
@@ -24,40 +26,27 @@ pub fn greet() -> String {
     "Hello from Rust! 🦀".into()
 }
 
-// TODO: update to use TrustchainCLI once endpoint can be passed
-/// Example resolve interface.
-pub fn resolve(did: String) -> Result<String> {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        // Trustchain Resolver with android localhost
-        let resolver = get_ion_resolver(ANDROID_ENDPOINT);
-        // Result metadata, Document, Document metadata
-        let (_, doc, _) = resolver.resolve_as_result(&did).await.unwrap();
-        Ok(to_string_pretty(&doc.unwrap())?)
-    })
-}
-
 /// Resolves a given DID document assuming trust in endpoint.
-pub fn did_resolve(did: String) -> Result<String> {
+pub fn did_resolve(did: String, endpoint_opts: String) -> Result<String> {
+    let endpoint_options: EndpointOptions = serde_json::from_str(&endpoint_opts)?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // Trustchain Resolver with android localhost
-        TrustchainAPI::resolve(&did, ANDROID_ENDPOINT.into())
+        TrustchainAPI::resolve(&did, endpoint_options.resolver_endpoint.to_address())
             .await
             .map_err(|e| anyhow!(e))
             .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
     })
 }
 /// Verifies a given DID assuming trust in endpoint.
-pub fn did_verify(did: String, endpoint: String) -> Result<()> {
+pub fn did_verify(did: String, endpoint_opts: String, proof_opts: String) -> Result<()> {
+    let endpoint_options: EndpointOptions = serde_json::from_str(&endpoint_opts)?;
+    let proof_options: ProofOptions = serde_json::from_str(&proof_opts)?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // Trustchain Resolver with android localhost
-        let verifier = IONVerifier::with_endpoint(get_ion_resolver(ANDROID_ENDPOINT), endpoint);
-        verifier
-            .fetch_bundle(&did)
-            .await
-            .map_err(|err| anyhow!(err.to_string()))?;
+        let verifier = IONVerifier::with_endpoint(
+            get_ion_resolver(&endpoint_options.resolver_endpoint.to_address()),
+            endpoint_options.bundle_endpoint.to_address(),
+        );
         verifier
             .verify(&did, core_config().root_event_time)
             .await
@@ -67,21 +56,22 @@ pub fn did_verify(did: String, endpoint: String) -> Result<()> {
 }
 
 /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
-pub fn vc_verify_credential(credential_json: String, proof_options_json: String) -> Result<String> {
+pub fn vc_verify_credential(
+    credential: String,
+    endpoint_opts: String,
+    proof_opts: String,
+) -> Result<String> {
+    let endpoint_options: EndpointOptions = serde_json::from_str(&endpoint_opts)?;
+    let proof_options: ProofOptions = serde_json::from_str(&proof_opts)?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // let host = "127.0.0.1";
-        let host = "10.0.2.2";
-        let credential: Credential = serde_json::from_str(&credential_json)?;
-
+        let credential: Credential = serde_json::from_str(&credential)?;
         let verifier = IONVerifier::with_endpoint(
-            get_ion_resolver(&format!("http://{host}:3000/")),
-            format!("http://{host}:8081/did/bundle/"),
+            get_ion_resolver(&endpoint_options.resolver_endpoint.to_address()),
+            endpoint_options.bundle_endpoint.to_address(),
         );
-        // TODO: refactor to use TrustchainAPI once functional
-        // TrustchainAPI::verify_credential(&credential, false, 1).await;
-        let signature_only = false;
-        let root_event_time = 1666971942;
+        let signature_only = proof_options.signature_only;
+        let root_event_time = proof_options.root_event_time;
 
         // NB. When using android emulator, the time is less than the created time on
         // the credential. This leads to a failure upon the proofs being checked:
@@ -153,5 +143,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_did_resolve() {}
+
+    #[test]
+    fn test_did_verify() {}
+
+    #[test]
     fn test_vc_verify_credential() {}
+
+    #[test]
+    fn test_vc_issue_presentation() {}
+
+    #[test]
+    fn test_vc_verify_presentation() {}
 }

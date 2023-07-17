@@ -31,20 +31,11 @@ fn wire_greet_impl(port_: MessagePort) {
         move || move |task_callback| Ok(greet()),
     )
 }
-fn wire_resolve_impl(port_: MessagePort, did: impl Wire2Api<String> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "resolve",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_did = did.wire2api();
-            move |task_callback| resolve(api_did)
-        },
-    )
-}
-fn wire_did_resolve_impl(port_: MessagePort, did: impl Wire2Api<String> + UnwindSafe) {
+fn wire_did_resolve_impl(
+    port_: MessagePort,
+    did: impl Wire2Api<String> + UnwindSafe,
+    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
+) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
             debug_name: "did_resolve",
@@ -53,14 +44,16 @@ fn wire_did_resolve_impl(port_: MessagePort, did: impl Wire2Api<String> + Unwind
         },
         move || {
             let api_did = did.wire2api();
-            move |task_callback| did_resolve(api_did)
+            let api_endpoint_opts = endpoint_opts.wire2api();
+            move |task_callback| did_resolve(api_did, api_endpoint_opts)
         },
     )
 }
 fn wire_did_verify_impl(
     port_: MessagePort,
     did: impl Wire2Api<String> + UnwindSafe,
-    endpoint: impl Wire2Api<String> + UnwindSafe,
+    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
+    proof_opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -70,15 +63,17 @@ fn wire_did_verify_impl(
         },
         move || {
             let api_did = did.wire2api();
-            let api_endpoint = endpoint.wire2api();
-            move |task_callback| did_verify(api_did, api_endpoint)
+            let api_endpoint_opts = endpoint_opts.wire2api();
+            let api_proof_opts = proof_opts.wire2api();
+            move |task_callback| did_verify(api_did, api_endpoint_opts, api_proof_opts)
         },
     )
 }
 fn wire_vc_verify_credential_impl(
     port_: MessagePort,
-    credential_json: impl Wire2Api<String> + UnwindSafe,
-    proof_options_json: impl Wire2Api<String> + UnwindSafe,
+    credential: impl Wire2Api<String> + UnwindSafe,
+    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
+    proof_opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -87,9 +82,12 @@ fn wire_vc_verify_credential_impl(
             mode: FfiCallMode::Normal,
         },
         move || {
-            let api_credential_json = credential_json.wire2api();
-            let api_proof_options_json = proof_options_json.wire2api();
-            move |task_callback| vc_verify_credential(api_credential_json, api_proof_options_json)
+            let api_credential = credential.wire2api();
+            let api_endpoint_opts = endpoint_opts.wire2api();
+            let api_proof_opts = proof_opts.wire2api();
+            move |task_callback| {
+                vc_verify_credential(api_credential, api_endpoint_opts, api_proof_opts)
+            }
         },
     )
 }

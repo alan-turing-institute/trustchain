@@ -3,7 +3,7 @@ use trustchain_ion::URL;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Endpoint {
+pub struct Endpoint {
     pub url: URL,
     pub port: u16,
 }
@@ -12,13 +12,16 @@ impl Endpoint {
     pub fn new(url: URL, port: u16) -> Self {
         Self { url, port }
     }
+    pub fn to_address(&self) -> URL {
+        format!("{}:{}/", self.url, self.port)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EndpointOptions {
-    resolver_endpoint: Endpoint,
-    bundle_endpoint: Endpoint,
+pub struct EndpointOptions {
+    pub resolver_endpoint: Endpoint,
+    pub bundle_endpoint: Endpoint,
 }
 
 impl Default for EndpointOptions {
@@ -32,8 +35,9 @@ impl Default for EndpointOptions {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProofOptions {
-    signature_only: bool,
+pub struct ProofOptions {
+    pub signature_only: bool,
+    pub root_event_time: u32,
 }
 
 #[cfg(test)]
@@ -55,7 +59,8 @@ mod tests {
 
     const TEST_PROOF_OPTIONS: &str = r#"
         {
-            "signatureOnly": false
+            "signatureOnly": false,
+            "rootEventTime": 1666971942
         }
     "#;
 

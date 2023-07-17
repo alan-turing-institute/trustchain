@@ -7,31 +7,32 @@ pub extern "C" fn wire_greet(port_: i64) {
 }
 
 #[no_mangle]
-pub extern "C" fn wire_resolve(port_: i64, did: *mut wire_uint_8_list) {
-    wire_resolve_impl(port_, did)
-}
-
-#[no_mangle]
-pub extern "C" fn wire_did_resolve(port_: i64, did: *mut wire_uint_8_list) {
-    wire_did_resolve_impl(port_, did)
+pub extern "C" fn wire_did_resolve(
+    port_: i64,
+    did: *mut wire_uint_8_list,
+    endpoint_opts: *mut wire_uint_8_list,
+) {
+    wire_did_resolve_impl(port_, did, endpoint_opts)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_did_verify(
     port_: i64,
     did: *mut wire_uint_8_list,
-    endpoint: *mut wire_uint_8_list,
+    endpoint_opts: *mut wire_uint_8_list,
+    proof_opts: *mut wire_uint_8_list,
 ) {
-    wire_did_verify_impl(port_, did, endpoint)
+    wire_did_verify_impl(port_, did, endpoint_opts, proof_opts)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_vc_verify_credential(
     port_: i64,
-    credential_json: *mut wire_uint_8_list,
-    proof_options_json: *mut wire_uint_8_list,
+    credential: *mut wire_uint_8_list,
+    endpoint_opts: *mut wire_uint_8_list,
+    proof_opts: *mut wire_uint_8_list,
 ) {
-    wire_vc_verify_credential_impl(port_, credential_json, proof_options_json)
+    wire_vc_verify_credential_impl(port_, credential, endpoint_opts, proof_opts)
 }
 
 #[no_mangle]
