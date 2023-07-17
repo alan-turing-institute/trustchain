@@ -23,7 +23,6 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::commitment::{CommitmentError, DIDCommitment};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
@@ -518,22 +517,6 @@ where
 
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
-    }
-
-    // TODO: temporary override until timestamp verification complete
-    async fn verify(
-        &self,
-        did: &str,
-        _root_timestamp: Timestamp,
-    ) -> Result<DIDChain, VerifierError> {
-        // Build a chain from the given DID to the root.
-        let resolver = self.resolver();
-        let chain = DIDChain::new(did, resolver).await?;
-
-        // Verify the proofs in the chain.
-        chain.verify_proofs()?;
-
-        Ok(chain)
     }
 }
 
