@@ -26,7 +26,7 @@ use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{CommitmentError, DIDCommitment};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
-use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
+use trustchain_core::verifier::{Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
@@ -473,7 +473,7 @@ where
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError> {
         let block_hash = BlockHash::from_str(hash)
             .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
-        let block_header = block_header(&block_hash, Some(self.rpc_client()))
+        let _block_header = block_header(&block_hash, Some(self.rpc_client()))
             .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
         Ok(())
     }
@@ -499,8 +499,13 @@ where
         // and specify a minimum work/target in the Trustchain client config, see:
         // https://docs.rs/bitcoin/0.30.0/src/bitcoin/pow.rs.html#72-78
         // In the meantime, just check for a minimum number of leading zeros in the hash.
-        let min_zeros = 8;
-        if hash.chars().take_while(|&c| c == '0').count() < min_zeros {
+        if hash.chars().take_while(|&c| c == '0').count()
+            < ion_config()
+                .min_zeros
+                .ok_or(VerifierError::InvalidProofOfWorkHash(
+                    "Minimum number of zeros for PoW hash not configured.".to_string(),
+                ))?
+        {
             return Err(VerifierError::InvalidProofOfWorkHash(hash.to_string()));
         }
 

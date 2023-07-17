@@ -129,7 +129,7 @@ pub enum VerifierError {
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
-    #[error("A commitment error during verification.")]
+    #[error("A commitment error during verification: {0}")]
     CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
     #[error("A resolver error during verification.")]

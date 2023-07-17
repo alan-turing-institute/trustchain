@@ -32,9 +32,10 @@ async fn trustchain_verification() {
 async fn test_verifiable_timestamp() {
     let resolver = get_ion_resolver("http://localhost:3000/");
     let target = IONVerifier::new(resolver);
+    let timestamp: Timestamp = 1666265405;
 
     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-    let result = target.verifiable_timestamp(did).await;
+    let result = target.verifiable_timestamp(did, timestamp).await;
 
     assert!(result.is_ok());
 
@@ -46,7 +47,6 @@ async fn test_verifiable_timestamp() {
     assert_eq!(verifiable_timestamp.hash().unwrap(), expected_hash);
 
     // Check that the DID timestamp is correct by comparing to the known header.
-    let timestamp: Timestamp = 1666265405;
     assert_eq!(verifiable_timestamp.timestamp(), timestamp);
 
     // Confirm that the same timestamp is the expected data in the TimestampCommitment.

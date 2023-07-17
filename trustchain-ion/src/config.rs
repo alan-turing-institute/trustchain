@@ -37,6 +37,8 @@ pub struct IONConfig {
     pub bitcoin_rpc_username: String,
     /// Bitcoin Core RPC password.
     pub bitcoin_rpc_password: String,
+    /// Minimum number of zeros for valid PoW hash used in light client.
+    pub min_zeros: Option<usize>,
 }
 
 /// Wrapper struct for parsing the `ion` table.
@@ -75,6 +77,7 @@ mod tests {
                 bitcoin_connection_string: "http://localhost:18332".to_string(),
                 bitcoin_rpc_username: "admin".to_string(),
                 bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
+                min_zeros: None
             }
         );
     }
