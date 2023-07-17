@@ -362,12 +362,10 @@ where
             _marker: PhantomData,
         }
     }
-
     /// Gets endpoint of verifier.
     fn endpoint(&self) -> &str {
         self.endpoint.as_ref().unwrap()
     }
-
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
     // TODO: offline functionality will require interfacing with a persistent cache instead of the
     // in-memory verifier HashMap.
@@ -500,14 +498,13 @@ where
         // and specify a minimum work/target in the Trustchain client config, see:
         // https://docs.rs/bitcoin/0.30.0/src/bitcoin/pow.rs.html#72-78
         // In the meantime, just check for a minimum number of leading zeros in the hash.
-        if hash.chars().take_while(|&c| c == '0').count()
-            < ion_config()
-                .min_zeros
-                .ok_or(VerifierError::InvalidProofOfWorkHash(
-                    "Minimum number of zeros for PoW hash not configured.".to_string(),
-                ))?
-        {
-            return Err(VerifierError::InvalidProofOfWorkHash(hash.to_string()));
+        if hash.chars().take_while(|&c| c == '0').count() < crate::MIN_ZEROS {
+            return Err(VerifierError::InvalidProofOfWorkHash(format!(
+                "{}, only has {} zeros but MIN_ZEROS is {}",
+                hash,
+                hash.chars().take_while(|&c| c == '0').count(),
+                crate::MIN_ZEROS
+            )));
         }
 
         // If the PoW difficulty is satisfied, accept the timestamp in the DID commitment.

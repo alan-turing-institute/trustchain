@@ -119,3 +119,7 @@ pub const HASH_PREV_BLOCK_KEY: &str = "hash_prev_block";
 pub const TIMESTAMP_KEY: &str = "timestamp";
 pub const BITS_KEY: &str = "bits";
 pub const NONCE_KEY: &str = "nonce";
+
+// Minimum number of zeros for PoW block hash of root
+// TODO: set differently for mainnet and testnet with features
+pub const MIN_ZEROS: usize = 14;
