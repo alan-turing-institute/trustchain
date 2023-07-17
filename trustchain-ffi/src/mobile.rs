@@ -69,6 +69,7 @@ pub fn did_verify(did: String, endpoint: String) -> Result<()> {
 pub fn did_verify_bundle(bundle_json: String) -> Result<String> {
     todo!()
 }
+
 /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
 pub fn vc_verify_credential(credential_json: String, proof_options_json: String) -> Result<String> {
     let rt = Runtime::new().unwrap();
@@ -114,14 +115,6 @@ pub fn vc_verify_credential(credential_json: String, proof_options_json: String)
                 Some(issuer) => issuer.get_id(),
                 _ => return Err(anyhow!("No issuer present in credential.")),
             };
-            // Get root of chain to fetch bundle for root verification
-            let did_chain = DIDChain::new(&issuer, verifier.resolver())
-                .await
-                .map_err(|err| anyhow!(err))?;
-            verifier
-                .fetch_bundle(did_chain.root())
-                .await
-                .map_err(|err| anyhow!(err.to_string()))?;
             Some(verifier.verify(&issuer, root_event_time).await)
         };
 
