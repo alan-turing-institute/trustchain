@@ -227,6 +227,7 @@ mod tests {
         )
         .to_string();
         let response = client.get(&uri_incorrect_root).send().await;
+        // TODO: fix test to handle error that is now returned during verififcation
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
             response.text().await,

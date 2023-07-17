@@ -129,7 +129,7 @@ pub enum VerifierError {
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
-    #[error("A commitment error during verification.")]
+    #[error("A commitment error during verification: {0}")]
     CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
     #[error("A resolver error during verification.")]
@@ -207,6 +207,12 @@ impl VerifiableTimestamp {
         self.timestamp
     }
 
+    // TODO?:
+    // make this into a trait
+    // move the validate_pow_hash function in here
+    // fn validate_pow_hash
+    // hten call validate_pow_hash inside verify_content.
+
     /// Verifies that the DID Document data (public keys & endpoints)
     /// are contained as expected data in the DID Commitment.
     fn verify_content(&self) -> Result<(), VerifierError> {
@@ -263,7 +269,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         // Verify the root timestamp.
         let root = chain.root();
-        let verifiable_timestamp = self.verifiable_timestamp(root).await?;
+        let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
         self.verify_timestamp(&verifiable_timestamp)?;
 
         // At this point we know that the same PoW commits to both the timestamp
@@ -278,15 +284,22 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
     /// value for the timestamp retreived from a local PoW network node.
-    async fn verifiable_timestamp(&self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
+    async fn verifiable_timestamp(
+        &self,
+        did: &str,
+        expected_timestamp: Timestamp,
+    ) -> Result<VerifiableTimestamp, VerifierError> {
         // Get the DID Commitment.
         let did_commitment = self.did_commitment(did).await?;
         // Hash the DID commitment
         let hash = did_commitment.hash()?;
-        // Get the expected timestamp for the PoW hash by querying a *local* node.
-        let expected_timestamp = self.expected_timestamp(&hash)?;
+        // Validate PoW hash, by querying a *local* node and/or checking difficulty.
+        self.validate_pow_hash(&hash)?;
         Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
     }
+
+    /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
+    fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
 
     /// Verifies a given verifiable timestamp.
     fn verify_timestamp(
@@ -317,9 +330,6 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         Ok(())
     }
-
-    /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
-    fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError>;
 
     /// Gets a block hash (PoW) Commitment for the given DID.
     /// The mutable reference to self enables a newly-fetched Commitment
