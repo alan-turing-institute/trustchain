@@ -26,11 +26,6 @@ pub extern "C" fn wire_did_verify(
 }
 
 #[no_mangle]
-pub extern "C" fn wire_did_verify_bundle(port_: i64, bundle_json: *mut wire_uint_8_list) {
-    wire_did_verify_bundle_impl(port_, bundle_json)
-}
-
-#[no_mangle]
 pub extern "C" fn wire_vc_verify_credential(
     port_: i64,
     credential_json: *mut wire_uint_8_list,

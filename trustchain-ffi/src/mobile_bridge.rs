@@ -75,22 +75,6 @@ fn wire_did_verify_impl(
         },
     )
 }
-fn wire_did_verify_bundle_impl(
-    port_: MessagePort,
-    bundle_json: impl Wire2Api<String> + UnwindSafe,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "did_verify_bundle",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_bundle_json = bundle_json.wire2api();
-            move |task_callback| did_verify_bundle(api_bundle_json)
-        },
-    )
-}
 fn wire_vc_verify_credential_impl(
     port_: MessagePort,
     credential_json: impl Wire2Api<String> + UnwindSafe,

@@ -65,10 +65,6 @@ pub fn did_verify(did: String, endpoint: String) -> Result<()> {
         Ok(())
     })
 }
-/// Verifies a given DID bundle providing complete verification without trust in endpoint.
-pub fn did_verify_bundle(bundle_json: String) -> Result<String> {
-    todo!()
-}
 
 /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
 pub fn vc_verify_credential(credential_json: String, proof_options_json: String) -> Result<String> {
@@ -104,6 +100,7 @@ pub fn vc_verify_credential(credential_json: String, proof_options_json: String)
             },
             _ => return Err(anyhow!("No proof or created time available in proof.")),
         };
+        // TODO: try setting time as now from emulator to check time used from now_ms() call
         // Verify credential signature with LinkedDataProofOptions
         let verification_result = credential.verify(Some(ldpo), verifier.resolver()).await;
 
