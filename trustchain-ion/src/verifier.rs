@@ -470,12 +470,12 @@ impl<T> Verifier<T> for IONVerifier<T, FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
-    fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError> {
+    fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError> {
         let block_hash = BlockHash::from_str(hash)
             .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
         let block_header = block_header(&block_hash, Some(self.rpc_client()))
             .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
-        Ok(block_header.time)
+        Ok(())
     }
 
     async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
@@ -493,13 +493,19 @@ impl<T> Verifier<T> for IONVerifier<T, LightClient>
 where
     T: Sync + Send + DIDResolver,
 {
-    fn expected_timestamp(&self, _hash: &str) -> Result<Timestamp, VerifierError> {
-        // let block_hash = BlockHash::from_str(hash)
-        //     .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
-        // let block_header = block_header(&block_hash, Some(self.rpc_client()))
-        //     .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
-        // Ok(block_header.time)
-        todo!()
+    fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError> {
+        // Check the PoW difficulty of the hash against the configured minimum threshold.
+        // TODO: update Cargo.toml to use version 0.30.0+ of the bitcoin Rust library
+        // and specify a minimum work/target in the Trustchain client config, see:
+        // https://docs.rs/bitcoin/0.30.0/src/bitcoin/pow.rs.html#72-78
+        // In the meantime, just check for a minimum number of leading zeros in the hash.
+        let min_zeros = 8;
+        if hash.chars().take_while(|&c| c == '0').count() < min_zeros {
+            return Err(VerifierError::InvalidProofOfWorkHash(hash.to_string()));
+        }
+
+        // If the PoW difficulty is satisfied, accept the timestamp in the DID commitment.
+        Ok(())
     }
 
     async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError> {
