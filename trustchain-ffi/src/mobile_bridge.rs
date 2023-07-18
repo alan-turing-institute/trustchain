@@ -34,7 +34,7 @@ fn wire_greet_impl(port_: MessagePort) {
 fn wire_did_resolve_impl(
     port_: MessagePort,
     did: impl Wire2Api<String> + UnwindSafe,
-    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -44,16 +44,15 @@ fn wire_did_resolve_impl(
         },
         move || {
             let api_did = did.wire2api();
-            let api_endpoint_opts = endpoint_opts.wire2api();
-            move |task_callback| did_resolve(api_did, api_endpoint_opts)
+            let api_opts = opts.wire2api();
+            move |task_callback| did_resolve(api_did, api_opts)
         },
     )
 }
 fn wire_did_verify_impl(
     port_: MessagePort,
     did: impl Wire2Api<String> + UnwindSafe,
-    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
-    proof_opts: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -63,17 +62,15 @@ fn wire_did_verify_impl(
         },
         move || {
             let api_did = did.wire2api();
-            let api_endpoint_opts = endpoint_opts.wire2api();
-            let api_proof_opts = proof_opts.wire2api();
-            move |task_callback| did_verify(api_did, api_endpoint_opts, api_proof_opts)
+            let api_opts = opts.wire2api();
+            move |task_callback| did_verify(api_did, api_opts)
         },
     )
 }
 fn wire_vc_verify_credential_impl(
     port_: MessagePort,
     credential: impl Wire2Api<String> + UnwindSafe,
-    endpoint_opts: impl Wire2Api<String> + UnwindSafe,
-    proof_opts: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -83,18 +80,15 @@ fn wire_vc_verify_credential_impl(
         },
         move || {
             let api_credential = credential.wire2api();
-            let api_endpoint_opts = endpoint_opts.wire2api();
-            let api_proof_opts = proof_opts.wire2api();
-            move |task_callback| {
-                vc_verify_credential(api_credential, api_endpoint_opts, api_proof_opts)
-            }
+            let api_opts = opts.wire2api();
+            move |task_callback| vc_verify_credential(api_credential, api_opts)
         },
     )
 }
 fn wire_vc_issue_presentation_impl(
     port_: MessagePort,
-    presentation_json: impl Wire2Api<String> + UnwindSafe,
-    proof_options_json: impl Wire2Api<String> + UnwindSafe,
+    presentation: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
     key_json: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
@@ -104,13 +98,13 @@ fn wire_vc_issue_presentation_impl(
             mode: FfiCallMode::Normal,
         },
         move || {
-            let api_presentation_json = presentation_json.wire2api();
-            let api_proof_options_json = proof_options_json.wire2api();
+            let api_presentation = presentation.wire2api();
+            let api_opts = opts.wire2api();
             let api_key_json = key_json.wire2api();
             move |task_callback| {
                 Ok(vc_issue_presentation(
-                    api_presentation_json,
-                    api_proof_options_json,
+                    api_presentation,
+                    api_opts,
                     api_key_json,
                 ))
             }
@@ -119,8 +113,8 @@ fn wire_vc_issue_presentation_impl(
 }
 fn wire_vc_verify_presentation_impl(
     port_: MessagePort,
-    presentation_json: impl Wire2Api<String> + UnwindSafe,
-    proof_options_json: impl Wire2Api<String> + UnwindSafe,
+    presentation: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -129,11 +123,9 @@ fn wire_vc_verify_presentation_impl(
             mode: FfiCallMode::Normal,
         },
         move || {
-            let api_presentation_json = presentation_json.wire2api();
-            let api_proof_options_json = proof_options_json.wire2api();
-            move |task_callback| {
-                vc_verify_presentation(api_presentation_json, api_proof_options_json)
-            }
+            let api_presentation = presentation.wire2api();
+            let api_opts = opts.wire2api();
+            move |task_callback| vc_verify_presentation(api_presentation, api_opts)
         },
     )
 }

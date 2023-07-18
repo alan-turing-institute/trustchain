@@ -10,48 +10,46 @@ pub extern "C" fn wire_greet(port_: i64) {
 pub extern "C" fn wire_did_resolve(
     port_: i64,
     did: *mut wire_uint_8_list,
-    endpoint_opts: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
 ) {
-    wire_did_resolve_impl(port_, did, endpoint_opts)
+    wire_did_resolve_impl(port_, did, opts)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_did_verify(
     port_: i64,
     did: *mut wire_uint_8_list,
-    endpoint_opts: *mut wire_uint_8_list,
-    proof_opts: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
 ) {
-    wire_did_verify_impl(port_, did, endpoint_opts, proof_opts)
+    wire_did_verify_impl(port_, did, opts)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_vc_verify_credential(
     port_: i64,
     credential: *mut wire_uint_8_list,
-    endpoint_opts: *mut wire_uint_8_list,
-    proof_opts: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
 ) {
-    wire_vc_verify_credential_impl(port_, credential, endpoint_opts, proof_opts)
+    wire_vc_verify_credential_impl(port_, credential, opts)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_vc_issue_presentation(
     port_: i64,
-    presentation_json: *mut wire_uint_8_list,
-    proof_options_json: *mut wire_uint_8_list,
+    presentation: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
     key_json: *mut wire_uint_8_list,
 ) {
-    wire_vc_issue_presentation_impl(port_, presentation_json, proof_options_json, key_json)
+    wire_vc_issue_presentation_impl(port_, presentation, opts, key_json)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_vc_verify_presentation(
     port_: i64,
-    presentation_json: *mut wire_uint_8_list,
-    proof_options_json: *mut wire_uint_8_list,
+    presentation: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
 ) {
-    wire_vc_verify_presentation_impl(port_, presentation_json, proof_options_json)
+    wire_vc_verify_presentation_impl(port_, presentation, opts)
 }
 
 // Section: allocate functions

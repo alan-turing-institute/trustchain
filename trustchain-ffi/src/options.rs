@@ -1,4 +1,6 @@
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
+use ssi::vc::LinkedDataProofOptions;
 use trustchain_ion::URL;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,9 +37,35 @@ impl Default for EndpointOptions {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProofOptions {
+pub struct TrustchainOptions {
     pub signature_only: bool,
     pub root_event_time: u32,
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MobileOptions {
+    pub endpoint_options: Option<EndpointOptions>,
+    pub trustchain_options: Option<TrustchainOptions>,
+    pub linked_data_proof_options: Option<LinkedDataProofOptions>,
+}
+
+impl MobileOptions {
+    pub fn endpoint(&self) -> anyhow::Result<&EndpointOptions> {
+        self.endpoint_options
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected endpoint options."))
+    }
+    pub fn trustchain(&self) -> anyhow::Result<&TrustchainOptions> {
+        self.trustchain_options
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected trustchain options."))
+    }
+    pub fn linked_data_proof(&self) -> anyhow::Result<&LinkedDataProofOptions> {
+        self.linked_data_proof_options
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected linked data proof options."))
+    }
 }
 
 #[cfg(test)]
@@ -57,10 +85,17 @@ mod tests {
         }
     "#;
 
-    const TEST_PROOF_OPTIONS: &str = r#"
+    const TEST_TRUSTCHAIN_OPTIONS: &str = r#"
         {
             "signatureOnly": false,
             "rootEventTime": 1666971942
+        }
+    "#;
+
+    const TEST_LINKED_DATA_PROOF_OPTIONS: &str = r#"
+        {
+            "proofPurpose": "assertionMethod",
+            "created": "2023-07-18T08:42:50Z"
         }
     "#;
 
@@ -69,7 +104,25 @@ mod tests {
         serde_json::from_str::<EndpointOptions>(TEST_ENDPOINT_OPTIONS).unwrap();
     }
     #[test]
+    fn test_trustchain_options() {
+        serde_json::from_str::<TrustchainOptions>(TEST_TRUSTCHAIN_OPTIONS).unwrap();
+    }
+    #[test]
     fn test_proof_options() {
-        serde_json::from_str::<ProofOptions>(TEST_PROOF_OPTIONS).unwrap();
+        serde_json::from_str::<LinkedDataProofOptions>(TEST_LINKED_DATA_PROOF_OPTIONS).unwrap();
+    }
+    #[test]
+    fn test_mobile_options() {
+        let test_mobile_options: String = format!(
+            r#"
+            {{
+                "endpointOptions": {},
+                "trustchainOptions": {},
+                "linkedDataProofOptions": {}
+            }}
+        "#,
+            TEST_ENDPOINT_OPTIONS, TEST_TRUSTCHAIN_OPTIONS, TEST_LINKED_DATA_PROOF_OPTIONS
+        );
+        serde_json::from_str::<MobileOptions>(&test_mobile_options).unwrap();
     }
 }
