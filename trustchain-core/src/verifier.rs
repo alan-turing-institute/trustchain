@@ -2,7 +2,9 @@
 use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};
-use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
+use crate::commitment::{
+    Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
+};
 use crate::resolver::{Resolver, ResolverError};
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use async_trait::async_trait;
@@ -169,87 +171,105 @@ impl From<serde_json::Error> for VerifierError {
 /// A Unix timestamp.
 pub type Timestamp = u32;
 
-/// A verifiably timestamped DID Document.
-pub struct VerifiableTimestamp {
-    did_commitment: Box<dyn DIDCommitment>,
-    timestamp: Timestamp,
-}
+pub trait VerifiableTimestamp {
+    fn content_commitment(&self) -> &dyn Commitment;
+    fn timestamp_commitment(&self) -> &TimestampCommitment;
+    fn timestamp(&self) -> &Timestamp;
 
-impl VerifiableTimestamp {
-    fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: Timestamp) -> Self {
-        Self {
-            did_commitment,
-            timestamp: expected_timestamp,
-        }
-    }
-
-    /// Gets the DID Commitment.
-    fn did_commitment(&self) -> &dyn DIDCommitment {
-        self.did_commitment.as_ref()
-    }
-
-    /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
-    /// owned DID Commitment, and with the expected timestamp as expected data.
-    pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
-        Ok(TimestampCommitment::new(
-            self.did_commitment(),
-            self.timestamp,
-        )?)
-    }
-
-    /// Gets the hash (PoW) commitment.
-    pub fn hash(&self) -> Result<String, VerifierError> {
-        Ok(self.did_commitment.hash()?)
-    }
-
-    /// Gets the timestamp as a Unix time.
-    pub fn timestamp(&self) -> Timestamp {
-        self.timestamp
-    }
-
-    // TODO?:
-    // make this into a trait
-    // move the validate_pow_hash function in here
-    // fn validate_pow_hash
-    // hten call validate_pow_hash inside verify_content.
-
-    /// Verifies that the DID Document data (public keys & endpoints)
-    /// are contained as expected data in the DID Commitment.
-    fn verify_content(&self) -> Result<(), VerifierError> {
-        // Check each expected key is found in the vector of verified keys.
-        if let Some(expected_keys) = self.did_commitment().did_document().get_keys() {
-            if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
-                if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
-                    return Err(VerifierError::KeyNotFoundInVerifiedContent(
-                        self.did_commitment().did().to_string(),
-                    ));
-                }
-            } else {
-                return Err(VerifierError::NoKeysFoundInVerifiedContent(
-                    self.did_commitment().did().to_string(),
-                ));
-            }
-        }
-        // Check each expected endpoint is found in the vector of verified endpoints.
-        if let Some(expected_endpoints) = self.did_commitment().did_document().get_endpoints() {
-            if let Some(candidate_endpoints) = self.did_commitment().candidate_endpoints() {
-                if !expected_endpoints
-                    .iter()
-                    .all(|uri| candidate_endpoints.contains(uri))
-                {
-                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
-                        self.did_commitment().did().to_string(),
-                    ));
-                }
-            } else {
-                return Err(VerifierError::NoEndpointsFoundInVerifiedContent(
-                    self.did_commitment().did().to_string(),
-                ));
-            }
-        }
+    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        self.content_commitment().verify(target)?;
+        self.timestamp_commitment().verify(target)?;
+        // TODO: delete as superfluous:
+        // if self.content_commitment().hash()? != self.timestamp_commitment().hash()? {
+        //   return Err(CommitmentError::FailedHashVerification("Timestamp hash not equal to content hash".to_string()));
+        // }
         Ok(())
     }
 }
+
+// // OLD:
+
+// /// A verifiably timestamped DID Document.
+// pub struct VerifiableTimestamp {
+//     did_commitment: Box<dyn DIDCommitment>,
+//     timestamp: Timestamp,
+// }
+
+// impl VerifiableTimestamp {
+//     fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: Timestamp) -> Self {
+//         Self {
+//             did_commitment,
+//             timestamp: expected_timestamp,
+//         }
+//     }
+
+//     /// Gets the DID Commitment.
+//     fn did_commitment(&self) -> &dyn DIDCommitment {
+//         self.did_commitment.as_ref()
+//     }
+
+//     /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
+//     /// owned DID Commitment, and with the expected timestamp as expected data.
+//     pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
+//         Ok(TimestampCommitment::new(
+//             self.did_commitment(),
+//             self.timestamp,
+//         )?)
+//     }
+
+//     /// Gets the hash (PoW) commitment.
+//     pub fn hash(&self) -> Result<String, VerifierError> {
+//         Ok(self.did_commitment.hash()?)
+//     }
+
+//     /// Gets the timestamp as a Unix time.
+//     pub fn timestamp(&self) -> Timestamp {
+//         self.timestamp
+//     }
+
+//     // TODO?:
+//     // make this into a trait
+//     // move the validate_pow_hash function in here
+//     // fn validate_pow_hash
+//     // hten call validate_pow_hash inside verify_content.
+
+//     /// Verifies that the DID Document data (public keys & endpoints)
+//     /// are contained as expected data in the DID Commitment.
+//     fn verify_content(&self) -> Result<(), VerifierError> {
+//         // Check each expected key is found in the vector of verified keys.
+//         if let Some(expected_keys) = self.did_commitment().did_document().get_keys() {
+//             if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
+//                 if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
+//                     return Err(VerifierError::KeyNotFoundInVerifiedContent(
+//                         self.did_commitment().did().to_string(),
+//                     ));
+//                 }
+//             } else {
+//                 return Err(VerifierError::NoKeysFoundInVerifiedContent(
+//                     self.did_commitment().did().to_string(),
+//                 ));
+//             }
+//         }
+//         // Check each expected endpoint is found in the vector of verified endpoints.
+//         if let Some(expected_endpoints) = self.did_commitment().did_document().get_endpoints() {
+//             if let Some(candidate_endpoints) = self.did_commitment().candidate_endpoints() {
+//                 if !expected_endpoints
+//                     .iter()
+//                     .all(|uri| candidate_endpoints.contains(uri))
+//                 {
+//                     return Err(VerifierError::EndpointNotFoundInVerifiedContent(
+//                         self.did_commitment().did().to_string(),
+//                     ));
+//                 }
+//             } else {
+//                 return Err(VerifierError::NoEndpointsFoundInVerifiedContent(
+//                     self.did_commitment().did().to_string(),
+//                 ));
+//             }
+//         }
+//         Ok(())
+//     }
+// }
 
 /// A verifier of root and downstream DIDs.
 #[async_trait]
@@ -269,8 +289,9 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         // Verify the root timestamp.
         let root = chain.root();
+
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
-        self.verify_timestamp(&verifiable_timestamp)?;
+        self.verify_timestamp(&*verifiable_timestamp)?;
 
         // At this point we know that the same PoW commits to both the timestamp
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
@@ -288,15 +309,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         &self,
         did: &str,
         expected_timestamp: Timestamp,
-    ) -> Result<VerifiableTimestamp, VerifierError> {
-        // Get the DID Commitment.
-        let did_commitment = self.did_commitment(did).await?;
-        // Hash the DID commitment
-        let hash = did_commitment.hash()?;
-        // Validate PoW hash, by querying a *local* node and/or checking difficulty.
-        self.validate_pow_hash(&hash)?;
-        Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
-    }
+    ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError>;
 
     /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
@@ -304,31 +317,9 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     /// Verifies a given verifiable timestamp.
     fn verify_timestamp(
         &self,
-        verifiable_timestamp: &VerifiableTimestamp,
+        verifiable_timestamp: &dyn VerifiableTimestamp,
     ) -> Result<(), VerifierError> {
-        // Verify that the DID Commitment commits to the DID Document data.
-        verifiable_timestamp.verify_content()?;
-
-        let did_commitment = verifiable_timestamp.did_commitment();
-        let timestamp_commitment = verifiable_timestamp.timestamp_commitment()?;
-
-        // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
-        if !json_contains(
-            timestamp_commitment.expected_data(),
-            &json!(verifiable_timestamp.timestamp()),
-        ) {
-            return Err(VerifierError::TimestampVerificationError(
-                did_commitment.did().to_string(),
-            ));
-        }
-
-        // Verify both the commitments with the *same* target hash, thereby confirming
-        // that the same PoW commits to both the DID Document data & the timestamp.
-        let hash = verifiable_timestamp.hash()?;
-        did_commitment.verify(&hash)?;
-        timestamp_commitment.verify(&hash)?;
-
-        Ok(())
+        Ok(verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?)
     }
 
     /// Gets a block hash (PoW) Commitment for the given DID.

@@ -1,5 +1,5 @@
 //! Commitment scheme API with default implementation.
-use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
+use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
 use serde_json::{json, Value};
 use ssi::{
@@ -25,7 +25,7 @@ pub enum CommitmentError {
     #[error("Failed to compute hash: {0}")]
     FailedToComputeHash(String),
     /// Failed hash verification.
-    #[error("Failed hash verification. Computed hash not equal to target.")]
+    #[error("Failed hash verification.")]
     FailedHashVerification(String),
     /// Failed content verification.
     #[error("Failed content verification. Expected data {0} not found in candidate: {1}.")]
@@ -118,7 +118,9 @@ pub trait Commitment: TrivialCommitment {
         self.verify_content()?;
         // Verify the target by comparing with the computed hash.
         if self.hash()?.ne(target) {
-            return Err(CommitmentError::FailedHashVerification(type_of(&self)));
+            return Err(CommitmentError::FailedHashVerification(
+                "Computed hash not equal to target.".to_string(),
+            ));
         }
         Ok(())
     }
@@ -264,12 +266,12 @@ pub trait DIDCommitment: Commitment {
     fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
         self.did_document().get_endpoints()
     }
-    /// Get the candidate data in which we expect to find a timestamp.
-    fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]>;
-    /// Gets the decoder (function) for the timestamp candidate data.
-    fn decode_timestamp_candidate_data(
-        &self,
-    ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>>;
+    // /// Get the candidate data in which we expect to find a timestamp.
+    // fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]>;
+    // /// Gets the decoder (function) for the timestamp candidate data.
+    // fn decode_timestamp_candidate_data(
+    //     &self,
+    // ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>>;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher
@@ -285,9 +287,13 @@ impl TimestampCommitment {
     /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
     /// timestamp as expected data.
     pub fn new(
-        did_commitment: &dyn DIDCommitment,
-        expected_data: Timestamp,
+        // did_commitment: &dyn DIDCommitment,
+        expected_data: Timestamp, // as opposed to:        expected_data: Option<Value>,
+        hasher: fn(&[u8]) -> CommitmentResult<String>,
+        candidate_data: Vec<u8>,
+        decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
     ) -> CommitmentResult<Self> {
+        // TODO: edit this obsolete comment:
         // Note the expected data in the TimestampCommitment is the timestamp, but the
         // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
         // by verifying both the DIDCommitment and the TimestampCommitment we confirm
@@ -297,9 +303,9 @@ impl TimestampCommitment {
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
             expected_data: json!(expected_data),
-            hasher: did_commitment.hasher(),
-            candidate_data: did_commitment.timestamp_candidate_data()?.to_vec(),
-            decode_candidate_data: did_commitment.decode_timestamp_candidate_data()?,
+            hasher: hasher,
+            candidate_data: candidate_data,
+            decode_candidate_data: decode_candidate_data,
         })
     }
 
