@@ -266,12 +266,6 @@ pub trait DIDCommitment: Commitment {
     fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
         self.did_document().get_endpoints()
     }
-    // /// Get the candidate data in which we expect to find a timestamp.
-    // fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]>;
-    // /// Gets the decoder (function) for the timestamp candidate data.
-    // fn decode_timestamp_candidate_data(
-    //     &self,
-    // ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>>;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher
@@ -287,18 +281,11 @@ impl TimestampCommitment {
     /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
     /// timestamp as expected data.
     pub fn new(
-        // did_commitment: &dyn DIDCommitment,
-        expected_data: Timestamp, // as opposed to:        expected_data: Option<Value>,
+        expected_data: Timestamp,
         hasher: fn(&[u8]) -> CommitmentResult<String>,
         candidate_data: Vec<u8>,
         decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
     ) -> CommitmentResult<Self> {
-        // TODO: edit this obsolete comment:
-        // Note the expected data in the TimestampCommitment is the timestamp, but the
-        // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
-        // by verifying both the DIDCommitment and the TimestampCommitment we confirm
-        // that the *same* hash commits to *both* the DID Document data and the timestamp.
-        //
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {

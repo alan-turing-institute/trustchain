@@ -180,99 +180,15 @@ pub trait VerifiableTimestamp {
     fn timestamp(&self) -> Timestamp;
     /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        // The expected data in the TimestampCommitment is the timestamp, while in the
+        // DIDCommitment the expected data are the public keys & service endpoints.
+        // By verifying both commitments using the same target, we confirm that the *same*
+        // hash commits to *both* the DID Document data and the timestamp.
         self.did_commitment().verify(target)?;
         self.timestamp_commitment().verify(target)?;
-        // TODO: delete as superfluous:
-        // if self.content_commitment().hash()? != self.timestamp_commitment().hash()? {
-        //   return Err(CommitmentError::FailedHashVerification("Timestamp hash not equal to content hash".to_string()));
-        // }
         Ok(())
     }
 }
-
-// // OLD:
-
-// /// A verifiably timestamped DID Document.
-// pub struct VerifiableTimestamp {
-//     did_commitment: Box<dyn DIDCommitment>,
-//     timestamp: Timestamp,
-// }
-
-// impl VerifiableTimestamp {
-//     fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: Timestamp) -> Self {
-//         Self {
-//             did_commitment,
-//             timestamp: expected_timestamp,
-//         }
-//     }
-
-//     /// Gets the DID Commitment.
-//     fn did_commitment(&self) -> &dyn DIDCommitment {
-//         self.did_commitment.as_ref()
-//     }
-
-//     /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
-//     /// owned DID Commitment, and with the expected timestamp as expected data.
-//     pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
-//         Ok(TimestampCommitment::new(
-//             self.did_commitment(),
-//             self.timestamp,
-//         )?)
-//     }
-
-//     /// Gets the hash (PoW) commitment.
-//     pub fn hash(&self) -> Result<String, VerifierError> {
-//         Ok(self.did_commitment.hash()?)
-//     }
-
-//     /// Gets the timestamp as a Unix time.
-//     pub fn timestamp(&self) -> Timestamp {
-//         self.timestamp
-//     }
-
-//     // TODO?:
-//     // make this into a trait
-//     // move the validate_pow_hash function in here
-//     // fn validate_pow_hash
-//     // hten call validate_pow_hash inside verify_content.
-
-//     /// Verifies that the DID Document data (public keys & endpoints)
-//     /// are contained as expected data in the DID Commitment.
-//     fn verify_content(&self) -> Result<(), VerifierError> {
-//         // Check each expected key is found in the vector of verified keys.
-//         if let Some(expected_keys) = self.did_commitment().did_document().get_keys() {
-//             if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
-//                 if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
-//                     return Err(VerifierError::KeyNotFoundInVerifiedContent(
-//                         self.did_commitment().did().to_string(),
-//                     ));
-//                 }
-//             } else {
-//                 return Err(VerifierError::NoKeysFoundInVerifiedContent(
-//                     self.did_commitment().did().to_string(),
-//                 ));
-//             }
-//         }
-//         // Check each expected endpoint is found in the vector of verified endpoints.
-//         if let Some(expected_endpoints) = self.did_commitment().did_document().get_endpoints() {
-//             if let Some(candidate_endpoints) = self.did_commitment().candidate_endpoints() {
-//                 if !expected_endpoints
-//                     .iter()
-//                     .all(|uri| candidate_endpoints.contains(uri))
-//                 {
-//                     return Err(VerifierError::EndpointNotFoundInVerifiedContent(
-//                         self.did_commitment().did().to_string(),
-//                     ));
-//                 }
-//             } else {
-//                 return Err(VerifierError::NoEndpointsFoundInVerifiedContent(
-//                     self.did_commitment().did().to_string(),
-//                 ));
-//             }
-//         }
-//         Ok(())
-//     }
-// }
 
 /// A verifier of root and downstream DIDs.
 #[async_trait]
