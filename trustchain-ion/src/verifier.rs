@@ -23,10 +23,10 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use trustchain_core::commitment::{CommitmentError, DIDCommitment, TimestampCommitment, Commitment};
+use trustchain_core::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
-use trustchain_core::verifier::{Verifier, VerifierError, VerifiableTimestamp, Timestamp};
+use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
@@ -485,6 +485,23 @@ where
         &self.resolver
     }
 
+    async fn verifiable_timestamp(
+        &self,
+        did: &str,
+        expected_timestamp: Timestamp,
+    ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
+        let ion_commitment = self.did_commitment(did).await?;
+        let timestamp_commitment = TimestampCommitment::new(
+            expected_timestamp,
+            ion_commitment.hasher(),
+            ion_commitment.candidate_data().to_owned(),
+            ion_commitment.decode_candidate_data(),
+        )?;
+        Ok(Box::new(IONTimestamp::new(
+            ion_commitment,
+            timestamp_commitment,
+        )))
+    }
 }
 
 #[async_trait]
@@ -525,54 +542,59 @@ where
         did: &str,
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
-
         let ion_commitment = self.did_commitment(did).await?;
         let timestamp_commitment = TimestampCommitment::new(
             expected_timestamp,
             ion_commitment.hasher(),
-            ion_commitment.chained_commitment().commitments().last().
-        );
-
-        IONTimestamp::new(ion_commitment, timestamp_commitment)
+            ion_commitment.candidate_data().to_owned(),
+            ion_commitment.decode_candidate_data(),
+        )?;
+        Ok(Box::new(IONTimestamp::new(
+            ion_commitment,
+            timestamp_commitment,
+        )))
     }
 }
 
-
 pub struct IONTimestamp {
-    ion_commitment: IONCommitment,
-    timestamp_commitment: TimestampCommitment
+    did_commitment: Box<dyn DIDCommitment>,
+    timestamp_commitment: TimestampCommitment,
 }
 
 impl IONTimestamp {
-
-    fn new(ion_commitment: IONCommitment, timestamp_commitment: TimestampCommitment) -> Self {
-        Self { ion_commitment, timestamp_commitment }
+    fn new(
+        did_commitment: Box<dyn DIDCommitment>,
+        timestamp_commitment: TimestampCommitment,
+    ) -> Self {
+        Self {
+            did_commitment,
+            timestamp_commitment,
+        }
     }
 
     /// Gets the DID.
     fn did(&self) -> &str {
-        &self.ion_commitment.did()
+        &self.did_commitment.did()
     }
     /// Gets the DID Document.
     fn did_document(&self) -> &Document {
-        &self.ion_commitment.did_document()
+        &self.did_commitment.did_document()
     }
 }
 
 impl VerifiableTimestamp for IONTimestamp {
-    fn content_commitment(&self) -> &dyn Commitment {
-        &self.ion_commitment
+    fn did_commitment(&self) -> &dyn DIDCommitment {
+        self.did_commitment.as_ref()
     }
 
     fn timestamp_commitment(&self) -> &TimestampCommitment {
         &self.timestamp_commitment
     }
 
-    fn timestamp(&self) -> &Timestamp {
-        &self.timestamp_commitment().timestamp()
+    fn timestamp(&self) -> Timestamp {
+        self.timestamp_commitment().timestamp()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

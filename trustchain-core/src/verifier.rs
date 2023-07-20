@@ -172,12 +172,15 @@ impl From<serde_json::Error> for VerifierError {
 pub type Timestamp = u32;
 
 pub trait VerifiableTimestamp {
-    fn content_commitment(&self) -> &dyn Commitment;
+    /// Gets the wrapped DIDCommitment.
+    fn did_commitment(&self) -> &dyn DIDCommitment;
+    /// Gets the wrapped TimestampCommitment.
     fn timestamp_commitment(&self) -> &TimestampCommitment;
-    fn timestamp(&self) -> &Timestamp;
-
+    /// Gets the Timestamp.
+    fn timestamp(&self) -> Timestamp;
+    /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
-        self.content_commitment().verify(target)?;
+        self.did_commitment().verify(target)?;
         self.timestamp_commitment().verify(target)?;
         // TODO: delete as superfluous:
         // if self.content_commitment().hash()? != self.timestamp_commitment().hash()? {
