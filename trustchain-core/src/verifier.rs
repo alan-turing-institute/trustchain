@@ -174,7 +174,7 @@ pub trait VerifiableTimestamp {
     /// Gets the wrapped DIDCommitment.
     fn did_commitment(&self) -> &dyn DIDCommitment;
     /// Gets the wrapped TimestampCommitment.
-    fn timestamp_commitment(&self) -> &TimestampCommitment;
+    fn timestamp_commitment(&self) -> &dyn TimestampCommitment;
     /// Gets the Timestamp.
     fn timestamp(&self) -> Timestamp;
     /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.

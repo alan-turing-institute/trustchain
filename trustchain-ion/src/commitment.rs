@@ -7,14 +7,17 @@ use serde_json::{json, Value};
 use ssi::did::Document;
 use std::convert::TryInto;
 use std::marker::PhantomData;
+use trustchain_core::commitment::TimestampCommitment;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain, CommitmentResult};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
+use trustchain_core::verifier::Timestamp;
 
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::TIMESTAMP_KEY;
 
 const CID_KEY: &str = "cid";
 const DELTAS_KEY: &str = "deltas";
@@ -25,6 +28,42 @@ fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
 
 fn ipfs_decode_candidate_data() -> fn(&[u8]) -> CommitmentResult<Value> {
     |x| decode_ipfs_content(x).map_err(|_| CommitmentError::DataDecodingFailure)
+}
+
+fn block_header_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
+    // Candidate data the block header bytes.
+    |x| {
+        // Bitcoin block hash is a double SHA256 hash of the block header.
+        // We use a generic SHA256 library to avoid trust in rust-bitcoin.
+        let hash1_hex = sha256::digest(x);
+        let hash1_bytes = hex::decode(hash1_hex).unwrap();
+        let hash2_hex = sha256::digest(&*hash1_bytes);
+        // For leading (not trailing) zeros, convert the hex to big-endian.
+        Ok(reverse_endianness(&hash2_hex).unwrap())
+    }
+}
+
+fn block_header_decoder() -> fn(&[u8]) -> CommitmentResult<Value> {
+    |x| {
+        if x.len() != 80 {
+            return Err(CommitmentError::DataDecodingError(
+                "Error: Bitcoin block header must be 80 bytes.".to_string(),
+            ));
+        };
+        let decoded_header = decode_block_header(x.try_into().map_err(|err| {
+            CommitmentError::DataDecodingError(format!(
+                "Error: Bitcoin block header must be 80 bytes with error: {err}"
+            ))
+        })?);
+
+        match decoded_header {
+            Ok(x) => Ok(x),
+            Err(e) => Err(CommitmentError::DataDecodingError(format!(
+                "Error decoding Bitcoin block header: {}.",
+                e
+            ))),
+        }
+    }
 }
 
 /// Unit struct for incomplete commitments.
@@ -363,18 +402,10 @@ impl BlockHashCommitment<Complete> {
         }
     }
 }
+
 impl<T> TrivialCommitment for BlockHashCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
-        // Candidate data the block header bytes.
-        |x| {
-            // Bitcoin block hash is a double SHA256 hash of the block header.
-            // We use a generic SHA256 library to avoid trust in rust-bitcoin.
-            let hash1_hex = sha256::digest(x);
-            let hash1_bytes = hex::decode(hash1_hex).unwrap();
-            let hash2_hex = sha256::digest(&*hash1_bytes);
-            // For leading (not trailing) zeros, convert the hex to big-endian.
-            Ok(reverse_endianness(&hash2_hex).unwrap())
-        }
+        block_header_hasher()
     }
 
     fn candidate_data(&self) -> &[u8] {
@@ -383,26 +414,7 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
 
     /// Deserializes the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
-        |x| {
-            if x.len() != 80 {
-                return Err(CommitmentError::DataDecodingError(
-                    "Error: Bitcoin block header must be 80 bytes.".to_string(),
-                ));
-            };
-            let decoded_header = decode_block_header(x.try_into().map_err(|err| {
-                CommitmentError::DataDecodingError(format!(
-                    "Error: Bitcoin block header must be 80 bytes with error: {err}"
-                ))
-            })?);
-
-            match decoded_header {
-                Ok(x) => Ok(x),
-                Err(e) => Err(CommitmentError::DataDecodingError(format!(
-                    "Error decoding Bitcoin block header: {}.",
-                    e
-                ))),
-            }
-        }
+        block_header_decoder()
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -537,21 +549,92 @@ impl DIDCommitment for IONCommitment {
     }
 }
 
+/// A Commitment whose expected data is a Unix time and hasher
+/// and candidate data are obtained from a given DIDCommitment.
+pub struct BlockTimestampCommitment {
+    expected_data: serde_json::Value,
+    candidate_data: Vec<u8>,
+}
+
+impl BlockTimestampCommitment {
+    pub fn new(expected_data: Timestamp, candidate_data: Vec<u8>) -> CommitmentResult<Self> {
+        // The decoded candidate data must contain the timestamp such that it is found
+        // by the json_contains function, otherwise the content verification will fail.
+        Ok(Self {
+            expected_data: json!(expected_data),
+            candidate_data: candidate_data,
+        })
+    }
+}
+
+impl TrivialCommitment for BlockTimestampCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
+        block_header_hasher()
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        &self.candidate_data
+    }
+
+    /// Deserializes the candidate data into a Block header (as JSON).
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
+        block_header_decoder()
+    }
+
+    /// Override the filter method to ensure only timestamp content is considered.
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
+        Some(Box::new(move |value| {
+            if let Value::Object(map) = value {
+                match map.get(TIMESTAMP_KEY) {
+                    Some(Value::Number(timestamp)) => Ok(Value::Number(timestamp.clone())),
+                    _ => Err(CommitmentError::DataDecodingFailure),
+                }
+            } else {
+                Err(CommitmentError::DataDecodingFailure)
+            }
+        }))
+    }
+
+    fn to_commitment(self: Box<Self>, _: serde_json::Value) -> Box<dyn Commitment> {
+        self
+    }
+}
+
+impl Commitment for BlockTimestampCommitment {
+    fn expected_data(&self) -> &serde_json::Value {
+        // Safe to unwrap as a complete commitment must have expected data
+        &self.expected_data
+    }
+}
+
+impl TimestampCommitment for BlockTimestampCommitment {}
+
 #[cfg(test)]
 mod tests {
 
     use std::str::FromStr;
 
-    use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
+    use bitcoin::{util::psbt::serialize::Serialize, BlockHeader};
     use ipfs_api_backend_hyper::IpfsClient;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
     use crate::{
+        data::TEST_BLOCK_HEADER_HEX,
         utils::{block_header, merkle_proof, query_ipfs, transaction},
         MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
+
+    #[test]
+    fn test_block_timestamp_commitment() {
+        let expected_data: Timestamp = 1666265405;
+        let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
+        let target = BlockTimestampCommitment::new(expected_data, candidate_data).unwrap();
+        target.verify_content().unwrap();
+        let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        target.verify(pow_hash).unwrap();
+    }
 
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]

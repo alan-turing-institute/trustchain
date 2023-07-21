@@ -1,5 +1,5 @@
 //! Implementation of `Verifier` API for ION DID method.
-use crate::commitment::IONCommitment;
+use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
@@ -500,9 +500,8 @@ where
             .as_any()
             .downcast_ref::<IONCommitment>()
             .unwrap(); // Safe because IONCommitment implements DIDCommitment.
-        let timestamp_commitment = TimestampCommitment::new(
+        let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
             expected_timestamp,
-            ion_commitment.hasher(),
             ion_commitment
                 .chained_commitment()
                 .commitments()
@@ -510,14 +509,7 @@ where
                 .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
-            ion_commitment
-                .chained_commitment()
-                .commitments()
-                .last()
-                .expect("Unexpected empty commitment chain.")
-                .decode_candidate_data()
-                .to_owned(),
-        )?;
+        )?);
         Ok(Box::new(IONTimestamp::new(
             did_commitment,
             timestamp_commitment,
@@ -569,9 +561,8 @@ where
             .as_any()
             .downcast_ref::<IONCommitment>()
             .unwrap(); // Safe because IONCommitment implements DIDCommitment.
-        let timestamp_commitment = TimestampCommitment::new(
+        let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
             expected_timestamp,
-            ion_commitment.hasher(),
             ion_commitment
                 .chained_commitment()
                 .commitments()
@@ -579,14 +570,7 @@ where
                 .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
-            ion_commitment
-                .chained_commitment()
-                .commitments()
-                .last()
-                .expect("Unexpected empty commitment chain.")
-                .decode_candidate_data()
-                .to_owned(),
-        )?;
+        )?);
         Ok(Box::new(IONTimestamp::new(
             did_commitment,
             timestamp_commitment,
@@ -597,13 +581,13 @@ where
 // TODO: add doc comments
 pub struct IONTimestamp {
     did_commitment: Box<dyn DIDCommitment>,
-    timestamp_commitment: TimestampCommitment,
+    timestamp_commitment: Box<dyn TimestampCommitment>,
 }
 
 impl IONTimestamp {
     fn new(
         did_commitment: Box<dyn DIDCommitment>,
-        timestamp_commitment: TimestampCommitment,
+        timestamp_commitment: Box<dyn TimestampCommitment>,
     ) -> Self {
         Self {
             did_commitment,
@@ -626,8 +610,8 @@ impl VerifiableTimestamp for IONTimestamp {
         self.did_commitment.as_ref()
     }
 
-    fn timestamp_commitment(&self) -> &TimestampCommitment {
-        &self.timestamp_commitment
+    fn timestamp_commitment(&self) -> &dyn TimestampCommitment {
+        self.timestamp_commitment.as_ref()
     }
 
     fn timestamp(&self) -> Timestamp {

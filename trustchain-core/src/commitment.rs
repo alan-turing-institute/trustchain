@@ -269,68 +269,14 @@ pub trait DIDCommitment: Commitment {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-/// A Commitment whose expected data is a Unix time and hasher
-/// and candidate data are obtained from a given DIDCommitment.
-pub struct TimestampCommitment {
-    expected_data: serde_json::Value,
-    hasher: fn(&[u8]) -> CommitmentResult<String>,
-    candidate_data: Vec<u8>,
-    decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
-}
-
-impl TimestampCommitment {
-    /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
-    /// timestamp as expected data.
-    pub fn new(
-        expected_data: Timestamp,
-        hasher: fn(&[u8]) -> CommitmentResult<String>,
-        candidate_data: Vec<u8>,
-        decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
-    ) -> CommitmentResult<Self> {
-        // The decoded candidate data must contain the timestamp such that it is found
-        // by the json_contains function, otherwise the content verification will fail.
-        Ok(Self {
-            expected_data: json!(expected_data),
-            hasher: hasher,
-            candidate_data: candidate_data,
-            decode_candidate_data: decode_candidate_data,
-        })
-    }
-
+/// A Commitment whose expected data is a Unix time.
+pub trait TimestampCommitment: Commitment {
     /// Gets the timestamp as a Unix time.
-    pub fn timestamp(&self) -> Timestamp {
-        self.expected_data
+    fn timestamp(&self) -> Timestamp {
+        self.expected_data()
             .as_u64()
             .unwrap()
             .try_into()
             .expect("Construction guarantees u32.")
-    }
-}
-
-impl TrivialCommitment for TimestampCommitment {
-    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
-        self.hasher
-    }
-
-    fn candidate_data(&self) -> &[u8] {
-        &self.candidate_data
-    }
-
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
-        self.decode_candidate_data
-    }
-
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        if !expected_data.eq(self.expected_data()) {
-            panic!("Attempted modification of expected timestamp data not permitted.");
-        }
-        self
-    }
-}
-
-impl Commitment for TimestampCommitment {
-    fn expected_data(&self) -> &serde_json::Value {
-        // Safe to unwrap as a complete commitment must have expected data
-        &self.expected_data
     }
 }
