@@ -6,9 +6,7 @@ use crate::commitment::{
     Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
 };
 use crate::resolver::{Resolver, ResolverError};
-use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use async_trait::async_trait;
-use serde_json::json;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
@@ -171,6 +169,7 @@ impl From<serde_json::Error> for VerifierError {
 /// A Unix timestamp.
 pub type Timestamp = u32;
 
+/// A verifiably-timestamped DID.
 pub trait VerifiableTimestamp {
     /// Gets the wrapped DIDCommitment.
     fn did_commitment(&self) -> &dyn DIDCommitment;

@@ -594,6 +594,7 @@ where
     }
 }
 
+// TODO: add doc comments
 pub struct IONTimestamp {
     did_commitment: Box<dyn DIDCommitment>,
     timestamp_commitment: TimestampCommitment,
@@ -611,11 +612,11 @@ impl IONTimestamp {
     }
 
     /// Gets the DID.
-    fn did(&self) -> &str {
+    pub fn did(&self) -> &str {
         &self.did_commitment.did()
     }
     /// Gets the DID Document.
-    fn did_document(&self) -> &Document {
+    pub fn did_document(&self) -> &Document {
         &self.did_commitment.did_document()
     }
 }
