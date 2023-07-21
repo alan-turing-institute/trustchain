@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
-    CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
+    CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;

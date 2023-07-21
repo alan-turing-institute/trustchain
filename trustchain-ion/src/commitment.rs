@@ -17,6 +17,7 @@ use trustchain_core::verifier::Timestamp;
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::MERKLE_ROOT_KEY;
 use crate::TIMESTAMP_KEY;
 
 const CID_KEY: &str = "cid";
@@ -417,6 +418,20 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
         block_header_decoder()
     }
 
+    /// Override the filter method to ensure only the Merkle root content is considered.
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
+        Some(Box::new(move |value| {
+            if let Value::Object(map) = value {
+                match map.get(MERKLE_ROOT_KEY) {
+                    Some(Value::String(str)) => Ok(Value::String(str.clone())),
+                    _ => Err(CommitmentError::DataDecodingFailure),
+                }
+            } else {
+                Err(CommitmentError::DataDecodingFailure)
+            }
+        }))
+    }
+
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
         Box::new(BlockHashCommitment::<Complete>::new(
             self.candidate_data,
@@ -631,6 +646,19 @@ mod tests {
         let expected_data: Timestamp = 1666265405;
         let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
         let target = BlockTimestampCommitment::new(expected_data, candidate_data).unwrap();
+        target.verify_content().unwrap();
+        let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        target.verify(pow_hash).unwrap();
+    }
+
+    #[test]
+    fn test_block_hash_commitment_filter() {
+        // The expected data is the Merkle root inside the block header.
+        // For the testnet block at height 2377445, the Merkle root is:
+        let expected_data =
+            json!("7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69");
+        let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
+        let target = BlockHashCommitment::<Complete>::new(candidate_data, expected_data);
         target.verify_content().unwrap();
         let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         target.verify(pow_hash).unwrap();

@@ -2,9 +2,7 @@
 use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};
-use crate::commitment::{
-    Commitment, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
-};
+use crate::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
 use crate::resolver::{Resolver, ResolverError};
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
