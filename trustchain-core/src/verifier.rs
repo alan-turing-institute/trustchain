@@ -212,7 +212,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
         self.verify_timestamp(&*verifiable_timestamp)?;
 
-        // At this point we know that the same PoW commits to both the timestamp
+        // Validate the PoW hash.
+        self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
+
+        // At this point we know that the same, valid PoW commits to both the timestamp
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
         // It only remains to check that the verified timestamp matches the expected root timestamp.
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {

@@ -465,6 +465,8 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     Ok(chunk_file.deltas)
 }
 
+// TODO: consider whether duplication can be avoided in
+// IONVerifier<T, FullClient> and IONVerifier<T, LightClient>.
 #[async_trait]
 impl<T> Verifier<T> for IONVerifier<T, FullClient>
 where
