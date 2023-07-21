@@ -1,5 +1,5 @@
 use serde_json::json;
-use trustchain_core::commitment::Commitment;
+use trustchain_core::commitment::{Commitment, TrivialCommitment};
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
@@ -48,6 +48,10 @@ async fn test_verifiable_timestamp() {
         verifiable_timestamp.did_commitment().hash().unwrap(),
         expected_hash
     );
+    assert_eq!(
+        verifiable_timestamp.timestamp_commitment().hash().unwrap(),
+        expected_hash
+    );
 
     // Check that the DID timestamp is correct by comparing to the known header.
     assert_eq!(verifiable_timestamp.timestamp(), timestamp);
@@ -59,8 +63,11 @@ async fn test_verifiable_timestamp() {
     );
 
     // Verify the timestamp.
-    let _ = target.verify_timestamp(verifiable_timestamp.as_ref());
+    target
+        .verify_timestamp(verifiable_timestamp.as_ref())
+        .unwrap();
     // Verify a second time to check data is not consumed
-    let actual = target.verify_timestamp(verifiable_timestamp.as_ref());
-    assert!(actual.is_ok());
+    target
+        .verify_timestamp(verifiable_timestamp.as_ref())
+        .unwrap();
 }

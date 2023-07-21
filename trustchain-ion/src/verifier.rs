@@ -23,7 +23,9 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use trustchain_core::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
+use trustchain_core::commitment::{
+    CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment, TrivialCommitment,
+};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
@@ -490,15 +492,32 @@ where
         did: &str,
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
-        let ion_commitment = self.did_commitment(did).await?;
+        let did_commitment = self.did_commitment(did).await?;
+        let ion_commitment = did_commitment
+            .as_any()
+            .downcast_ref::<IONCommitment>()
+            .unwrap();
+        println!("here after downcast");
         let timestamp_commitment = TimestampCommitment::new(
             expected_timestamp,
             ion_commitment.hasher(),
-            ion_commitment.candidate_data().to_owned(),
-            ion_commitment.decode_candidate_data(),
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .unwrap()
+                .candidate_data()
+                .to_owned(),
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .unwrap()
+                .decode_candidate_data()
+                .to_owned(),
         )?;
         Ok(Box::new(IONTimestamp::new(
-            ion_commitment,
+            did_commitment,
             timestamp_commitment,
         )))
     }
@@ -542,15 +561,32 @@ where
         did: &str,
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
-        let ion_commitment = self.did_commitment(did).await?;
+        let did_commitment = self.did_commitment(did).await?;
+        let ion_commitment = did_commitment
+            .as_any()
+            .downcast_ref::<IONCommitment>()
+            .unwrap();
+        println!("here after downcast");
         let timestamp_commitment = TimestampCommitment::new(
             expected_timestamp,
             ion_commitment.hasher(),
-            ion_commitment.candidate_data().to_owned(),
-            ion_commitment.decode_candidate_data(),
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .unwrap()
+                .candidate_data()
+                .to_owned(),
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .unwrap()
+                .decode_candidate_data()
+                .to_owned(),
         )?;
         Ok(Box::new(IONTimestamp::new(
-            ion_commitment,
+            did_commitment,
             timestamp_commitment,
         )))
     }

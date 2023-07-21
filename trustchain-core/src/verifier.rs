@@ -230,6 +230,9 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError>;
 
+    /// Gets a block hash (PoW) Commitment for the given DID.
+    async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
+
     /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
 
@@ -240,11 +243,6 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     ) -> Result<(), VerifierError> {
         Ok(verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?)
     }
-
-    /// Gets a block hash (PoW) Commitment for the given DID.
-    /// The mutable reference to self enables a newly-fetched Commitment
-    /// to be stored locally for faster subsequent retrieval.
-    async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

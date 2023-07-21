@@ -266,6 +266,7 @@ pub trait DIDCommitment: Commitment {
     fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
         self.did_document().get_endpoints()
     }
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 /// A Commitment whose expected data is a Unix time and hasher

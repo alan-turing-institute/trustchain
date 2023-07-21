@@ -532,27 +532,9 @@ impl DIDCommitment for IONCommitment {
         &self.did_doc
     }
 
-    // fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]> {
-    //     // The candidate data for the timestamp is the Bitcoin block header,
-    //     // which is the candidate data in the last commitment in the chain
-    //     // (i.e. the BlockHashCommitment).
-    //     if let Some(commitment) = self.chained_commitment.commitments().last() {
-    //         return Ok(commitment.candidate_data());
-    //     }
-    //     Err(CommitmentError::EmptyChainedCommitment)
-    // }
-
-    // fn decode_timestamp_candidate_data(
-    //     &self,
-    // ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>> {
-    //     // The required candidate data decoder (function) is the one for the
-    //     // Bitcoin block header, which is the decoder in the last commitment
-    //     // in the chain (i.e. the BlockHashCommitment).
-    //     if let Some(commitment) = self.chained_commitment.commitments().last() {
-    //         return Ok(commitment.decode_candidate_data());
-    //     }
-    //     Err(CommitmentError::EmptyChainedCommitment)
-    // }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[cfg(test)]
