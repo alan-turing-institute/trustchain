@@ -493,11 +493,11 @@ where
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
         let did_commitment = self.did_commitment(did).await?;
+        // Downcast to IONCommitment to extract data for constructing a TimestampCommitment.
         let ion_commitment = did_commitment
             .as_any()
             .downcast_ref::<IONCommitment>()
-            .unwrap();
-        println!("here after downcast");
+            .unwrap(); // Safe because IONCommitment implements DIDCommitment.
         let timestamp_commitment = TimestampCommitment::new(
             expected_timestamp,
             ion_commitment.hasher(),
@@ -505,14 +505,14 @@ where
                 .chained_commitment()
                 .commitments()
                 .last()
-                .unwrap()
+                .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
             ion_commitment
                 .chained_commitment()
                 .commitments()
                 .last()
-                .unwrap()
+                .expect("Unexpected empty commitment chain.")
                 .decode_candidate_data()
                 .to_owned(),
         )?;
@@ -562,11 +562,11 @@ where
         expected_timestamp: Timestamp,
     ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
         let did_commitment = self.did_commitment(did).await?;
+        // Downcast to IONCommitment to extract data for constructing a TimestampCommitment.
         let ion_commitment = did_commitment
             .as_any()
             .downcast_ref::<IONCommitment>()
-            .unwrap();
-        println!("here after downcast");
+            .unwrap(); // Safe because IONCommitment implements DIDCommitment.
         let timestamp_commitment = TimestampCommitment::new(
             expected_timestamp,
             ion_commitment.hasher(),
@@ -574,14 +574,14 @@ where
                 .chained_commitment()
                 .commitments()
                 .last()
-                .unwrap()
+                .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
             ion_commitment
                 .chained_commitment()
                 .commitments()
                 .last()
-                .unwrap()
+                .expect("Unexpected empty commitment chain.")
                 .decode_candidate_data()
                 .to_owned(),
         )?;
