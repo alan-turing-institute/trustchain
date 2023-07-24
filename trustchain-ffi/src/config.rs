@@ -99,6 +99,8 @@ impl FFIConfig {
 
 #[cfg(test)]
 mod tests {
+    use ssi::vc::ProofPurpose;
+
     use super::*;
 
     const TEST_ENDPOINT_OPTIONS: &str = r#"
@@ -128,32 +130,22 @@ mod tests {
         }
     "#;
 
-    // [[trustchain_options]]
-    // "signatureOnly"= false
-    // "rootEventTime"= 1666971942
-
-    // [[linked_data_proof_options]]
-    // proofPurpose="assertionMethod"
-    // created="2023-07-18T08:42:50Z"
-
-    // [[[resolver_endpoint]]]
-    // url="http://127.0.0.1"
-    // port=3000
-
-    // [[["bundle_endpoint"]]]
-    // url = "http://127.0.0.1"
-    // port = 8081
-
-    // TODO: fix test str to have correct toml format given camelCase rename_all and three layer struct
     const TEST_FFI_OPTIONS: &str = r#"
-    [ffi]
-    [ffi.endpoint_options]
-        [[resolver_endpoint]]
-        url="http://127.0.0.1"
-        port = 3000
-        [[bundle_endpoint]]
-        url="http://127.0.0.1"
-        port = 8081
+    [ffi.endpointOptions.resolverEndpoint]
+    url="http://127.0.0.1"
+    port=3000
+    [ffi.endpointOptions.bundleEndpoint]
+    url="http://127.0.0.1"
+    port=8081
+
+    [ffi.trustchainOptions]
+    "signatureOnly"= false
+    "rootEventTime"= 1666971942
+
+    [ffi.linkedDataProofOptions]
+    proofPurpose="assertionMethod"
+    created="2023-07-18T08:42:50Z"
+
     "#;
 
     #[test]
@@ -184,7 +176,22 @@ mod tests {
     }
     #[test]
     fn test_ffi_options_from_toml() {
-        let ff_config = toml::from_str::<FFIConfig>(&TEST_FFI_OPTIONS).unwrap();
-        println!("{:?}", ff_config);
+        println!("{:?}", parse_toml(&TEST_FFI_OPTIONS));
+        assert_eq!(
+            parse_toml(&TEST_FFI_OPTIONS)
+                .endpoint_options
+                .unwrap()
+                .resolver_endpoint
+                .port,
+            3000
+        );
+        assert_eq!(
+            parse_toml(&TEST_FFI_OPTIONS)
+                .linked_data_proof_options
+                .unwrap()
+                .proof_purpose
+                .unwrap(),
+            ProofPurpose::AssertionMethod
+        );
     }
 }
