@@ -8,12 +8,14 @@ use josekit::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde_json::Value;
+use ssi::jwk::JWK;
+
+use crate::errors::TrustchainHTTPError;
 
 const TEMP_PRIVATE_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U","y":"z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg","d":"CfdUwQ-CcBQkWpIDPjhSJAq2SCg6hAGdcvLmCj0aA-c"}"#;
 const TEMP_PUB_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U","y":"z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg"}"#;
 const UPSTREAM_PRIVATE_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JEV4WMgoJekTa5RQD5M92P1oLjdpMNYETQ3nbtKSnLQ","y":"dRfg_5i5wcMg1lxAffQORHpzgtm2yEIqgJoUk5ZklvI","d":"DZDZd9bxopCv2YJelMpQm_BJ0awvzpT6xWdWbaQlIJI"}"#;
 const UPSTREAM_PUB_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JEV4WMgoJekTa5RQD5M92P1oLjdpMNYETQ3nbtKSnLQ","y":"dRfg_5i5wcMg1lxAffQORHpzgtm2yEIqgJoUk5ZklvI"}"#;
-
 pub struct IdentityChallenge {
     // should the struct be public?
     temp_pub_key: String,
@@ -86,8 +88,22 @@ fn example() -> Result<(), JoseError> {
     Ok(())
 }
 
+fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
+    let key_as_str: &str = &serde_json::to_string(&key).unwrap();
+    let ssi_key: JWK = serde_json::from_str(key_as_str).unwrap();
+    Ok(ssi_key)
+}
+
+fn ssi_to_josekit_jwk(key: &JWK) -> Result<Jwk, serde_json::Error> {
+    let key_as_str: &str = &serde_json::to_string(&key).unwrap();
+    let ssi_key: Jwk = serde_json::from_str(key_as_str).unwrap();
+    Ok(ssi_key)
+}
+
 #[cfg(test)]
 mod tests {
+    use sha2::digest::typenum::private::IsEqualPrivate;
+
     use super::*;
     #[test]
     fn test_example() {
@@ -95,8 +111,40 @@ mod tests {
     }
 
     #[test]
-    fn test_ec_key() {
-        let key = Jwk::generate_ec_key(josekit::jwk::alg::ec::EcCurve::Secp256k1).unwrap();
-        println!("{}", serde_json::to_string_pretty(&key).unwrap());
+    fn test_josekit_to_ssi_jwk() {
+        let expected_ssi_pub_key: JWK = serde_json::from_str(TEMP_PUB_KEY).unwrap();
+        let expected_josekit_pub_key: Jwk = serde_json::from_str(TEMP_PUB_KEY).unwrap();
+
+        let ssi_pub_jwk = josekit_to_ssi_jwk(&expected_josekit_pub_key).unwrap();
+        assert!(ssi_pub_jwk.equals_public(&expected_ssi_pub_key));
+
+        let expected_ssi_priv_key: JWK = serde_json::from_str(TEMP_PRIVATE_KEY).unwrap();
+        let expected_josekit_priv_key: Jwk = serde_json::from_str(TEMP_PRIVATE_KEY).unwrap();
+
+        let ssi_priv_jwk = josekit_to_ssi_jwk(&expected_josekit_priv_key).unwrap();
+        assert_eq!(ssi_priv_jwk, expected_ssi_priv_key);
+
+        let wrong_expected_ssi_priv_key: JWK = serde_json::from_str(UPSTREAM_PRIVATE_KEY).unwrap();
+        assert_ne!(ssi_priv_jwk, wrong_expected_ssi_priv_key);
     }
+
+    #[test]
+    fn test_ssi_to_josekit_jwk() {
+        let expected_ssi_pub_key: JWK = serde_json::from_str(TEMP_PUB_KEY).unwrap();
+        let expected_josekit_pub_key: Jwk = serde_json::from_str(TEMP_PUB_KEY).unwrap();
+
+        let josekit_pub_jwk = ssi_to_josekit_jwk(&expected_ssi_pub_key).unwrap();
+        assert_eq!(josekit_pub_jwk, expected_josekit_pub_key);
+
+        let expected_ssi_priv_key: JWK = serde_json::from_str(TEMP_PRIVATE_KEY).unwrap();
+        let expected_josekit_priv_key: Jwk = serde_json::from_str(TEMP_PRIVATE_KEY).unwrap();
+
+        let josekit_priv_jwk = ssi_to_josekit_jwk(&expected_ssi_priv_key).unwrap();
+        assert_eq!(josekit_priv_jwk, expected_josekit_priv_key);
+    }
+    // #[test]
+    // fn test_ec_key() {
+    //     let key = Jwk::generate_ec_key(josekit::jwk::alg::ec::EcCurve::Secp256k1).unwrap();
+    //     println!("{}", serde_json::to_string_pretty(&key).unwrap());
+    // }
 }
