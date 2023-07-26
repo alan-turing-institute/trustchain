@@ -9,13 +9,9 @@ bitcoin_connection_string = "http://localhost:18332"
 bitcoin_rpc_username = "<YOUR_BITCOIN_RPC_USERNAME>"
 bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
 
-[ffi.endpointOptions.resolverEndpoint]
+[ffi.endpointOptions.ionEndpoint]
 url = "http://127.0.0.1"
 port = 3000
-
-[ffi.endpointOptions.bundleEndpoint]
-url = "http://127.0.0.1"
-port = 8081
 
 [ffi.trustchainOptions]
 signatureOnly = false

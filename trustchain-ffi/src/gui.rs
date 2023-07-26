@@ -59,9 +59,9 @@ pub fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Res
 /// Resolves a given DID using a resolver available at "ion_endpoint"
 pub fn resolve(did: String) -> anyhow::Result<String> {
     let resolver_address = if let Some(ion_endpoint) = &ffi_config().endpoint_options {
-        ion_endpoint.resolver_endpoint.to_address()
+        ion_endpoint.ion_endpoint().to_address()
     } else {
-        EndpointOptions::default().resolver_endpoint.to_address()
+        EndpointOptions::default().ion_endpoint().to_address()
     };
     let rt = Runtime::new().unwrap();
     rt.block_on(async {

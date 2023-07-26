@@ -51,15 +51,26 @@ impl Endpoint {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointOptions {
-    pub resolver_endpoint: Endpoint,
-    pub bundle_endpoint: Endpoint,
+    pub ion_endpoint: Endpoint,
+    pub trustchain_endpoint: Option<Endpoint>,
+}
+
+impl EndpointOptions {
+    pub fn ion_endpoint(&self) -> &Endpoint {
+        &self.ion_endpoint
+    }
+    pub fn trustchain_endpoint(&self) -> anyhow::Result<&Endpoint> {
+        self.trustchain_endpoint
+            .as_ref()
+            .ok_or_else(|| anyhow!("Expected trustchain endpoint."))
+    }
 }
 
 impl Default for EndpointOptions {
     fn default() -> Self {
         Self {
-            resolver_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 3000),
-            bundle_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 8081),
+            ion_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 3000),
+            trustchain_endpoint: Some(Endpoint::new(URL::from("http://127.0.0.1"), 8081)),
         }
     }
 }
@@ -105,11 +116,11 @@ mod tests {
 
     const TEST_ENDPOINT_OPTIONS: &str = r#"
         {
-            "resolverEndpoint": {
+            "ionEndpoint": {
                 "url": "http://127.0.0.1",
                 "port": 3000
             },
-            "bundleEndpoint": {
+            "trustchainEndpoint": {
                 "url": "http://127.0.0.1",
                 "port": 8081
             }
@@ -131,10 +142,10 @@ mod tests {
     "#;
 
     const TEST_FFI_OPTIONS: &str = r#"
-    [ffi.endpointOptions.resolverEndpoint]
+    [ffi.endpointOptions.ionEndpoint]
     url="http://127.0.0.1"
     port=3000
-    [ffi.endpointOptions.bundleEndpoint]
+    [ffi.endpointOptions.trustchainEndpoint]
     url="http://127.0.0.1"
     port=8081
 
@@ -181,9 +192,10 @@ mod tests {
             parse_toml(&TEST_FFI_OPTIONS)
                 .endpoint_options
                 .unwrap()
-                .resolver_endpoint
+                .trustchain_endpoint()
+                .unwrap()
                 .port,
-            3000
+            8081
         );
         assert_eq!(
             parse_toml(&TEST_FFI_OPTIONS)
