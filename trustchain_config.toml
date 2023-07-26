@@ -14,3 +14,5 @@ issuer_did = "<YOUR_ISSUER_DID>"
 
 [cli]
 root_event_time = "<YOUR_ROOT_EVENT_TIME>"
+ion_endpoint.host = "127.0.0.1"
+ion_endpoint.port = 3000

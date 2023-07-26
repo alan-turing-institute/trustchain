@@ -101,11 +101,11 @@ mod tests {
     const TEST_ENDPOINT_OPTIONS: &str = r#"
         {
             "ionEndpoint": {
-                "url": "http://127.0.0.1",
+                "host": "http://127.0.0.1",
                 "port": 3000
             },
             "trustchainEndpoint": {
-                "url": "http://127.0.0.1",
+                "host": "http://127.0.0.1",
                 "port": 8081
             }
         }
@@ -127,10 +127,10 @@ mod tests {
 
     const TEST_FFI_OPTIONS: &str = r#"
     [ffi.endpointOptions.ionEndpoint]
-    url="http://127.0.0.1"
+    host="http://127.0.0.1"
     port=3000
     [ffi.endpointOptions.trustchainEndpoint]
-    url="http://127.0.0.1"
+    host="http://127.0.0.1"
     port=8081
 
     [ffi.trustchainOptions]
