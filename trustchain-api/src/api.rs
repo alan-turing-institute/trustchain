@@ -94,7 +94,7 @@ pub trait TrustchainVCAPI {
         if signature_only {
             (verification_result, None)
         } else {
-            let mut verifier = IONVerifier::new(get_ion_resolver(endpoint));
+            let verifier = IONVerifier::new(get_ion_resolver(endpoint));
             let issuer = match credential.issuer.as_ref() {
                 Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                 _ => panic!("No issuer present in credential."),
