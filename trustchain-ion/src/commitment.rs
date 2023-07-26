@@ -624,12 +624,10 @@ impl TimestampCommitment for BlockTimestampCommitment {}
 
 #[cfg(test)]
 mod tests {
-
-    use std::str::FromStr;
-
+    use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
-    use bitcoin::{util::psbt::serialize::Serialize, BlockHeader};
     use ipfs_api_backend_hyper::IpfsClient;
+    use std::str::FromStr;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
