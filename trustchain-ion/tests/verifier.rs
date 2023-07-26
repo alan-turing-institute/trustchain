@@ -54,7 +54,7 @@ async fn test_verifiable_timestamp() {
     );
 
     // Check that the DID timestamp is correct by comparing to the known header.
-    assert_eq!(verifiable_timestamp.timestamp(), timestamp);
+    assert_eq!(verifiable_timestamp.timestamp().unwrap(), timestamp);
 
     // Confirm that the same timestamp is the expected data in the TimestampCommitment.
     assert_eq!(

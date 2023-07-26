@@ -174,7 +174,7 @@ pub trait VerifiableTimestamp {
     /// Gets the wrapped TimestampCommitment.
     fn timestamp_commitment(&self) -> &dyn TimestampCommitment;
     /// Gets the Timestamp.
-    fn timestamp(&self) -> Timestamp;
+    fn timestamp(&self) -> Result<Timestamp, CommitmentError>;
     /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // The expected data in the TimestampCommitment is the timestamp, while in the
@@ -215,7 +215,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // At this point we know that the same, valid PoW commits to both the timestamp
         // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
         // It only remains to check that the verified timestamp matches the expected root timestamp.
-        if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
+        if !verifiable_timestamp.timestamp()?.eq(&root_timestamp) {
             Err(VerifierError::InvalidRoot(root.to_string()))
         } else {
             Ok(chain)

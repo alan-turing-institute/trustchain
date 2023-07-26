@@ -19,7 +19,7 @@ petgraph = {version = "0.6"}
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
-sha2 = "0.10"
+sha2 = "0.10.7"
 ssi = { version = "0.4", features = ["http-did", "secp256k1"] }
 tempfile = { version = "3.3" }
 thiserror = "1.0"

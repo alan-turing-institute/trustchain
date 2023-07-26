@@ -272,11 +272,19 @@ pub trait DIDCommitment: Commitment {
 /// A Commitment whose expected data is a Unix time.
 pub trait TimestampCommitment: Commitment {
     /// Gets the timestamp as a Unix time.
-    fn timestamp(&self) -> Timestamp {
+    fn timestamp(&self) -> CommitmentResult<Timestamp> {
         self.expected_data()
             .as_u64()
-            .unwrap()
+            .ok_or(CommitmentError::DataDecodingError(format!(
+                "Could not convert the following expected data to u64: {}",
+                self.expected_data()
+            )))?
             .try_into()
-            .expect("Construction guarantees u32.")
+            .map_err(|err| {
+                CommitmentError::DataDecodingError(format!(
+                    "Could not convert u64 into Timestamp (u32): {}",
+                    err
+                ))
+            })
     }
 }

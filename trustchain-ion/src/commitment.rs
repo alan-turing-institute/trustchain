@@ -4,6 +4,7 @@ use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
 use ipfs_hasher::IpfsHasher;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use ssi::did::Document;
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -35,12 +36,10 @@ fn block_header_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
     // Candidate data the block header bytes.
     |x| {
         // Bitcoin block hash is a double SHA256 hash of the block header.
-        // We use a generic SHA256 library to avoid trust in rust-bitcoin.
-        let hash1_hex = sha256::digest(x);
-        let hash1_bytes = hex::decode(hash1_hex).unwrap();
-        let hash2_hex = sha256::digest(&*hash1_bytes);
+        // We use a generic sha2 crate to avoid trust in rust-bitcoin.
+        let double_hash_hex = hex::encode(Sha256::digest(Sha256::digest(x)));
         // For leading (not trailing) zeros, convert the hex to big-endian.
-        Ok(reverse_endianness(&hash2_hex).unwrap())
+        Ok(reverse_endianness(&double_hash_hex).unwrap())
     }
 }
 
@@ -577,7 +576,7 @@ impl BlockTimestampCommitment {
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
             expected_data: json!(expected_data),
-            candidate_data: candidate_data,
+            candidate_data,
         })
     }
 }
@@ -617,7 +616,6 @@ impl TrivialCommitment for BlockTimestampCommitment {
 
 impl Commitment for BlockTimestampCommitment {
     fn expected_data(&self) -> &serde_json::Value {
-        // Safe to unwrap as a complete commitment must have expected data
         &self.expected_data
     }
 }
