@@ -27,7 +27,8 @@ pub trait TrustchainDIDAPI {
     ) -> Result<String, Box<dyn Error>> {
         create_operation(document_state, verbose)
     }
-    /// An uDID attests to a dDID, writing the associated update operation to file in the operations path.
+    /// An uDID attests to a dDID, writing the associated update operation to file in the operations
+    /// path.
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }
@@ -51,29 +52,29 @@ pub trait TrustchainDIDAPI {
             .await
     }
 
-    // TODO: the below have no CLI implementation currently but are planned
-    /// Generates an update operation and writes to operations path.
-    fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        todo!()
-    }
-    /// Generates a recover operation and writes to operations path.
-    fn recover(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        todo!()
-    }
-    /// Generates a deactivate operation and writes to operations path.
-    fn deactivate(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        todo!()
-    }
-    /// Publishes operations within the operations path (queue).
-    fn publish(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        todo!()
-    }
+    // // TODO: the below have no CLI implementation currently but are planned
+    // /// Generates an update operation and writes to operations path.
+    // fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    //     todo!()
+    // }
+    // /// Generates a recover operation and writes to operations path.
+    // fn recover(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    //     todo!()
+    // }
+    // /// Generates a deactivate operation and writes to operations path.
+    // fn deactivate(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    //     todo!()
+    // }
+    // /// Publishes operations within the operations path (queue).
+    // fn publish(did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    //     todo!()
+    // }
 }
 
 /// API for Trustchain CLI VC functionality.
 #[async_trait]
 pub trait TrustchainVCAPI {
-    /// Signs a credential
+    /// Signs a credential.
     async fn sign(
         mut credential: Credential,
         did: &str,
@@ -85,7 +86,7 @@ pub trait TrustchainVCAPI {
         let attestor = IONAttestor::new(did);
         attestor.sign(&credential, key_id, &resolver).await.unwrap()
     }
-    /// Verifies a credential
+    /// Verifies a credential.
     async fn verify_credential(
         credential: &Credential,
         signature_only: bool,
