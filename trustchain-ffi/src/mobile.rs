@@ -1,4 +1,4 @@
-use crate::options::MobileOptions;
+use crate::options::FFIConfig;
 use anyhow::{anyhow, Result};
 use ssi::{
     one_or_many::OneOrMany,
@@ -19,11 +19,11 @@ pub fn greet() -> String {
 
 /// Resolves a given DID document assuming trust in endpoint.
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
-    let mobile_opts: MobileOptions = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        TrustchainAPI::resolve(&did, endpoint_opts.resolver_endpoint.to_address())
+        TrustchainAPI::resolve(&did, &endpoint_opts.resolver_endpoint.to_address())
             .await
             .map_err(|e| anyhow!(e))
             .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
@@ -31,7 +31,7 @@ pub fn did_resolve(did: String, opts: String) -> Result<String> {
 }
 /// Verifies a given DID assuming trust in endpoint.
 pub fn did_verify(did: String, opts: String) -> Result<()> {
-    let mobile_opts: MobileOptions = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let trustchain_opts = mobile_opts.trustchain()?;
     let rt = Runtime::new().unwrap();
@@ -50,7 +50,7 @@ pub fn did_verify(did: String, opts: String) -> Result<()> {
 
 /// Verifies a verifiable credential. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_credential.html).
 pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> {
-    let mobile_opts: MobileOptions = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let trustchain_opts = mobile_opts.trustchain()?;
     let ldp_opts = mobile_opts.linked_data_proof()?.to_owned();

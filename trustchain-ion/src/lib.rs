@@ -11,6 +11,7 @@ pub mod utils;
 pub mod verifier;
 
 use did_ion::{sidetree::SidetreeClient, ION};
+use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -19,8 +20,27 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
-// TODO: Make this a wrapped string type and impl validation
+// TODO: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
+// for better handling of URLs.
 pub type URL = String;
+
+/// Type for representing an endpoint as a base URL and port.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Endpoint {
+    pub host: String,
+    pub port: u16,
+}
+
+impl Endpoint {
+    pub fn new(url: String, port: u16) -> Self {
+        Self { host: url, port }
+    }
+    pub fn to_address(&self) -> String {
+        format!("http://{}:{}/", self.host, self.port)
+    }
+    // TODO: add more flexible address methods
+}
 
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
