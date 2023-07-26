@@ -1,9 +1,9 @@
 //! Core configuration types and utilities.
-use crate::TRUSTCHAIN_CONFIG;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use toml;
+use trustchain_core::TRUSTCHAIN_CONFIG;
 
 lazy_static! {
     /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.

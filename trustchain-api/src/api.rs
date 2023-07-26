@@ -7,10 +7,9 @@ use ssi::{
 use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
-    config::core_config,
     issuer::Issuer,
     resolver::ResolverResult,
-    verifier::{Verifier, VerifierError},
+    verifier::{Timestamp, Verifier, VerifierError},
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
@@ -42,9 +41,13 @@ pub trait TrustchainDIDAPI {
     }
 
     /// Verifies a given DID using a resolver available at given endpoint, returning a result.
-    async fn verify(did: &str, endpoint: &str) -> Result<DIDChain, VerifierError> {
+    async fn verify(
+        did: &str,
+        root_event_time: Timestamp,
+        endpoint: &str,
+    ) -> Result<DIDChain, VerifierError> {
         IONVerifier::new(get_ion_resolver(endpoint))
-            .verify(did, core_config().root_event_time)
+            .verify(did, root_event_time)
             .await
     }
 

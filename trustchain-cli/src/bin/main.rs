@@ -10,10 +10,8 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_core::config::core_config;
-use trustchain_ion::{
-    attest::attest_operation, create::create_operation, get_ion_resolver, Endpoint,
-};
+use trustchain_cli::config::core_config;
+use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
 
 fn cli() -> Command {
     Command::new("Trustchain CLI")
