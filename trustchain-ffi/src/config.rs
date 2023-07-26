@@ -190,7 +190,7 @@ mod tests {
         println!("{:?}", parse_toml(&TEST_FFI_OPTIONS));
         assert_eq!(
             parse_toml(&TEST_FFI_OPTIONS)
-                .endpoint_options
+                .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
                 .unwrap()
@@ -199,11 +199,12 @@ mod tests {
         );
         assert_eq!(
             parse_toml(&TEST_FFI_OPTIONS)
-                .linked_data_proof_options
+                .linked_data_proof()
                 .unwrap()
                 .proof_purpose
+                .as_ref()
                 .unwrap(),
-            ProofPurpose::AssertionMethod
+            &ProofPurpose::AssertionMethod
         );
     }
 }
