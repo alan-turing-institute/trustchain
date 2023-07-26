@@ -7,26 +7,26 @@ use trustchain_core::TRUSTCHAIN_CONFIG;
 
 lazy_static! {
     /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
-    pub static ref CORE_CONFIG: CoreConfig = parse_toml(
+    pub static ref CLI_CONFIG: CLIConfig = parse_toml(
         &fs::read_to_string(std::env::var(TRUSTCHAIN_CONFIG).unwrap().as_str())
         .expect("Error reading trustchain_config.toml"));
 }
 
 /// Parses and returns core configuration.
-fn parse_toml(toml_str: &str) -> CoreConfig {
+fn parse_toml(toml_str: &str) -> CLIConfig {
     toml::from_str::<Config>(toml_str)
         .expect("Error parsing trustchain_config.toml")
         .core
 }
 
 /// Gets `trustchain-core` configuration variables.
-pub fn core_config() -> &'static CORE_CONFIG {
-    &CORE_CONFIG
+pub fn cli_config() -> &'static CLI_CONFIG {
+    &CLI_CONFIG
 }
 
 /// Configuration variables for `trustchain-core` crate.
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct CoreConfig {
+pub struct CLIConfig {
     /// Root event unix time for first Trustchain root on testnet.
     pub root_event_time: u32,
 }
@@ -35,7 +35,7 @@ pub struct CoreConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct Config {
     /// Core configuration data.
-    core: CoreConfig,
+    core: CLIConfig,
 }
 
 #[cfg(test)]
@@ -52,11 +52,11 @@ mod tests {
         key = "value"
         "##;
 
-        let config: CoreConfig = parse_toml(config_string);
+        let config: CLIConfig = parse_toml(config_string);
 
         assert_eq!(
             config,
-            CoreConfig {
+            CLIConfig {
                 root_event_time: 1666971942,
             }
         );

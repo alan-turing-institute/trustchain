@@ -10,7 +10,7 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_cli::config::core_config;
+use trustchain_cli::config::cli_config;
 use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
 
 fn cli() -> Command {
@@ -167,7 +167,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
-                        None => core_config().root_event_time,
+                        None => cli_config().root_event_time,
                     };
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
