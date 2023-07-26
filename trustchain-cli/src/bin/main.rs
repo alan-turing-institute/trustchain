@@ -83,7 +83,7 @@ fn cli() -> Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
-    let endpoint = "http://localhost:3000/";
+    let endpoint = cli_config().ion_endpoint.to_address();
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -114,8 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) =
-                        TrustchainAPI::resolve(did, "http://localhost:3000/".into()).await?;
+                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, &endpoint).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -143,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Some(("vc", sub_matches)) => {
-            let resolver = get_ion_resolver("http://localhost:3000/");
+            let resolver = get_ion_resolver(&endpoint);
             match sub_matches.subcommand() {
                 Some(("sign", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -159,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         };
 
                     let credential_with_proof =
-                        TrustchainAPI::sign(credential, did, key_id, endpoint).await;
+                        TrustchainAPI::sign(credential, did, key_id, &endpoint).await;
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -181,7 +180,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &credential,
                         *signature_only.unwrap(),
                         root_event_time,
-                        endpoint,
+                        &endpoint,
                     )
                     .await;
                     if verify_result.errors.is_empty() {
@@ -199,7 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // // Trustchain verify the issued credential
-                    // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+                    // let verifier = IONVerifier::new(get_ion_resolver(endpoint));
 
                     let issuer = match credential.issuer {
                         Some(ssi::vc::Issuer::URI(URI::String(did))) => did,

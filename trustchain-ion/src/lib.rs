@@ -37,8 +37,9 @@ impl Endpoint {
         Self { host: url, port }
     }
     pub fn to_address(&self) -> String {
-        format!("{}:{}/", self.host, self.port)
+        format!("http://{}:{}/", self.host, self.port)
     }
+    // TODO: add more flexible address methods
 }
 
 /// Test resolver
