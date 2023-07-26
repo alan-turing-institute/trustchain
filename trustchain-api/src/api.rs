@@ -14,7 +14,7 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier, URL,
+    verifier::IONVerifier,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -33,21 +33,22 @@ pub trait TrustchainDIDAPI {
         attest_operation(did, controlled_did, verbose).await
     }
     /// Resolves a given DID using given endpoint.
-    async fn resolve(did: &str, endpoint: URL) -> ResolverResult {
+    async fn resolve(did: &str, endpoint: &str) -> ResolverResult {
         // main_resolve(did, verbose)
-        let resolver = get_ion_resolver(&endpoint);
+        let resolver = get_ion_resolver(endpoint);
 
         // Result metadata, Document, Document metadata
         resolver.resolve_as_result(did).await
     }
 
-    // TODO: the below have no CLI implementation currently but are planned
-    /// Verifies a given DID using a resolver available at localhost:3000, returning a result.
-    async fn verify(did: &str) -> Result<DIDChain, VerifierError> {
-        IONVerifier::new(get_ion_resolver("http://localhost:3000/"))
+    /// Verifies a given DID using a resolver available at given endpoint, returning a result.
+    async fn verify(did: &str, endpoint: &str) -> Result<DIDChain, VerifierError> {
+        IONVerifier::new(get_ion_resolver(endpoint))
             .verify(did, core_config().root_event_time)
             .await
     }
+
+    // TODO: the below have no CLI implementation currently but are planned
     /// Generates an update operation and writes to operations path.
     fn update(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         todo!()
@@ -70,8 +71,13 @@ pub trait TrustchainDIDAPI {
 #[async_trait]
 pub trait TrustchainVCAPI {
     /// Signs a credential
-    async fn sign(mut credential: Credential, did: &str, key_id: Option<&str>) -> Credential {
-        let resolver = get_ion_resolver("http://localhost:3000/");
+    async fn sign(
+        mut credential: Credential,
+        did: &str,
+        key_id: Option<&str>,
+        endpoint: &str,
+    ) -> Credential {
+        let resolver = get_ion_resolver(endpoint);
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
         attestor.sign(&credential, key_id, &resolver).await.unwrap()
@@ -81,13 +87,14 @@ pub trait TrustchainVCAPI {
         credential: &Credential,
         signature_only: bool,
         root_event_time: u32,
+        endpoint: &str,
     ) -> (VerificationResult, Option<Result<DIDChain, VerifierError>>) {
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(endpoint);
         let verification_result = credential.verify(None, &resolver).await;
         if signature_only {
             (verification_result, None)
         } else {
-            let mut verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+            let mut verifier = IONVerifier::new(get_ion_resolver(endpoint));
             let issuer = match credential.issuer.as_ref() {
                 Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
                 _ => panic!("No issuer present in credential."),

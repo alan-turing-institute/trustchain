@@ -11,7 +11,9 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_core::config::core_config;
-use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
+use trustchain_ion::{
+    attest::attest_operation, create::create_operation, get_ion_resolver, Endpoint,
+};
 
 fn cli() -> Command {
     Command::new("Trustchain CLI")
@@ -83,7 +85,7 @@ fn cli() -> Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
-
+    let endpoint = "http://localhost:3000/";
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -158,7 +160,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let credential_with_proof = TrustchainAPI::sign(credential, did, key_id).await;
+                    let credential_with_proof =
+                        TrustchainAPI::sign(credential, did, key_id, endpoint).await;
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -180,6 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &credential,
                         *signature_only.unwrap(),
                         root_event_time,
+                        endpoint,
                     )
                     .await;
                     if verify_result.errors.is_empty() {
