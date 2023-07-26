@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use ssi::vc::LinkedDataProofOptions;
 use std::fs;
 use trustchain_core::TRUSTCHAIN_CONFIG;
-use trustchain_ion::URL;
+use trustchain_ion::{Endpoint, URL};
 
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
@@ -30,22 +30,6 @@ pub fn ffi_config() -> &'static FFI_CONFIG {
 struct Config {
     /// FFI configuration data.
     ffi: FFIConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Endpoint {
-    pub url: URL,
-    pub port: u16,
-}
-
-impl Endpoint {
-    pub fn new(url: URL, port: u16) -> Self {
-        Self { url, port }
-    }
-    pub fn to_address(&self) -> URL {
-        format!("{}:{}/", self.url, self.port)
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -11,6 +11,7 @@ pub mod utils;
 pub mod verifier;
 
 use did_ion::{sidetree::SidetreeClient, ION};
+use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
@@ -20,6 +21,23 @@ pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
 pub type URL = String;
+
+/// Type for representing an endpoint as a base URL and port.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Endpoint {
+    pub url: URL,
+    pub port: u16,
+}
+
+impl Endpoint {
+    pub fn new(url: URL, port: u16) -> Self {
+        Self { url, port }
+    }
+    pub fn to_address(&self) -> URL {
+        format!("{}:{}/", self.url, self.port)
+    }
+}
 
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
