@@ -1,6 +1,6 @@
 //! Core utilities.
 use crate::TRUSTCHAIN_DATA;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
@@ -82,6 +82,15 @@ pub fn get_did_suffix(did: &str) -> &str {
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
+}
+
+/// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
+/// from a `&str` through type `T` to canonicalized `String`.
+pub fn canonicalize_str<T>(s: &str) -> Result<String, serde_json::Error>
+where
+    T: Serialize + for<'a> Deserialize<'a>,
+{
+    canonicalize(&serde_json::from_str::<T>(s)?)
 }
 
 /// From [did-ion](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html).

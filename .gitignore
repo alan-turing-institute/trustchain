@@ -28,3 +28,6 @@ outputs/
 
 # .trustchain directory
 .trustchain/
+
+# dist paths
+**/dist
