@@ -7,6 +7,8 @@ use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, api::TrustchainVCAPI, TrustchainAPI};
 use trustchain_core::resolver::ResolverError;
 use trustchain_core::verifier::VerifierError;
+
+use crate::config::{ffi_config, EndpointOptions};
 // TODO: implement the below functions that will be used as FFI on desktop GUI. Aim to implement the
 // functions to that they each call a TrustchainCLI method.
 //
@@ -54,12 +56,16 @@ pub fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Res
     })
 }
 
-/// Resolves a given DID using a resolver available at localhost:3000
+/// Resolves a given DID using a resolver available at "ion_endpoint"
 pub fn resolve(did: String) -> anyhow::Result<String> {
+    let resolver_address = if let Some(ion_endpoint) = &ffi_config().endpoint_options {
+        ion_endpoint.resolver_endpoint.to_address()
+    } else {
+        EndpointOptions::default().resolver_endpoint.to_address()
+    };
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(&did, "http://localhost:3000/".into())?;
-        match TrustchainAPI::resolve(&did, "http://localhost:3000/".into()).await {
+        match TrustchainAPI::resolve(&did, resolver_address).await {
             Ok((res_meta, doc, doc_meta)) => Ok(serde_json::to_string_pretty(
                 // TODO: refactor conversion into trustchain-core resolve module
                 &ResolutionResult {
