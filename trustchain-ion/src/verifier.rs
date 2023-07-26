@@ -501,7 +501,6 @@ where
             .downcast_ref::<IONCommitment>()
             .unwrap(); // Safe because IONCommitment implements DIDCommitment.
         let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
-            expected_timestamp,
             ion_commitment
                 .chained_commitment()
                 .commitments()
@@ -509,6 +508,7 @@ where
                 .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
+            expected_timestamp,
         )?);
         Ok(Box::new(IONTimestamp::new(
             did_commitment,
@@ -562,7 +562,6 @@ where
             .downcast_ref::<IONCommitment>()
             .unwrap(); // Safe because IONCommitment implements DIDCommitment.
         let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
-            expected_timestamp,
             ion_commitment
                 .chained_commitment()
                 .commitments()
@@ -570,6 +569,7 @@ where
                 .expect("Unexpected empty commitment chain.")
                 .candidate_data()
                 .to_owned(),
+            expected_timestamp,
         )?);
         Ok(Box::new(IONTimestamp::new(
             did_commitment,

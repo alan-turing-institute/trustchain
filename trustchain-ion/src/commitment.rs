@@ -571,7 +571,7 @@ pub struct BlockTimestampCommitment {
 }
 
 impl BlockTimestampCommitment {
-    pub fn new(expected_data: Timestamp, candidate_data: Vec<u8>) -> CommitmentResult<Self> {
+    pub fn new(candidate_data: Vec<u8>, expected_data: Timestamp) -> CommitmentResult<Self> {
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
@@ -640,14 +640,14 @@ mod tests {
     fn test_block_timestamp_commitment() {
         let expected_data: Timestamp = 1666265405;
         let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
-        let target = BlockTimestampCommitment::new(expected_data, candidate_data.clone()).unwrap();
+        let target = BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
         target.verify_content().unwrap();
         let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         target.verify(pow_hash).unwrap();
 
         // Both calls should instead error with incorrect timestamp
         let bad_expected_data: Timestamp = 1666265406;
-        let target = BlockTimestampCommitment::new(bad_expected_data, candidate_data).unwrap();
+        let target = BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
         match target.verify_content() {
             Err(CommitmentError::FailedContentVerification(s1, s2)) => {
                 assert_eq!(
@@ -862,11 +862,11 @@ mod tests {
         // Also test as timestamp commitment
         let expected_data = 1666265405;
         let commitment =
-            BlockTimestampCommitment::new(expected_data, candidate_data.clone()).unwrap();
+            BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
         commitment.verify_content().unwrap();
         commitment.verify(target).unwrap();
         let bad_expected_data = 1666265406;
-        let commitment = BlockTimestampCommitment::new(bad_expected_data, candidate_data).unwrap();
+        let commitment = BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
         assert!(commitment.verify_content().is_err());
         assert!(commitment.verify(target).is_err());
     }
