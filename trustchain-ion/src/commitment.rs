@@ -636,17 +636,38 @@ mod tests {
     use crate::{
         data::TEST_BLOCK_HEADER_HEX,
         utils::{block_header, merkle_proof, query_ipfs, transaction},
-        MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
 
     #[test]
     fn test_block_timestamp_commitment() {
         let expected_data: Timestamp = 1666265405;
         let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
-        let target = BlockTimestampCommitment::new(expected_data, candidate_data).unwrap();
+        let target = BlockTimestampCommitment::new(expected_data, candidate_data.clone()).unwrap();
         target.verify_content().unwrap();
         let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         target.verify(pow_hash).unwrap();
+
+        // Both calls should instead error with incorrect timestamp
+        let bad_expected_data: Timestamp = 1666265406;
+        let target = BlockTimestampCommitment::new(bad_expected_data, candidate_data).unwrap();
+        match target.verify_content() {
+            Err(CommitmentError::FailedContentVerification(s1, s2)) => {
+                assert_eq!(
+                    (s1, s2),
+                    (format!("{bad_expected_data}"), format!("{expected_data}"))
+                )
+            }
+            _ => panic!(),
+        };
+        match target.verify(pow_hash) {
+            Err(CommitmentError::FailedContentVerification(s1, s2)) => {
+                assert_eq!(
+                    (s1, s2),
+                    (format!("{bad_expected_data}"), format!("{expected_data}"))
+                )
+            }
+            _ => panic!(),
+        };
     }
 
     #[test]
@@ -811,21 +832,14 @@ mod tests {
         // We expect to find the Merkle root in the block header.
         // For the testnet block at height 2377445, the Merkle root is:
         let merkle_root_str = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let expected_str = format!(r#"{{"{}":"{}"}}"#, MERKLE_ROOT_KEY, merkle_root_str);
-        let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+        let expected_data = json!(merkle_root_str);
 
         // The candidate data is the serialized block header.
         let block_header = block_header(&block_hash, None).unwrap();
-        let candidate_data_ = bitcoin::consensus::serialize(&block_header);
-        let candidate_data = candidate_data_.clone();
-
-        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, expected_data);
-        assert!(commitment.verify(target).is_ok());
-
-        // Check the timestamp is a u32 Unix time.
-        let binding = commitment.commitment_content().unwrap();
-        let actual_timestamp = binding.get(TIMESTAMP_KEY).unwrap();
-        assert_eq!(actual_timestamp, &json!(1666265405));
+        let candidate_data = bitcoin::consensus::serialize(&block_header);
+        let commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
+        commitment.verify(target).unwrap();
 
         // We do *not* expect a different target to succeed.
         let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
@@ -838,14 +852,25 @@ mod tests {
         // We do *not* expect to find a different Merkle root.
         let bad_merkle_root_str =
             "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let bad_expected_data = serde_json::json!(bad_merkle_root_str);
-        let candidate_data = candidate_data_;
-        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, bad_expected_data);
+        let bad_expected_data = json!(bad_merkle_root_str);
+        let commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
+
+        // Also test as timestamp commitment
+        let expected_data = 1666265405;
+        let commitment =
+            BlockTimestampCommitment::new(expected_data, candidate_data.clone()).unwrap();
+        commitment.verify_content().unwrap();
+        commitment.verify(target).unwrap();
+        let bad_expected_data = 1666265406;
+        let commitment = BlockTimestampCommitment::new(bad_expected_data, candidate_data).unwrap();
+        assert!(commitment.verify_content().is_err());
+        assert!(commitment.verify(target).is_err());
     }
 
     #[tokio::test]
