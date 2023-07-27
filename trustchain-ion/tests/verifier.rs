@@ -1,5 +1,4 @@
 use serde_json::json;
-use trustchain_core::commitment::{Commitment, TrivialCommitment};
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
