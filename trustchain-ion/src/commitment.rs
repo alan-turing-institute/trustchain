@@ -566,7 +566,7 @@ impl DIDCommitment for IONCommitment {
 /// A Commitment whose expected data is a Unix time and hasher
 /// and candidate data are obtained from a given DIDCommitment.
 pub struct BlockTimestampCommitment {
-    expected_data: serde_json::Value,
+    expected_data: Timestamp,
     candidate_data: Vec<u8>,
 }
 
@@ -575,13 +575,13 @@ impl BlockTimestampCommitment {
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
-            expected_data: json!(expected_data),
+            expected_data,
             candidate_data,
         })
     }
 }
 
-impl TrivialCommitment for BlockTimestampCommitment {
+impl TrivialCommitment<Timestamp> for BlockTimestampCommitment {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         block_header_hasher()
     }
@@ -609,13 +609,13 @@ impl TrivialCommitment for BlockTimestampCommitment {
         }))
     }
 
-    fn to_commitment(self: Box<Self>, _: serde_json::Value) -> Box<dyn Commitment> {
+    fn to_commitment(self: Box<Self>, _: Timestamp) -> Box<dyn Commitment<Timestamp>> {
         self
     }
 }
 
-impl Commitment for BlockTimestampCommitment {
-    fn expected_data(&self) -> &serde_json::Value {
+impl Commitment<Timestamp> for BlockTimestampCommitment {
+    fn expected_data(&self) -> &Timestamp {
         &self.expected_data
     }
 }

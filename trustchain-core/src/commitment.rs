@@ -1,12 +1,13 @@
 //! Commitment scheme API with default implementation.
 use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
+use serde::Serialize;
 use serde_json::{json, Value};
 use ssi::{
     did::{Document, ServiceEndpoint},
     jwk::JWK,
 };
-use std::convert::TryInto;
+use std::fmt::Display;
 use thiserror::Error;
 
 /// Type for commitment result.
@@ -48,7 +49,7 @@ impl From<serde_json::Error> for CommitmentError {
 }
 
 /// A cryptographic commitment with no expected data content.
-pub trait TrivialCommitment {
+pub trait TrivialCommitment<T = Value> {
     /// Gets the hasher (as a function pointer).
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String>;
     /// Gets the candidate data.
@@ -89,13 +90,16 @@ pub trait TrivialCommitment {
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
     /// Converts this TrivialCommitment to a Commitment.
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment>;
+    fn to_commitment(self: Box<Self>, expected_data: T) -> Box<dyn Commitment<T>>;
 }
 
 /// A cryptographic commitment with expected data content.
-pub trait Commitment: TrivialCommitment {
+pub trait Commitment<T = Value>: TrivialCommitment<T>
+where
+    T: Serialize + Display,
+{
     /// Gets the expected data.
-    fn expected_data(&self) -> &serde_json::Value;
+    fn expected_data(&self) -> &T;
 
     /// Verifies that the expected data is found in the candidate data.
     fn verify_content(&self) -> CommitmentResult<()> {
@@ -103,7 +107,9 @@ pub trait Commitment: TrivialCommitment {
         let candidate_data = self.commitment_content()?;
 
         // Verify the content.
-        if !json_contains(&candidate_data, self.expected_data()) {
+        // Note the call `json!(self.expected_data())` acts as the identity function when called on
+        // a `Value` type as it is simply serialized by the underlying methods.
+        if !json_contains(&candidate_data, &json!(self.expected_data())) {
             return Err(CommitmentError::FailedContentVerification(
                 self.expected_data().to_string(),
                 candidate_data.to_string(),
@@ -270,21 +276,9 @@ pub trait DIDCommitment: Commitment {
 }
 
 /// A Commitment whose expected data is a Unix time.
-pub trait TimestampCommitment: Commitment {
+pub trait TimestampCommitment: Commitment<Timestamp> {
     /// Gets the timestamp as a Unix time.
-    fn timestamp(&self) -> CommitmentResult<Timestamp> {
-        self.expected_data()
-            .as_u64()
-            .ok_or(CommitmentError::DataDecodingError(format!(
-                "Could not convert the following expected data to u64: {}",
-                self.expected_data()
-            )))?
-            .try_into()
-            .map_err(|err| {
-                CommitmentError::DataDecodingError(format!(
-                    "Could not convert u64 into Timestamp (u32): {}",
-                    err
-                ))
-            })
+    fn timestamp(&self) -> Timestamp {
+        self.expected_data().to_owned()
     }
 }

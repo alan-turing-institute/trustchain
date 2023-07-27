@@ -614,7 +614,7 @@ impl VerifiableTimestamp for IONTimestamp {
         self.timestamp_commitment.as_ref()
     }
 
-    fn timestamp(&self) -> Result<Timestamp, CommitmentError> {
+    fn timestamp(&self) -> Timestamp {
         self.timestamp_commitment().timestamp()
     }
 }
