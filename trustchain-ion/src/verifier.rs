@@ -578,7 +578,7 @@ where
     }
 }
 
-// TODO: add doc comments
+/// Contains the corresponding `DIDCommitment` and `TimestampCommitment` for a given DID.
 pub struct IONTimestamp {
     did_commitment: Box<dyn DIDCommitment>,
     timestamp_commitment: Box<dyn TimestampCommitment>,
