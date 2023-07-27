@@ -597,11 +597,11 @@ impl IONTimestamp {
 
     /// Gets the DID.
     pub fn did(&self) -> &str {
-        &self.did_commitment.did()
+        self.did_commitment.did()
     }
     /// Gets the DID Document.
     pub fn did_document(&self) -> &Document {
-        &self.did_commitment.did_document()
+        self.did_commitment.did_document()
     }
 }
 
