@@ -1,5 +1,5 @@
 //! Implementation of `Verifier` API for ION DID method.
-use crate::commitment::IONCommitment;
+use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
@@ -23,10 +23,12 @@ use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use trustchain_core::commitment::{CommitmentError, DIDCommitment};
+use trustchain_core::commitment::{
+    CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
+};
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
-use trustchain_core::verifier::{Verifier, VerifierError};
+use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
@@ -463,6 +465,8 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     Ok(chunk_file.deltas)
 }
 
+// TODO: consider whether duplication can be avoided in
+// IONVerifier<T, FullClient> and IONVerifier<T, LightClient>.
 #[async_trait]
 impl<T> Verifier<T> for IONVerifier<T, FullClient>
 where
@@ -483,6 +487,33 @@ where
 
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
+    }
+
+    async fn verifiable_timestamp(
+        &self,
+        did: &str,
+        expected_timestamp: Timestamp,
+    ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
+        let did_commitment = self.did_commitment(did).await?;
+        // Downcast to IONCommitment to extract data for constructing a TimestampCommitment.
+        let ion_commitment = did_commitment
+            .as_any()
+            .downcast_ref::<IONCommitment>()
+            .unwrap(); // Safe because IONCommitment implements DIDCommitment.
+        let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .expect("Unexpected empty commitment chain.")
+                .candidate_data()
+                .to_owned(),
+            expected_timestamp,
+        )?);
+        Ok(Box::new(IONTimestamp::new(
+            did_commitment,
+            timestamp_commitment,
+        )))
     }
 }
 
@@ -517,6 +548,74 @@ where
 
     fn resolver(&self) -> &Resolver<T> {
         &self.resolver
+    }
+
+    async fn verifiable_timestamp(
+        &self,
+        did: &str,
+        expected_timestamp: Timestamp,
+    ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError> {
+        let did_commitment = self.did_commitment(did).await?;
+        // Downcast to IONCommitment to extract data for constructing a TimestampCommitment.
+        let ion_commitment = did_commitment
+            .as_any()
+            .downcast_ref::<IONCommitment>()
+            .unwrap(); // Safe because IONCommitment implements DIDCommitment.
+        let timestamp_commitment = Box::new(BlockTimestampCommitment::new(
+            ion_commitment
+                .chained_commitment()
+                .commitments()
+                .last()
+                .expect("Unexpected empty commitment chain.")
+                .candidate_data()
+                .to_owned(),
+            expected_timestamp,
+        )?);
+        Ok(Box::new(IONTimestamp::new(
+            did_commitment,
+            timestamp_commitment,
+        )))
+    }
+}
+
+/// Contains the corresponding `DIDCommitment` and `TimestampCommitment` for a given DID.
+pub struct IONTimestamp {
+    did_commitment: Box<dyn DIDCommitment>,
+    timestamp_commitment: Box<dyn TimestampCommitment>,
+}
+
+impl IONTimestamp {
+    fn new(
+        did_commitment: Box<dyn DIDCommitment>,
+        timestamp_commitment: Box<dyn TimestampCommitment>,
+    ) -> Self {
+        Self {
+            did_commitment,
+            timestamp_commitment,
+        }
+    }
+
+    /// Gets the DID.
+    pub fn did(&self) -> &str {
+        self.did_commitment.did()
+    }
+    /// Gets the DID Document.
+    pub fn did_document(&self) -> &Document {
+        self.did_commitment.did_document()
+    }
+}
+
+impl VerifiableTimestamp for IONTimestamp {
+    fn did_commitment(&self) -> &dyn DIDCommitment {
+        self.did_commitment.as_ref()
+    }
+
+    fn timestamp_commitment(&self) -> &dyn TimestampCommitment {
+        self.timestamp_commitment.as_ref()
+    }
+
+    fn timestamp(&self) -> Timestamp {
+        self.timestamp_commitment().timestamp()
     }
 }
 

@@ -222,7 +222,7 @@ mod tests {
 
         // Test for case where incorrect root_event_time for the root of the given DID, expected to
         // return Ok but with a JSON containing the wrapped Trustchain error.
-        let incorrect_root_event_time = 001234500;
+        let incorrect_root_event_time = 1234500;
         let uri_incorrect_root = format!(
             "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={incorrect_root_event_time}"
         )
