@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use ssi::{
+    did_resolve::DIDResolver,
     ldp::LinkedDataDocument,
-    vc::VerificationResult,
+    vc::LinkedDataProofOptions,
     vc::{Credential, URI},
 };
 use std::error::Error;
@@ -23,6 +24,7 @@ use trustchain_ion::{
 pub trait TrustchainDIDAPI {
     /// Creates a controlled DID from a passed document state, writing the associated create operation
     /// to file in the operations path returning the file name including the created DID suffix.
+    // TODO: make pecific error?
     fn create(
         document_state: Option<DocumentState>,
         verbose: bool,
@@ -31,6 +33,7 @@ pub trait TrustchainDIDAPI {
     }
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations
     /// path.
+    // TODO: make pecific error?
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }
@@ -88,23 +91,25 @@ pub trait TrustchainVCAPI {
         let attestor = IONAttestor::new(did);
         attestor.sign(&credential, key_id, &resolver).await
     }
-    /// Verifies a credential.
-    async fn verify_credential(
+
+    /// Verifies a credential
+    async fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
-        signature_only: bool,
-        root_event_time: u32,
-        endpoint: &str,
-    ) -> Result<VerificationResult, CredentialError> {
-        let resolver = get_ion_resolver(endpoint);
-        let verification_result = credential.verify(None, &resolver).await;
-        if !signature_only {
-            let verifier = IONVerifier::new(get_ion_resolver(endpoint));
-            let issuer = credential
-                .get_issuer()
-                .ok_or(CredentialError::NoIssuerPresent)?;
-            verifier.verify(issuer, root_event_time).await?;
+        ldp_options: Option<LinkedDataProofOptions>,
+        root_event_time: Timestamp,
+        verifier: &IONVerifier<T>,
+    ) -> Result<(), CredentialError> {
+        // Verify signature
+        let result = credential.verify(ldp_options, verifier.resolver()).await;
+        if !result.errors.is_empty() {
+            return Err(CredentialError::VerificationResultError(result));
         }
-        Ok(verification_result)
+        // Verify issuer
+        let issuer = credential
+            .get_issuer()
+            .ok_or(CredentialError::NoIssuerPresent)?;
+        verifier.verify(issuer, root_event_time).await?;
+        Ok(())
     }
 }
 
