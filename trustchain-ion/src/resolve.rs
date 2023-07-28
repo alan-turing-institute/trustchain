@@ -1,3 +1,4 @@
+//! Wrapper for DID resolution with ION node.
 use serde_json::to_string_pretty as to_json;
 
 use crate::get_ion_resolver;

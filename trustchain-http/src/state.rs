@@ -45,6 +45,7 @@ mod tests {
     use crate::config::HTTPConfig;
 
     #[test]
+    #[ignore = "requires TRUSTCHAIN_DATA and TRUSTCHAIN_CONFIG environment variables"]
     fn test_create_app_state() {
         AppState::new(HTTPConfig::default());
         AppState::new_with_cache(HTTPConfig::default(), HashMap::new());

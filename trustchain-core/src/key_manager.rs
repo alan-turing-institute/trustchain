@@ -1,3 +1,4 @@
+//! Key management API with default implementations.
 use crate::TRUSTCHAIN_DATA;
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
@@ -125,7 +126,7 @@ pub trait KeyManager {
         let buf: &mut String = &mut String::new();
         let read_result = reader.read_to_string(buf);
 
-        // Read the string as a serialised JWK instance.
+        // Read the string as a serialized JWK instance.
         let jwk_result = match read_result {
             Ok(_) => from_str::<OneOrMany<JWK>>(buf),
             Err(_) => return Err(KeyManagerError::FailedToReadUTF8),

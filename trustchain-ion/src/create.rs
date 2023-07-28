@@ -1,3 +1,4 @@
+//! ION operation for DID creation.
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
 use did_ion::sidetree::DIDStatePatch;

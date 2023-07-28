@@ -1,4 +1,4 @@
-//! Utils module.
+//! ION-related utilities.
 use crate::config::ion_config;
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::RpcApi;
@@ -77,7 +77,7 @@ pub fn tx_to_op_return_cid(tx: &Transaction) -> Result<String, VerifierError> {
 
 /// Decodes an IPFS file.
 pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsError> {
-    // Decompress the content and deserialise to JSON.
+    // Decompress the content and deserialize to JSON.
     let mut decoder = GzDecoder::new(ipfs_file);
     let mut ipfs_content_str = String::new();
     decoder.read_to_string(&mut ipfs_content_str)?;
@@ -395,7 +395,7 @@ mod tests {
         let ipfs_client = IpfsClient::default();
         let result = query_ipfs(cid, &ipfs_client).await.unwrap();
 
-        // Decompress the content and deserialise to JSON.
+        // Decompress the content and deserialize to JSON.
         let mut decoder = GzDecoder::new(&result[..]);
         let mut ipfs_content_str = String::new();
         decoder.read_to_string(&mut ipfs_content_str).unwrap();

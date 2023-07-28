@@ -12,22 +12,15 @@ const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
 
 /// Server config.
-#[derive(clap::Parser, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HTTPConfig {
     /// Hostname for server
-    #[clap(short = 's', long)]
-    #[arg(default_value_t = IpAddr::from_str(DEFAULT_HOST).unwrap())]
     pub host: IpAddr,
     /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine running emulator.
-    #[clap(short = 'r', long)]
-    #[arg(default_value_t = IpAddr::from_str(DEFAULT_HOST).unwrap())]
     pub host_reference: IpAddr,
     /// Port for server
-    #[clap(short = 'p', long)]
-    #[arg(default_value_t = DEFAULT_PORT)]
     pub port: u16,
     /// Optional issuer DID
-    #[clap(short = 'd', long)]
     pub issuer_did: Option<String>,
 }
 
