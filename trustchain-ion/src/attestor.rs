@@ -4,9 +4,10 @@ use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::{Credential, LinkedDataProofOptions};
+use ssi::vc::{Credential, LinkedDataProofOptions, Presentation};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
+use trustchain_core::holder::{Holder, HolderError};
 use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::{
@@ -163,13 +164,38 @@ impl Issuer for IONAttestor {
     }
 }
 
+#[async_trait]
+impl Holder for IONAttestor {
+    async fn sign_presentation<T: DIDResolver>(
+        &self,
+        presentation: &Presentation,
+        key_id: Option<&str>,
+        resolver: &T,
+    ) -> Result<Presentation, HolderError> {
+        // Get the signing key.
+        let signing_key = self.signing_key(key_id)?;
+
+        // Generate proof
+        let proof = presentation
+            .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
+            .await?;
+
+        // Add proof to credential
+        let mut vp = presentation.clone();
+        vp.add_proof(proof);
+        Ok(vp)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::get_ion_resolver;
     use ssi::did::Document;
+    use ssi::vc::CredentialOrJWT;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
     use trustchain_core::utils::init;
+    use trustchain_core::vp;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
@@ -261,6 +287,29 @@ mod tests {
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_attest_presentation() {
+        init();
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let did = "did:example:test_attest_presentation";
+        let target = IONAttestor::try_from(AttestorData::new(
+            did.to_string(),
+            serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
+        ))
+        .unwrap();
+        let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let vc_with_proof = target.sign(&vc, None, &resolver).await.unwrap();
+        let presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(vc_with_proof))),
+            ..Default::default()
+        };
+        // Attest to vp:
+        assert!(target
+            .sign_presentation(&presentation, None, &resolver)
+            .await
+            .is_ok());
     }
 
     #[test]

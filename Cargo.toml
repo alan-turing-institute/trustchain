@@ -4,6 +4,6 @@ members = [
     "trustchain-ion",
     "trustchain-http",
     "trustchain-api",
-    "trustchain-cli",
+    # "trustchain-cli",
     "trustchain-ffi"
 ]

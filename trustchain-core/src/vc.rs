@@ -1,4 +1,4 @@
-//! Verifiable credential and presentation functionality for Trustchain.
+//! Verifiable credential functionality for Trustchain.
 use crate::verifier::VerifierError;
 use ssi::vc::VerificationResult;
 use thiserror::Error;

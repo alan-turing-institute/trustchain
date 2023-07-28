@@ -3,7 +3,7 @@ use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
+use ssi::vc::{Credential, Presentation};
 use thiserror::Error;
 
 /// An error relating to a Trustchain Issuer.

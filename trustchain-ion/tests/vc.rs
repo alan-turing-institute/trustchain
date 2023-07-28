@@ -95,3 +95,10 @@ async fn test_sign_credential_failure() {
         Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
     ));
 }
+
+// TODO: add VP integration test
+#[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+#[tokio::test]
+async fn test_sign_presentation() {
+    todo!()
+}
