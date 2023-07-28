@@ -289,7 +289,7 @@ mod tests {
         // Make a verifier instance and fetch bundle from server bundle endpoint
         let verifier = IONVerifier::with_endpoint(
             get_ion_resolver("http://localhost:3000/"),
-            format!("http://127.0.0.1:{}/did/bundle/", port),
+            format!("http://127.0.0.1:{}/", port),
         );
         let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
         // Check verification
