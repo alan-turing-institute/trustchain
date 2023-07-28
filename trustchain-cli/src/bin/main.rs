@@ -1,7 +1,10 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
-use ssi::vc::{Credential, URI};
+use ssi::{
+    ldp::LinkedDataDocument,
+    vc::{Credential, URI},
+};
 use std::{
     fs::File,
     io::{stdin, BufReader},
@@ -158,7 +161,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         };
 
                     let credential_with_proof =
-                        TrustchainAPI::sign(credential, did, key_id, &endpoint).await;
+                        TrustchainAPI::sign(credential, did, key_id, &endpoint)
+                            .await
+                            .expect("Failed to issue credential.");
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -176,13 +181,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let (verify_result, result) = TrustchainAPI::verify_credential(
+                    let verify_result = TrustchainAPI::verify_credential(
                         &credential,
                         *signature_only.unwrap(),
                         root_event_time,
                         &endpoint,
                     )
-                    .await;
+                    .await
+                    .unwrap();
                     if verify_result.errors.is_empty() {
                         println!("Proof... ✅")
                     } else {
@@ -196,18 +202,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Some(true) = signature_only {
                         return Ok(());
                     }
-
-                    // // Trustchain verify the issued credential
-                    // let verifier = IONVerifier::new(get_ion_resolver(endpoint));
-
-                    let issuer = match credential.issuer {
-                        Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
-                        _ => panic!("No issuer present in credential."),
-                    };
-
-                    // let result = verifier.verify(&issuer, root_event_time);
-
-                    match result.unwrap() {
+                    // Verify issuer
+                    let issuer = credential
+                        .get_issuer()
+                        .expect("No issuer present in credential.");
+                    let result = TrustchainAPI::verify(&issuer, root_event_time, &endpoint).await;
+                    match result {
                         Ok(chain) => {
                             println!("Issuer: {}... ✅", issuer);
                             if let Some(&verbose_count) = verbose {

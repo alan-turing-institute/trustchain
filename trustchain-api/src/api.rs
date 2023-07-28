@@ -1,14 +1,16 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use ssi::{
+    ldp::LinkedDataDocument,
     vc::VerificationResult,
     vc::{Credential, URI},
 };
 use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
-    issuer::Issuer,
+    issuer::{Issuer, IssuerError},
     resolver::ResolverResult,
+    vc::CredentialError,
     verifier::{Timestamp, Verifier, VerifierError},
 };
 use trustchain_ion::{
@@ -80,11 +82,11 @@ pub trait TrustchainVCAPI {
         did: &str,
         key_id: Option<&str>,
         endpoint: &str,
-    ) -> Credential {
+    ) -> Result<Credential, IssuerError> {
         let resolver = get_ion_resolver(endpoint);
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        attestor.sign(&credential, key_id, &resolver).await.unwrap()
+        attestor.sign(&credential, key_id, &resolver).await
     }
     /// Verifies a credential.
     async fn verify_credential(
@@ -92,22 +94,17 @@ pub trait TrustchainVCAPI {
         signature_only: bool,
         root_event_time: u32,
         endpoint: &str,
-    ) -> (VerificationResult, Option<Result<DIDChain, VerifierError>>) {
+    ) -> Result<VerificationResult, CredentialError> {
         let resolver = get_ion_resolver(endpoint);
         let verification_result = credential.verify(None, &resolver).await;
-        if signature_only {
-            (verification_result, None)
-        } else {
+        if !signature_only {
             let verifier = IONVerifier::new(get_ion_resolver(endpoint));
-            let issuer = match credential.issuer.as_ref() {
-                Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
-                _ => panic!("No issuer present in credential."),
-            };
-            (
-                verification_result,
-                Some(verifier.verify(issuer, root_event_time).await),
-            )
+            let issuer = credential
+                .get_issuer()
+                .ok_or(CredentialError::NoIssuerPresent)?;
+            verifier.verify(issuer, root_event_time).await?;
         }
+        Ok(verification_result)
     }
 }
 
