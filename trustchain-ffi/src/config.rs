@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 /// Parses and maps ION subfields to a new type.
-fn parse_toml(toml_str: &str) -> FFIConfig {
+pub(crate) fn parse_toml(toml_str: &str) -> FFIConfig {
     toml::from_str::<Config>(toml_str)
         .expect("Error parsing trustchain_config.toml")
         .ffi
