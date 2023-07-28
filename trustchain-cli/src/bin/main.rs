@@ -1,10 +1,7 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
-use ssi::{
-    ldp::LinkedDataDocument,
-    vc::{Credential, URI},
-};
+use ssi::{ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{stdin, BufReader},
@@ -120,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, &endpoint).await;
+                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, &endpoint).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -172,7 +169,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
-                    let signature_only = sub_matches.get_one::<bool>("signature_only");
+                    // TODO: remove arg
+                    let _signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
@@ -194,20 +192,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
+                    // TODO: refine printed results when error.
                     match verify_result {
-                        err @ Err(CredentialError::VerificationResultError(x)) => {
-                            println!("Proof... Invalid\n{}", &to_string_pretty(&x).unwrap());
-                            return err;
+                        err @ Err(CredentialError::VerificationResultError(_)) => {
+                            println!("Proof... Invalid");
+                            err?;
                         }
                         err @ Err(CredentialError::NoIssuerPresent) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (missing issuer)");
-                            return err;
+                            err?;
                         }
-                        err @ Err(CredentialError::VerifierError(x)) => {
+                        err @ Err(CredentialError::VerifierError(_)) => {
                             println!("Proof... ✅");
-                            println!("Issuer... ❌ (with verifier error)\n: {}", x);
-                            return err;
+                            println!("Issuer... ❌ (with verifier error)");
+                            err?;
                         }
                         Ok(_) => {
                             println!("Proof... ✅");
@@ -220,13 +219,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let issuer = credential
                             .get_issuer()
                             .expect("No issuer present in credential.");
-                        let chain = TrustchainAPI::verify(&issuer, root_event_time, &endpoint)
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &endpoint)
                             .await
                             // Can unwrap as already verified above.
                             .unwrap();
                         if verbose_count > 1 {
                             let (_, doc, doc_meta) =
-                                resolver.resolve_as_result(&issuer).await.unwrap();
+                                resolver.resolve_as_result(issuer).await.unwrap();
                             println!("---");
                             println!("Issuer DID doc:");
                             println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
