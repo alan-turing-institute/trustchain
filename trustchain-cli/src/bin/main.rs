@@ -53,8 +53,8 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
-                        .arg(arg!(-d --did <DID>).required(true)),
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
         .subcommand(
@@ -140,6 +140,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "{}",
                         to_string_pretty(&res_meta).expect("Cannot convert to JSON.")
                     );
+                }
+                Some(("verify", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u32>().unwrap(),
+                        None => cli_config().root_event_time,
+                    };
+                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    println!("{did_chain}");
                 }
                 _ => panic!("Unrecognised DID subcommand."),
             }
