@@ -96,14 +96,16 @@ pub trait TrustchainVCAPI {
     }
 
     /// Verifies a credential
-    async fn verify_credential<T: DIDResolver + Send>(
+    async fn verify_credential<T: DIDResolver + Send, U: Verifier<T> + Send + Sync>(
         credential: &Credential,
-        ldp_options: Option<LinkedDataProofOptions>,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &U,
     ) -> Result<DIDChain, CredentialError> {
         // Verify signature
-        let result = credential.verify(ldp_options, verifier.resolver()).await;
+        let result = credential
+            .verify(linked_data_proof_options, verifier.resolver())
+            .await;
         if !result.errors.is_empty() {
             return Err(CredentialError::VerificationResultError(result));
         }
