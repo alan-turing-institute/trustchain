@@ -33,7 +33,7 @@ pub trait TrustchainDIDAPI {
     }
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations
     /// path.
-    // TODO: make pecific error?
+    // TODO: make specific error?
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }
@@ -80,20 +80,22 @@ pub trait TrustchainDIDAPI {
 #[async_trait]
 pub trait TrustchainVCAPI {
     /// Signs a credential.
-    async fn sign(
+    async fn sign<T: DIDResolver>(
         mut credential: Credential,
         did: &str,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        endpoint: &str,
+        resolver: &T,
     ) -> Result<Credential, IssuerError> {
-        let resolver = get_ion_resolver(endpoint);
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        attestor.sign(&credential, key_id, &resolver).await
+        attestor
+            .sign(&credential, linked_data_proof_options, key_id, resolver)
+            .await
     }
 
     /// Verifies a credential
-    async fn verify_credential<T: DIDResolver + Send + Sync>(
+    async fn verify_credential<T: DIDResolver + Send>(
         credential: &Credential,
         ldp_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,

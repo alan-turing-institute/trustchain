@@ -162,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         };
 
                     let credential_with_proof =
-                        TrustchainAPI::sign(credential, did, key_id, &endpoint)
+                        TrustchainAPI::sign(credential, did, None, key_id, resolver)
                             .await
                             .expect("Failed to issue credential.");
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
@@ -192,7 +192,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
-                    // TODO: refine printed results when error.
                     match verify_result {
                         err @ Err(CredentialError::VerificationResultError(_)) => {
                             println!("Proof... Invalid");
