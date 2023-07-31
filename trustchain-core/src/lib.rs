@@ -2,7 +2,6 @@
 pub mod attestor;
 pub mod chain;
 pub mod commitment;
-pub mod config;
 pub mod controller;
 pub mod data;
 pub mod display;
@@ -12,6 +11,7 @@ pub mod key_manager;
 pub mod resolver;
 pub mod subject;
 pub mod utils;
+pub mod vc;
 pub mod verifier;
 
 /// Environment variable name for Trustchain data.

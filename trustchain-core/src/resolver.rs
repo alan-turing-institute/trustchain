@@ -41,7 +41,7 @@ pub enum ResolverError {
 }
 
 /// Type for resolver result.
-type ResolverResult = Result<
+pub type ResolverResult = Result<
     (
         ResolutionMetadata,
         Option<Document>,

@@ -15,7 +15,7 @@ use trustchain_core::utils::{generate_key, get_operations_path};
 pub fn create_operation(
     document_state: Option<DocumentState>,
     verbose: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<String, Box<dyn std::error::Error>> {
     // Generate random keys
     let update_key = generate_key();
     let recovery_key = generate_key();
@@ -108,12 +108,10 @@ pub fn create_operation(
 
     // Write create operation to push to ION server
     let path = get_operations_path()?;
-    std::fs::write(
-        path.join(format!("create_operation_{}.json", controlled_did_suffix)),
-        to_json(&operation).unwrap(),
-    )?;
+    let filename = format!("create_operation_{}.json", controlled_did_suffix);
+    std::fs::write(path.join(&filename), to_json(&operation).unwrap())?;
 
-    Ok(())
+    Ok(filename)
 }
 
 #[cfg(test)]
