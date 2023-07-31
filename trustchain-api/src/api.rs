@@ -22,8 +22,9 @@ use trustchain_ion::{
 /// API for Trustchain CLI DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
-    /// Creates a controlled DID from a passed document state, writing the associated create operation
-    /// to file in the operations path returning the file name including the created DID suffix.
+    /// Creates a controlled DID from a passed document state, writing the associated create
+    /// operation to file in the operations path returning the file name including the created DID
+    /// suffix.
     // TODO: make pecific error?
     fn create(
         document_state: Option<DocumentState>,
@@ -100,7 +101,7 @@ pub trait TrustchainVCAPI {
         ldp_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
-    ) -> Result<(), CredentialError> {
+    ) -> Result<DIDChain, CredentialError> {
         // Verify signature
         let result = credential.verify(ldp_options, verifier.resolver()).await;
         if !result.errors.is_empty() {
@@ -110,8 +111,7 @@ pub trait TrustchainVCAPI {
         let issuer = credential
             .get_issuer()
             .ok_or(CredentialError::NoIssuerPresent)?;
-        verifier.verify(issuer, root_event_time).await?;
-        Ok(())
+        Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
 
