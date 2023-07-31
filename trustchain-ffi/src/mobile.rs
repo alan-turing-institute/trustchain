@@ -21,9 +21,10 @@ pub fn greet() -> String {
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
     let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
     let endpoint_opts = mobile_opts.endpoint()?;
+    let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        TrustchainAPI::resolve(&did, &endpoint_opts.ion_endpoint().to_address())
+        TrustchainAPI::resolve(&did, &resolver)
             .await
             .map_err(|e| anyhow!(e))
             .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))

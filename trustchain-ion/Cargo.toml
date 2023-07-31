@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[lib]
-crate-type = ["staticlib", "cdylib", "rlib"]
-
 
 [dependencies]
 flutter_rust_bridge = "1"
