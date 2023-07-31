@@ -145,6 +145,7 @@ impl Issuer for IONAttestor {
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
     ) -> Result<Credential, IssuerError> {
@@ -153,7 +154,11 @@ impl Issuer for IONAttestor {
 
         // Generate proof
         let proof = credential
-            .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
+            .generate_proof(
+                &signing_key,
+                &linked_data_proof_options.unwrap_or_default(),
+                resolver,
+            )
             .await?;
 
         // Add proof to credential
@@ -257,7 +262,7 @@ mod tests {
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
         // Attest to doc
-        let vc_with_proof = target.sign(&vc, None, &resolver).await;
+        let vc_with_proof = target.sign(&vc, None, None, &resolver).await;
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());

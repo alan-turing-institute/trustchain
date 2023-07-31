@@ -4,12 +4,6 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "trustchain-cli"
-path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
