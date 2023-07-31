@@ -58,7 +58,6 @@ fn cli() -> Command {
                 ),
         )
         .subcommand(
-            // TODO: refactor into library code
             Command::new("vc")
                 .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
@@ -77,7 +76,6 @@ fn cli() -> Command {
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
-                        .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -171,8 +169,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
-                    // TODO: remove arg
-                    let _signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
