@@ -87,6 +87,8 @@ fn cli() -> Command {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
     let endpoint = cli_config().ion_endpoint.to_address();
+    let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
+    let resolver = verifier.resolver();
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -117,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, &endpoint).await?;
+                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, resolver).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -218,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let issuer = credential
                             .get_issuer()
                             .expect("No issuer present in credential.");
-                        let chain = TrustchainAPI::verify(issuer, root_event_time, &endpoint)
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
                             .await
                             // Can unwrap as already verified above.
                             .unwrap();
