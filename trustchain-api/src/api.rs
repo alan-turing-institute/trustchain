@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
+use futures::{stream, StreamExt, TryStreamExt};
 use ssi::{
     did_resolve::DIDResolver,
     ldp::LinkedDataDocument,
@@ -135,32 +136,84 @@ pub trait TrustchainVPAPI {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), PresentationError> {
-        // let credentials = presentation
-        //     .verifiable_credential
-        //     .ok_or(PresentationError::NoCredentialsPresent)?;
-        // let valid = credentials
-        //     .into_iter()
-        //     .map(|credential_or_jwt| {
-        //         let valid = match credential_or_jwt {
+        let credentials = presentation
+            .verifiable_credential
+            .as_ref()
+            .ok_or(PresentationError::NoCredentialsPresent)?;
+
+        // Attempt 2:
+        // stream.map(Ok).try_for_each_concurrent().await
+        // https://docs.rs/futures-util/latest/futures_util/stream/trait.TryStreamExt.html#method.try_for_each_concurrent
+        // TODO consider concurrency limit (as rate limiting for verifier requests)
+        // let limit = None;
+        // stream::iter(credentials.into_iter())
+        //     .map(Ok)
+        //     .try_for_each_concurrent(limit, |credential_or_jwt| async {
+        //         match credential_or_jwt {
         //             CredentialOrJWT::Credential(credential) => TrustchainVCAPI::verify_credential(
-        //                 &credential,
+        //                 credential,
         //                 ldp_options,
         //                 root_event_time,
         //                 verifier,
         //             )
         //             .await
-        //             .is_ok(),
-        //             CredentialOrJWT::JWT(jwt) => Credential::verify_jwt(jwt, options_opt, verifier)
-        //                 .await
-        //                 .errors
-        //                 .is_empty(),
-        //         };
+        //             .map(|_| ())
+        //             .map_err(|err| err.into()),
+        //             CredentialOrJWT::JWT(jwt) => {
+        //                 let result =
+        //                     Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
+        //                 if !result.errors.is_empty() {
+        //                     Err(PresentationError::CredentialError(
+        //                         CredentialError::VerificationResultError(result),
+        //                     ))
+        //                 } else {
+        //                     Ok(())
+        //                 }
+        //             }
+        //         }
         //     })
-        //     .all(|res| res.is_ok());
+        //     .await
+        Ok(())
+
+        // // Attempt 1:
+        // // let valid = stream.then().all().await
+
+        // // .then() returns an iterator over future<bool>, each of which is awaited in turn
+        // // [stream::].all() returns a future
+        // // disadvantages:
+        // // - all credentials are checked before returning
+        // // - difficult/not possible? to propagate errors out of closures to know which credential
+        // //   failed
+        // let valid = stream::iter(credentials.into_iter())
+        //     .then(|credential_or_jwt| async {
+        //         match credential_or_jwt {
+        //             CredentialOrJWT::Credential(credential) => {
+        //                 TrustchainVCAPI::verify_credential::<T>(
+        //                     credential,
+        //                     ldp_options,
+        //                     root_event_time,
+        //                     verifier,
+        //                 )
+        //                 .await
+        //                 .map(|_| true)?
+        //             }
+        //             CredentialOrJWT::JWT(jwt) => {
+        //                 let result =
+        //                     Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
+        //                 if !result.errors.is_empty() {
+        //                     return Err(PresentationError::VerificationResultError(result));
+        //                 }
+        //             }
+        //         }
+        //     })
+        //     .all(|validity| async { validity == true })
+        //     .await;
+
         // if valid {
         //     Ok(())
+        // } else {
+        //     Err(PresentationError::NoCredentialsPresent)
         // }
-        Ok(())
     }
 }
 
