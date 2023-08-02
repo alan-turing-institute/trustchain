@@ -6,6 +6,7 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod operations;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
