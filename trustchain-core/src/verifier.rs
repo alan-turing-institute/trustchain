@@ -119,7 +119,7 @@ pub enum VerifierError {
     TimestampVerificationError(String),
     /// Error fetching verification material.
     #[error("Error fetching verification material: {0}. Error: {1}")]
-    ErrorFetchingVerificationMaterial(String, Box<dyn Error>),
+    ErrorFetchingVerificationMaterial(String, Box<dyn Error + Send + Sync>),
     /// Failed to fetch verification material.
     #[error("Failed to fetch verification material: {0}")]
     FailureToFetchVerificationMaterial(String),
