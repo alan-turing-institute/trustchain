@@ -22,6 +22,8 @@ use trustchain_ion::{
     verifier::IONVerifier,
 };
 
+use crate::TrustchainAPI;
+
 /// API for Trustchain CLI DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
@@ -141,81 +143,54 @@ pub trait TrustchainVPAPI {
             .as_ref()
             .ok_or(PresentationError::NoCredentialsPresent)?;
 
-        // Attempt 2:
-        // stream.map(Ok).try_for_each_concurrent().await
+        // https://gendignoux.com/blog/2021/04/01/rust-async-streams-futures-part1.html#unordered-buffering-1
         // https://docs.rs/futures-util/latest/futures_util/stream/trait.TryStreamExt.html#method.try_for_each_concurrent
         // TODO consider concurrency limit (as rate limiting for verifier requests)
-        // let limit = None;
-        // stream::iter(credentials.into_iter())
-        //     .map(Ok)
-        //     .try_for_each_concurrent(limit, |credential_or_jwt| async {
-        //         match credential_or_jwt {
-        //             CredentialOrJWT::Credential(credential) => TrustchainVCAPI::verify_credential(
-        //                 credential,
-        //                 ldp_options,
-        //                 root_event_time,
-        //                 verifier,
-        //             )
-        //             .await
-        //             .map(|_| ())
-        //             .map_err(|err| err.into()),
-        //             CredentialOrJWT::JWT(jwt) => {
-        //                 let result =
-        //                     Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
-        //                 if !result.errors.is_empty() {
-        //                     Err(PresentationError::CredentialError(
-        //                         CredentialError::VerificationResultError(result),
-        //                     ))
-        //                 } else {
-        //                     Ok(())
-        //                 }
-        //             }
-        //         }
-        //     })
-        //     .await
-        Ok(())
+        let limit = Some(5);
+        let ldp_options_vec: Vec<Option<LinkedDataProofOptions>> = (0..credentials.len())
+            .map(|_| ldp_options.clone())
+            .collect();
 
-        // // Attempt 1:
-        // // let valid = stream.then().all().await
+        stream::iter(credentials.into_iter().zip(ldp_options_vec))
+            .map(Ok)
+            .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
+                match credential_or_jwt {
+                    CredentialOrJWT::Credential(credential) => TrustchainAPI::verify_credential(
+                        credential,
+                        ldp_options,
+                        root_event_time,
+                        verifier,
+                    )
+                    .await
+                    .map(|_| ())
+                    .map_err(|err| err.into()),
 
-        // // .then() returns an iterator over future<bool>, each of which is awaited in turn
-        // // [stream::].all() returns a future
-        // // disadvantages:
-        // // - all credentials are checked before returning
-        // // - difficult/not possible? to propagate errors out of closures to know which credential
-        // //   failed
-        // let valid = stream::iter(credentials.into_iter())
-        //     .then(|credential_or_jwt| async {
-        //         match credential_or_jwt {
-        //             CredentialOrJWT::Credential(credential) => {
-        //                 TrustchainVCAPI::verify_credential::<T>(
-        //                     credential,
-        //                     ldp_options,
-        //                     root_event_time,
-        //                     verifier,
-        //                 )
-        //                 .await
-        //                 .map(|_| true)?
-        //             }
-        //             CredentialOrJWT::JWT(jwt) => {
-        //                 let result =
-        //                     Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
-        //                 if !result.errors.is_empty() {
-        //                     return Err(PresentationError::VerificationResultError(result));
-        //                 }
-        //             }
-        //         }
-        //     })
-        //     .all(|validity| async { validity == true })
-        //     .await;
-
-        // if valid {
-        //     Ok(())
-        // } else {
-        //     Err(PresentationError::NoCredentialsPresent)
-        // }
+                    CredentialOrJWT::JWT(jwt) => {
+                        let result =
+                            Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
+                        if !result.errors.is_empty() {
+                            Err(PresentationError::CredentialError(
+                                CredentialError::VerificationResultError(result),
+                            ))
+                        } else {
+                            Ok(())
+                        }
+                    }
+                }
+            })
+            .await
     }
 }
 
+// TODO: add unit test for verify_credential and verify_presentation
 #[cfg(test)]
-mod tests {}
+mod tests {
+    #[tokio::test]
+    async fn test_verify_credential() {
+        todo!()
+    }
+    #[tokio::test]
+    async fn test_verify_presentation() {
+        todo!()
+    }
+}
