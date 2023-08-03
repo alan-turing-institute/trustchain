@@ -120,7 +120,7 @@ pub trait TrustchainVCAPI {
 pub trait TrustchainVPAPI {
     /// As a holder issue a verifiable presentation.
     async fn sign_presentation(
-        mut presentation: Presentation,
+        presentation: Presentation,
         did: &str,
         key_id: Option<&str>,
         endpoint: &str,
@@ -131,6 +131,7 @@ pub trait TrustchainVPAPI {
             .sign_presentation(&presentation, key_id, &resolver)
             .await?)
     }
+    // TODO: verify holder's signature
     /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
@@ -155,15 +156,20 @@ pub trait TrustchainVPAPI {
             .map(Ok)
             .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
                 match credential_or_jwt {
-                    CredentialOrJWT::Credential(credential) => TrustchainAPI::verify_credential(
-                        credential,
-                        ldp_options,
-                        root_event_time,
-                        verifier,
-                    )
-                    .await
-                    .map(|_| ())
-                    .map_err(|err| err.into()),
+                    CredentialOrJWT::Credential(credential) => {
+                        println!("start");
+                        let v = TrustchainAPI::verify_credential(
+                            credential,
+                            ldp_options,
+                            root_event_time,
+                            verifier,
+                        )
+                        .await
+                        .map(|_| ())
+                        .map_err(|err| err.into());
+                        println!("done");
+                        v
+                    }
 
                     CredentialOrJWT::JWT(jwt) => {
                         let result =
@@ -182,15 +188,102 @@ pub trait TrustchainVPAPI {
     }
 }
 
-// TODO: add unit test for verify_credential and verify_presentation
 #[cfg(test)]
 mod tests {
+    use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
+    use crate::TrustchainAPI;
+    use ssi::one_or_many::OneOrMany;
+    use ssi::vc::{Context, Contexts, Credential, CredentialOrJWT, JWTClaims, Presentation, URI};
+    use trustchain_core::issuer::Issuer;
+    use trustchain_ion::attestor::IONAttestor;
+    use trustchain_ion::get_ion_resolver;
+    use trustchain_ion::verifier::IONVerifier;
+
+    // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
+    const ROOT_EVENT_TIME_1: u32 = 1666265405;
+
+    const TEST_UNSIGNED_VC: &str = r##"{
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://www.w3.org/2018/credentials/examples/v1",
+          "https://w3id.org/citizenship/v1"
+        ],
+        "credentialSchema": {
+          "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
+          "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
+        },
+        "type": ["VerifiableCredential"],
+        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+        "image": "some_base64_representation",
+        "credentialSubject": {
+          "givenName": "Jane",
+          "familyName": "Doe",
+          "degree": {
+            "type": "BachelorDegree",
+            "name": "Bachelor of Science and Arts",
+            "college": "College of Engineering"
+          }
+        }
+      }
+      "##;
+
     #[tokio::test]
     async fn test_verify_credential() {
-        todo!()
+        let vc_with_proof = signed_credential().await;
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let res = TrustchainAPI::verify_credential(
+            &vc_with_proof,
+            None,
+            ROOT_EVENT_TIME_1,
+            &IONVerifier::new(resolver),
+        )
+        .await;
+        assert!(res.is_ok());
     }
     #[tokio::test]
     async fn test_verify_presentation() {
-        todo!()
+        let vc_with_proof = signed_credential().await;
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let presentation = Presentation {
+            context: Contexts::One(Context::URI(URI::String(String::from("test")))),
+            holder: None,
+            verifiable_credential: Some(OneOrMany::Many(vec![
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                CredentialOrJWT::Credential(vc_with_proof),
+            ])),
+            id: None,
+            type_: OneOrMany::One(String::from("test")),
+            proof: None,
+            property_set: None,
+        };
+        let res = TrustchainAPI::verify_presentation(
+            &presentation,
+            None,
+            ROOT_EVENT_TIME_1,
+            &IONVerifier::new(resolver),
+        )
+        .await;
+        assert!(res.is_ok());
+    }
+
+    async fn signed_credential() -> Credential {
+        // 1. Set-up
+        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        // Make resolver
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        // 2. Load Attestor
+        let attestor = IONAttestor::new(did);
+        // 3. Read credential
+        let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+        // Use attest_credential method instead of generating and adding proof
+        attestor.sign(&vc, None, &resolver).await.unwrap()
     }
 }
