@@ -20,6 +20,9 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
+    // TODO: once needed in http propagate
+    // #[error("Jose error: {0}")]
+    // JoseError(JoseError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
