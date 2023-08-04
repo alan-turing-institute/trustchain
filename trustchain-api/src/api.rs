@@ -116,6 +116,8 @@ pub trait TrustchainVCAPI {
         Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
+
+use ssi::ldp::now_ms;
 #[async_trait]
 pub trait TrustchainVPAPI {
     /// As a holder issue a verifiable presentation.
@@ -131,7 +133,6 @@ pub trait TrustchainVPAPI {
             .sign_presentation(&presentation, key_id, &resolver)
             .await?)
     }
-    // TODO: verify holder's signature
     /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
@@ -139,6 +140,22 @@ pub trait TrustchainVPAPI {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), PresentationError> {
+        // Verify signature
+        let result = presentation
+            .verify(ldp_options.clone(), verifier.resolver())
+            .await;
+        println!("{:?}", result);
+        if !result.errors.is_empty() {
+            return Err(PresentationError::CredentialError(
+                CredentialError::VerificationResultError(result),
+            ));
+        }
+        // TODO: Verify holder's did
+        // let issuer = presentation
+        //     .get_holder()
+        //     .ok_or(CredentialError::NoIssuerPresent)?;
+
+        // Verify contained credentials
         let credentials = presentation
             .verifiable_credential
             .as_ref()
@@ -151,40 +168,47 @@ pub trait TrustchainVPAPI {
         let ldp_options_vec: Vec<Option<LinkedDataProofOptions>> = (0..credentials.len())
             .map(|_| ldp_options.clone())
             .collect();
-
-        stream::iter(credentials.into_iter().zip(ldp_options_vec))
+        let start = now_ms();
+        let out = stream::iter(credentials.into_iter().zip(ldp_options_vec))
+            .enumerate()
             .map(Ok)
-            .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
-                match credential_or_jwt {
-                    CredentialOrJWT::Credential(credential) => {
-                        println!("start");
-                        let v = TrustchainAPI::verify_credential(
-                            credential,
-                            ldp_options,
-                            root_event_time,
-                            verifier,
-                        )
-                        .await
-                        .map(|_| ())
-                        .map_err(|err| err.into());
-                        println!("done");
-                        v
-                    }
+            .try_for_each_concurrent(
+                limit,
+                |(idx, (credential_or_jwt, ldp_options))| async move {
+                    match credential_or_jwt {
+                        CredentialOrJWT::Credential(credential) => {
+                            println!("start {}: {}", idx, now_ms());
+                            let v = TrustchainAPI::verify_credential(
+                                credential,
+                                ldp_options,
+                                root_event_time,
+                                verifier,
+                            )
+                            .await
+                            .map(|_| ())
+                            .map_err(|err| err.into());
+                            println!("done {}:  {}", idx, now_ms());
+                            v
+                        }
 
-                    CredentialOrJWT::JWT(jwt) => {
-                        let result =
-                            Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
-                        if !result.errors.is_empty() {
-                            Err(PresentationError::CredentialError(
-                                CredentialError::VerificationResultError(result),
-                            ))
-                        } else {
-                            Ok(())
+                        CredentialOrJWT::JWT(jwt) => {
+                            let result =
+                                Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
+                            if !result.errors.is_empty() {
+                                Err(PresentationError::CredentialError(
+                                    CredentialError::VerificationResultError(result),
+                                ))
+                            } else {
+                                Ok(())
+                            }
                         }
                     }
-                }
-            })
-            .await
+                },
+            )
+            .await;
+        let end = now_ms();
+        println!("Full time: {}", end - start);
+        out
     }
 }
 
@@ -193,8 +217,10 @@ mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Context, Contexts, Credential, CredentialOrJWT, JWTClaims, Presentation, URI};
-    use trustchain_core::issuer::Issuer;
+    use ssi::vc::{
+        Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, ProofPurpose, URI,
+    };
+    use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::get_ion_resolver;
     use trustchain_ion::verifier::IONVerifier;
@@ -229,7 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_credential() {
-        let vc_with_proof = signed_credential().await;
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let issuer = IONAttestor::new(issuer_did);
+        let vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
@@ -240,13 +268,20 @@ mod tests {
         .await;
         assert!(res.is_ok());
     }
+
     #[tokio::test]
     async fn test_verify_presentation() {
-        let vc_with_proof = signed_credential().await;
+        // root+1
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        // root+2
+        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        let issuer = IONAttestor::new(issuer_did);
+        let holder = IONAttestor::new(holder_did);
+
+        let vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let presentation = Presentation {
-            context: Contexts::One(Context::URI(URI::String(String::from("test")))),
-            holder: None,
+        let mut presentation = Presentation {
             verifiable_credential: Some(OneOrMany::Many(vec![
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
@@ -259,28 +294,36 @@ mod tests {
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
                 CredentialOrJWT::Credential(vc_with_proof),
             ])),
-            id: None,
-            type_: OneOrMany::One(String::from("test")),
-            proof: None,
-            property_set: None,
+            // NB. Holder must be specified in order to retrieve verification method to verify
+            // presentation. Otherwise must be specified in LinkedDataProofOptions.
+            holder: Some(URI::String(String::from(holder_did))),
+            ..Default::default()
         };
-        let res = TrustchainAPI::verify_presentation(
+
+        presentation = holder
+            .sign_presentation(&presentation, None, &resolver)
+            .await
+            .unwrap();
+        println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
+        // NB. If specifying a VM method
+        // let vm = String::from("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI");
+        assert!(TrustchainAPI::verify_presentation(
             &presentation,
-            None,
+            // Must be specified to override default proof_purpose, which is ProofPurpose::Authentication
+            Some(LinkedDataProofOptions {
+                proof_purpose: Some(ProofPurpose::AssertionMethod),
+                ..Default::default()
+            }),
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
         )
-        .await;
-        assert!(res.is_ok());
+        .await
+        .is_ok());
     }
 
-    async fn signed_credential() -> Credential {
-        // 1. Set-up
-        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+    async fn signed_credential(attestor: IONAttestor) -> Credential {
         // Make resolver
         let resolver = get_ion_resolver("http://localhost:3000/");
-        // 2. Load Attestor
-        let attestor = IONAttestor::new(did);
         // 3. Read credential
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         // Use attest_credential method instead of generating and adding proof

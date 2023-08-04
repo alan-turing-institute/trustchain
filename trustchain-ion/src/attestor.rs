@@ -171,15 +171,25 @@ impl Holder for IONAttestor {
         presentation: &Presentation,
         key_id: Option<&str>,
         resolver: &T,
+        // TODO add argument for ldp options with LDP options for proof purpose such as authentication
     ) -> Result<Presentation, HolderError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
         // Generate proof
+        // Example of VM derivation
+        // let vm = format!("{}#{}", self.did(), signing_key.thumbprint().unwrap());
         let proof = presentation
-            .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
+            .generate_proof(
+                &signing_key,
+                &LinkedDataProofOptions {
+                    // verification_method: Some(ssi::vc::URI::String(vm)),
+                    ..LinkedDataProofOptions::default()
+                },
+                resolver,
+            )
             .await?;
-
+        println!("{}", serde_json::to_string_pretty(&proof).unwrap());
         // Add proof to credential
         let mut vp = presentation.clone();
         vp.add_proof(proof);
