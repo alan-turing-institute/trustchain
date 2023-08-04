@@ -179,6 +179,10 @@ impl Holder for IONAttestor {
         // Generate proof
         // Example of VM derivation
         // let vm = format!("{}#{}", self.did(), signing_key.thumbprint().unwrap());
+
+        // TODO: check/add holder did to holder field of Presentation
+        // Must happen before .generate_proof() if that method hashes the presentation?
+
         let proof = presentation
             .generate_proof(
                 &signing_key,
