@@ -1,7 +1,12 @@
 // TODO: add module doc comments for mobile FFI
 use crate::config::FFIConfig;
 use anyhow::Result;
-use ssi::{ldp::now_ms, vc::Credential};
+use chrono::{DateTime, Utc};
+use ssi::{
+    ldp::now_ms,
+    one_or_many::OneOrMany,
+    vc::{Credential, Proof},
+};
 use thiserror::Error;
 use tokio::runtime::Runtime;
 use trustchain_api::{
@@ -28,6 +33,8 @@ enum FFIMobileError {
     FailedToVerifyDID(VerifierError),
     #[error("Failed to verify credential error: {0}.")]
     FailedToVerifyCredential(CredentialError),
+    #[error("Credential proof created time ({0}) is in the future relative to now ({1}).")]
+    FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
 }
 
 /// Example greet function.
@@ -88,12 +95,25 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
         );
         let root_event_time = trustchain_opts.root_event_time;
 
-        // NB. When using android emulator, the time is less than the created time on
-        // the credential. This leads to a failure upon the proofs being checked:
-        // https://docs.rs/ssi/0.4.0/src/ssi/vc.rs.html#1243 (filtered here)
-        // https://docs.rs/ssi/0.4.0/src/ssi/vc.rs.html#1973-1975 (created time checked here)
+        // When using android emulator, the time can be less than the created time in the proof if
+        // the clock is not correctly synchronised. This leads to a failure upon the proofs being
+        // checked:
+        //   https://docs.rs/ssi/0.4.0/src/ssi/vc.rs.html#1243 (filtered here)
+        //   https://docs.rs/ssi/0.4.0/src/ssi/vc.rs.html#1973-1975 (created time checked here)
         //
-        // TODO: try setting time as now from emulator to check time used from now_ms() call
+        // To recover, check that a time later than when the created time on the credential is used.
+        if let Some(OneOrMany::One(Proof {
+            created: Some(created_time),
+            ..
+        })) = credential.proof.as_ref()
+        {
+            let now = now_ms();
+            if &now < created_time {
+                return Err(
+                    FFIMobileError::FutureProofCreatedTime(created_time.to_owned(), now).into(),
+                );
+            }
+        }
         Ok(
             TrustchainAPI::verify_credential(&credential, ldp_opts, root_event_time, &verifier)
                 .await
