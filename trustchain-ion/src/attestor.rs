@@ -193,7 +193,6 @@ impl Holder for IONAttestor {
                 resolver,
             )
             .await?;
-        println!("{}", serde_json::to_string_pretty(&proof).unwrap());
         // Add proof to credential
         let mut vp = presentation.clone();
         vp.add_proof(proof);

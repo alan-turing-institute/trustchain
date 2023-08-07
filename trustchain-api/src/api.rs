@@ -150,10 +150,15 @@ pub trait TrustchainVPAPI {
                 CredentialError::VerificationResultError(result),
             ));
         }
-        // TODO: Verify holder's did
-        // let issuer = presentation
-        //     .get_holder()
-        //     .ok_or(CredentialError::NoIssuerPresent)?;
+        // Verify holder's DID
+        let holder = match presentation
+            .holder
+            .as_ref()
+            .ok_or(PresentationError::NoHolderPresent)?
+        {
+            URI::String(holder) => holder,
+        };
+        verifier.verify(holder, root_event_time).await?;
 
         // Verify contained credentials
         let credentials = presentation
