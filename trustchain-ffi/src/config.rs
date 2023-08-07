@@ -160,12 +160,11 @@ mod tests {
         let test_mobile_options: String = format!(
             r#"
             {{
-                "endpointOptions": {},
-                "trustchainOptions": {},
-                "linkedDataProofOptions": {}
+                "endpointOptions": {TEST_ENDPOINT_OPTIONS},
+                "trustchainOptions": {TEST_TRUSTCHAIN_OPTIONS},
+                "linkedDataProofOptions": {TEST_LINKED_DATA_PROOF_OPTIONS}
             }}
         "#,
-            TEST_ENDPOINT_OPTIONS, TEST_TRUSTCHAIN_OPTIONS, TEST_LINKED_DATA_PROOF_OPTIONS
         );
         serde_json::from_str::<FFIConfig>(&test_mobile_options).unwrap();
     }
