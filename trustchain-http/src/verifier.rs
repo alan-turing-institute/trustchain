@@ -107,16 +107,17 @@ impl TrustchainVerifierHTTPHandler {
 
 #[cfg(test)]
 mod tests {
-    // Verifier integration tests
-    #[tokio::test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    async fn test_get_verifier_request() {
-        todo!()
-    }
+    // TODO: complete tests as part of verifier completion (#56)
+    // // Verifier integration tests
+    // #[tokio::test]
+    // #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    // async fn test_get_verifier_request() {
+    //     todo!()
+    // }
 
-    #[tokio::test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    async fn test_post_verifier_credential() {
-        todo!()
-    }
+    // #[tokio::test]
+    // #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    // async fn test_post_verifier_credential() {
+    //     todo!()
+    // }
 }

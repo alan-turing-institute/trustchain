@@ -1,3 +1,4 @@
+//! DID verifier API and default implementation.
 use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};

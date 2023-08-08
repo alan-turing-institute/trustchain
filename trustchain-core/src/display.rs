@@ -1,3 +1,4 @@
+//! Utilities to display DID.
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::one_or_many::OneOrMany;
 use std::fmt;

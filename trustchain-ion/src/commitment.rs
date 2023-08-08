@@ -1,3 +1,4 @@
+//! Implementation of `Commitment` API for ION DID method.
 use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
@@ -194,7 +195,7 @@ impl<T> TrivialCommitment for TxCommitment<T> {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::FailedToComputeHash(format!(
-                        "Failed to deserialise transaction: {}",
+                        "Failed to deserialize transaction: {}",
                         e
                     )));
                 }
@@ -207,16 +208,16 @@ impl<T> TrivialCommitment for TxCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Bitcoin transaction, then
+    /// Deserializes the candidate data into a Bitcoin transaction, then
     /// extracts and returns the IPFS content identifier in the OP_RETURN data.
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
-            // Deserialise the transaction from the candidate data.
+            // Deserialize the transaction from the candidate data.
             let tx: Transaction = match Deserialize::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::DataDecodingError(format!(
-                        "Failed to deserialise transaction: {}",
+                        "Failed to deserialize transaction: {}",
                         e
                     )));
                 }
@@ -276,7 +277,7 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
                 Ok(mb) => mb,
                 Err(e) => {
                     return Err(CommitmentError::FailedToComputeHash(format!(
-                        "Failed to deserialise MerkleBlock: {:?}",
+                        "Failed to deserialize MerkleBlock: {:?}",
                         e
                     )));
                 }
@@ -296,14 +297,14 @@ impl<T> TrivialCommitment for MerkleRootCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Merkle proof.
+    /// Deserializes the candidate data into a Merkle proof.
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             let merkle_block: MerkleBlock = match bitcoin::consensus::deserialize(x) {
                 Ok(mb) => mb,
                 Err(e) => {
                     return Err(CommitmentError::DataDecodingError(format!(
-                        "Failed to deserialise MerkleBlock: {:?}",
+                        "Failed to deserialize MerkleBlock: {:?}",
                         e
                     )));
                 }
@@ -380,7 +381,7 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
         &self.candidate_data
     }
 
-    /// Deserialises the candidate data into a Block header (as JSON).
+    /// Deserializes the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             if x.len() != 80 {

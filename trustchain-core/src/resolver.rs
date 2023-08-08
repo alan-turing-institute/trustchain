@@ -1,3 +1,4 @@
+//! DID resolution and `DIDResolver` implementation.
 use async_trait::async_trait;
 use serde_json::Value;
 use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
@@ -40,7 +41,7 @@ pub enum ResolverError {
 }
 
 /// Type for resolver result.
-type ResolverResult = Result<
+pub type ResolverResult = Result<
     (
         ResolutionMetadata,
         Option<Document>,
