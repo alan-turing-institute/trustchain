@@ -28,6 +28,10 @@ pub enum TrustchainHTTPError {
     FailedToVerifyCredential,
     #[error("Invalid signature.")]
     InvalidSignature,
+    #[error("Request does not exist.")]
+    RequestDoesNotExist,
+    #[error("Could not deserialize data: {0}")]
+    FailedToDeserialize(serde_json::Error),
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -88,6 +92,12 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::InvalidSignature => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::RequestDoesNotExist => {
+                (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            err @ TrustchainHTTPError::FailedToDeserialize(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };

@@ -23,6 +23,7 @@ impl AppState {
                 .expect("Credential cache does not exist.")
                 .as_slice(),
         )
+        // TODO: change to unrwap_or_default() (empty cache)
         .expect("Credential cache could not be deserialized.");
         let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
