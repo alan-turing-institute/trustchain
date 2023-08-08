@@ -1,8 +1,6 @@
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
-use crate::resolver::RootEventTime;
 use crate::state::AppState;
-use crate::EXAMPLE_VP_REQUEST;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -13,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
 use ssi::ldp::LinkedDataDocument;
-use ssi::vc::{Credential, Presentation, URI};
+use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::verifier::IONVerifier;
@@ -57,9 +55,9 @@ pub struct TrustchainVerifierHTTPHandler;
 
 impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
 
+/// Struct for deserializing credential and corresponding root event time.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-/// Struct for deserializing credential and corresponding root event time.
 pub struct PostVerifier {
     pub credential: Credential,
     pub root_event_time: Timestamp,
@@ -94,12 +92,7 @@ impl TrustchainVerifierHTTPHandler {
             &app_state.verifier,
         )
         .await
-        .map(|_| {
-            (
-                StatusCode::CREATED,
-                Html("Presentation successfully proved!"),
-            )
-        })
+        .map(|_| (StatusCode::OK, Html("Presentation successfully proved!")))
     }
     /// Generates a QR code for receiving requests, default to first request in cache
     pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -131,13 +124,7 @@ mod tests {
     use hyper::StatusCode;
     use lazy_static::lazy_static;
     use serde_json::json;
-    use ssi::{
-        one_or_many::OneOrMany,
-        vc::{Credential, CredentialSubject, Issuer, URI},
-    };
     use std::{collections::HashMap, sync::Arc};
-    use trustchain_core::{utils::canonicalize, verifier::Verifier};
-    use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
@@ -170,6 +157,40 @@ mod tests {
         }
     }
     "#;
+
+    const TEST_POST_VERIFIER: &str = r#"
+    {
+        "credential": {
+          "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://www.w3.org/2018/credentials/examples/v1"
+          ],
+          "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
+          "type": ["VerifiableCredential"],
+          "credentialSubject": {
+            "id": "did:example:284b3f34fad911ed9aea439566dd422a",
+            "familyName": "Bloggs",
+            "degree": {
+              "college": "University of Oxbridge",
+              "name": "Bachelor of Arts",
+              "type": "BachelorDegree"
+            },
+            "givenName": "Jane"
+          },
+          "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+          "issuanceDate": "2023-08-08T08:59:21.458576Z",
+          "proof": {
+            "type": "EcdsaSecp256k1Signature2019",
+            "proofPurpose": "assertionMethod",
+            "verificationMethod": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI",
+            "created": "2023-08-08T08:59:21.461Z",
+            "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..LqLHztj2djQ9aWDGFjm3ZaOzDFIVKnOyZQVvE7CMDbYV5POYz6IejwnRkcqRf7uPYc2QbJAqCjj20PfwTOPJEw"
+          }
+        },
+        "rootEventTime": 1666265405
+    }
+    "#;
+
     // TODO: complete tests as part of verifier completion (#56)
     // Verifier integration tests
     #[tokio::test]
@@ -208,9 +229,33 @@ mod tests {
         );
     }
 
-    // #[tokio::test]
-    // #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    // async fn test_post_verifier_credential() {
-    //     todo!()
-    // }
+    #[tokio::test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    async fn test_post_verifier_credential() {
+        let state = Arc::new(AppState::new_with_cache(
+            TEST_HTTP_CONFIG.to_owned(),
+            HashMap::new(),
+            serde_json::from_str(REQUESTS).unwrap(),
+        ));
+        // Test post of credential to verifier
+        let app = TrustchainRouter::from(state.clone()).into_router();
+        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let uri = format!("/vc/verifier/{uid}");
+        let client = TestClient::new(app);
+        let post_verifier: PostVerifier = serde_json::from_str(TEST_POST_VERIFIER).unwrap();
+        let response = client.post(&uri).json(&post_verifier).send().await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!("Presentation successfully proved!", response.text().await);
+
+        // Test post of credential to verifier with bad root event time
+        let app = TrustchainRouter::from(state.clone()).into_router();
+        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let uri = format!("/vc/verifier/{uid}");
+        let client = TestClient::new(app);
+        let mut post_verifier: PostVerifier = serde_json::from_str(TEST_POST_VERIFIER).unwrap();
+        post_verifier.root_event_time = 1666265406;
+        let response = client.post(&uri).json(&post_verifier).send().await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.text().await, r#"{"error":"Trustchain Verifier error: Invalid root DID: did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg."}"#.to_string());
+    }
 }
