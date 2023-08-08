@@ -3,7 +3,7 @@ use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::Presentation;
+use ssi::vc::{LinkedDataProofOptions, Presentation};
 use thiserror::Error;
 
 /// An error relating to a Trustchain holder.
@@ -40,5 +40,6 @@ pub trait Holder: Subject {
         presentation: &Presentation,
         key_id: Option<&str>,
         resolver: &T,
+        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, HolderError>;
 }

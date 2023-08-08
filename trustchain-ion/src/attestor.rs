@@ -148,13 +148,17 @@ impl Issuer for IONAttestor {
         credential: &Credential,
         key_id: Option<&str>,
         resolver: &T,
+        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Credential, IssuerError> {
+        // If no ldp options passed, use default (in which ProofPurpose::AssertionMethod).
+        let options = ldp_options.unwrap_or(LinkedDataProofOptions::default());
+
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
         // Generate proof
         let proof = credential
-            .generate_proof(&signing_key, &LinkedDataProofOptions::default(), resolver)
+            .generate_proof(&signing_key, &options, resolver)
             .await?;
 
         // Add proof to credential
@@ -171,8 +175,14 @@ impl Holder for IONAttestor {
         presentation: &Presentation,
         key_id: Option<&str>,
         resolver: &T,
-        // TODO add argument for ldp options with LDP options for proof purpose such as authentication
+        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, HolderError> {
+        // If no ldp options passed, use default with ProofPurpose::Authentication.
+        let options = ldp_options.unwrap_or(LinkedDataProofOptions {
+            proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
+            ..Default::default()
+        });
+
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
@@ -188,20 +198,10 @@ impl Holder for IONAttestor {
         };
 
         // Generate proof
-        // Example of VM derivation
+        // Example of verification_method derivation (optionally passed as a LinkedDataProofOption)
         // let vm = format!("{}#{}", self.did(), signing_key.thumbprint().unwrap());
-        let proof = vp
-            .generate_proof(
-                &signing_key,
-                &LinkedDataProofOptions {
-                    // verification_method: Some(ssi::vc::URI::String(vm)),
-                    ..LinkedDataProofOptions::default()
-                },
-                resolver,
-            )
-            .await?;
+        let proof = vp.generate_proof(&signing_key, &options, resolver).await?;
         // Add proof to credential
-
         vp.add_proof(proof);
         Ok(vp)
     }
@@ -303,7 +303,7 @@ mod tests {
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
         // Attest to doc
-        let vc_with_proof = target.sign(&vc, None, &resolver).await;
+        let vc_with_proof = target.sign(&vc, None, &resolver, None).await;
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());
@@ -311,25 +311,45 @@ mod tests {
 
     #[tokio::test]
     async fn test_attest_presentation() {
-        init();
+        // Note: removed tmp directory overwrite for TRUSTCHAIN_DATA, to have access to
+        // the signing keys in .trustchain
+        // init();
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let did = "did:example:test_attest_presentation";
-        let target = IONAttestor::try_from(AttestorData::new(
-            did.to_string(),
-            serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
-        ))
-        .unwrap();
+        // root+1
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        // root+2
+        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+
+        let issuer = IONAttestor::new(issuer_did);
+        let holder = IONAttestor::new(holder_did);
+        // let target = IONAttestor::try_from(AttestorData::new(
+        //     did.to_string(),
+        //     serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
+        // ))
+        // .unwrap();
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        let vc_with_proof = target.sign(&vc, None, &resolver).await.unwrap();
+        let vc_with_proof = issuer.sign(&vc, None, &resolver, None).await.unwrap();
         let presentation = Presentation {
             verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(vc_with_proof))),
             ..Default::default()
         };
+        // assert holder field is not initially populated
+        assert!(presentation.holder.is_none());
+
         // Attest to vp:
-        assert!(target
-            .sign_presentation(&presentation, None, &resolver)
-            .await
-            .is_ok());
+        // .sign_presenatation now checks and sets the holder field of the presentation
+        // This has implications for the proof generation which is handled by the ssi library:
+        //   - ssi::ldp::ensure_or_pick_verification_relationship calls presentation.get_issuer()
+        //      which returns the holder (if Some)
+        //   - ensure_or_pick_verification_relationship tries to resolve the did and check it's
+        //      verification methods
+        let vp = holder
+            .sign_presentation(&presentation, None, &resolver, None)
+            .await;
+        assert!(vp.is_ok());
+
+        // Check holder field has been correctly populated during signing
+        assert_eq!(vp.unwrap().holder.unwrap().to_string(), holder.did);
     }
 
     #[test]

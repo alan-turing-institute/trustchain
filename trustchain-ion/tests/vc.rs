@@ -54,7 +54,7 @@ async fn test_sign_credential() {
     // 4. Generate VC and verify
 
     // Use attest_credential method instead of generating and adding proof
-    let mut vc_with_proof = attestor.sign(&vc, None, &resolver).await.unwrap();
+    let mut vc_with_proof = attestor.sign(&vc, None, &resolver, None).await.unwrap();
 
     // Verify: expect no warnings or errors
     let verification_result = vc_with_proof.verify(None, &resolver).await;
@@ -88,7 +88,7 @@ async fn test_sign_credential_failure() {
     // 4. Generate VC and verify
 
     // Sign credential (expect failure).
-    let vc_with_proof = attestor.sign(&vc, None, &resolver).await;
+    let vc_with_proof = attestor.sign(&vc, None, &resolver, None).await;
     assert!(vc_with_proof.is_err());
     assert!(matches!(
         vc_with_proof,

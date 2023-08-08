@@ -1,5 +1,6 @@
 //! Verifiable presentation functionality for Trustchain.
 use crate::{holder::HolderError, vc::CredentialError, verifier::VerifierError};
+use ssi::vc::VerificationResult;
 use thiserror::Error;
 
 /// An error relating to verifiable credentials and presentations.
@@ -20,6 +21,12 @@ pub enum PresentationError {
     /// Wrapped variant for Verifier Error.
     #[error("A wrapped Verfier error: {0}")]
     VerifierError(VerifierError),
+    /// Credentials verified, but holder failed to authenticate.
+    #[error("Credentials verified for an unauthenticated holder.")]
+    VerifiedHolderUnauthenticated(VerificationResult),
+    /// Credentials verified, but holder DID failed verification.
+    #[error("Credentials verified for an unverified holder.")]
+    VerifiedHolderUnverfied(VerifierError),
 }
 
 impl From<HolderError> for PresentationError {
