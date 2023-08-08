@@ -4,7 +4,7 @@ use did_ion::sidetree::Sidetree;
 use did_ion::ION;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::{Credential, LinkedDataProofOptions, Presentation};
+use ssi::vc::{Credential, LinkedDataProofOptions, Presentation, URI};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
 use trustchain_core::holder::{Holder, HolderError};
@@ -176,14 +176,21 @@ impl Holder for IONAttestor {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
+        let mut vp = presentation.clone();
+        // Check holder field is correctly populated
+        match presentation.holder.as_ref() {
+            Some(URI::String(holder)) => {
+                if holder != &self.did {
+                    vp.holder = Some(URI::String(self.did.clone()))
+                }
+            }
+            None => vp.holder = Some(URI::String(self.did.clone())),
+        };
+
         // Generate proof
         // Example of VM derivation
         // let vm = format!("{}#{}", self.did(), signing_key.thumbprint().unwrap());
-
-        // TODO: check/add holder did to holder field of Presentation
-        // Must happen before .generate_proof() if that method hashes the presentation?
-
-        let proof = presentation
+        let proof = vp
             .generate_proof(
                 &signing_key,
                 &LinkedDataProofOptions {
@@ -194,7 +201,7 @@ impl Holder for IONAttestor {
             )
             .await?;
         // Add proof to credential
-        let mut vp = presentation.clone();
+
         vp.add_proof(proof);
         Ok(vp)
     }
