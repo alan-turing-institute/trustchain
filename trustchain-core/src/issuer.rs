@@ -3,7 +3,7 @@ use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
+use ssi::vc::{Credential, LinkedDataProofOptions};
 use thiserror::Error;
 
 /// An error relating to a Trustchain Issuer.
@@ -36,6 +36,7 @@ pub trait Issuer: Subject {
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
     ) -> Result<Credential, IssuerError>;
