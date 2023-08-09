@@ -575,8 +575,8 @@ impl BlockTimestampCommitment {
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
-            expected_data,
             candidate_data,
+            expected_data,
         })
     }
 }
