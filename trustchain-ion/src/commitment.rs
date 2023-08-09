@@ -859,6 +859,12 @@ mod tests {
             _ => panic!("Expected FailedContentVerification error."),
         };
 
+        // We do *not* expect the (correct) timestamp to be valid expected data,
+        // since the candidate data is filtered to contain only the Merkle root field.
+        let wrong_expected_data_commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1666265405));
+        assert!(wrong_expected_data_commitment.verify(target).is_err());
+
         // Also test as timestamp commitment
         let expected_data = 1666265405;
         let commitment =
