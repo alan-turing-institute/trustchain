@@ -15,7 +15,7 @@ use ssi::{
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::resolver::Resolver;
-use trustchain_core::verifier::{Timestamp, Verifier};
+use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
 /// A HTTP API for resolving DID documents, chains, and verification bundles.
@@ -67,7 +67,16 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
-        let chain = verifier.verify(did, root_event_time).await?;
+        let chain = verifier
+            .verify(did, root_event_time)
+            .await
+            // Any commitment error implies invalid root
+            .map_err(|err| match err {
+                err @ VerifierError::CommitmentFailure(_) => {
+                    VerifierError::InvalidRoot(format!("{err}"))
+                }
+                err => err,
+            })?;
         debug!("Verified did...");
         Ok(DIDChainResolutionResult::new(&chain))
     }
@@ -228,14 +237,13 @@ mod tests {
         )
         .to_string();
         let response = client.get(&uri_incorrect_root).send().await;
-        // TODO: fix test to handle error that is now returned during verififcation
         assert_eq!(response.status(), StatusCode::OK);
-        // TODO: A wrapped CommitmentError is now returned here
-        println!("{}", response.text().await);
-        // assert_eq!(
-        //     response.text().await,
-        //     r#"{"error":"Trustchain Verifier error: Invalid root DID: did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg."}"#.to_string()
-        // )
+        // A wrapped CommitmentError is now returned here mapped to VerifierError::InvalidRoot
+        // println!("{}", response.text().await);
+        assert!(response
+            .text()
+            .await
+            .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID:"#),)
     }
 
     #[tokio::test]
