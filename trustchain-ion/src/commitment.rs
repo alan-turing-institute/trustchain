@@ -566,8 +566,8 @@ impl DIDCommitment for IONCommitment {
 /// A Commitment whose expected data is a Unix time and hasher
 /// and candidate data are obtained from a given DIDCommitment.
 pub struct BlockTimestampCommitment {
-    expected_data: Timestamp,
     candidate_data: Vec<u8>,
+    expected_data: Timestamp,
 }
 
 impl BlockTimestampCommitment {
