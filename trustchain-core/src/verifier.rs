@@ -223,7 +223,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     }
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
-    /// value for the timestamp retreived from a local PoW network node.
+    /// value for the timestamp retrieved from a local PoW network node.
     async fn verifiable_timestamp(
         &self,
         did: &str,
