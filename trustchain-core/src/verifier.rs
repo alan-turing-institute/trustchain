@@ -174,7 +174,9 @@ pub trait VerifiableTimestamp {
     /// Gets the wrapped TimestampCommitment.
     fn timestamp_commitment(&self) -> &dyn TimestampCommitment;
     /// Gets the Timestamp.
-    fn timestamp(&self) -> Timestamp;
+    fn timestamp(&self) -> Timestamp {
+        self.timestamp_commitment().timestamp()
+    }
     /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // The expected data in the TimestampCommitment is the timestamp, while in the
@@ -208,15 +210,14 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
 
-        // Verify that the DID content and the timestamp share a common commitment target.
+        // Verify that the root DID content (keys & endpoints) and the timestamp share a common commitment target.
         verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
         // Validate the PoW on the common target hash.
         self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
-        // At this point we know that the same, valid PoW commits to both the timestamp
-        // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
-        // It only remains to check that the verified timestamp matches the expected root timestamp.
+        // Verify explicitly that the return value from the timestamp method equals the expected root timestamp
+        // (in case the default timestamp method implementation has been overridden).
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
             Err(VerifierError::InvalidRoot(root.to_string()))
         } else {

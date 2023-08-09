@@ -612,10 +612,6 @@ impl VerifiableTimestamp for IONTimestamp {
     fn timestamp_commitment(&self) -> &dyn TimestampCommitment {
         self.timestamp_commitment.as_ref()
     }
-
-    fn timestamp(&self) -> Timestamp {
-        self.timestamp_commitment().timestamp()
-    }
 }
 
 #[cfg(test)]
