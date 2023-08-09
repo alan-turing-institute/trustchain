@@ -7,6 +7,7 @@ use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, api::TrustchainVCAPI, TrustchainAPI};
 use trustchain_core::resolver::ResolverError;
 use trustchain_core::verifier::VerifierError;
+use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
 use crate::config::{ffi_config, EndpointOptions};
 // TODO: implement the below functions that will be used as FFI on desktop GUI. Aim to implement the
@@ -63,9 +64,10 @@ pub fn resolve(did: String) -> anyhow::Result<String> {
     } else {
         EndpointOptions::default().ion_endpoint().to_address()
     };
+    let resolver = get_ion_resolver(&resolver_address);
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        match TrustchainAPI::resolve(&did, resolver_address).await {
+        match TrustchainAPI::resolve(&did, &resolver).await {
             Ok((res_meta, doc, doc_meta)) => Ok(serde_json::to_string_pretty(
                 // TODO: refactor conversion into trustchain-core resolve module
                 &ResolutionResult {
@@ -85,11 +87,19 @@ pub fn resolve(did: String) -> anyhow::Result<String> {
 }
 
 /// TODO: the below have no CLI implementation currently but are planned
-/// Verifies a given DID using a resolver available at localhost:3000, returning a result.
+/// Verifies a given DID using a resolver available at "ion_endpoint", returning a result.
 pub fn verify(did: String) -> anyhow::Result<String> {
+    let resolver_address = if let Some(ion_endpoint) = &ffi_config().endpoint_options {
+        ion_endpoint.ion_endpoint().to_address()
+    } else {
+        EndpointOptions::default().ion_endpoint().to_address()
+    };
+    let resolver = get_ion_resolver(&resolver_address);
+    let verifier = IONVerifier::new(resolver);
+    let root_event_time = &ffi_config().trustchain().unwrap().root_event_time;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        match TrustchainAPI::verify(&did).await {
+        match TrustchainAPI::verify(&did, *root_event_time, &verifier).await {
             Ok(did_chain) => Ok(serde_json::to_string_pretty(&did_chain)
                 .expect("Serialise implimented for DIDChain struct")),
             Err(err) => Err(anyhow!("{}", FFIGUIError::FailedToVerifyDID(err))),
@@ -117,16 +127,30 @@ pub fn vc_sign(
     serial_credential: String,
     did: String,
     key_id: Option<String>,
+    // TODO handle optional LinkedDataProofOptions either from gui input, or using existing config
 ) -> anyhow::Result<String> {
+    let resolver_address = if let Some(ion_endpoint) = &ffi_config().endpoint_options {
+        ion_endpoint.ion_endpoint().to_address()
+    } else {
+        EndpointOptions::default().ion_endpoint().to_address()
+    };
+    let resolver = get_ion_resolver(&resolver_address);
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        // TODO: handle optional key_id
         let mut credential: Credential;
         match serde_json::from_str(&serial_credential) {
             Ok(cred) => credential = cred,
             Err(err) => return Err(anyhow!("{}", FFIGUIError::FailedToDeserialise(err))),
         }
-        credential = TrustchainAPI::sign(credential, &did, None).await;
+        credential = TrustchainAPI::sign(
+            credential,
+            &did,
+            // TODO accept Some LinkedDataProofOptions
+            None,
+            key_id.as_ref().map(|x| &**x),
+            &resolver,
+        )
+        .await?;
         Ok(serde_json::to_string_pretty(&credential)
             .expect("Serialise implimented for Credential struct"))
     })

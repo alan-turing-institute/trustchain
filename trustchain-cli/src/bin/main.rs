@@ -1,7 +1,7 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
-use ssi::vc::{Credential, URI};
+use ssi::{ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{stdin, BufReader},
@@ -10,8 +10,11 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_core::config::core_config;
-use trustchain_ion::{attest::attest_operation, create::create_operation, get_ion_resolver};
+use trustchain_cli::config::cli_config;
+use trustchain_core::{vc::CredentialError, verifier::Verifier};
+use trustchain_ion::{
+    attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
+};
 
 fn cli() -> Command {
     Command::new("Trustchain CLI")
@@ -50,12 +53,11 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
-                        .arg(arg!(-d --did <DID>).required(true)),
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
         .subcommand(
-            // TODO: refactor into library code
             Command::new("vc")
                 .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
@@ -74,7 +76,6 @@ fn cli() -> Command {
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
-                        .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -83,7 +84,9 @@ fn cli() -> Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
-
+    let endpoint = cli_config().ion_endpoint.to_address();
+    let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
+    let resolver = verifier.resolver();
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -114,8 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) =
-                        TrustchainAPI::resolve(did, "http://localhost:3000/".into()).await?;
+                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, resolver).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -139,11 +141,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         to_string_pretty(&res_meta).expect("Cannot convert to JSON.")
                     );
                 }
+                Some(("verify", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u32>().unwrap(),
+                        None => cli_config().root_event_time,
+                    };
+                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    println!("{did_chain}");
+                }
                 _ => panic!("Unrecognised DID subcommand."),
             }
         }
         Some(("vc", sub_matches)) => {
-            let resolver = get_ion_resolver("http://localhost:3000/");
+            let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
+            let resolver = verifier.resolver();
             match sub_matches.subcommand() {
                 Some(("sign", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -158,16 +170,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let credential_with_proof = TrustchainAPI::sign(credential, did, key_id).await;
+                    let credential_with_proof =
+                        TrustchainAPI::sign(credential, did, None, key_id, resolver)
+                            .await
+                            .expect("Failed to issue credential.");
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
-                    let signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
-                        None => core_config().root_event_time,
+                        None => cli_config().root_event_time,
                     };
+                    // Deserialize
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
                             serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
@@ -175,67 +190,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-
-                    let (verify_result, result) = TrustchainAPI::verify_credential(
+                    // Verify credential
+                    let verify_result = TrustchainAPI::verify_credential(
                         &credential,
-                        *signature_only.unwrap(),
+                        None,
                         root_event_time,
+                        &verifier,
                     )
                     .await;
-                    if verify_result.errors.is_empty() {
-                        println!("Proof... ✅")
-                    } else {
-                        println!(
-                            "Proof... Invalid\n{}",
-                            &to_string_pretty(&verify_result).unwrap()
-                        );
-                    }
-
-                    // Return if only checking signature
-                    if let Some(true) = signature_only {
-                        return Ok(());
-                    }
-
-                    // // Trustchain verify the issued credential
-                    // let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
-
-                    let issuer = match credential.issuer {
-                        Some(ssi::vc::Issuer::URI(URI::String(did))) => did,
-                        _ => panic!("No issuer present in credential."),
-                    };
-
-                    // let result = verifier.verify(&issuer, root_event_time);
-
-                    match result.unwrap() {
-                        Ok(chain) => {
-                            println!("Issuer: {}... ✅", issuer);
-                            if let Some(&verbose_count) = verbose {
-                                if verbose_count > 1 {
-                                    let (_, doc, doc_meta) =
-                                        resolver.resolve_as_result(&issuer).await.unwrap();
-                                    println!("---");
-                                    println!("Issuer DID doc:");
-                                    println!(
-                                        "{}",
-                                        &to_string_pretty(&doc.as_ref().unwrap()).unwrap()
-                                    );
-                                    println!("---");
-                                    println!("Issuer DID doc metadata:");
-                                    println!(
-                                        "{}",
-                                        &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
-                                    );
-                                }
-                                if verbose_count > 0 {
-                                    println!("---");
-                                    println!("Chain:");
-                                    println!("{}", chain);
-                                    println!("---");
-                                }
-                            }
+                    // Handle result
+                    match verify_result {
+                        err @ Err(CredentialError::VerificationResultError(_)) => {
+                            println!("Proof... Invalid");
+                            err?;
                         }
-                        _ => {
-                            println!("Issuer: {}... ❌", issuer);
+                        err @ Err(CredentialError::NoIssuerPresent) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ❌ (missing issuer)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::VerifierError(_)) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ❌ (with verifier error)");
+                            err?;
+                        }
+                        Ok(_) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ✅");
+                        }
+                    }
+
+                    // Show chain
+                    if let Some(&verbose_count) = verbose {
+                        let issuer = credential
+                            .get_issuer()
+                            .expect("No issuer present in credential.");
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
+                            .await
+                            // Can unwrap as already verified above.
+                            .unwrap();
+                        if verbose_count > 1 {
+                            let (_, doc, doc_meta) =
+                                resolver.resolve_as_result(issuer).await.unwrap();
+                            println!("---");
+                            println!("Issuer DID doc:");
+                            println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
+                            println!("---");
+                            println!("Issuer DID doc metadata:");
+                            println!(
+                                "{}",
+                                &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                            );
+                        }
+                        if verbose_count > 0 {
+                            println!("---");
+                            println!("Chain:");
+                            println!("{}", chain);
+                            println!("---");
                         }
                     }
                 }

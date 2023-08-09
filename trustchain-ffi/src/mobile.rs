@@ -27,14 +27,7 @@ pub fn resolve(did: String) -> Result<String> {
 
 /// Resolves a given DID document assuming trust in endpoint.
 pub fn did_resolve(did: String) -> Result<String> {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        // Trustchain Resolver with android localhost
-        TrustchainAPI::resolve(&did, ANDROID_ENDPOINT.into())
-            .await
-            .map_err(|e| anyhow!(e))
-            .and_then(|(_, doc, _)| serde_json::to_string_pretty(&doc).map_err(|e| anyhow!(e)))
-    })
+    todo!()
 }
 /// Verifies a given DID assuming trust in endpoint.
 pub fn did_verify(did: String) -> Result<String> {
