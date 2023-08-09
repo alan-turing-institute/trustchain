@@ -1,4 +1,4 @@
-use serde_json::json;
+use trustchain_core::utils::type_of;
 use trustchain_core::verifier::{Timestamp, Verifier};
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
@@ -58,7 +58,11 @@ async fn test_verifiable_timestamp() {
     // Confirm that the same timestamp is the expected data in the TimestampCommitment.
     assert_eq!(
         verifiable_timestamp.timestamp_commitment().expected_data(),
-        &json!(timestamp)
+        &timestamp
+    );
+    assert_eq!(
+        type_of(verifiable_timestamp.timestamp_commitment().expected_data()),
+        type_of(&timestamp)
     );
 
     // Verify the timestamp.
