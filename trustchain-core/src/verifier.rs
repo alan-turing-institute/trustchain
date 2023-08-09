@@ -207,9 +207,11 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let root = chain.root();
 
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
-        self.verify_timestamp(&*verifiable_timestamp)?;
 
-        // Validate the PoW hash.
+        // Verify that the DID content and the timestamp share a common commitment target.
+        verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?;
+
+        // Validate the PoW on the common target hash.
         self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
         // At this point we know that the same, valid PoW commits to both the timestamp
@@ -235,14 +237,6 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
-
-    /// Verifies a given verifiable timestamp.
-    fn verify_timestamp(
-        &self,
-        verifiable_timestamp: &dyn VerifiableTimestamp,
-    ) -> Result<(), VerifierError> {
-        Ok(verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?)
-    }
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

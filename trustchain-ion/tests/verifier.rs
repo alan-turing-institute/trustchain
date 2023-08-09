@@ -62,11 +62,11 @@ async fn test_verifiable_timestamp() {
     );
 
     // Verify the timestamp.
-    target
-        .verify_timestamp(verifiable_timestamp.as_ref())
+    verifiable_timestamp
+        .verify(&verifiable_timestamp.timestamp_commitment().hash().unwrap())
         .unwrap();
     // Verify a second time to check data is not consumed
-    target
-        .verify_timestamp(verifiable_timestamp.as_ref())
+    verifiable_timestamp
+        .verify(&verifiable_timestamp.timestamp_commitment().hash().unwrap())
         .unwrap();
 }
