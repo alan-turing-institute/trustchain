@@ -142,4 +142,4 @@ pub const NONCE_KEY: &str = "nonce";
 
 // Minimum number of zeros for PoW block hash of root
 // TODO: set differently for mainnet and testnet with features
-pub const MIN_ZEROS: usize = 14;
+pub const MIN_POW_ZEROS: usize = 14;

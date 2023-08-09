@@ -528,12 +528,12 @@ where
         // and specify a minimum work/target in the Trustchain client config, see:
         // https://docs.rs/bitcoin/0.30.0/src/bitcoin/pow.rs.html#72-78
         // In the meantime, just check for a minimum number of leading zeros in the hash.
-        if hash.chars().take_while(|&c| c == '0').count() < crate::MIN_ZEROS {
+        if hash.chars().take_while(|&c| c == '0').count() < crate::MIN_POW_ZEROS {
             return Err(VerifierError::InvalidProofOfWorkHash(format!(
-                "{}, only has {} zeros but MIN_ZEROS is {}",
+                "{}, only has {} zeros but MIN_POW_ZEROS is {}",
                 hash,
                 hash.chars().take_while(|&c| c == '0').count(),
-                crate::MIN_ZEROS
+                crate::MIN_POW_ZEROS
             )));
         }
 
