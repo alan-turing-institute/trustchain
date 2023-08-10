@@ -5,8 +5,8 @@ use ssi::vc::Credential;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, api::TrustchainVCAPI, TrustchainAPI};
-use trustchain_core::resolver::ResolverError;
 use trustchain_core::verifier::VerifierError;
+use trustchain_core::{resolver::ResolverError, vc::CredentialError};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
 use crate::config::{ffi_config, EndpointOptions};
@@ -30,6 +30,14 @@ enum FFIGUIError {
     FailedToResolveDID(ResolverError),
     #[error("DID Verify Error: {0}.")]
     FailedToVerifyDID(VerifierError),
+    #[error("DID Verify Credential: {0}.")]
+    FailedToVerifyCredential(CredentialError),
+}
+
+impl From<CredentialError> for FFIGUIError {
+    fn from(err: CredentialError) -> Self {
+        Self::FailedToVerifyCredential(err)
+    }
 }
 /// Creates a controlled DID from a passed document state, writing the associated create operation to file in the operations path.
 pub fn create(doc_state: Option<String>, verbose: bool) -> anyhow::Result<String> {
@@ -156,16 +164,74 @@ pub fn vc_sign(
     })
 }
 
-// pub fn vc_verify(serial_credential: String, signature_only: bool, root_event_time: u32) -> anyhow::Result<String> {
-
-// }
+pub fn vc_verify(serial_credential: String) -> anyhow::Result<String> {
+    let resolver_address = if let Some(ion_endpoint) = &ffi_config().endpoint_options {
+        ion_endpoint.ion_endpoint().to_address()
+    } else {
+        EndpointOptions::default().ion_endpoint().to_address()
+    };
+    let resolver = get_ion_resolver(&resolver_address);
+    let root_event_time = &ffi_config().trustchain().unwrap().root_event_time;
+    let rt = Runtime::new().unwrap();
+    let credential: Credential;
+    match serde_json::from_str(&serial_credential) {
+        Ok(cred) => credential = cred,
+        Err(err) => return Err(anyhow!("{}", FFIGUIError::FailedToDeserialise(err))),
+    }
+    rt.block_on(async {
+        match TrustchainAPI::verify_credential(
+            &credential,
+            None,
+            *root_event_time,
+            &IONVerifier::new(resolver),
+        )
+        .await
+        {
+            Ok(did_chain) => Ok(serde_json::to_string_pretty(&did_chain)
+                .expect("Serialise implimented for DIDChain struct")),
+            Err(err) => Err(anyhow!("{}", FFIGUIError::FailedToVerifyCredential(err))),
+        }
+        // let did_chain = TrustchainAPI::verify_credential(
+        //     &credential,
+        //     None,
+        //     *root_event_time,
+        //     &IONVerifier::new(resolver),
+        // )
+        // .await?;
+        // Ok(serde_json::to_string_pretty(&did_chain).unwrap())
+    })
+}
 
 #[cfg(test)]
 mod tests {
-    use trustchain_core::TRUSTCHAIN_DATA;
-
     use super::*;
     use std::fs;
+    use trustchain_core::TRUSTCHAIN_DATA;
+
+    const TEST_CREDENTIAL: &str = r##"
+    {
+    "@context" : [
+       "https://www.w3.org/2018/credentials/v1",
+       "https://schema.org/"
+    ],
+    "credentialSubject" : {
+       "address" : {
+          "addressCountry" : "UK",
+          "addressLocality" : "London",
+          "postalCode" : "SE1 3WY",
+          "streetAddress" : "10 Main Street"
+       },
+       "birthDate" : "1989-03-15",
+       "name" : "J. Doe"
+    },
+    "id" : "http://example.edu/credentials/332",
+    "issuanceDate" : "2020-08-19T21:41:50Z",
+    "issuer" : "did:key:z6MkpbgE27YYYpSF8hd7ipazeJxiUGMEzQFT5EgN46TDwAeU",
+    "type" : [
+       "VerifiableCredential",
+       "IdentityCredential"
+    ]
+ }"##;
 
     #[test]
     fn test_resolve() {
@@ -194,37 +260,24 @@ mod tests {
 
     #[test]
     fn test_sign_vc() {
-        let cred = String::from(
-            r##"
-            {
-            "@context" : [
-               "https://www.w3.org/2018/credentials/v1",
-               "https://schema.org/"
-            ],
-            "credentialSubject" : {
-               "address" : {
-                  "addressCountry" : "UK",
-                  "addressLocality" : "London",
-                  "postalCode" : "SE1 3WY",
-                  "streetAddress" : "10 Main Street"
-               },
-               "birthDate" : "1989-03-15",
-               "name" : "J. Doe"
-            },
-            "id" : "http://example.edu/credentials/332",
-            "issuanceDate" : "2020-08-19T21:41:50Z",
-            "issuer" : "did:key:z6MkpbgE27YYYpSF8hd7ipazeJxiUGMEzQFT5EgN46TDwAeU",
-            "type" : [
-               "VerifiableCredential",
-               "IdentityCredential"
-            ]
-         }"##,
-        );
+        let cred = String::from(TEST_CREDENTIAL);
         assert!(vc_sign(
             cred,
             String::from("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"),
             None
         )
         .is_ok())
+    }
+
+    #[test]
+    fn test_verify_credential() {
+        let vc_string = vc_sign(
+            String::from(TEST_CREDENTIAL),
+            String::from("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"),
+            None,
+        )
+        .unwrap();
+        let verification = vc_verify(vc_string);
+        assert!(verification.is_ok());
     }
 }
