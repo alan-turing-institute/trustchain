@@ -30,7 +30,7 @@ enum FFIGUIError {
     FailedToResolveDID(ResolverError),
     #[error("DID Verify Error: {0}.")]
     FailedToVerifyDID(VerifierError),
-    #[error("DID Verify Credential: {0}.")]
+    #[error("DID Verify Credential Error: {0}.")]
     FailedToVerifyCredential(CredentialError),
 }
 
