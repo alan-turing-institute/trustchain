@@ -162,14 +162,69 @@ pub fn vc_sign(
 
 #[cfg(test)]
 mod tests {
+    use trustchain_core::TRUSTCHAIN_DATA;
+
     use super::*;
+    use std::fs;
 
     #[test]
-    fn test_resolution() {
-        println!(
-            "{}",
+    fn test_resolve() {
+        assert!(
             resolve("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string())
-                .unwrap()
+                .is_ok()
         );
+    }
+
+    #[test]
+    fn test_create() {
+        let did = create(None, false).unwrap();
+        assert!(fs::read_to_string(
+            std::env::var(TRUSTCHAIN_DATA).unwrap() + &format!("/operations/{did}")
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn test_verify() {
+        assert!(
+            verify("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string())
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_sign_vc() {
+        let cred = String::from(
+            r##"
+            {
+            "@context" : [
+               "https://www.w3.org/2018/credentials/v1",
+               "https://schema.org/"
+            ],
+            "credentialSubject" : {
+               "address" : {
+                  "addressCountry" : "UK",
+                  "addressLocality" : "London",
+                  "postalCode" : "SE1 3WY",
+                  "streetAddress" : "10 Main Street"
+               },
+               "birthDate" : "1989-03-15",
+               "name" : "J. Doe"
+            },
+            "id" : "http://example.edu/credentials/332",
+            "issuanceDate" : "2020-08-19T21:41:50Z",
+            "issuer" : "did:key:z6MkpbgE27YYYpSF8hd7ipazeJxiUGMEzQFT5EgN46TDwAeU",
+            "type" : [
+               "VerifiableCredential",
+               "IdentityCredential"
+            ]
+         }"##,
+        );
+        assert!(vc_sign(
+            cred,
+            String::from("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"),
+            None
+        )
+        .is_ok())
     }
 }
