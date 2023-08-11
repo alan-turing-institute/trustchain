@@ -210,14 +210,15 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
 
-        // Verify that the root DID content (keys & endpoints) and the timestamp share a common commitment target.
+        // Verify that the root DID content (keys & endpoints) and the timestamp share a common
+        // commitment target.
         verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
         // Validate the PoW on the common target hash.
         self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
-        // Verify explicitly that the return value from the timestamp method equals the expected root timestamp
-        // (in case the default timestamp method implementation has been overridden).
+        // Verify explicitly that the return value from the timestamp method equals the expected
+        // root timestamp (in case the default timestamp method implementation has been overridden).
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
             Err(VerifierError::InvalidRoot(root.to_string()))
         } else {
