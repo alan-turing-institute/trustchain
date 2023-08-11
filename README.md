@@ -38,7 +38,7 @@ cargo build
 ```
 Install the Trustchain CLI with:
 ```shell
-cargo install --path trustchain-ion
+cargo install --path trustchain-cli
 ```
 
 ## Usage Guide

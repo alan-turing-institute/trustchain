@@ -4,17 +4,22 @@ use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
 use ipfs_hasher::IpfsHasher;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use ssi::did::Document;
 use std::convert::TryInto;
 use std::marker::PhantomData;
+use trustchain_core::commitment::TimestampCommitment;
 use trustchain_core::commitment::{ChainedCommitment, CommitmentChain, CommitmentResult};
 use trustchain_core::commitment::{Commitment, CommitmentError};
 use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
+use trustchain_core::verifier::Timestamp;
 
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::MERKLE_ROOT_KEY;
+use crate::TIMESTAMP_KEY;
 
 const CID_KEY: &str = "cid";
 const DELTAS_KEY: &str = "deltas";
@@ -25,6 +30,40 @@ fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
 
 fn ipfs_decode_candidate_data() -> fn(&[u8]) -> CommitmentResult<Value> {
     |x| decode_ipfs_content(x).map_err(|_| CommitmentError::DataDecodingFailure)
+}
+
+fn block_header_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
+    // Candidate data the block header bytes.
+    |x| {
+        // Bitcoin block hash is a double SHA256 hash of the block header.
+        // We use a generic sha2 crate to avoid trust in rust-bitcoin.
+        let double_hash_hex = hex::encode(Sha256::digest(Sha256::digest(x)));
+        // For leading (not trailing) zeros, convert the hex to big-endian.
+        Ok(reverse_endianness(&double_hash_hex).unwrap())
+    }
+}
+
+fn block_header_decoder() -> fn(&[u8]) -> CommitmentResult<Value> {
+    |x| {
+        if x.len() != 80 {
+            return Err(CommitmentError::DataDecodingError(
+                "Error: Bitcoin block header must be 80 bytes.".to_string(),
+            ));
+        };
+        let decoded_header = decode_block_header(x.try_into().map_err(|err| {
+            CommitmentError::DataDecodingError(format!(
+                "Error: Bitcoin block header must be 80 bytes with error: {err}"
+            ))
+        })?);
+
+        match decoded_header {
+            Ok(x) => Ok(x),
+            Err(e) => Err(CommitmentError::DataDecodingError(format!(
+                "Error decoding Bitcoin block header: {}.",
+                e
+            ))),
+        }
+    }
 }
 
 /// Unit struct for incomplete commitments.
@@ -363,18 +402,10 @@ impl BlockHashCommitment<Complete> {
         }
     }
 }
+
 impl<T> TrivialCommitment for BlockHashCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
-        // Candidate data the block header bytes.
-        |x| {
-            // Bitcoin block hash is a double SHA256 hash of the block header.
-            // We use a generic SHA256 library to avoid trust in rust-bitcoin.
-            let hash1_hex = sha256::digest(x);
-            let hash1_bytes = hex::decode(hash1_hex).unwrap();
-            let hash2_hex = sha256::digest(&*hash1_bytes);
-            // For leading (not trailing) zeros, convert the hex to big-endian.
-            Ok(reverse_endianness(&hash2_hex).unwrap())
-        }
+        block_header_hasher()
     }
 
     fn candidate_data(&self) -> &[u8] {
@@ -383,26 +414,21 @@ impl<T> TrivialCommitment for BlockHashCommitment<T> {
 
     /// Deserializes the candidate data into a Block header (as JSON).
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
-        |x| {
-            if x.len() != 80 {
-                return Err(CommitmentError::DataDecodingError(
-                    "Error: Bitcoin block header must be 80 bytes.".to_string(),
-                ));
-            };
-            let decoded_header = decode_block_header(x.try_into().map_err(|err| {
-                CommitmentError::DataDecodingError(format!(
-                    "Error: Bitcoin block header must be 80 bytes with error: {err}"
-                ))
-            })?);
+        block_header_decoder()
+    }
 
-            match decoded_header {
-                Ok(x) => Ok(x),
-                Err(e) => Err(CommitmentError::DataDecodingError(format!(
-                    "Error decoding Bitcoin block header: {}.",
-                    e
-                ))),
+    /// Override the filter method to ensure only the Merkle root content is considered.
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
+        Some(Box::new(move |value| {
+            if let Value::Object(map) = value {
+                match map.get(MERKLE_ROOT_KEY) {
+                    Some(Value::String(str)) => Ok(Value::String(str.clone())),
+                    _ => Err(CommitmentError::DataDecodingFailure),
+                }
+            } else {
+                Err(CommitmentError::DataDecodingFailure)
             }
-        }
+        }))
     }
 
     fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
@@ -480,6 +506,10 @@ impl IONCommitment {
             chained_commitment: iterated_commitment,
         })
     }
+
+    pub fn chained_commitment(&self) -> &ChainedCommitment {
+        &self.chained_commitment
+    }
 }
 
 // Delegate all Commitment trait methods to the wrapped ChainedCommitment.
@@ -528,44 +558,128 @@ impl DIDCommitment for IONCommitment {
         &self.did_doc
     }
 
-    fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]> {
-        // The candidate data for the timestamp is the Bitcoin block header,
-        // which is the candidate data in the last commitment in the chain
-        // (i.e. the BlockHashCommitment).
-        if let Some(commitment) = self.chained_commitment.commitments().last() {
-            return Ok(commitment.candidate_data());
-        }
-        Err(CommitmentError::EmptyChainedCommitment)
-    }
-
-    fn decode_timestamp_candidate_data(
-        &self,
-    ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>> {
-        // The required candidate data decoder (function) is the one for the
-        // Bitcoin block header, which is the decoder in the last commitment
-        // in the chain (i.e. the BlockHashCommitment).
-        if let Some(commitment) = self.chained_commitment.commitments().last() {
-            return Ok(commitment.decode_candidate_data());
-        }
-        Err(CommitmentError::EmptyChainedCommitment)
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
+/// A Commitment whose expected data is a Unix time and hasher
+/// and candidate data are obtained from a given DIDCommitment.
+pub struct BlockTimestampCommitment {
+    candidate_data: Vec<u8>,
+    expected_data: Timestamp,
+}
+
+impl BlockTimestampCommitment {
+    pub fn new(candidate_data: Vec<u8>, expected_data: Timestamp) -> CommitmentResult<Self> {
+        // The decoded candidate data must contain the timestamp such that it is found
+        // by the json_contains function, otherwise the content verification will fail.
+        Ok(Self {
+            candidate_data,
+            expected_data,
+        })
+    }
+}
+
+impl TrivialCommitment<Timestamp> for BlockTimestampCommitment {
+    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
+        block_header_hasher()
+    }
+
+    fn candidate_data(&self) -> &[u8] {
+        &self.candidate_data
+    }
+
+    /// Deserializes the candidate data into a Block header (as JSON).
+    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
+        block_header_decoder()
+    }
+
+    /// Override the filter method to ensure only timestamp content is considered.
+    fn filter(&self) -> Option<Box<dyn Fn(&serde_json::Value) -> CommitmentResult<Value>>> {
+        Some(Box::new(move |value| {
+            if let Value::Object(map) = value {
+                match map.get(TIMESTAMP_KEY) {
+                    Some(Value::Number(timestamp)) => Ok(Value::Number(timestamp.clone())),
+                    _ => Err(CommitmentError::DataDecodingFailure),
+                }
+            } else {
+                Err(CommitmentError::DataDecodingFailure)
+            }
+        }))
+    }
+
+    fn to_commitment(self: Box<Self>, _: Timestamp) -> Box<dyn Commitment<Timestamp>> {
+        self
+    }
+}
+
+impl Commitment<Timestamp> for BlockTimestampCommitment {
+    fn expected_data(&self) -> &Timestamp {
+        &self.expected_data
+    }
+}
+
+impl TimestampCommitment for BlockTimestampCommitment {}
+
 #[cfg(test)]
 mod tests {
-
-    use std::str::FromStr;
-
     use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
     use ipfs_api_backend_hyper::IpfsClient;
+    use std::str::FromStr;
     use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
     use crate::{
+        data::TEST_BLOCK_HEADER_HEX,
         utils::{block_header, merkle_proof, query_ipfs, transaction},
-        MERKLE_ROOT_KEY, TIMESTAMP_KEY,
     };
+
+    #[test]
+    fn test_block_timestamp_commitment() {
+        let expected_data: Timestamp = 1666265405;
+        let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
+        let target = BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
+        target.verify_content().unwrap();
+        let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        target.verify(pow_hash).unwrap();
+
+        // Both calls should instead error with incorrect timestamp
+        let bad_expected_data: Timestamp = 1666265406;
+        let target = BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
+        match target.verify_content() {
+            Err(CommitmentError::FailedContentVerification(s1, s2)) => {
+                assert_eq!(
+                    (s1, s2),
+                    (format!("{bad_expected_data}"), format!("{expected_data}"))
+                )
+            }
+            _ => panic!(),
+        };
+        match target.verify(pow_hash) {
+            Err(CommitmentError::FailedContentVerification(s1, s2)) => {
+                assert_eq!(
+                    (s1, s2),
+                    (format!("{bad_expected_data}"), format!("{expected_data}"))
+                )
+            }
+            _ => panic!(),
+        };
+    }
+
+    #[test]
+    fn test_block_hash_commitment_filter() {
+        // The expected data is the Merkle root inside the block header.
+        // For the testnet block at height 2377445, the Merkle root is:
+        let expected_data =
+            json!("7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69");
+        let candidate_data = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
+        let target = BlockHashCommitment::<Complete>::new(candidate_data, expected_data);
+        target.verify_content().unwrap();
+        let pow_hash = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        target.verify(pow_hash).unwrap();
+    }
 
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
@@ -716,21 +830,14 @@ mod tests {
         // We expect to find the Merkle root in the block header.
         // For the testnet block at height 2377445, the Merkle root is:
         let merkle_root_str = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let expected_str = format!(r#"{{"{}":"{}"}}"#, MERKLE_ROOT_KEY, merkle_root_str);
-        let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+        let expected_data = json!(merkle_root_str);
 
         // The candidate data is the serialized block header.
         let block_header = block_header(&block_hash, None).unwrap();
-        let candidate_data_ = bitcoin::consensus::serialize(&block_header);
-        let candidate_data = candidate_data_.clone();
-
-        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, expected_data);
-        assert!(commitment.verify(target).is_ok());
-
-        // Check the timestamp is a u32 Unix time.
-        let binding = commitment.commitment_content().unwrap();
-        let actual_timestamp = binding.get(TIMESTAMP_KEY).unwrap();
-        assert_eq!(actual_timestamp, &json!(1666265405));
+        let candidate_data = bitcoin::consensus::serialize(&block_header);
+        let commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
+        commitment.verify(target).unwrap();
 
         // We do *not* expect a different target to succeed.
         let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
@@ -743,14 +850,31 @@ mod tests {
         // We do *not* expect to find a different Merkle root.
         let bad_merkle_root_str =
             "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let bad_expected_data = serde_json::json!(bad_merkle_root_str);
-        let candidate_data = candidate_data_;
-        let commitment = BlockHashCommitment::<Complete>::new(candidate_data, bad_expected_data);
+        let bad_expected_data = json!(bad_merkle_root_str);
+        let commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
             Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
+
+        // We do *not* expect the (correct) timestamp to be valid expected data,
+        // since the candidate data is filtered to contain only the Merkle root field.
+        let wrong_expected_data_commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1666265405));
+        assert!(wrong_expected_data_commitment.verify(target).is_err());
+
+        // Also test as timestamp commitment
+        let expected_data = 1666265405;
+        let commitment =
+            BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
+        commitment.verify_content().unwrap();
+        commitment.verify(target).unwrap();
+        let bad_expected_data = 1666265406;
+        let commitment = BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
+        assert!(commitment.verify_content().is_err());
+        assert!(commitment.verify(target).is_err());
     }
 
     #[tokio::test]
