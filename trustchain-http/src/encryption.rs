@@ -503,6 +503,7 @@ mod tests {
         );
 
         // TODO: this should go in its own function
+        // map with unencrypted nonces so UE can store them for later verification
         let nonces: HashMap<String, String> =
             test_keys_map
                 .iter()
@@ -577,4 +578,21 @@ mod tests {
             nonces.get("key_2").unwrap()
         );
     }
+    #[test]
+    fn test_jwk_thumbprint() {
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
+        for (key_id, value) in test_keys_map {
+            println!("{}", key_id);
+            let ssi_key = josekit_to_ssi_jwk(&value).unwrap();
+            let key_thumbprint = ssi_key.thumbprint().unwrap();
+            println!("Thumbprint: {}", key_thumbprint);
+        }
+    }
 }
+
+// todo
+//
+// - what exactly does thumbprint() return and how does it relate to key id?
+// - test did with multiple signing keys and corresponding private keys
+// - add update commitment to identity CR

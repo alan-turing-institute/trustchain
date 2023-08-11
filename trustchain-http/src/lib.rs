@@ -1,4 +1,5 @@
 pub mod attestor;
+pub mod challenge_response;
 pub mod config;
 pub mod data;
 pub mod encryption;
