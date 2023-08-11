@@ -18,8 +18,11 @@ pub enum VerifierError {
     #[error("Invalid signature for proof in dDID: {0}.")]
     InvalidSignature(String),
     /// Invalid root DID after self-controller reached in path.
-    #[error("Invalid root DID: {0}.")]
-    InvalidRoot(String),
+    #[error("Invalid root DID error: {0}")]
+    InvalidRoot(Box<dyn std::error::Error>),
+    /// Invalid root with error:
+    #[error("Invalid root DID ({0}) with timestamp: {1}.")]
+    InvalidRootTimestamp(String, Timestamp),
     /// Failed to build DID chain.
     #[error("Failed to build chain: {0}.")]
     ChainBuildFailure(String),
@@ -220,7 +223,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         // Verify explicitly that the return value from the timestamp method equals the expected
         // root timestamp (in case the default timestamp method implementation has been overridden).
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
-            Err(VerifierError::InvalidRoot(root.to_string()))
+            Err(VerifierError::InvalidRootTimestamp(
+                root.to_string(),
+                verifiable_timestamp.timestamp(),
+            ))
         } else {
             Ok(chain)
         }
