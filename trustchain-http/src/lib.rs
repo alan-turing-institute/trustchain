@@ -1,5 +1,7 @@
 pub mod attestor;
 pub mod config;
+pub mod data;
+pub mod encryption;
 pub mod errors;
 pub mod handlers;
 pub mod issuer;
@@ -9,7 +11,6 @@ pub mod resolver;
 pub mod server;
 pub mod state;
 pub mod verifier;
-pub mod encryption;
 
 /// Issuer DID
 // TODO: add issuer/verifier configuration as used for core/ion crates

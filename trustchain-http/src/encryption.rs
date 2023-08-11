@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use josekit::{
     jwe::JweHeader,
@@ -10,9 +10,12 @@ use josekit::{
 };
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{from_value, Value};
 use sha2::{Digest, Sha256};
+use ssi::did::Document;
+use ssi::did::VerificationMethod;
 use ssi::jwk::JWK;
+use thiserror::Error;
 
 const TEMP_PRIVATE_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U","y":"z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg","d":"CfdUwQ-CcBQkWpIDPjhSJAq2SCg6hAGdcvLmCj0aA-c"}"#;
 const TEMP_PUB_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U","y":"z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg"}"#;
@@ -22,6 +25,22 @@ const DOWNSTREAM_PRIV_KEY_1: &str = r#"{"kty":"EC","crv":"secp256k1","x":"Lt2ys7
 const DOWNSTREAM_PUB_KEY_1: &str = r#"{"kty":"EC","crv":"secp256k1","x":"Lt2ys7LE0ELccVtCETtVjMFavgjwYDjDBtuV_XCH7-g","y":"TdTT8oXUSXMvFbhnsYrqwOkL7-niHWFxW0vaBSnUMnI"}"#;
 const DOWNSTREAM_PRIV_KEY_2: &str = r#"{"kty":"EC","crv":"secp256k1","x":"AB1b_4-XSem0uiPGGuW_hf_AuPArukMuD2S95ypGDSE","y":"suvBnCbhicPdYZeqgxJfPFmiNHGYDjPiW8XkYHxwgBU","d":"V3zmieRjP9LYa1v8l8lYXh4LqU87bPspSAGqq34Up1Q"}"#;
 const DOWNSTREAM_PUB_KEY_2: &str = r#"{"kty":"EC","crv":"secp256k1","x":"AB1b_4-XSem0uiPGGuW_hf_AuPArukMuD2S95ypGDSE","y":"suvBnCbhicPdYZeqgxJfPFmiNHGYDjPiW8XkYHxwgBU"}"#;
+
+#[derive(Error, Debug)]
+pub enum TrustchainCRError {
+    /// Serde JSON error.
+    #[error("Wrapped serialization error: {0}")]
+    Serde(serde_json::Error),
+    /// Wrapped jose error.
+    #[error("Wrapped jose error: {0}")]
+    Jose(JoseError),
+    /// Missing JWK from verification method
+    #[error("Missing JWK from verification method of a DID document.")]
+    MissingJWK,
+    /// Key not found in hashmap
+    #[error("Key id not found.")]
+    KeyNotFound,
+}
 
 pub struct IdentityChallenge {
     nonce: String,             // Maybe create a new Nonce type
@@ -130,7 +149,6 @@ impl CRStateIO for DE {
 
 // TODO: own type for nonce
 
-// trait Encryption { ??
 trait ChallengeResponse {
     fn sign_and_encrypt(&self, payload: &JwtPayload) -> Result<String, JoseError>;
     fn decrypt_and_verify(&self, input: String) -> Result<JwtPayload, JoseError>;
@@ -250,7 +268,13 @@ fn present_content_challenge(
     // get number of keys
 
     // generate one nonce per key and encrypt it with key
-
+    // let challenges: HashMap<String, String> =
+    //         test_keys_map
+    //             .iter()
+    //             .fold(HashMap::new(), |mut acc, (key_id, key)| {
+    //                 acc.insert(String::from(key_id), generate_challenge(&key).unwrap());
+    //                 acc
+    //             });
     todo!()
 }
 
@@ -282,11 +306,114 @@ fn decrypt(input: &Value, key: &Jwk) -> Result<JwtPayload, JoseError> {
     Ok(payload)
 }
 
+/// Extract public keys from did document together with corresponding key ids
+fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, TrustchainCRError> {
+    let mut my_map = HashMap::<String, Jwk>::new();
+    if let Some(vms) = &document.verification_method {
+        // TODO: leave the commented code
+        // vms.iter().for_each(|vm| match vm {
+        //     VerificationMethod::Map(vm_map) => {
+        //         let id = vm_map.id;
+        //         let key = vm_map.get_jwk().unwrap();
+        //         let key_jose = ssi_to_josekit_jwk(&key).unwrap();
+        //         my_map.insert(id, key_jose);
+        //     }
+        //     _ => (),
+        // });
+        // TODO: consider rewriting functional with filter, partition, fold over returned error
+        // variants.
+        for vm in vms {
+            match vm {
+                VerificationMethod::Map(vm_map) => {
+                    let id = vm_map.id.clone(); // TODo: use JWK::thumbprint() instead
+                    let key = vm_map
+                        .get_jwk()
+                        .map_err(|_| TrustchainCRError::MissingJWK)?;
+                    // let id = key
+                    //     .thumbprint()
+                    //     .map_err(|_| TrustchainCRError::MissingJWK)?; //TODO: different error variant?
+                    let key_jose =
+                        ssi_to_josekit_jwk(&key).map_err(|err| TrustchainCRError::Serde(err))?;
+                    my_map.insert(id, key_jose);
+                }
+                _ => (),
+            }
+        }
+    }
+    Ok(my_map)
+}
+
+fn generate_content_response(
+    challenges: HashMap<String, String>,
+    did_keys_priv: HashMap<String, Jwk>,
+    cr_keys: &KeysCR,
+) -> Result<String, TrustchainCRError> {
+    let decrypted_nonces: HashMap<String, String> =
+        challenges
+            .iter()
+            .fold(HashMap::new(), |mut acc, (key_id, nonce)| {
+                acc.insert(
+                    String::from(key_id),
+                    decrypt(
+                        &Some(Value::from(nonce.clone())).unwrap(),
+                        did_keys_priv.get(key_id).unwrap(),
+                    )
+                    .unwrap()
+                    .claim("nonce")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
+                );
+
+                acc
+            });
+    // Ok(decrypted_nonces)
+    // make payload
+    let value: serde_json::Value = serde_json::to_value(decrypted_nonces).unwrap();
+    let mut payload = JwtPayload::new();
+    payload.set_claim("nonces", Some(value)).unwrap();
+    // sign (temp private key) and encrypt (UE public key)
+    let encrypted_response = cr_keys.sign_and_encrypt(&payload).unwrap();
+
+    Ok(encrypted_response)
+}
+
+fn verify_content_response(
+    response: String,
+    cr_keys: &KeysCR,
+) -> Result<HashMap<String, String>, TrustchainCRError> {
+    // verify signature and decrypt response
+    let decrypted_response = cr_keys.decrypt_and_verify(response).unwrap();
+
+    // extract response hashmap
+    let response_hashmap: HashMap<String, String> =
+        serde_json::from_value(decrypted_response.claim("nonces").unwrap().clone()).unwrap();
+
+    Ok(response_hashmap)
+}
+
 #[cfg(test)]
 mod tests {
-    use sha2::digest::typenum::private::IsEqualPrivate;
+
+    use serde_json::from_str;
 
     use super::*;
+    use crate::data::TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS;
+
+    #[test]
+    fn test_extract_key_ids_and_jwk() {
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
+        println!("Hash map of DE public keys: {:?}", test_keys_map);
+
+        let expected_key = "#V8jt_0c-aFlq40Uti2R_WiquxuzxyB8kn1cfWmXIU84";
+        let first_key = test_keys_map.keys().next().expect("HashMap empty!");
+        assert_eq!(
+            first_key, expected_key,
+            "The first key of the HashMap is not the expected key id."
+        );
+    }
 
     #[test]
     fn test_josekit_to_ssi_jwk() {
@@ -356,44 +483,56 @@ mod tests {
 
     #[test]
     fn test_content_response() {
-        // keys we need
+        // keys the UE needs
         let upstream_cr_keys = KeysCR {
             private_key: serde_json::from_str(UPSTREAM_PRIVATE_KEY).unwrap(),
             public_key: serde_json::from_str(TEMP_PUB_KEY).unwrap(),
         };
 
-        // TODO: extract public keys from did document -> Vec<&KeyPairs>
-        let mut downstream_keys = Vec::<&Jwk>::new();
-        let downstream_pub_key_1: Jwk = serde_json::from_str(DOWNSTREAM_PUB_KEY_1).unwrap();
-        let downstream_pub_key_2: Jwk = serde_json::from_str(DOWNSTREAM_PUB_KEY_2).unwrap();
-        downstream_keys.push(&downstream_pub_key_1);
-        downstream_keys.push(&downstream_pub_key_2);
+        // extract DE public keys from did document -> Vec<&KeyPairs>
+        // let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        // let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
+        let mut test_keys_map: HashMap<String, Jwk> = HashMap::new();
+        test_keys_map.insert(
+            String::from("key_1"),
+            serde_json::from_str(DOWNSTREAM_PUB_KEY_1).unwrap(),
+        );
+        test_keys_map.insert(
+            String::from("key_2"),
+            serde_json::from_str(DOWNSTREAM_PUB_KEY_2).unwrap(),
+        );
 
-        // generate one nonce per public key -> sign individually (vec of signed nonces)
-        let challenge_vec: Vec<String> = downstream_keys
+        // TODO: this should go in its own function
+        let nonces: HashMap<String, String> =
+            test_keys_map
+                .iter()
+                .fold(HashMap::new(), |mut acc, (key_id, _)| {
+                    acc.insert(String::from(key_id), generate_nonce());
+                    acc
+                });
+
+        for (key, val) in &nonces {
+            println!("{}", val);
+        }
+
+        let challenges = nonces
             .iter()
-            .map(|key| generate_challenge(key).unwrap())
-            .collect();
-
-        let key_hash_vec: Vec<String> = downstream_keys
-            .iter()
-            .map(|key| hex::encode(Sha256::digest(serde_json::to_string(&key).unwrap())))
-            .collect();
-
-        println!("Vector with key hashes: {:?}", key_hash_vec);
+            .fold(HashMap::new(), |mut acc, (key_id, nonce)| {
+                acc.insert(
+                    String::from(key_id),
+                    encrypt(nonce.clone(), &test_keys_map.get(key_id).unwrap()).unwrap(),
+                );
+                acc
+            });
 
         // sign (UE private key) and encrypt (DE temp public key) entire challenge
+        let value: serde_json::Value = serde_json::to_value(challenges).unwrap();
         let mut payload = JwtPayload::new();
-        payload
-            .set_claim("challenge", Some(Value::from(challenge_vec)))
-            .unwrap();
-        payload
-            .set_claim("key_hash", Some(Value::from(key_hash_vec)))
-            .unwrap();
+        payload.set_claim("challenges", Some(value)).unwrap();
+
         let encrypted_challenge = upstream_cr_keys.sign_and_encrypt(&payload).unwrap();
 
-        // generate response
-        // verify and decrypt -> extract vectors with challenges and key hashes
+        // verify and decrypt
         let downstream_cr_keys = KeysCR {
             private_key: serde_json::from_str(TEMP_PRIVATE_KEY).unwrap(),
             public_key: serde_json::from_str(UPSTREAM_PUB_KEY).unwrap(),
@@ -402,37 +541,40 @@ mod tests {
             .decrypt_and_verify(encrypted_challenge)
             .unwrap();
 
-        // extract vector with challenge nonce(s)
-        let challenge_vec = decrypted_challenge
-            .claim("challenge")
-            .unwrap()
-            .as_array()
-            .unwrap();
+        // extract challenge hashmap
+        let challenges_hashmap: HashMap<String, String> =
+            serde_json::from_value(decrypted_challenge.claim("challenges").unwrap().clone())
+                .unwrap();
 
-        // private keys
-        let mut downstream_private_keys = Vec::<&Jwk>::new();
-        let downstream_private_key_1: Jwk = serde_json::from_str(DOWNSTREAM_PRIV_KEY_1).unwrap();
-        let downstream_private_key_2: Jwk = serde_json::from_str(DOWNSTREAM_PRIV_KEY_2).unwrap();
-        downstream_private_keys.push(&downstream_private_key_1);
-        downstream_private_keys.push(&downstream_private_key_2);
+        // Decrypt each challenge nonce
+        let mut test_priv_keys_map: HashMap<String, Jwk> = HashMap::new();
+        test_priv_keys_map.insert(
+            String::from("key_1"),
+            serde_json::from_str(DOWNSTREAM_PRIV_KEY_1).unwrap(),
+        );
+        test_priv_keys_map.insert(
+            String::from("key_2"),
+            serde_json::from_str(DOWNSTREAM_PRIV_KEY_2).unwrap(),
+        );
 
-        // decrypt each nonce
-        let response_vec: Vec<JwtPayload> = challenge_vec
-            .iter()
-            .zip(downstream_private_keys.iter())
-            .map(|(nonce, key)| decrypt(&nonce, &key).unwrap())
-            .collect();
-        println!("Decrypted challenge vector: {:?}", response_vec);
-        // continue here!!!!!!!!!!!!! How do we find the right key for each nonce?
+        // -----------------------------------------
+        let response =
+            generate_content_response(challenges_hashmap, test_priv_keys_map, &downstream_cr_keys)
+                .unwrap();
 
-        // TODO: prepare response
+        // UE: verify response
+        let verified_response = verify_content_response(response, &upstream_cr_keys).unwrap();
 
-        // TODO: verify response (nonces)
+        let nonce_1 = verified_response.get("key_1").unwrap();
+        let expected_nonce_1 = nonces.get("key_1").unwrap();
+
+        assert_eq!(
+            verified_response.get("key_1").unwrap(),
+            nonces.get("key_1").unwrap()
+        );
+        assert_eq!(
+            verified_response.get("key_2").unwrap(),
+            nonces.get("key_2").unwrap()
+        );
     }
-
-    // #[test]
-    // fn test_ec_key() {
-    //     let key = Jwk::generate_ec_key(josekit::jwk::alg::ec::EcCurve::Secp256k1).unwrap();
-    //     println!("{}", serde_json::to_string_pretty(&key).unwrap());
-    // }
 }
