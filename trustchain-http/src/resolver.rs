@@ -72,9 +72,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
             .await
             // Any commitment error implies invalid root
             .map_err(|err| match err {
-                err @ VerifierError::CommitmentFailure(_) => {
-                    VerifierError::InvalidRoot(format!("{err}"))
-                }
+                err @ VerifierError::CommitmentFailure(_) => VerifierError::InvalidRoot(err.into()),
                 err => err,
             })?;
         debug!("Verified did...");
@@ -243,7 +241,7 @@ mod tests {
         assert!(response
             .text()
             .await
-            .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID:"#),)
+            .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID error:"#),)
     }
 
     #[tokio::test]
