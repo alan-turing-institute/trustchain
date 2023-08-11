@@ -80,11 +80,9 @@ impl TrustchainVerifierHTTPHandler {
         Json(verification_info): Json<PostVerifier>,
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
-        info!(
-            "Received credential:\n{}",
-            serde_json::to_string_pretty(&verification_info)
-                .map_err(TrustchainHTTPError::FailedToDeserialize)?
-        );
+        let verification_info_json = serde_json::to_string_pretty(&verification_info)
+            .map_err(TrustchainHTTPError::FailedToDeserialize)?;
+        info!("Received verification information:\n{verification_info_json}",);
 
         TrustchainVerifierHTTPHandler::verify_credential(
             &verification_info.credential,
@@ -92,7 +90,14 @@ impl TrustchainVerifierHTTPHandler {
             &app_state.verifier,
         )
         .await
-        .map(|_| (StatusCode::OK, Html("Presentation successfully proved!")))
+        .map(|_| {
+            info!("Credential verification...ok ✅:\n{verification_info_json}");
+            (StatusCode::OK, Html("Credential received and verified!"))
+        })
+        .map_err(|err| {
+            info!("Credential verification...error ❌:\n{err}");
+            err
+        })
     }
     /// Generates a QR code for receiving requests, default to first request in cache
     pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> impl IntoResponse {
