@@ -15,6 +15,7 @@ trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 async-trait = "0.1"
 axum = "0.6"
+axum-server = {version="0.5.1",  features = ["tls-rustls"] }
 base64 = "0.21.0"
 chrono = "^0.4"
 clap = { version = "^4", features=["derive", "env", "cargo"] }
@@ -30,6 +31,7 @@ reqwest = "0.11.16"
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
+shellexpand = "3.1.0"
 ssi = "0.4"
 thiserror="1.0"
 tokio = {version = "1.20.1", features = ["full"]}

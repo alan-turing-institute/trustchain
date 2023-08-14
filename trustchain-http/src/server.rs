@@ -1,8 +1,11 @@
+use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
 use axum::routing::IntoMakeService;
 use axum::{middleware, routing::get, Router};
+use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 
@@ -82,10 +85,33 @@ impl TrustchainRouter {
     }
 }
 
-/// General method to spawn a Trustchain server given ServerConfig.
-pub fn server(config: HTTPConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
+/// Spawns a Trustchain server given `HTTPConfig` with http.
+pub fn http_server(config: HTTPConfig) -> axum::Server<AddrIncoming, IntoMakeService<Router>> {
     let addr = config.to_socket_address();
     let shared_state = Arc::new(AppState::new(config));
     let app = TrustchainRouter::from(shared_state).into_router();
     axum::Server::bind(&addr).serve(app.into_make_service())
+}
+
+/// Spawns a Trustchain server given `HTTPConfig` with https.
+pub async fn https_server(config: HTTPConfig) -> std::io::Result<()> {
+    let addr = config.to_socket_address();
+    let shared_state = Arc::new(AppState::new(config));
+    let app = TrustchainRouter::from(shared_state).into_router();
+    let tls_config = rustls_config(http_config().https_path.as_ref().unwrap()).await;
+    axum_server::bind_rustls(addr, tls_config)
+        .serve(app.into_make_service())
+        .await
+}
+
+/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs)
+async fn rustls_config(path: &str) -> RustlsConfig {
+    // Configure certificate and private key used by https
+    let path = shellexpand::tilde(path);
+    RustlsConfig::from_pem_file(
+        PathBuf::from(path.as_ref()).join("cert.pem"),
+        PathBuf::from(path.as_ref()).join("key.pem"),
+    )
+    .await
+    .expect("Failed to create Rustls config.")
 }

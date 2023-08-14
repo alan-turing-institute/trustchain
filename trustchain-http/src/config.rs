@@ -22,6 +22,10 @@ pub struct HTTPConfig {
     pub port: u16,
     /// Optional issuer DID
     pub issuer_did: Option<String>,
+    /// Flag indicating whether server uses https
+    pub https: bool,
+    /// Path with certificate and key for https
+    pub https_path: Option<String>,
 }
 
 impl std::fmt::Display for HTTPConfig {
@@ -37,6 +41,8 @@ impl Default for HTTPConfig {
             host_reference: IpAddr::from_str(DEFAULT_HOST).unwrap(),
             port: DEFAULT_PORT,
             issuer_did: None,
+            https: false,
+            https_path: None,
         }
     }
 }
@@ -92,6 +98,7 @@ mod tests {
         host_reference = "127.0.0.1"
         port = 8081
         issuer_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
+        https = false
 
         [non_http]
         key = "value"
