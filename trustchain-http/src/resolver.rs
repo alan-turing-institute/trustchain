@@ -15,7 +15,7 @@ use ssi::{
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::resolver::Resolver;
-use trustchain_core::verifier::{Timestamp, Verifier};
+use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
 /// A HTTP API for resolving DID documents, chains, and verification bundles.
@@ -67,7 +67,14 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
-        let chain = verifier.verify(did, root_event_time).await?;
+        let chain = verifier
+            .verify(did, root_event_time)
+            .await
+            // Any commitment error implies invalid root
+            .map_err(|err| match err {
+                err @ VerifierError::CommitmentFailure(_) => VerifierError::InvalidRoot(err.into()),
+                err => err,
+            })?;
         debug!("Verified did...");
         Ok(DIDChainResolutionResult::new(&chain))
     }
@@ -210,7 +217,8 @@ mod tests {
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
-        let uri = "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405".to_string();
+        let root_event_time = 1666265405;
+        let uri = format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={root_event_time}");
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
@@ -221,17 +229,19 @@ mod tests {
 
         // Test for case where incorrect root_event_time for the root of the given DID, expected to
         // return Ok but with a JSON containing the wrapped Trustchain error.
-        let incorrect_root_event_time = "001234500";
+        let incorrect_root_event_time = 1234500;
         let uri_incorrect_root = format!(
             "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={incorrect_root_event_time}"
         )
         .to_string();
         let response = client.get(&uri_incorrect_root).send().await;
         assert_eq!(response.status(), StatusCode::OK);
-        assert_eq!(
-            response.text().await,
-            r#"{"error":"Trustchain Verifier error: Invalid root DID: did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg."}"#.to_string()
-        )
+        // A wrapped CommitmentError is now returned here mapped to VerifierError::InvalidRoot
+        // println!("{}", response.text().await);
+        assert!(response
+            .text()
+            .await
+            .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID error:"#),)
     }
 
     #[tokio::test]
@@ -268,8 +278,10 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
         let port = addr.port();
-        let mut http_config = HTTPConfig::default();
-        http_config.port = port;
+        let http_config = HTTPConfig {
+            port,
+            ..Default::default()
+        };
         assert_eq!(http_config.host.to_string(), addr.ip().to_string());
 
         // Run server
@@ -281,12 +293,22 @@ mod tests {
         });
 
         // Make a verifier instance and fetch bundle from server bundle endpoint
-        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+        let verifier = IONVerifier::with_endpoint(
+            get_ion_resolver("http://localhost:3000/"),
+            format!("http://127.0.0.1:{}/did/bundle/", port),
+        );
         let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
-        let result = verifier
-            .fetch_bundle(did, Some(format!("http://127.0.0.1:{}/did/bundle/", port)))
-            .await;
-
-        assert!(result.is_ok());
+        // Check verification
+        let root_event_time = 1666971942;
+        verifier.verify(did, root_event_time).await.unwrap();
+        // Check verification for another root
+        let root_event_time = 1666265405;
+        verifier
+            .verify(
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                root_event_time,
+            )
+            .await
+            .unwrap();
     }
 }
