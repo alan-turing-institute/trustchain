@@ -36,10 +36,13 @@ impl Endpoint {
     pub fn new(url: String, port: u16) -> Self {
         Self { host: url, port }
     }
+    // TODO: add more flexible address handling
     pub fn to_address(&self) -> String {
-        format!("http://{}:{}/", self.host, self.port)
+        match self.host.starts_with("http") {
+            true => format!("{}:{}/", self.host, self.port),
+            false => format!("http://{}:{}/", self.host, self.port),
+        }
     }
-    // TODO: add more flexible address methods
 }
 
 /// Test resolver
