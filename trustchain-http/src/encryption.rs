@@ -393,13 +393,21 @@ fn verify_content_response(
     Ok(response_hashmap)
 }
 
+/// Reads key that corresponds to given key id from file
+fn get_private_key(key_id: &str) -> Result<Jwk, TrustchainCRError> {
+    todo!()
+}
+
 #[cfg(test)]
 mod tests {
 
     use serde_json::from_str;
 
     use super::*;
-    use crate::data::TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS;
+    use crate::data::{
+        TEST_KEY_ID_1, TEST_KEY_ID_2, TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1,
+        TEST_SIGNING_KEY_2,
+    };
 
     #[test]
     fn test_extract_key_ids_and_jwk() {
@@ -490,19 +498,18 @@ mod tests {
         };
 
         // extract DE public keys from did document -> Vec<&KeyPairs>
-        // let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
-        // let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
-        let mut test_keys_map: HashMap<String, Jwk> = HashMap::new();
-        test_keys_map.insert(
-            String::from("key_1"),
-            serde_json::from_str(DOWNSTREAM_PUB_KEY_1).unwrap(),
-        );
-        test_keys_map.insert(
-            String::from("key_2"),
-            serde_json::from_str(DOWNSTREAM_PUB_KEY_2).unwrap(),
-        );
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
+        // let mut test_keys_map: HashMap<String, Jwk> = HashMap::new();
+        // test_keys_map.insert(
+        //     String::from("key_1"),
+        //     serde_json::from_str(DOWNSTREAM_PUB_KEY_1).unwrap(),
+        // );
+        // test_keys_map.insert(
+        //     String::from("key_2"),
+        //     serde_json::from_str(DOWNSTREAM_PUB_KEY_2).unwrap(),
+        // );
 
-        // TODO: this should go in its own function
         // map with unencrypted nonces so UE can store them for later verification
         let nonces: HashMap<String, String> =
             test_keys_map
@@ -512,7 +519,7 @@ mod tests {
                     acc
                 });
 
-        for (key, val) in &nonces {
+        for (_, val) in &nonces {
             println!("{}", val);
         }
 
@@ -550,15 +557,14 @@ mod tests {
         // Decrypt each challenge nonce
         let mut test_priv_keys_map: HashMap<String, Jwk> = HashMap::new();
         test_priv_keys_map.insert(
-            String::from("key_1"),
-            serde_json::from_str(DOWNSTREAM_PRIV_KEY_1).unwrap(),
+            String::from(TEST_KEY_ID_1),
+            serde_json::from_str(TEST_SIGNING_KEY_1).unwrap(),
         );
         test_priv_keys_map.insert(
-            String::from("key_2"),
-            serde_json::from_str(DOWNSTREAM_PRIV_KEY_2).unwrap(),
+            String::from(TEST_KEY_ID_2),
+            serde_json::from_str(TEST_SIGNING_KEY_2).unwrap(),
         );
 
-        // -----------------------------------------
         let response =
             generate_content_response(challenges_hashmap, test_priv_keys_map, &downstream_cr_keys)
                 .unwrap();
@@ -566,16 +572,13 @@ mod tests {
         // UE: verify response
         let verified_response = verify_content_response(response, &upstream_cr_keys).unwrap();
 
-        let nonce_1 = verified_response.get("key_1").unwrap();
-        let expected_nonce_1 = nonces.get("key_1").unwrap();
-
         assert_eq!(
-            verified_response.get("key_1").unwrap(),
-            nonces.get("key_1").unwrap()
+            verified_response.get(TEST_KEY_ID_1).unwrap(),
+            nonces.get(TEST_KEY_ID_1).unwrap()
         );
         assert_eq!(
-            verified_response.get("key_2").unwrap(),
-            nonces.get("key_2").unwrap()
+            verified_response.get(TEST_KEY_ID_2).unwrap(),
+            nonces.get(TEST_KEY_ID_2).unwrap()
         );
     }
     #[test]
@@ -592,7 +595,4 @@ mod tests {
 }
 
 // todo
-//
-// - what exactly does thumbprint() return and how does it relate to key id?
-// - test did with multiple signing keys and corresponding private keys
 // - add update commitment to identity CR
