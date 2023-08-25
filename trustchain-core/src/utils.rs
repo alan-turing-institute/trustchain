@@ -20,6 +20,16 @@ pub fn init() {
         // initialization code here
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+
+        // TODO: write the required key_manager path in TRUSTCHAIN_DATA with: root, root-plus-1,
+        // root-plus-2 signing keys in "signing_key.json" files
+        // DID suffixes:
+        //   root: EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg
+        //   root-plus-1: EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A
+        //   root-plus-2: EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q
+        //
+        // Path for each DID's signing key file:
+        //   env!("TRUSTCHAIN_DATA")/key_manager/<DID_SUFFIX>/signing_key.json
     });
 }
 
