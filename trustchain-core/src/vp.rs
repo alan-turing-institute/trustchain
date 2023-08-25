@@ -21,10 +21,11 @@ pub enum PresentationError {
     /// Wrapped variant for Verifier Error.
     #[error("A wrapped Verfier error: {0}")]
     VerifierError(VerifierError),
-    /// Credentials verified, but holder failed to authenticate.
+    /// Credentials verified, but holder failed to authenticate with invalid or missing presentation
+    /// proof.
     #[error("Credentials verified for an unauthenticated holder.")]
     VerifiedHolderUnauthenticated(VerificationResult),
-    /// Credentials verified, but holder DID failed verification.
+    /// Credentials verified, but holder DID failed verification (not part of valid Trustchain).
     #[error("Credentials verified for an unverified holder.")]
     VerifiedHolderUnverfied(VerifierError),
 }

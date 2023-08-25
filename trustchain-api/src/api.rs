@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use ssi::ldp::now_ms;
 use ssi::{
     did_resolve::DIDResolver,
     ldp::LinkedDataDocument,
@@ -117,7 +118,6 @@ pub trait TrustchainVCAPI {
     }
 }
 
-use ssi::ldp::now_ms;
 #[async_trait]
 pub trait TrustchainVPAPI {
     /// As a holder issue a verifiable presentation.
@@ -195,28 +195,14 @@ pub trait TrustchainVPAPI {
         let end = now_ms();
         println!("Full time: {}", end - start);
 
-        // Verify signature
+        // Only verify signature by holder to authenticate
         let result = presentation
             .verify(ldp_options.clone(), verifier.resolver())
             .await;
         if !result.errors.is_empty() {
             return Err(PresentationError::VerifiedHolderUnauthenticated(result));
         }
-
-        // Verify holder's DID
-        let holder = match presentation
-            .holder
-            .as_ref()
-            .ok_or(PresentationError::NoHolderPresent)?
-        {
-            URI::String(holder) => holder,
-        };
-        let holder_verification = verifier.verify(holder, root_event_time).await;
-        if let Err(verification_err) = holder_verification {
-            Err(PresentationError::VerifiedHolderUnverfied(verification_err))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
@@ -225,13 +211,10 @@ mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{
-        Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, ProofPurpose, URI,
-    };
-    use trustchain_core::data::TEST_SIGNING_KEYS;
+    use ssi::vc::{Credential, CredentialOrJWT, Presentation};
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
-    use trustchain_ion::attestor::{AttestorData, IONAttestor};
+    use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::get_ion_resolver;
     use trustchain_ion::verifier::IONVerifier;
 
@@ -307,7 +290,7 @@ mod tests {
             // NB. Holder must be specified in order to retrieve verification method to verify
             // presentation. Otherwise must be specified in LinkedDataProofOptions.
             // If the holder field is left unpopulated here, it is automatically populated during
-            // signing (with the did of the presentation signer)
+            // signing (with the did of the presentation signer) in `holder.sign_presentation()`
             ..Default::default()
         };
 
@@ -316,8 +299,6 @@ mod tests {
             .await
             .unwrap();
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
-        // NB. If specifying a verification_method
-        // let vm = String::from("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI");
         assert!(TrustchainAPI::verify_presentation(
             &presentation,
             None,
@@ -329,36 +310,22 @@ mod tests {
     }
 
     #[tokio::test]
+    // No signature from holder in presentation (unauthenticated)
     async fn test_verify_presentation_unauthenticated() {
         // root+1
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let issuer = IONAttestor::new(issuer_did);
 
-        // root+2
-        // Currently can't sign presentation with an unresolvable did because
-        // presentation.generate_proof() attempts to resolve the did
-        // let holder_did = "did:ion:unresolvable";
-        // let holder = IONAttestor::new(holder_did);
-        // let holder = IONAttestor::try_from(AttestorData::new(
-        //     holder_did.to_string(),
-        //     serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
-        // ))
-        // .unwrap();
-
         let vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let mut presentation = Presentation {
+        let presentation = Presentation {
             verifiable_credential: Some(OneOrMany::Many(vec![CredentialOrJWT::Credential(
                 vc_with_proof,
             )])),
             ..Default::default()
         };
 
-        // presentation = holder
-        //     .sign_presentation(&presentation, None, &resolver, None)
-        //     .await
-        //     .unwrap();
-        // println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
+        println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
         assert!(matches!(
             TrustchainAPI::verify_presentation(
                 &presentation,
@@ -371,12 +338,10 @@ mod tests {
         ));
     }
 
+    // Helper function to create a signed credential given an attesor.
     async fn signed_credential(attestor: IONAttestor) -> Credential {
-        // Make resolver
         let resolver = get_ion_resolver("http://localhost:3000/");
-        // 3. Read credential
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        // Use attest_credential method instead of generating and adding proof
         attestor.sign(&vc, None, &resolver, None).await.unwrap()
     }
 }
