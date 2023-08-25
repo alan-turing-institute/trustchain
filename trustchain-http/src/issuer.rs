@@ -1,3 +1,4 @@
+use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
@@ -113,10 +114,15 @@ impl TrustchainIssuerHTTPHandler {
     pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
         // TODO: update to take query param entered by user.
         let id = "7426a2e8-f932-11ed-968a-4bb02079f142".to_string();
+        let http_str = if !http_config().https {
+            "http"
+        } else {
+            "https"
+        };
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
-            "http://{}:{}/vc/issuer/{id}",
-            app_state.config.host_reference, app_state.config.port
+            "{}://{}:{}/vc/issuer/{id}",
+            http_str, app_state.config.host_reference, app_state.config.port
         );
         // Respond with the QR code as a png embedded in html
         Html(str_to_qr_code_html(&address_str, "Issuer"))

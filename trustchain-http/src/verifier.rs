@@ -1,3 +1,4 @@
+use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
@@ -107,9 +108,14 @@ impl TrustchainVerifierHTTPHandler {
             .next()
             .ok_or(TrustchainHTTPError::RequestDoesNotExist)
             .map(|(uid, _)| {
+                let http_str = if !http_config().https {
+                    "http"
+                } else {
+                    "https"
+                };
                 let address_str = format!(
-                    "http://{}:{}/vc/verifier/{}",
-                    app_state.config.host_reference, app_state.config.port, uid
+                    "{}://{}:{}/vc/verifier/{}",
+                    http_str, app_state.config.host_reference, app_state.config.port, uid
                 );
                 (
                     StatusCode::OK,
