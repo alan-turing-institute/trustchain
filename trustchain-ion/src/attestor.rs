@@ -146,19 +146,20 @@ impl Issuer for IONAttestor {
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
-        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Credential, IssuerError> {
-        // If no ldp options passed, use default (in which ProofPurpose::AssertionMethod).
-        let options = ldp_options.unwrap_or(LinkedDataProofOptions::default());
-
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
 
         // Generate proof
         let proof = credential
-            .generate_proof(&signing_key, &options, resolver)
+            .generate_proof(
+                &signing_key,
+                &linked_data_proof_options.unwrap_or_default(),
+                resolver,
+            )
             .await?;
 
         // Add proof to credential
@@ -215,7 +216,6 @@ mod tests {
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
     use trustchain_core::utils::init;
-    use trustchain_core::vp;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
@@ -303,7 +303,7 @@ mod tests {
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
         // Attest to doc
-        let vc_with_proof = target.sign(&vc, None, &resolver, None).await;
+        let vc_with_proof = target.sign(&vc, None, None, &resolver).await;
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());
@@ -328,7 +328,7 @@ mod tests {
         // ))
         // .unwrap();
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        let vc_with_proof = issuer.sign(&vc, None, &resolver, None).await.unwrap();
+        let vc_with_proof = issuer.sign(&vc, None, None, &resolver).await.unwrap();
         let presentation = Presentation {
             verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(vc_with_proof))),
             ..Default::default()

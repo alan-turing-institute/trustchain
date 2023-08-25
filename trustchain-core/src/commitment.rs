@@ -1,12 +1,13 @@
 //! Commitment scheme API with default implementation.
-use crate::utils::{json_contains, type_of, HasEndpoints, HasKeys};
+use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use crate::verifier::Timestamp;
+use serde::Serialize;
 use serde_json::{json, Value};
 use ssi::{
     did::{Document, ServiceEndpoint},
     jwk::JWK,
 };
-use std::convert::TryInto;
+use std::fmt::Display;
 use thiserror::Error;
 
 /// Type for commitment result.
@@ -25,7 +26,7 @@ pub enum CommitmentError {
     #[error("Failed to compute hash: {0}")]
     FailedToComputeHash(String),
     /// Failed hash verification.
-    #[error("Failed hash verification. Computed hash not equal to target.")]
+    #[error("Failed hash verification.")]
     FailedHashVerification(String),
     /// Failed content verification.
     #[error("Failed content verification. Expected data {0} not found in candidate: {1}.")]
@@ -48,7 +49,7 @@ impl From<serde_json::Error> for CommitmentError {
 }
 
 /// A cryptographic commitment with no expected data content.
-pub trait TrivialCommitment {
+pub trait TrivialCommitment<T = Value> {
     /// Gets the hasher (as a function pointer).
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String>;
     /// Gets the candidate data.
@@ -89,13 +90,16 @@ pub trait TrivialCommitment {
     }
     // See https://users.rust-lang.org/t/is-there-a-way-to-move-a-trait-object/707 for Box<Self> hint.
     /// Converts this TrivialCommitment to a Commitment.
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment>;
+    fn to_commitment(self: Box<Self>, expected_data: T) -> Box<dyn Commitment<T>>;
 }
 
 /// A cryptographic commitment with expected data content.
-pub trait Commitment: TrivialCommitment {
+pub trait Commitment<T = Value>: TrivialCommitment<T>
+where
+    T: Serialize + Display,
+{
     /// Gets the expected data.
-    fn expected_data(&self) -> &serde_json::Value;
+    fn expected_data(&self) -> &T;
 
     /// Verifies that the expected data is found in the candidate data.
     fn verify_content(&self) -> CommitmentResult<()> {
@@ -103,7 +107,9 @@ pub trait Commitment: TrivialCommitment {
         let candidate_data = self.commitment_content()?;
 
         // Verify the content.
-        if !json_contains(&candidate_data, self.expected_data()) {
+        // Note the call `json!(self.expected_data())` acts as the identity function when called on
+        // a `Value` type as it is simply serialized by the underlying methods.
+        if !json_contains(&candidate_data, &json!(self.expected_data())) {
             return Err(CommitmentError::FailedContentVerification(
                 self.expected_data().to_string(),
                 candidate_data.to_string(),
@@ -118,7 +124,9 @@ pub trait Commitment: TrivialCommitment {
         self.verify_content()?;
         // Verify the target by comparing with the computed hash.
         if self.hash()?.ne(target) {
-            return Err(CommitmentError::FailedHashVerification(type_of(&self)));
+            return Err(CommitmentError::FailedHashVerification(
+                "Computed hash not equal to target.".to_string(),
+            ));
         }
         Ok(())
     }
@@ -264,79 +272,13 @@ pub trait DIDCommitment: Commitment {
     fn candidate_endpoints(&self) -> Option<Vec<ServiceEndpoint>> {
         self.did_document().get_endpoints()
     }
-    /// Get the candidate data in which we expect to find a timestamp.
-    fn timestamp_candidate_data(&self) -> CommitmentResult<&[u8]>;
-    /// Gets the decoder (function) for the timestamp candidate data.
-    fn decode_timestamp_candidate_data(
-        &self,
-    ) -> CommitmentResult<fn(&[u8]) -> CommitmentResult<Value>>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
-/// A Commitment whose expected data is a Unix time and hasher
-/// and candidate data are obtained from a given DIDCommitment.
-pub struct TimestampCommitment {
-    expected_data: serde_json::Value,
-    hasher: fn(&[u8]) -> CommitmentResult<String>,
-    candidate_data: Vec<u8>,
-    decode_candidate_data: fn(&[u8]) -> CommitmentResult<Value>,
-}
-
-impl TimestampCommitment {
-    /// Constructs a TimestampCommitment from a given DIDCommitment, with a Unix
-    /// timestamp as expected data.
-    pub fn new(
-        did_commitment: &dyn DIDCommitment,
-        expected_data: Timestamp,
-    ) -> CommitmentResult<Self> {
-        // Note the expected data in the TimestampCommitment is the timestamp, but the
-        // hasher & candidate data are identical to those in the DIDCommitment. Therefore,
-        // by verifying both the DIDCommitment and the TimestampCommitment we confirm
-        // that the *same* hash commits to *both* the DID Document data and the timestamp.
-        //
-        // The decoded candidate data must contain the timestamp such that it is found
-        // by the json_contains function, otherwise the content verification will fail.
-        Ok(Self {
-            expected_data: json!(expected_data),
-            hasher: did_commitment.hasher(),
-            candidate_data: did_commitment.timestamp_candidate_data()?.to_vec(),
-            decode_candidate_data: did_commitment.decode_timestamp_candidate_data()?,
-        })
-    }
-
+/// A Commitment whose expected data is a Unix time.
+pub trait TimestampCommitment: Commitment<Timestamp> {
     /// Gets the timestamp as a Unix time.
-    pub fn timestamp(&self) -> Timestamp {
-        self.expected_data
-            .as_u64()
-            .unwrap()
-            .try_into()
-            .expect("Construction guarantees u32.")
-    }
-}
-
-impl TrivialCommitment for TimestampCommitment {
-    fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
-        self.hasher
-    }
-
-    fn candidate_data(&self) -> &[u8] {
-        &self.candidate_data
-    }
-
-    fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
-        self.decode_candidate_data
-    }
-
-    fn to_commitment(self: Box<Self>, expected_data: serde_json::Value) -> Box<dyn Commitment> {
-        if !expected_data.eq(self.expected_data()) {
-            panic!("Attempted modification of expected timestamp data not permitted.");
-        }
-        self
-    }
-}
-
-impl Commitment for TimestampCommitment {
-    fn expected_data(&self) -> &serde_json::Value {
-        // Safe to unwrap as a complete commitment must have expected data
-        &self.expected_data
+    fn timestamp(&self) -> Timestamp {
+        self.expected_data().to_owned()
     }
 }

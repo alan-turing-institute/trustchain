@@ -36,8 +36,8 @@ pub trait Issuer: Subject {
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
-        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Credential, IssuerError>;
 }

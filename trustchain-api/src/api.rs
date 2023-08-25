@@ -13,7 +13,7 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::ResolverResult,
+    resolver::{Resolver, ResolverResult},
     vc::CredentialError,
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,
@@ -28,9 +28,10 @@ use crate::TrustchainAPI;
 /// API for Trustchain CLI DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
-    /// Creates a controlled DID from a passed document state, writing the associated create operation
-    /// to file in the operations path returning the file name including the created DID suffix.
-    // TODO: make specific error?
+    /// Creates a controlled DID from a passed document state, writing the associated create
+    /// operation to file in the operations path returning the file name including the created DID
+    /// suffix.
+    // TODO: consider replacing error variant with specific IONError/DIDError in future version.
     fn create(
         document_state: Option<DocumentState>,
         verbose: bool,
@@ -39,28 +40,29 @@ pub trait TrustchainDIDAPI {
     }
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations
     /// path.
-    // TODO: make pecific error?
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }
     /// Resolves a given DID using given endpoint.
-    async fn resolve(did: &str, endpoint: &str) -> ResolverResult {
-        // main_resolve(did, verbose)
-        let resolver = get_ion_resolver(endpoint);
-
+    async fn resolve<T>(did: &str, resolver: &Resolver<T>) -> ResolverResult
+    where
+        T: DIDResolver + Send + Sync,
+    {
         // Result metadata, Document, Document metadata
         resolver.resolve_as_result(did).await
     }
 
     /// Verifies a given DID using a resolver available at given endpoint, returning a result.
-    async fn verify(
+    async fn verify<T, U>(
         did: &str,
         root_event_time: Timestamp,
-        endpoint: &str,
-    ) -> Result<DIDChain, VerifierError> {
-        IONVerifier::new(get_ion_resolver(endpoint))
-            .verify(did, root_event_time)
-            .await
+        verifier: &U,
+    ) -> Result<DIDChain, VerifierError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
+        verifier.verify(did, root_event_time).await
     }
 
     // // TODO: the below have no CLI implementation currently but are planned
@@ -86,27 +88,35 @@ pub trait TrustchainDIDAPI {
 #[async_trait]
 pub trait TrustchainVCAPI {
     /// Signs a credential.
-    async fn sign(
+    async fn sign<T: DIDResolver>(
         mut credential: Credential,
         did: &str,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        endpoint: &str,
+        resolver: &T,
     ) -> Result<Credential, IssuerError> {
-        let resolver = get_ion_resolver(endpoint);
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        attestor.sign(&credential, key_id, &resolver, None).await
+        attestor
+            .sign(&credential, linked_data_proof_options, key_id, resolver)
+            .await
     }
 
-    /// Verifies a credential and returns a `DIDChain` if valid.
-    async fn verify_credential<T: DIDResolver + Send + Sync>(
+    /// Verifies a credential
+    async fn verify_credential<T, U>(
         credential: &Credential,
-        ldp_options: Option<LinkedDataProofOptions>,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
-    ) -> Result<DIDChain, CredentialError> {
+        verifier: &U,
+    ) -> Result<DIDChain, CredentialError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
         // Verify signature
-        let result = credential.verify(ldp_options, verifier.resolver()).await;
+        let result = credential
+            .verify(linked_data_proof_options, verifier.resolver())
+            .await;
         if !result.errors.is_empty() {
             return Err(CredentialError::VerificationResultError(result));
         }
@@ -342,6 +352,6 @@ mod tests {
     async fn signed_credential(attestor: IONAttestor) -> Credential {
         let resolver = get_ion_resolver("http://localhost:3000/");
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        attestor.sign(&vc, None, &resolver, None).await.unwrap()
+        attestor.sign(&vc, None, None, &resolver).await.unwrap()
     }
 }

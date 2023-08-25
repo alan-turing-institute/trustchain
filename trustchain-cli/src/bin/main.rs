@@ -53,12 +53,11 @@ fn cli() -> Command {
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a DID.")
-                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
-                        .arg(arg!(-d --did <DID>).required(true)),
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
         .subcommand(
-            // TODO: refactor into library code
             Command::new("vc")
                 .about("Verifiable credential functionality: sign and verify.")
                 .subcommand_required(true)
@@ -77,7 +76,6 @@ fn cli() -> Command {
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
-                        .arg(arg!(-s - -signature_only).action(ArgAction::SetTrue))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -87,6 +85,8 @@ fn cli() -> Command {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
     let endpoint = cli_config().ion_endpoint.to_address();
+    let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
+    let resolver = verifier.resolver();
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, &endpoint).await?;
+                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, resolver).await?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -141,6 +141,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         to_string_pretty(&res_meta).expect("Cannot convert to JSON.")
                     );
                 }
+                Some(("verify", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u32>().unwrap(),
+                        None => cli_config().root_event_time,
+                    };
+                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    println!("{did_chain}");
+                }
                 _ => panic!("Unrecognised DID subcommand."),
             }
         }
@@ -162,15 +171,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         };
 
                     let credential_with_proof =
-                        TrustchainAPI::sign(credential, did, key_id, &endpoint)
+                        TrustchainAPI::sign(credential, did, None, key_id, resolver)
                             .await
                             .expect("Failed to issue credential.");
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
-                    // TODO: remove arg
-                    let _signature_only = sub_matches.get_one::<bool>("signature_only");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
@@ -192,7 +199,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
-                    // TODO: refine printed results when error.
                     match verify_result {
                         err @ Err(CredentialError::VerificationResultError(_)) => {
                             println!("Proof... Invalid");
@@ -219,7 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let issuer = credential
                             .get_issuer()
                             .expect("No issuer present in credential.");
-                        let chain = TrustchainAPI::verify(issuer, root_event_time, &endpoint)
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
                             .await
                             // Can unwrap as already verified above.
                             .unwrap();

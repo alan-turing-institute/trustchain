@@ -1,3 +1,4 @@
 pub mod config;
-pub mod gui;
-pub mod mobile;
+// TODO: uncomment on gui and mobile feature branches
+// pub mod gui;
+// pub mod mobile;

@@ -4,17 +4,14 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 
 async-trait = "0.1"
-ssi = "0.4"
-clap = { version = "~4.0", features=["derive", "cargo"] }
 serde_json = "1.0"
+ssi = "0.4"
 did-ion = "0.1.0"
 futures = "0.3.28"
 

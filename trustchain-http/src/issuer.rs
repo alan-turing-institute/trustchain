@@ -104,7 +104,7 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
             }
         }
         let issuer = IONAttestor::new(issuer_did);
-        Ok(issuer.sign(&credential, None, resolver, None).await?)
+        Ok(issuer.sign(&credential, None, None, resolver).await?)
     }
 }
 
