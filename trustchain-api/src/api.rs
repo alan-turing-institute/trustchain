@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use ps_sig::rsssig::RSignature;
 use ssi::ldp::now_ms;
 use ssi::{
     did_resolve::DIDResolver,
@@ -24,6 +25,7 @@ use trustchain_ion::{
 };
 
 use crate::TrustchainAPI;
+use trustchain_core::vc::ProofVerify;
 
 /// API for Trustchain CLI DID functionality.
 #[async_trait]
@@ -113,13 +115,34 @@ pub trait TrustchainVCAPI {
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        // Verify signature
-        let result = credential
-            .verify(linked_data_proof_options, verifier.resolver())
-            .await;
-        if !result.errors.is_empty() {
-            return Err(CredentialError::VerificationResultError(result));
+        if let Some(proofs) = &credential.proof {
+            for proof in proofs {
+                // TODO(?): filter proofs based on verification_method found in
+                // linked_data_proof_options.unwrap_or_default(), matching the behaviour of the
+                // credential.verify() method
+                let verification_result = if &proof.type_ == "RSSSignature" {
+                    // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
+                    // orphan rule)
+                    // more generally, some interface will be required to impl proof verification
+                    // behaviour for RSignature - eg. ProofVerify trait with ::verify_proof()
+                    //      this could return VerificationResult to have a return type the same as
+                    //      proof.verify()
+                    RSignature::verify_proof(proof, credential)
+                } else {
+                    // matches on proof.type_ for all proof types supported by ssi
+                    todo!()
+                    // proof.verify(document, resolver)
+                };
+
+                if verification_result.errors.is_empty() {
+                    // break checking proofs once one has been verified successfully
+                    break;
+                };
+            }
+        } else {
+            return Err(CredentialError::NoProofPresent);
         }
+
         // Verify issuer
         let issuer = credential
             .get_issuer()

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
+ps_sig = { path = "../../RSS" }
 
 async-trait = "0.1"
 serde_json = "1.0"
