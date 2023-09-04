@@ -3,7 +3,7 @@ use crate::{holder::HolderError, vc::CredentialError, verifier::VerifierError};
 use ssi::vc::VerificationResult;
 use thiserror::Error;
 
-/// An error relating to verifiable credentials and presentations.
+/// An error relating to verifiable presentations.
 #[derive(Error, Debug)]
 pub enum PresentationError {
     /// No credentials present in presentation.

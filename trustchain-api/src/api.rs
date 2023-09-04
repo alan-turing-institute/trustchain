@@ -130,7 +130,7 @@ pub trait TrustchainVCAPI {
 
 #[async_trait]
 pub trait TrustchainVPAPI {
-    /// As a holder issue a verifiable presentation.
+    /// Signs a presentation constructing a verifiable presentation.
     async fn sign_presentation(
         presentation: Presentation,
         did: &str,
@@ -144,7 +144,7 @@ pub trait TrustchainVPAPI {
             .sign_presentation(&presentation, key_id, &resolver, ldp_options)
             .await?)
     }
-    /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
+    /// Verifies a verifiable presentation.
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
         ldp_options: Option<LinkedDataProofOptions>,

@@ -29,7 +29,7 @@ impl From<KeyManagerError> for HolderError {
     }
 }
 
-/// A holder signs a credential to generate a verifiable credential.
+/// A holder signs a presentation to generate a verifiable presentation.
 #[async_trait]
 pub trait Holder: Subject {
     /// Attests to a given presentation of one or many credentials returning the presentation with a
