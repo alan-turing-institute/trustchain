@@ -358,22 +358,12 @@ mod tests {
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_attest_presentation() {
-        // Note: removed tmp directory overwrite for TRUSTCHAIN_DATA, to have access to
-        // the signing keys in .trustchain
-        // init();
+        init();
         let resolver = get_ion_resolver("http://localhost:3000/");
-        // root+1
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-        // root+2
-        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
         let issuer = IONAttestor::new(issuer_did);
         let holder = IONAttestor::new(holder_did);
-        // let target = IONAttestor::try_from(AttestorData::new(
-        //     did.to_string(),
-        //     serde_json::from_str(TEST_SIGNING_KEYS).unwrap(),
-        // ))
-        // .unwrap();
 
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         let vc_with_proof = issuer.sign(&vc, None, None, &resolver).await.unwrap();

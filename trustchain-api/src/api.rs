@@ -210,6 +210,7 @@ mod tests {
     use ssi::ldp::now_ms;
     use ssi::one_or_many::OneOrMany;
     use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
+    use trustchain_core::utils::init;
     use trustchain_core::vc::CredentialError;
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
@@ -248,7 +249,8 @@ mod tests {
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_credential() {
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        init();
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
@@ -283,10 +285,9 @@ mod tests {
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_presentation() {
-        // root+1
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-        // root+2
-        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        init();
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
 
         let issuer = IONAttestor::new(issuer_did);
         let holder = IONAttestor::new(holder_did);
@@ -332,8 +333,8 @@ mod tests {
     #[tokio::test]
     // No signature from holder in presentation (unauthenticated)
     async fn test_verify_presentation_unauthenticated() {
-        // root+1
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        init();
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
 
         let vc_with_proof = signed_credential(issuer).await;
