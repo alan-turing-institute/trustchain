@@ -151,61 +151,49 @@ pub trait TrustchainVPAPI {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), PresentationError> {
-        // Verify contained credentials
+        // Check credentials are present in presentation
         let credentials = presentation
             .verifiable_credential
             .as_ref()
             .ok_or(PresentationError::NoCredentialsPresent)?;
 
-        // https://gendignoux.com/blog/2021/04/01/rust-async-streams-futures-part1.html#unordered-buffering-1
-        // https://docs.rs/futures-util/latest/futures_util/stream/trait.TryStreamExt.html#method.try_for_each_concurrent
-        // TODO consider concurrency limit (as rate limiting for verifier requests)
+        // TODO: consider concurrency limit (as rate limiting for verifier requests)
         let limit = Some(5);
         let ldp_options_vec: Vec<Option<LinkedDataProofOptions>> = (0..credentials.len())
             .map(|_| ldp_options.clone())
             .collect();
-        let start = now_ms();
-        stream::iter(credentials.into_iter().zip(ldp_options_vec))
-            .enumerate()
-            .map(Ok)
-            .try_for_each_concurrent(
-                limit,
-                |(idx, (credential_or_jwt, ldp_options))| async move {
-                    match credential_or_jwt {
-                        CredentialOrJWT::Credential(credential) => {
-                            println!("start {}: {}", idx, now_ms());
-                            let v = TrustchainAPI::verify_credential(
-                                credential,
-                                ldp_options,
-                                root_event_time,
-                                verifier,
-                            )
-                            .await
-                            .map(|_| ())
-                            .map_err(|err| err.into());
-                            println!("done {}:  {}", idx, now_ms());
-                            v
-                        }
 
-                        CredentialOrJWT::JWT(jwt) => {
-                            let result =
-                                Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
-                            if !result.errors.is_empty() {
-                                Err(PresentationError::CredentialError(
-                                    CredentialError::VerificationResultError(result),
-                                ))
-                            } else {
-                                Ok(())
-                            }
+        // Verify signatures and issuers for each credential included in the presentation
+        stream::iter(credentials.into_iter().zip(ldp_options_vec))
+            .map(Ok)
+            .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
+                match credential_or_jwt {
+                    CredentialOrJWT::Credential(credential) => TrustchainAPI::verify_credential(
+                        credential,
+                        ldp_options,
+                        root_event_time,
+                        verifier,
+                    )
+                    .await
+                    .map(|_| ())
+                    .map_err(|err| err.into()),
+                    CredentialOrJWT::JWT(jwt) => {
+                        // TODO: add chain verification for JWT credentials.
+                        let result =
+                            Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
+                        if !result.errors.is_empty() {
+                            Err(PresentationError::CredentialError(
+                                CredentialError::VerificationResultError(result),
+                            ))
+                        } else {
+                            Ok(())
                         }
                     }
-                },
-            )
+                }
+            })
             .await?;
-        let end = now_ms();
-        println!("Full time: {}", end - start);
 
-        // Only verify signature by holder to authenticate
+        // Verify signature by holder to authenticate
         let result = presentation
             .verify(ldp_options.clone(), verifier.resolver())
             .await;
