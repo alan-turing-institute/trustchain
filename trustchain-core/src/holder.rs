@@ -38,8 +38,8 @@ pub trait Holder: Subject {
     async fn sign_presentation<T: DIDResolver>(
         &self,
         presentation: &Presentation,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
-        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, HolderError>;
 }

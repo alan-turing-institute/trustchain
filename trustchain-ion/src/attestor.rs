@@ -182,12 +182,12 @@ impl Holder for IONAttestor {
     async fn sign_presentation<T: DIDResolver>(
         &self,
         presentation: &Presentation,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
-        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, HolderError> {
         // If no ldp options passed, use default with ProofPurpose::Authentication.
-        let options = ldp_options.unwrap_or(LinkedDataProofOptions {
+        let options = linked_data_proof_options.unwrap_or(LinkedDataProofOptions {
             proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
             ..Default::default()
         });
@@ -387,7 +387,7 @@ mod tests {
         // Holder field set to the DID of the signing holder by 'sign_presentation'
         // The DID is resolved during signing, which requires a running ion node.
         let vp = holder
-            .sign_presentation(&presentation, None, &resolver, None)
+            .sign_presentation(&presentation, None, None, &resolver)
             .await;
 
         assert!(vp.is_ok());

@@ -135,12 +135,12 @@ pub trait TrustchainVPAPI {
         did: &str,
         key_id: Option<&str>,
         endpoint: &str,
-        ldp_options: Option<LinkedDataProofOptions>,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, PresentationError> {
         let resolver = get_ion_resolver(endpoint);
         let attestor = IONAttestor::new(did);
         Ok(attestor
-            .sign_presentation(&presentation, key_id, &resolver, ldp_options)
+            .sign_presentation(&presentation, linked_data_proof_options, key_id, &resolver)
             .await?)
     }
     /// Verifies a verifiable presentation.
@@ -314,7 +314,7 @@ mod tests {
         };
 
         presentation = holder
-            .sign_presentation(&presentation, None, &resolver, None)
+            .sign_presentation(&presentation, None, None, &resolver)
             .await
             .unwrap();
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
