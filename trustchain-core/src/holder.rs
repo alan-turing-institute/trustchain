@@ -15,6 +15,9 @@ pub enum HolderError {
     /// Wrapped error for key manager error.
     #[error("A wrapped variant for a key manager error: {0}")]
     KeyManager(KeyManagerError),
+    /// Holder field mismatched with attestor DID.
+    #[error("Holder field mismatched with attestor DID.")]
+    MismatchedHolder,
 }
 
 impl From<ssi::error::Error> for HolderError {

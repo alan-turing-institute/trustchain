@@ -200,7 +200,7 @@ impl Holder for IONAttestor {
         match presentation.holder.as_ref() {
             Some(URI::String(holder)) => {
                 if holder != &self.did {
-                    vp.holder = Some(URI::String(self.did.clone()))
+                    return Err(HolderError::MismatchedHolder);
                 }
             }
             None => vp.holder = Some(URI::String(self.did.clone())),
