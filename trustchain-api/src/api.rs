@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
-use ssi::ldp::now_ms;
 use ssi::{
     did_resolve::DIDResolver,
     ldp::LinkedDataDocument,
@@ -208,8 +207,10 @@ pub trait TrustchainVPAPI {
 mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
+    use ssi::ldp::now_ms;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, Presentation};
+    use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
+    use trustchain_core::vc::CredentialError;
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
@@ -244,11 +245,12 @@ mod tests {
       }
       "##;
 
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_credential() {
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let issuer = IONAttestor::new(issuer_did);
-        let vc_with_proof = signed_credential(issuer).await;
+        let mut vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
@@ -258,8 +260,27 @@ mod tests {
         )
         .await;
         assert!(res.is_ok());
+
+        // Change credential to make signature invalid
+        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+
+        // Verify: expect no warnings and a signature error as VC has changed
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let res = TrustchainAPI::verify_credential(
+            &vc_with_proof,
+            None,
+            ROOT_EVENT_TIME_1,
+            &IONVerifier::new(resolver),
+        )
+        .await;
+        if let CredentialError::VerificationResultError(ver_res) = res.err().unwrap() {
+            assert_eq!(ver_res.errors, vec!["signature error"]);
+        } else {
+            panic!("should error with VerificationResultError varient of CredentialError")
+        }
     }
 
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_presentation() {
         // root+1
@@ -307,6 +328,7 @@ mod tests {
         .is_ok());
     }
 
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     // No signature from holder in presentation (unauthenticated)
     async fn test_verify_presentation_unauthenticated() {
