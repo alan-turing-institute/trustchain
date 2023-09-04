@@ -48,5 +48,3 @@ impl From<VerifierError> for PresentationError {
     }
 }
 
-#[cfg(test)]
-mod tests {}
