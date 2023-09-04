@@ -6,10 +6,18 @@ use josekit::JoseError;
 use rand::thread_rng;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{to_string_pretty as to_json, Value};
+use serde_with::skip_serializing_none;
 use ssi::did::{Document, VerificationMethod};
 use ssi::jwk::JWK;
+use std::any::type_name;
 use std::collections::HashMap;
+use std::env;
+use std::fs::{File, OpenOptions};
+use std::io::{BufWriter, Write};
+
+use std::path::PathBuf;
+use struct_iterable::Iterable;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -32,6 +40,12 @@ pub enum TrustchainCRError {
     /// Nonce type invalid.
     #[error("Invalid nonce type.")]
     InvalidNonceType,
+    /// Failed to open file.
+    #[error("Failed to open file.")]
+    FailedToOpen,
+    /// Failed to save to file.
+    #[error("Failed to save to file.")]
+    FailedToSave,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -75,7 +89,8 @@ impl From<String> for Nonce {
     }
 }
 
-#[derive(Debug)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
 struct CRState {
     initiation: Option<CRInitiation>,
     identity_challenge_response: Option<CRIdentityChallenge>,
@@ -84,29 +99,73 @@ struct CRState {
 struct Entity {}
 
 trait ElementwiseSerializeDeserialize {
-    fn elementwise_serialize(&self) -> Result<(), TrustchainCRError>;
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError>;
     // todo: default implementation, look if exists already
     fn elementwise_deserialize(&self) -> Result<(), TrustchainCRError>;
+
+    fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
+        // Open the new file
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path);
+
+        // Write key to file
+        if let Ok(file) = file {
+            let mut writer = BufWriter::new(file);
+            match writer.write_all(data.as_bytes()) {
+                Ok(_) => Ok(()),
+                Err(_) => Err(TrustchainCRError::FailedToSave),
+            }
+        } else {
+            Err(TrustchainCRError::FailedToSave)
+        }
+    }
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
 struct RequesterDetails {
     requester_org: String,
     operator_name: String,
 }
 
-#[derive(Debug)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
 struct CRInitiation {
     temp_p_key: Jwk,
     requester_details: RequesterDetails,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone, Iterable)]
 struct CRIdentityChallenge {
     update_p_key: Option<Jwk>,
     identity_nonce: Option<Nonce>, // make own Nonce type
     identity_challenge_signature: Option<String>,
     identity_response_signature: Option<String>,
+}
+// todo: add path to serialise/deserialise functions?
+impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        let file_path = path.join("update_p_key.json");
+        let data: &str = &to_json(&self.update_p_key).unwrap();
+        if !file_path.exists() {
+            save_to_file(&file_path, data);
+        }
+        let file_path = path.join("identity_nonce.json");
+        let data: &str = &to_json(&self.identity_nonce).unwrap();
+        if !file_path.exists() {
+            save_to_file(&file_path, data);
+        }
+        Ok(())
+        // todo: handle case where file already exists
+        // todo: handle case where field is None
+    }
+    fn elementwise_deserialize(&self) -> Result<(), TrustchainCRError> {
+        Ok(())
+    }
 }
 
 struct CRContentChallenge {
@@ -269,15 +328,15 @@ impl SignEncrypt for Entity {}
 
 impl DecryptVerify for Entity {}
 
-///  Generates a random alphanumeric nonce of a specified length using a seeded random number generator.
-fn generate_nonce() -> String {
-    // let rng: StdRng = SeedableRng::seed_from_u64(seed);
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect()
-}
+// ///  Generates a random alphanumeric nonce of a specified length using a seeded random number generator.
+// fn generate_nonce() -> String {
+//     // let rng: StdRng = SeedableRng::seed_from_u64(seed);
+//     thread_rng()
+//         .sample_iter(&Alphanumeric)
+//         .take(32)
+//         .map(char::from)
+//         .collect()
+// }
 
 // make a try_from instead
 fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
@@ -328,8 +387,71 @@ fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, 
     Ok(my_map)
 }
 
+// todo: trait?
+fn save_to_file(path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
+    // Open the new file
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(path);
+
+    // Write key to file
+
+    if let Ok(mut file) = file {
+        let mut writer = BufWriter::new(file);
+        match writer.write_all(data.as_bytes()) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(TrustchainCRError::FailedToSave),
+        }
+    } else {
+        Err(TrustchainCRError::FailedToSave)
+    }
+}
+// fn save_keys(
+//     &self,
+//     did_suffix: &str,
+//     key_type: KeyType,
+//     keys: &OneOrMany<JWK>,
+//     overwrite: bool,
+// ) -> Result<(), KeyManagerError> {
+//     // Get directory and path
+//     let directory = &self.get_path(did_suffix, &key_type, true)?;
+//     let path = &self.get_path(did_suffix, &key_type, false)?;
+
+//     // Stop if keys already exist and overwrite is false.
+//     if self.keys_exist(did_suffix, &key_type) && !overwrite {
+//         return Err(KeyManagerError::FailedToSaveKey);
+//     }
+
+//     // Make directory if non-existent
+//     match std::fs::create_dir_all(directory) {
+//         Ok(_) => (),
+//         Err(_) => return Err(KeyManagerError::FailedToCreateDir),
+//     };
+
+//     // Open the new file
+//     let file = OpenOptions::new()
+//         .create(true)
+//         .write(true)
+//         .truncate(true)
+//         .open(path);
+
+//     // Write key to file
+//     if let Ok(mut file) = file {
+//         match writeln!(file, "{}", &to_json(keys).unwrap()) {
+//             Ok(_) => Ok(()),
+//             Err(_) => Err(KeyManagerError::FailedToSaveKey),
+//         }
+//     } else {
+//         Err(KeyManagerError::FailedToSaveKey)
+//     }
+// }
+
 #[cfg(test)]
 mod tests {
+
+    use std::{any::type_name, env};
 
     use crate::data::{
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
@@ -552,4 +674,43 @@ mod tests {
         println!("Verified response map: {:?}", verified_response_map);
         assert_eq!(verified_response_map, nonces);
     }
+    #[test]
+    fn test_write_structs_to_file() {
+        let temp_s_key: Jwk = serde_json::from_str(TEST_TEMP_KEY).unwrap();
+        let initiation = CRInitiation {
+            temp_p_key: temp_s_key.to_public_key().unwrap(),
+            requester_details: RequesterDetails {
+                requester_org: String::from("My Org"),
+                operator_name: String::from("John Doe"),
+            },
+        };
+        let initiation_json = to_json(&initiation).unwrap();
+
+        // write to file
+        let var_type: &str = type_name::<&CRInitiation>().split("::").last().unwrap();
+        println!("Type name: {}", var_type);
+        let directory_path = env::current_dir().unwrap();
+        let file_path = directory_path.join("test_initiation.json");
+        save_to_file(&file_path, initiation_json.as_str());
+
+        // identity challenge
+        let identity_challenge = CRIdentityChallenge {
+            update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),
+            identity_nonce: Some(Nonce::new()),
+            identity_challenge_signature: Some(String::from("some challenge signature string")),
+            // identity_response_signature: Some(String::from("some response signature string")),
+            identity_response_signature: None,
+        };
+
+        identity_challenge.elementwise_serialize(&directory_path);
+
+        // let identity_challenge_json = to_json(&identity_challenge).unwrap();
+        // let file_path = directory_path.join("test_identity_challenge.json");
+        // save_to_file(&file_path, identity_challenge_json.as_str());
+
+        // iterate over fields of struct
+    }
 }
+
+// Todo:
+// - [ ] files should be read only

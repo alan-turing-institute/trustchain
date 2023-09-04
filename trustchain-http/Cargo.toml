@@ -46,6 +46,7 @@ lazy_static="1.4.0"
 hex = "0.4.3"
 rand = "0.8" 
 josekit = "0.8"
+serde_with = "*"
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"
