@@ -23,10 +23,10 @@ pub enum PresentationError {
     VerifierError(VerifierError),
     /// Credentials verified, but holder failed to authenticate with invalid or missing presentation
     /// proof.
-    #[error("Credentials verified for an unauthenticated holder.")]
+    #[error("Credentials verified for an unauthenticated holder: {0:?}")]
     VerifiedHolderUnauthenticated(VerificationResult),
     /// Credentials verified, but holder DID failed verification (not part of valid Trustchain).
-    #[error("Credentials verified for an unverified holder.")]
+    #[error("Credentials verified for an unverified holder: {0}")]
     VerifiedHolderUnverfied(VerifierError),
 }
 
@@ -47,4 +47,3 @@ impl From<VerifierError> for PresentationError {
         PresentationError::VerifierError(err)
     }
 }
-
