@@ -10,14 +10,12 @@ use serde_json::{to_string_pretty as to_json, Value};
 use serde_with::skip_serializing_none;
 use ssi::did::{Document, VerificationMethod};
 use ssi::jwk::JWK;
-use std::any::type_name;
 use std::collections::HashMap;
-use std::env;
-use std::fs::{File, OpenOptions};
+use std::fs;
+use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 
 use std::path::PathBuf;
-use struct_iterable::Iterable;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -46,6 +44,9 @@ pub enum TrustchainCRError {
     /// Failed to save to file.
     #[error("Failed to save to file.")]
     FailedToSave,
+    /// Failed to set permissions on file.
+    #[error("Failed to set permissions on file.")]
+    FailedToSetPermissions,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -105,21 +106,31 @@ trait ElementwiseSerializeDeserialize {
 
     fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
         // Open the new file
-        let file = OpenOptions::new()
+        let new_file = OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
             .open(path);
 
         // Write key to file
-        if let Ok(file) = file {
-            let mut writer = BufWriter::new(file);
-            match writer.write_all(data.as_bytes()) {
-                Ok(_) => Ok(()),
-                Err(_) => Err(TrustchainCRError::FailedToSave),
+        match new_file {
+            Ok(file) => {
+                let mut writer = BufWriter::new(file);
+                match writer.write_all(data.as_bytes()) {
+                    Ok(_) => {
+                        // Set file permissions to read-only (user, group, and others)
+                        let mut permissions = fs::metadata(path)
+                            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?
+                            .permissions();
+                        permissions.set_readonly(true);
+                        fs::set_permissions(path, permissions)
+                            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+                        Ok(())
+                    }
+                    Err(_) => Err(TrustchainCRError::FailedToSave),
+                }
             }
-        } else {
-            Err(TrustchainCRError::FailedToSave)
+            Err(_) => Err(TrustchainCRError::FailedToSave),
         }
     }
 }
@@ -139,7 +150,7 @@ struct CRInitiation {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone, Iterable)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct CRIdentityChallenge {
     update_p_key: Option<Jwk>,
     identity_nonce: Option<Nonce>, // make own Nonce type
@@ -149,19 +160,35 @@ struct CRIdentityChallenge {
 // todo: add path to serialise/deserialise functions?
 impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        let file_path = path.join("update_p_key.json");
-        let data: &str = &to_json(&self.update_p_key).unwrap();
-        if !file_path.exists() {
-            save_to_file(&file_path, data);
+        if let Some(update_p_key) = &self.update_p_key {
+            let file_path = path.join("update_p_key.json");
+            let data: &str = &to_json(update_p_key).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
         }
-        let file_path = path.join("identity_nonce.json");
-        let data: &str = &to_json(&self.identity_nonce).unwrap();
-        if !file_path.exists() {
-            save_to_file(&file_path, data);
+        if let Some(identity_nonce) = &self.identity_nonce {
+            let file_path = path.join("identity_nonce.json");
+            let data: &str = &to_json(identity_nonce).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(identity_challenge_signature) = &self.identity_challenge_signature {
+            let file_path = path.join("identity_challenge_signature.json");
+            let data: &str = &to_json(identity_challenge_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(identity_response_signature) = &self.identity_response_signature {
+            let file_path = path.join("identity_response_signature.json");
+            let data: &str = &to_json(identity_response_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
         }
         Ok(())
-        // todo: handle case where file already exists
-        // todo: handle case where field is None
     }
     fn elementwise_deserialize(&self) -> Result<(), TrustchainCRError> {
         Ok(())
@@ -328,16 +355,6 @@ impl SignEncrypt for Entity {}
 
 impl DecryptVerify for Entity {}
 
-// ///  Generates a random alphanumeric nonce of a specified length using a seeded random number generator.
-// fn generate_nonce() -> String {
-//     // let rng: StdRng = SeedableRng::seed_from_u64(seed);
-//     thread_rng()
-//         .sample_iter(&Alphanumeric)
-//         .take(32)
-//         .map(char::from)
-//         .collect()
-// }
-
 // make a try_from instead
 fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
     let key_as_str: &str = &serde_json::to_string(&key).unwrap();
@@ -408,45 +425,6 @@ fn save_to_file(path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
         Err(TrustchainCRError::FailedToSave)
     }
 }
-// fn save_keys(
-//     &self,
-//     did_suffix: &str,
-//     key_type: KeyType,
-//     keys: &OneOrMany<JWK>,
-//     overwrite: bool,
-// ) -> Result<(), KeyManagerError> {
-//     // Get directory and path
-//     let directory = &self.get_path(did_suffix, &key_type, true)?;
-//     let path = &self.get_path(did_suffix, &key_type, false)?;
-
-//     // Stop if keys already exist and overwrite is false.
-//     if self.keys_exist(did_suffix, &key_type) && !overwrite {
-//         return Err(KeyManagerError::FailedToSaveKey);
-//     }
-
-//     // Make directory if non-existent
-//     match std::fs::create_dir_all(directory) {
-//         Ok(_) => (),
-//         Err(_) => return Err(KeyManagerError::FailedToCreateDir),
-//     };
-
-//     // Open the new file
-//     let file = OpenOptions::new()
-//         .create(true)
-//         .write(true)
-//         .truncate(true)
-//         .open(path);
-
-//     // Write key to file
-//     if let Ok(mut file) = file {
-//         match writeln!(file, "{}", &to_json(keys).unwrap()) {
-//             Ok(_) => Ok(()),
-//             Err(_) => Err(KeyManagerError::FailedToSaveKey),
-//         }
-//     } else {
-//         Err(KeyManagerError::FailedToSaveKey)
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -712,5 +690,5 @@ mod tests {
     }
 }
 
-// Todo:
-// - [ ] files should be read only
+// todo:
+// - delete save_to_file function
