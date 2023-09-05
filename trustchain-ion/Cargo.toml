@@ -8,11 +8,14 @@ edition = "2021"
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 async-trait = "0.1"
+bip32 = {version="*", features = ["secp256k1"]}
+bip39 = "2.0.0"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"
 canonical_json = "0.4.0"
 clap = { version = "~4.0", features=["derive", "cargo"] }
 did-ion="0.1.0"
+ed25519-hd-key = "0.3.0"
 flate2 = "1.0.24"
 futures = "0.3.21"
 hex = "0.4.3"
