@@ -174,18 +174,27 @@ pub trait TrustchainVPAPI {
                         verifier,
                     )
                     .await
-                    .map(|_| ())
-                    .map_err(|err| err.into()),
+                    .map(|_| ()),
                     CredentialOrJWT::JWT(jwt) => {
-                        // TODO: add chain verification for JWT credentials.
-                        let result =
-                            Credential::verify_jwt(jwt, ldp_options, verifier.resolver()).await;
-                        if !result.errors.is_empty() {
-                            Err(PresentationError::CredentialError(
-                                CredentialError::VerificationResultError(result),
-                            ))
-                        } else {
-                            Ok(())
+                        // decode and verify for credential jwts
+                        match Credential::decode_verify_jwt(
+                            jwt,
+                            ldp_options.clone(),
+                            verifier.resolver(),
+                        )
+                        .await
+                        .0
+                        .ok_or(CredentialError::FailedToDecodeJWT)
+                        {
+                            Ok(credential) => TrustchainAPI::verify_credential(
+                                &credential,
+                                ldp_options,
+                                root_event_time,
+                                verifier,
+                            )
+                            .await
+                            .map(|_| ()),
+                            Err(e) => Err(e),
                         }
                     }
                 }
@@ -233,6 +242,7 @@ mod tests {
         },
         "type": ["VerifiableCredential"],
         "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+        "issuanceDate": "2023-09-06T12:15:08.630033Z",
         "image": "some_base64_representation",
         "credentialSubject": {
           "givenName": "Jane",
@@ -294,6 +304,10 @@ mod tests {
 
         let vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
+
+        // let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+        // let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
+        // let jwk: JWK = serde_json::from_str(root_plus_1_signing_key).unwrap();
         let mut presentation = Presentation {
             verifiable_credential: Some(OneOrMany::Many(vec![
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
@@ -305,7 +319,29 @@ mod tests {
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
                 CredentialOrJWT::Credential(vc_with_proof.clone()),
-                CredentialOrJWT::Credential(vc_with_proof),
+                CredentialOrJWT::Credential(vc_with_proof.clone()),
+                // Currently cannot generate a valid jwt that passes verification
+                // Open issue to implement jwt generation for Issuer
+                // https://github.com/alan-turing-institute/trustchain/issues/118
+                // CredentialOrJWT::JWT(
+                //     vc.generate_jwt(
+                //         Some(&jwk),
+                //         &LinkedDataProofOptions {
+                //             checks: None,
+                //             created: None,
+                //             ..Default::default() // created: None,
+                //                                  // challenge: None,
+                //                                  // domain: None,
+                //                                  // type_: None,
+                //                                  // eip712_domain: None,
+                //                                  // proof_purpose: None,
+                //                                  // verification_method: None,
+                //         },
+                //         &resolver,
+                //     )
+                //     .await
+                //     .unwrap(),
+                // ),
             ])),
             // NB. Holder must be specified in order to retrieve verification method to verify
             // presentation. Otherwise must be specified in LinkedDataProofOptions.
@@ -319,14 +355,15 @@ mod tests {
             .await
             .unwrap();
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
-        assert!(TrustchainAPI::verify_presentation(
+        let res = TrustchainAPI::verify_presentation(
             &presentation,
             None,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
         )
-        .await
-        .is_ok());
+        .await;
+        println!("{:?}", res);
+        assert!(res.is_ok());
     }
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
