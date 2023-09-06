@@ -11,10 +11,12 @@ fn with_zero_byte(public_key: [u8; 32]) -> [u8; 33] {
 
 #[cfg(test)]
 mod tests {
-    use bip32::{Prefix, XPrv};
-    use ssi::jwk::ECParams;
-
     use super::*;
+    use bip32::{DerivationPath, Prefix, PrivateKey, XPrv};
+    use bitcoin::Address;
+    use k256::elliptic_curve::sec1::ToEncodedPoint;
+    // use lazy_static::__Deref;
+    use ssi::jwk::ECParams;
 
     #[test]
     fn test_mnemonic_secp256k1() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,21 +24,44 @@ mod tests {
         let mnemonic = Mnemonic::parse(phrase).unwrap();
         let seed = mnemonic.to_seed("");
         // Update key is 1/0
-        let path = "m/1'/0'";
+        let path = "m/0'/0'";
+
         // Derive the root `XPrv` from the `seed` value
-        let root_xprv = XPrv::new(&seed)?;
-        let private_key = root_xprv.private_key().to_bytes();
-        let public_key = root_xprv.public_key().to_bytes();
-        println!("{:?}", private_key);
-        println!("{:?}", public_key);
-        println!("{:?}", root_xprv.to_string(Prefix::XPRV));
-        // TODO: how to convert into EC params?
-        // let jwk = JWK::from(Params::EC(ECParams {
-        //     curve: "secp256k1".to_string(),
-        //     public_key: Base64urlUInt(public_key.to_vec()),
-        //     private_key: Some(Base64urlUInt(private_key.to_vec())),
-        // }));
-        // println!("{}", serde_json::to_string_pretty(&jwk).unwrap());
+        // let root_xprv = XPrv::new(seed)?;
+        let path: DerivationPath = path.parse()?;
+        let root_xprv = XPrv::derive_from_path(seed, &path)?;
+        let private_key = root_xprv.private_key();
+        let mut private_key_32_bytes: [u8; 32] = [0; 32];
+        private_key_32_bytes.copy_from_slice(&private_key.to_bytes());
+
+        let secret_key = k256::SecretKey::from_bytes(private_key_32_bytes)?;
+        // Copied from SSI try_from conversion but leads to identical bytes to removing.
+        // let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
+        // assert_eq!(sk_bytes, private_key_32_bytes);
+
+        let public_key = secret_key.public_key();
+        let mut ec_params = ECParams::try_from(&public_key)?;
+        ec_params.ecc_private_key = Some(Base64urlUInt(private_key_32_bytes.to_vec()));
+        let jwk = JWK::from(Params::EC(ec_params));
+        println!("{}", serde_json::to_string_pretty(&jwk).unwrap());
+
+        let public_key_bytes = public_key.to_encoded_point(false).as_bytes();
+        // let hash = sha2::digest(public_key_bytes);
+        // let bitcoin_pk = bitcoin::PublicKey::new_uncompressed();
+
+        // use secp256k1::{PublicKey, Secp256k1, SecretKey};
+        // let secp = Secp256k1::new();
+        // // let secret_key = SecretKey::from_slice(&[0xcd; 32]).expect("32 bytes, within curve order");
+        // let secret_key =
+        //     SecretKey::from_slice(&private_key_32_bytes).expect("32 bytes, within curve order");
+        // let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+        // Address::p2pkh(&public_key_bytes, bitcoin::Network::Bitcoin);
+
+        // Test cases: https://learnmeabitcoin.com/technical/derivation-paths
+        // With above phrase
+        // m/0h/0h: 1KtK31vM2RaK9vKkV8e16yBfBGEKF8tNb4
+
         Ok(())
     }
 
@@ -57,6 +82,7 @@ mod tests {
         // Compare to test case JWK:
         let expected = r#"{"kty":"OKP","crv":"Ed25519","d":"wHwSUdy4a00qTxAhnuOHeWpai4ERjdZGslaou-Lig5g=","x":"AI4pdGWalv3JXZcatmtBM8OfSIBCFC0o_RNzTg-mEAh6"}"#;
         let expected_jwk: JWK = serde_json::from_str(expected).unwrap();
+
         // Make a JWK from bytes: https://docs.rs/ssi/0.4.0/src/ssi/jwk.rs.html#251-265
         let jwk = JWK::from(Params::OKP(OctetParams {
             curve: "Ed25519".to_string(),
