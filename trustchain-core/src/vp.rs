@@ -25,9 +25,6 @@ pub enum PresentationError {
     /// proof.
     #[error("Credentials verified for an unauthenticated holder: {0:?}")]
     VerifiedHolderUnauthenticated(VerificationResult),
-    /// Credentials verified, but holder DID failed verification (not part of valid Trustchain).
-    #[error("Credentials verified for an unverified holder: {0}")]
-    VerifiedHolderUnverfied(VerifierError),
 }
 
 impl From<HolderError> for PresentationError {
