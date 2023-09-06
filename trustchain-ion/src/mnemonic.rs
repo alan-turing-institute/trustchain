@@ -12,55 +12,64 @@ fn with_zero_byte(public_key: [u8; 32]) -> [u8; 33] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bip32::{DerivationPath, Prefix, PrivateKey, XPrv};
+
+    // use bip32::{DerivationPath, Prefix, PrivateKey, XPrv};
+    // note: the above import conflicts with the following:
+    use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+
+    use bitcoin::secp256k1::Secp256k1;
     use bitcoin::Address;
-    use k256::elliptic_curve::sec1::ToEncodedPoint;
-    // use lazy_static::__Deref;
     use ssi::jwk::ECParams;
+    use ssi::jwk::JWK;
+    use std::str::FromStr;
 
     #[test]
     fn test_mnemonic_secp256k1() -> Result<(), Box<dyn std::error::Error>> {
         let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
         let mnemonic = Mnemonic::parse(phrase).unwrap();
         let seed = mnemonic.to_seed("");
-        // Update key is 1/0
         let path = "m/0'/0'";
 
         // Derive the root `XPrv` from the `seed` value
         // let root_xprv = XPrv::new(seed)?;
-        let path: DerivationPath = path.parse()?;
-        let root_xprv = XPrv::derive_from_path(seed, &path)?;
-        let private_key = root_xprv.private_key();
-        let mut private_key_32_bytes: [u8; 32] = [0; 32];
-        private_key_32_bytes.copy_from_slice(&private_key.to_bytes());
 
-        let secret_key = k256::SecretKey::from_bytes(private_key_32_bytes)?;
-        // Copied from SSI try_from conversion but leads to identical bytes to removing.
-        // let sk_bytes: &[u8] = secret_key.as_scalar_bytes().as_ref();
-        // assert_eq!(sk_bytes, private_key_32_bytes);
+        // // Using bip32 crate (works):
+        // let path: DerivationPath = path.parse()?;
+        // let root_xprv = XPrv::derive_from_path(seed, &path)?;
+        // let private_key = root_xprv.private_key();
+        // let mut private_key_32_bytes: [u8; 32] = [0; 32];
+        // private_key_32_bytes.copy_from_slice(&private_key.to_bytes());
+        // let secret_key = k256::SecretKey::from_bytes(private_key_32_bytes)?;
 
-        let public_key = secret_key.public_key();
-        let mut ec_params = ECParams::try_from(&public_key)?;
-        ec_params.ecc_private_key = Some(Base64urlUInt(private_key_32_bytes.to_vec()));
+        // let public_key = secret_key.public_key();
+        // let mut ec_params = ECParams::try_from(&public_key)?;
+        // ec_params.ecc_private_key = Some(Base64urlUInt(private_key_32_bytes.to_vec()));
+        // let jwk = JWK::from(Params::EC(ec_params));
+        // println!("{}", serde_json::to_string_pretty(&jwk).unwrap());
+
+        // Using rust bitcoin crate:
+        let m = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
+        let secp = Secp256k1::new();
+        let derivation_path = DerivationPath::from_str(path).unwrap();
+        let xpriv = m.derive_priv(&secp, &derivation_path).unwrap();
+
+        let private_key = xpriv.to_priv();
+        let public_key: bitcoin::util::key::PublicKey = private_key.public_key(&secp);
+        let address = Address::p2pkh(&public_key, bitcoin::Network::Bitcoin);
+
+        // This matches the address generated at https://learnmeabitcoin.com/technical/derivation-paths
+        println!("{}", address); // Yay!!
+        let expected_address = "1KtK31vM2RaK9vKkV8e16yBfBGEKF8tNb4";
+        assert_eq!(address.to_string(), expected_address);
+
+        // Now convert the bitcoin::util::bip32::ExtendedPrivKey into a JWK.
+        let k256_secret_key = k256::SecretKey::from_bytes(private_key.to_bytes()).unwrap();
+        let k256_public_key = k256_secret_key.public_key();
+
+        let mut ec_params = ECParams::try_from(&k256_public_key)?;
+        ec_params.ecc_private_key = Some(Base64urlUInt(private_key.to_bytes().to_vec()));
         let jwk = JWK::from(Params::EC(ec_params));
-        println!("{}", serde_json::to_string_pretty(&jwk).unwrap());
-
-        let public_key_bytes = public_key.to_encoded_point(false).as_bytes();
-        // let hash = sha2::digest(public_key_bytes);
-        // let bitcoin_pk = bitcoin::PublicKey::new_uncompressed();
-
-        // use secp256k1::{PublicKey, Secp256k1, SecretKey};
-        // let secp = Secp256k1::new();
-        // // let secret_key = SecretKey::from_slice(&[0xcd; 32]).expect("32 bytes, within curve order");
-        // let secret_key =
-        //     SecretKey::from_slice(&private_key_32_bytes).expect("32 bytes, within curve order");
-        // let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-
-        // Address::p2pkh(&public_key_bytes, bitcoin::Network::Bitcoin);
-
-        // Test cases: https://learnmeabitcoin.com/technical/derivation-paths
-        // With above phrase
-        // m/0h/0h: 1KtK31vM2RaK9vKkV8e16yBfBGEKF8tNb4
+        println!("{}", serde_json::to_string_pretty(&jwk).unwrap()); // Fine
 
         Ok(())
     }
