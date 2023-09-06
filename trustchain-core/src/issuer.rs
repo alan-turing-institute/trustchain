@@ -10,10 +10,10 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum IssuerError {
     /// Wrapped error for SSI error.
-    #[error("A wrapped variant for an SSI error.")]
+    #[error("A wrapped variant for an SSI error: {0}")]
     SSI(ssi::error::Error),
     /// Wrapped error for key manager error.
-    #[error("A wrapped variant for a key manager error.")]
+    #[error("A wrapped variant for a key manager error: {0}")]
     KeyManager(KeyManagerError),
 }
 
