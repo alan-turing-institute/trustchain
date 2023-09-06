@@ -19,7 +19,7 @@ pub enum PresentationError {
     #[error("A wrapped Credential error: {0}")]
     CredentialError(CredentialError),
     /// Wrapped variant for Verifier Error.
-    #[error("A wrapped Verfier error: {0}")]
+    #[error("A wrapped Verifier error: {0}")]
     VerifierError(VerifierError),
     /// Credentials verified, but holder failed to authenticate with invalid or missing presentation
     /// proof.
