@@ -155,13 +155,12 @@ pub trait TrustchainVPAPI {
             .as_ref()
             .ok_or(PresentationError::NoCredentialsPresent)?;
 
+        // Verify signatures and issuers for each credential included in the presentation
         // TODO: consider concurrency limit (as rate limiting for verifier requests)
         let limit = Some(5);
         let ldp_options_vec: Vec<Option<LinkedDataProofOptions>> = (0..credentials.len())
             .map(|_| ldp_options.clone())
             .collect();
-
-        // Verify signatures and issuers for each credential included in the presentation
         stream::iter(credentials.into_iter().zip(ldp_options_vec))
             .map(Ok)
             .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
