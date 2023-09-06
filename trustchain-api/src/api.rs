@@ -21,7 +21,6 @@ use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
     verifier::IONVerifier,
 };
-
 use crate::TrustchainAPI;
 
 /// API for Trustchain CLI DID functionality.
