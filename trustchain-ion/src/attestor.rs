@@ -176,7 +176,7 @@ impl Holder for IONAttestor {
     //   - proof generation is handled by the ssi library
     //   - ssi::ldp::ensure_or_pick_verification_relationship calls presentation.get_issuer()
     //      which returns the holder (if Some, which is always the case)
-    //   - ensure_or_pick_verification_relationship tries to resolve the holder DID and check it's
+    //   - ensure_or_pick_verification_relationship tries to resolve the holder DID and check its
     //      verification methods
     //   - so the holder's DID must be resolvable
     async fn sign_presentation<T: DIDResolver>(
@@ -207,8 +207,6 @@ impl Holder for IONAttestor {
         };
 
         // Generate proof
-        // Example of verification_method derivation (optionally passed as a LinkedDataProofOption)
-        // let vm = format!("{}#{}", self.did(), signing_key.thumbprint().unwrap());
         let proof = vp.generate_proof(&signing_key, &options, resolver).await?;
         // Add proof to credential
         vp.add_proof(proof);
@@ -330,7 +328,6 @@ mod tests {
         let resolver = get_ion_resolver("http://localhost:3000/");
 
         // 2. Load Attestor
-        // let attestor = IONAttestor::new(did);
         // Attestor
         let attestor = IONAttestor::try_from(AttestorData::new(
             did.to_string(),
