@@ -1,9 +1,12 @@
 //! Core utilities.
+use crate::key_manager::KeyManager;
+use crate::key_manager::KeyType;
 use crate::TRUSTCHAIN_DATA;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
+use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 
@@ -12,25 +15,17 @@ pub fn type_of<T>(_: &T) -> String {
     std::any::type_name::<T>().to_string()
 }
 
-/// Writes a given signing key for a given DID suffix to the key manager during test init only.
-fn write_signing_key(
-    did_suffix: &str,
-    signing_key: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let path = Path::new(&std::env::var(TRUSTCHAIN_DATA)?)
-        .join("key_manager")
-        .join(did_suffix);
-    std::fs::create_dir_all(&path)?;
-    let path = path.join("signing_key.json");
-    std::fs::write(path.clone(), signing_key)?;
-    Ok(())
-}
+/// Utility key manager.
+struct UtilsKeyManager;
+
+impl KeyManager for UtilsKeyManager {}
 
 /// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 static INIT: Once = Once::new();
 pub fn init() {
     INIT.call_once(|| {
+        let utils_key_manager = UtilsKeyManager;
         // initialization code here
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
@@ -41,8 +36,10 @@ pub fn init() {
         let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
         let root_plus_2_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY","d":"bJnhIQgj0eQoRXIw5Xna6LErnili2ajMstoJLI21HiQ"}"#;
-        write_signing_key(root_plus_1_did_suffix, root_plus_1_signing_key).unwrap();
-        write_signing_key(root_plus_2_did_suffix, root_plus_2_signing_key).unwrap();
+        let root_plus_1_signing_jwk: JWK= serde_json::from_str(root_plus_1_signing_key).unwrap();
+        let root_plus_2_signing_jwk: JWK= serde_json::from_str(root_plus_2_signing_key).unwrap();
+        utils_key_manager.save_keys(root_plus_1_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_1_signing_jwk), false).unwrap();
+        utils_key_manager.save_keys(root_plus_2_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_signing_jwk), false).unwrap();
     });
 }
 
