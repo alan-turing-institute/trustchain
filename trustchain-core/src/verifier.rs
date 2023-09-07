@@ -18,8 +18,11 @@ pub enum VerifierError {
     #[error("Invalid signature for proof in dDID: {0}.")]
     InvalidSignature(String),
     /// Invalid root DID after self-controller reached in path.
-    #[error("Invalid root DID: {0}.")]
-    InvalidRoot(String),
+    #[error("Invalid root DID error: {0}")]
+    InvalidRoot(Box<dyn std::error::Error + Send + Sync>),
+    /// Invalid root with error:
+    #[error("Invalid root DID ({0}) with timestamp: {1}.")]
+    InvalidRootTimestamp(String, Timestamp),
     /// Failed to build DID chain.
     #[error("Failed to build chain: {0}.")]
     ChainBuildFailure(String),
@@ -174,7 +177,9 @@ pub trait VerifiableTimestamp {
     /// Gets the wrapped TimestampCommitment.
     fn timestamp_commitment(&self) -> &dyn TimestampCommitment;
     /// Gets the Timestamp.
-    fn timestamp(&self) -> Timestamp;
+    fn timestamp(&self) -> Timestamp {
+        self.timestamp_commitment().timestamp()
+    }
     /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
     fn verify(&self, target: &str) -> Result<(), CommitmentError> {
         // The expected data in the TimestampCommitment is the timestamp, while in the
@@ -207,23 +212,28 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         let root = chain.root();
 
         let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
-        self.verify_timestamp(&*verifiable_timestamp)?;
 
-        // Validate the PoW hash.
+        // Verify that the root DID content (keys & endpoints) and the timestamp share a common
+        // commitment target.
+        verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?;
+
+        // Validate the PoW on the common target hash.
         self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
 
-        // At this point we know that the same, valid PoW commits to both the timestamp
-        // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
-        // It only remains to check that the verified timestamp matches the expected root timestamp.
+        // Verify explicitly that the return value from the timestamp method equals the expected
+        // root timestamp (in case the default timestamp method implementation has been overridden).
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
-            Err(VerifierError::InvalidRoot(root.to_string()))
+            Err(VerifierError::InvalidRootTimestamp(
+                root.to_string(),
+                verifiable_timestamp.timestamp(),
+            ))
         } else {
             Ok(chain)
         }
     }
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
-    /// value for the timestamp retreived from a local PoW network node.
+    /// value for the timestamp retrieved from a local PoW network node.
     async fn verifiable_timestamp(
         &self,
         did: &str,
@@ -235,14 +245,6 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
     /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
-
-    /// Verifies a given verifiable timestamp.
-    fn verify_timestamp(
-        &self,
-        verifiable_timestamp: &dyn VerifiableTimestamp,
-    ) -> Result<(), VerifierError> {
-        Ok(verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?)
-    }
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

@@ -566,8 +566,8 @@ impl DIDCommitment for IONCommitment {
 /// A Commitment whose expected data is a Unix time and hasher
 /// and candidate data are obtained from a given DIDCommitment.
 pub struct BlockTimestampCommitment {
-    expected_data: Timestamp,
     candidate_data: Vec<u8>,
+    expected_data: Timestamp,
 }
 
 impl BlockTimestampCommitment {
@@ -575,8 +575,8 @@ impl BlockTimestampCommitment {
         // The decoded candidate data must contain the timestamp such that it is found
         // by the json_contains function, otherwise the content verification will fail.
         Ok(Self {
-            expected_data,
             candidate_data,
+            expected_data,
         })
     }
 }
@@ -858,6 +858,12 @@ mod tests {
             Err(CommitmentError::FailedContentVerification(..)) => (),
             _ => panic!("Expected FailedContentVerification error."),
         };
+
+        // We do *not* expect the (correct) timestamp to be valid expected data,
+        // since the candidate data is filtered to contain only the Merkle root field.
+        let wrong_expected_data_commitment =
+            BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1666265405));
+        assert!(wrong_expected_data_commitment.verify(target).is_err());
 
         // Also test as timestamp commitment
         let expected_data = 1666265405;

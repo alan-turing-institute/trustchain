@@ -465,8 +465,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
     Ok(chunk_file.deltas)
 }
 
-// TODO: consider whether duplication can be avoided in
-// IONVerifier<T, FullClient> and IONVerifier<T, LightClient>.
+// TODO: consider whether duplication can be avoided in the LightClient impl
 #[async_trait]
 impl<T> Verifier<T> for IONVerifier<T, FullClient>
 where
@@ -528,12 +527,12 @@ where
         // and specify a minimum work/target in the Trustchain client config, see:
         // https://docs.rs/bitcoin/0.30.0/src/bitcoin/pow.rs.html#72-78
         // In the meantime, just check for a minimum number of leading zeros in the hash.
-        if hash.chars().take_while(|&c| c == '0').count() < crate::MIN_ZEROS {
+        if hash.chars().take_while(|&c| c == '0').count() < crate::MIN_POW_ZEROS {
             return Err(VerifierError::InvalidProofOfWorkHash(format!(
-                "{}, only has {} zeros but MIN_ZEROS is {}",
+                "{}, only has {} zeros but MIN_POW_ZEROS is {}",
                 hash,
                 hash.chars().take_while(|&c| c == '0').count(),
-                crate::MIN_ZEROS
+                crate::MIN_POW_ZEROS
             )));
         }
 
@@ -612,10 +611,6 @@ impl VerifiableTimestamp for IONTimestamp {
 
     fn timestamp_commitment(&self) -> &dyn TimestampCommitment {
         self.timestamp_commitment.as_ref()
-    }
-
-    fn timestamp(&self) -> Timestamp {
-        self.timestamp_commitment().timestamp()
     }
 }
 
