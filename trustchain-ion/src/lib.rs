@@ -6,6 +6,7 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod mnemonic;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
@@ -146,3 +147,8 @@ pub const NONCE_KEY: &str = "nonce";
 // Minimum number of zeros for PoW block hash of root
 // TODO: set differently for mainnet and testnet with features
 pub const MIN_POW_ZEROS: usize = 14;
+
+// BIP32
+pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";
+pub const UPDATE_KEY_DERIVATION_PATH: &str = "m/1h";
+pub const RECOVERY_KEY_DERIVATION_PATH: &str = "m/2h";
