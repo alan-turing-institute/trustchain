@@ -3,9 +3,10 @@ use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use ssi::{
+    jwk::JWK,
     ldp::now_ms,
     one_or_many::OneOrMany,
-    vc::{Credential, Proof},
+    vc::{Credential, LinkedDataProofOptions, Presentation, Proof},
 };
 use thiserror::Error;
 use tokio::runtime::Runtime;
@@ -126,11 +127,37 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     })
 }
 
+/// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
+pub fn vp_issue_presentation(
+    presentation: String,
+    opts: String,
+    jwk_json: String,
+) -> Result<String> {
+    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
+    let endpoint_opts = mobile_opts.endpoint()?;
+    let ldp_opts =
+        mobile_opts
+            .linked_data_proof()
+            .cloned()
+            .ok()
+            .unwrap_or(LinkedDataProofOptions {
+                proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
+                ..Default::default()
+            });
+    let mut presentation: Presentation = serde_json::from_str(&presentation)?;
+    let jwk: JWK = serde_json::from_str(&jwk_json)?;
+    let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
+    let rt = Runtime::new().unwrap();
+    let proof = rt.block_on(async {
+        presentation
+            .generate_proof(&jwk, &ldp_opts, &resolver)
+            .await
+    })?;
+    presentation.add_proof(proof);
+    Ok(serde_json::to_string_pretty(&presentation)?)
+}
+
 // // TODO: implement once verifiable presentations are included in API
-// /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
-// pub fn vc_issue_presentation(presentation: String, opts: String, key_json: String) {
-//     todo!()
-// }
 // /// Verifies a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_verify_presentation.html).
 // pub fn vc_verify_presentation(presentation: String, opts: String) -> Result<String> {
 //     todo!()
@@ -206,10 +233,21 @@ mod tests {
         vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
     }
 
-    // // TODO: implement once verifiable presentations are included in API
-    // #[test]
-    // fn test_vc_issue_presentation() {}
+    #[test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_vp_issue_presentation() {
+        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
+        let presentation = vp_issue_presentation(
+            serde_json::to_string(&credential).unwrap(),
+            ffi_opts,
+            root_plus_1_signing_key.to_string(),
+        );
+        assert!(presentation.is_ok());
+    }
 
+    // // TODO: implement once verifiable presentations are included in API
     // #[test]
     // fn test_vc_verify_presentation() {}
 }
