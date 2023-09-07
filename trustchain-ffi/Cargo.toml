@@ -15,6 +15,7 @@ trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
 
 anyhow = "1.0"
+bip39 = "2.0.0"
 chrono = "0.4.26"
 did-ion="0.1.0"
 flutter_rust_bridge = "1"

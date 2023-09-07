@@ -125,9 +125,9 @@ fn generate_secp256k1_recovery_key(
     generate_secp256k1_key(mnemonic, RECOVERY_KEY_DERIVATION_PATH, index)
 }
 pub struct IONKeys {
-    signing_key: JWK,
-    update_key: JWK,
-    recovery_key: JWK,
+    pub signing_key: JWK,
+    pub update_key: JWK,
+    pub recovery_key: JWK,
 }
 
 /// Generates a set of signing, update and recovery keys from a mnemonic phrase and child index.

@@ -1,7 +1,13 @@
 // TODO: add module doc comments for mobile FFI
 use crate::config::FFIConfig;
 use anyhow::Result;
+use bip39::Mnemonic;
 use chrono::{DateTime, Utc};
+use did_ion::{
+    sidetree::{CreateOperation, PublicKeyEntry, PublicKeyJwk, Sidetree, SidetreeDID},
+    ION,
+};
+use serde::{Deserialize, Serialize};
 use ssi::{
     jwk::JWK,
     ldp::now_ms,
@@ -15,7 +21,7 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_core::{resolver::ResolverError, vc::CredentialError, verifier::VerifierError};
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+use trustchain_ion::{create::create_operation_from_keys, get_ion_resolver, verifier::IONVerifier};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
@@ -163,6 +169,41 @@ pub fn vp_issue_presentation(
 //     todo!()
 // }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateOperationAndDID {
+    create_operation: CreateOperation,
+    did: String,
+}
+
+pub fn ion_create_operation(phrase: String) -> Result<String> {
+    // 1. Generate keys
+    let mnemonic = Mnemonic::parse(phrase)?;
+    let ion_keys = trustchain_ion::mnemonic::generate_keys(&mnemonic, None)?;
+    ION::validate_key(&ion_keys.update_key)?;
+    ION::validate_key(&ion_keys.recovery_key)?;
+    let signing_public_key = PublicKeyEntry::try_from(ion_keys.signing_key.clone())?;
+    let update_public_key = PublicKeyJwk::try_from(ion_keys.update_key.to_public())?;
+    let recovery_public_key = PublicKeyJwk::try_from(ion_keys.recovery_key.to_public())?;
+
+    // 2. Call create with keys as args
+    let create_operation = create_operation_from_keys(
+        &signing_public_key,
+        &update_public_key,
+        &recovery_public_key,
+    )
+    .unwrap();
+    // 3. Get DID from create operation
+    // Get DID information
+    let did = SidetreeDID::<ION>::from_create_operation(&create_operation)?.to_string();
+    let did = did.rsplit_once(':').unwrap().0.to_string();
+    // 4. Return DID and create operation as JSON
+    Ok(serde_json::to_string_pretty(&CreateOperationAndDID {
+        create_operation,
+        did,
+    })?)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config::parse_toml;
@@ -250,4 +291,11 @@ mod tests {
     // // TODO: implement once verifiable presentations are included in API
     // #[test]
     // fn test_vc_verify_presentation() {}
+
+    #[test]
+    fn test_ion_create_operation() {
+        let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
+        let create_op_and_did = ion_create_operation(phrase.to_string()).unwrap();
+        println!("{}", create_op_and_did);
+    }
 }

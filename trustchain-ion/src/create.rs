@@ -1,7 +1,7 @@
 //! ION operation for DID creation.
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
-use did_ion::sidetree::DIDStatePatch;
+use did_ion::sidetree::{CreateOperation, DIDStatePatch};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
 use did_ion::ION;
@@ -10,6 +10,31 @@ use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::utils::{generate_key, get_operations_path};
+
+/// Makes a new DID given public signing, update and recovery keys.
+pub fn create_operation_from_keys(
+    signing_public_key: &PublicKeyEntry,
+    update_public_key: &PublicKeyJwk,
+    recovery_public_key: &PublicKeyJwk,
+) -> Result<CreateOperation, Box<dyn std::error::Error>> {
+    // Create operation: Make the create patch from scratch or passed file
+    let document_state = DocumentState {
+        public_keys: Some(vec![signing_public_key.to_owned()]),
+        services: None,
+    };
+    let patches = vec![DIDStatePatch::Replace {
+        document: document_state,
+    }];
+    // Make the create operation from patches
+    let operation = ION::create_existing(update_public_key, recovery_public_key, patches).unwrap();
+    // Verify operation
+    operation.clone().partial_verify::<ION>()?;
+    let create_operation = match operation.clone() {
+        Operation::Create(x) => x,
+        _ => panic!(),
+    };
+    Ok(create_operation)
+}
 
 /// Makes a new DID subject to be controlled with correspondong create operation written to file.
 pub fn create_operation(
