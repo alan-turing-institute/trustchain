@@ -11,8 +11,8 @@ use serde_with::skip_serializing_none;
 use ssi::did::{Document, VerificationMethod};
 use ssi::jwk::JWK;
 use std::collections::HashMap;
-use std::fs;
 use std::fs::OpenOptions;
+use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 
 use std::path::PathBuf;
@@ -47,6 +47,9 @@ pub enum TrustchainCRError {
     /// Failed to set permissions on file.
     #[error("Failed to set permissions on file.")]
     FailedToSetPermissions,
+    /// Failed deserialize from file.
+    #[error("Failed to deserialize.")]
+    FailedToDeserialize,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -55,54 +58,13 @@ impl From<JoseError> for TrustchainCRError {
     }
 }
 
-// pub struct Nonce<const N: usize>([u8; N]);
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Nonce(String);
-
-// impl<const N: usize> Nonce<N> {
-impl Nonce {
-    pub fn new() -> Self {
-        Self(
-            thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(32)
-                .map(char::from)
-                .collect(),
-        )
-    }
-}
-
-impl AsRef<str> for Nonce {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl ToString for Nonce {
-    fn to_string(&self) -> String {
-        self.0.clone()
-    }
-}
-
-impl From<String> for Nonce {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-struct CRState {
-    initiation: Option<CRInitiation>,
-    identity_challenge_response: Option<CRIdentityChallenge>,
-}
-
-struct Entity {}
-
+/// Interface for serializing and deserializing each field of structs to/from files.
 trait ElementwiseSerializeDeserialize {
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError>;
     // todo: default implementation, look if exists already
-    fn elementwise_deserialize(&self) -> Result<(), TrustchainCRError>;
+    fn elementwise_deserialize(self, path: &PathBuf) -> Result<Self, TrustchainCRError>
+    where
+        Self: Sized;
 
     fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
         // Open the new file
@@ -134,163 +96,6 @@ trait ElementwiseSerializeDeserialize {
         }
     }
 }
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-struct RequesterDetails {
-    requester_org: String,
-    operator_name: String,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
-struct CRInitiation {
-    temp_p_key: Jwk,
-    requester_details: RequesterDetails,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct CRIdentityChallenge {
-    update_p_key: Option<Jwk>,
-    identity_nonce: Option<Nonce>, // make own Nonce type
-    identity_challenge_signature: Option<String>,
-    identity_response_signature: Option<String>,
-}
-// todo: add path to serialise/deserialise functions?
-impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
-    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        if let Some(update_p_key) = &self.update_p_key {
-            let file_path = path.join("update_p_key.json");
-            let data: &str = &to_json(update_p_key).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_nonce) = &self.identity_nonce {
-            let file_path = path.join("identity_nonce.json");
-            let data: &str = &to_json(identity_nonce).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_challenge_signature) = &self.identity_challenge_signature {
-            let file_path = path.join("identity_challenge_signature.json");
-            let data: &str = &to_json(identity_challenge_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_response_signature) = &self.identity_response_signature {
-            let file_path = path.join("identity_response_signature.json");
-            let data: &str = &to_json(identity_response_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        Ok(())
-    }
-    fn elementwise_deserialize(&self) -> Result<(), TrustchainCRError> {
-        Ok(())
-    }
-}
-
-struct CRContentChallenge {
-    content_nonce: Option<HashMap<String, Nonce>>,
-    content_challenge_signature: Option<String>,
-    content_response_signature: Option<String>,
-}
-
-impl TryFrom<&CRIdentityChallenge> for JwtPayload {
-    type Error = TrustchainCRError;
-    fn try_from(value: &CRIdentityChallenge) -> Result<Self, Self::Error> {
-        let mut payload = JwtPayload::new();
-        payload.set_claim(
-            "identity_nonce",
-            Some(Value::from(
-                value.identity_nonce.as_ref().unwrap().to_string(),
-            )),
-        )?;
-        payload.set_claim(
-            "update_p_key",
-            Some(Value::from(
-                value.update_p_key.as_ref().unwrap().to_string(),
-            )),
-        )?;
-        Ok(payload)
-    }
-}
-
-impl TryFrom<&JwtPayload> for CRIdentityChallenge {
-    type Error = TrustchainCRError;
-    fn try_from(value: &JwtPayload) -> Result<Self, Self::Error> {
-        let mut challenge = CRIdentityChallenge {
-            update_p_key: None,
-            identity_nonce: None,
-            identity_challenge_signature: None,
-            identity_response_signature: None,
-        };
-        challenge.update_p_key = Some(
-            serde_json::from_str(value.claim("update_p_key").unwrap().as_str().unwrap()).unwrap(),
-        );
-        challenge.identity_nonce = Some(Nonce::from(
-            value
-                .claim("identity_nonce")
-                .unwrap()
-                .as_str()
-                .unwrap()
-                .to_string(),
-        ));
-        Ok(challenge)
-    }
-}
-
-impl TryFrom<&Nonce> for JwtPayload {
-    type Error = TrustchainCRError;
-    fn try_from(value: &Nonce) -> Result<Self, Self::Error> {
-        let mut payload = JwtPayload::new();
-        payload.set_claim("nonce", Some(Value::from(value.to_string())))?;
-        Ok(payload)
-    }
-}
-
-// impl TryFrom<(&JwtPayload, Vec<&str>)> for CRIdentityChallenge {
-//     type Error = TrustchainCRError;
-//     fn try_from((value, claims): (&JwtPayload, Vec<&str>)) -> Result<Self, Self::Error> {
-//         let mut challenge = CRIdentityChallenge {
-//             update_p_key: None,
-//             identity_nonce: None,
-//             identity_challenge_signature: None,
-//             identity_response_signature: None,
-//         };
-
-//         for claim in claims {
-//             match claim {
-//                 "update_p_key" => {
-//                     challenge.update_p_key = Some(
-//                         serde_json::from_str(
-//                             value.claim("update_p_key").unwrap().as_str().unwrap(),
-//                         )
-//                         .unwrap(),
-//                     );
-//                 }
-//                 "identity_nonce" => {
-//                     challenge.identity_nonce = Some(
-//                         value
-//                             .claim("identity_nonce")
-//                             .unwrap()
-//                             .as_str()
-//                             .unwrap()
-//                             .to_string(),
-//                     );
-//                 }
-//                 _ => {}
-//             }
-//         }
-
-//         Ok(challenge)
-//     }
-// }
 
 /// Interface for signing and then encrypting data.
 pub trait SignEncrypt {
@@ -351,9 +156,388 @@ trait DecryptVerify {
     }
 }
 
+struct Entity {}
+
 impl SignEncrypt for Entity {}
 
 impl DecryptVerify for Entity {}
+
+// pub struct Nonce<const N: usize>([u8; N]);
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Nonce(String);
+
+// impl<const N: usize> Nonce<N> {
+impl Nonce {
+    pub fn new() -> Self {
+        Self(
+            thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(32)
+                .map(char::from)
+                .collect(),
+        )
+    }
+}
+
+impl AsRef<str> for Nonce {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl ToString for Nonce {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
+impl From<String> for Nonce {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+struct CRState {
+    initiation: Option<CRInitiation>,
+    identity_challenge_response: Option<CRIdentityChallenge>,
+    content_challenge_response: Option<CRContentChallenge>,
+}
+
+impl CRState {
+    fn new() -> Self {
+        Self {
+            initiation: None,
+            identity_challenge_response: None,
+            content_challenge_response: None,
+        }
+    }
+}
+
+impl ElementwiseSerializeDeserialize for CRState {
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        if let Some(initiation) = &self.initiation {
+            initiation.elementwise_serialize(path)?;
+        }
+        if let Some(identity_challenge_response) = &self.identity_challenge_response {
+            identity_challenge_response.elementwise_serialize(path)?;
+        }
+        if let Some(content_challenge_response) = &self.content_challenge_response {
+            content_challenge_response.elementwise_serialize(path)?;
+        }
+        Ok(())
+    }
+    fn elementwise_deserialize(mut self, path: &PathBuf) -> Result<CRState, TrustchainCRError> {
+        self.initiation = Some(CRInitiation::new().elementwise_deserialize(path)?);
+        self.identity_challenge_response =
+            Some(CRIdentityChallenge::new().elementwise_deserialize(path)?);
+        self.content_challenge_response =
+            Some(CRContentChallenge::new().elementwise_deserialize(path)?);
+        Ok(self)
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+struct RequesterDetails {
+    requester_org: String,
+    operator_name: String,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize)]
+struct CRInitiation {
+    temp_p_key: Option<Jwk>,
+    requester_details: Option<RequesterDetails>,
+}
+
+impl CRInitiation {
+    fn new() -> Self {
+        Self {
+            temp_p_key: None,
+            requester_details: None,
+        }
+    }
+}
+
+impl ElementwiseSerializeDeserialize for CRInitiation {
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        let file_path = path.join("temp_p_key.json");
+        let data: &str = &to_json(&self.temp_p_key).unwrap();
+        if !file_path.exists() {
+            self.save_to_file(&file_path, data);
+        }
+
+        let file_path = path.join("requester_details.json");
+        let data: &str = &to_json(&self.requester_details).unwrap();
+        if !file_path.exists() {
+            self.save_to_file(&file_path, data);
+        }
+
+        Ok(())
+    }
+    fn elementwise_deserialize(
+        mut self,
+        path: &PathBuf,
+    ) -> Result<CRInitiation, TrustchainCRError> {
+        // temporary public key
+        let full_path = path.join("temp_p_key.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.temp_p_key = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        // requester details
+        let full_path = path.join("requester_details.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.requester_details = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+
+        // let initiation = CRInitiation {
+        //     temp_p_key: Some(temp_p_key),
+        //     requester_details: Some(requester_details),
+        // };
+
+        Ok(self)
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct CRIdentityChallenge {
+    update_p_key: Option<Jwk>,
+    identity_nonce: Option<Nonce>, // make own Nonce type
+    identity_challenge_signature: Option<String>,
+    identity_response_signature: Option<String>,
+}
+
+impl CRIdentityChallenge {
+    fn new() -> Self {
+        Self {
+            update_p_key: None,
+            identity_nonce: None,
+            identity_challenge_signature: None,
+            identity_response_signature: None,
+        }
+    }
+}
+
+// todo: add path to serialise/deserialise functions?
+impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        if let Some(update_p_key) = &self.update_p_key {
+            let file_path = path.join("update_p_key.json");
+            let data: &str = &to_json(update_p_key).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(identity_nonce) = &self.identity_nonce {
+            let file_path = path.join("identity_nonce.json");
+            let data: &str = &to_json(identity_nonce).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(identity_challenge_signature) = &self.identity_challenge_signature {
+            let file_path = path.join("identity_challenge_signature.json");
+            let data: &str = &to_json(identity_challenge_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(identity_response_signature) = &self.identity_response_signature {
+            let file_path = path.join("identity_response_signature.json");
+            let data: &str = &to_json(identity_response_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        Ok(())
+    }
+    fn elementwise_deserialize(
+        mut self,
+        path: &PathBuf,
+    ) -> Result<CRIdentityChallenge, TrustchainCRError> {
+        // update public key
+        let full_path = path.join("update_p_key.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.update_p_key = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        // identity nonce
+        let full_path = path.join("identity_nonce.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.identity_nonce = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        // identity challenge signature
+        let full_path = path.join("identity_challenge_signature.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.identity_challenge_signature = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+
+        // identity response signature
+        let full_path = path.join("identity_response_signature.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.identity_response_signature = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+
+        Ok(self)
+    }
+}
+
+impl TryFrom<&JwtPayload> for CRIdentityChallenge {
+    type Error = TrustchainCRError;
+    fn try_from(value: &JwtPayload) -> Result<Self, Self::Error> {
+        let mut challenge = CRIdentityChallenge {
+            update_p_key: None,
+            identity_nonce: None,
+            identity_challenge_signature: None,
+            identity_response_signature: None,
+        };
+        challenge.update_p_key = Some(
+            serde_json::from_str(value.claim("update_p_key").unwrap().as_str().unwrap()).unwrap(),
+        );
+        challenge.identity_nonce = Some(Nonce::from(
+            value
+                .claim("identity_nonce")
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ));
+        Ok(challenge)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CRContentChallenge {
+    content_nonce: Option<HashMap<String, Nonce>>,
+    content_challenge_signature: Option<String>,
+    content_response_signature: Option<String>,
+}
+
+impl CRContentChallenge {
+    fn new() -> Self {
+        Self {
+            content_nonce: None,
+            content_challenge_signature: None,
+            content_response_signature: None,
+        }
+    }
+}
+
+impl ElementwiseSerializeDeserialize for CRContentChallenge {
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        if let Some(content_nonce) = &self.content_nonce {
+            let file_path = path.join("content_nonce.json");
+            let data: &str = &to_json(content_nonce).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(content_challenge_signature) = &self.content_challenge_signature {
+            let file_path = path.join("content_challenge_signature.json");
+            let data: &str = &to_json(content_challenge_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        if let Some(content_response_signature) = &self.content_response_signature {
+            let file_path = path.join("content_response_signature.json");
+            let data: &str = &to_json(content_response_signature).unwrap();
+            if !file_path.exists() {
+                self.save_to_file(&file_path, data);
+            }
+        }
+        Ok(())
+    }
+    fn elementwise_deserialize(
+        mut self,
+        path: &PathBuf,
+    ) -> Result<CRContentChallenge, TrustchainCRError> {
+        // content nonce(s)
+        let full_path = path.join("content_nonce.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.content_nonce = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        // content challenge signature
+        let full_path = path.join("content_challenge_signature.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.content_challenge_signature = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        // content response signature
+        let full_path = path.join("content_response_signature.json");
+        if !full_path.exists() {
+            return Err(TrustchainCRError::FailedToDeserialize);
+        }
+        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        let reader = std::io::BufReader::new(file);
+        self.content_response_signature = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+
+        Ok(self)
+    }
+}
+
+impl TryFrom<&CRIdentityChallenge> for JwtPayload {
+    type Error = TrustchainCRError;
+    fn try_from(value: &CRIdentityChallenge) -> Result<Self, Self::Error> {
+        let mut payload = JwtPayload::new();
+        payload.set_claim(
+            "identity_nonce",
+            Some(Value::from(
+                value.identity_nonce.as_ref().unwrap().to_string(),
+            )),
+        )?;
+        payload.set_claim(
+            "update_p_key",
+            Some(Value::from(
+                value.update_p_key.as_ref().unwrap().to_string(),
+            )),
+        )?;
+        Ok(payload)
+    }
+}
+
+impl TryFrom<&Nonce> for JwtPayload {
+    type Error = TrustchainCRError;
+    fn try_from(value: &Nonce) -> Result<Self, Self::Error> {
+        let mut payload = JwtPayload::new();
+        payload.set_claim("nonce", Some(Value::from(value.to_string())))?;
+        Ok(payload)
+    }
+}
 
 // make a try_from instead
 fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
@@ -404,32 +588,12 @@ fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, 
     Ok(my_map)
 }
 
-// todo: trait?
-fn save_to_file(path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
-    // Open the new file
-    let file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(path);
-
-    // Write key to file
-
-    if let Ok(mut file) = file {
-        let mut writer = BufWriter::new(file);
-        match writer.write_all(data.as_bytes()) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(TrustchainCRError::FailedToSave),
-        }
-    } else {
-        Err(TrustchainCRError::FailedToSave)
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
-    use std::{any::type_name, env};
+    use std::env;
+
+    use josekit::jwe::alg::direct::DirectJweAlgorithm;
 
     use crate::data::{
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
@@ -448,11 +612,11 @@ mod tests {
 
         // generate challenge
         let request_initiation = CRInitiation {
-            temp_p_key: temp_p_key.clone(),
-            requester_details: RequesterDetails {
+            temp_p_key: Some(temp_p_key.clone()),
+            requester_details: Some(RequesterDetails {
                 requester_org: String::from("My Org"),
                 operator_name: String::from("John Doe"),
-            },
+            }),
         };
 
         let mut upstream_identity_challenge_response = CRIdentityChallenge {
@@ -467,7 +631,11 @@ mod tests {
 
         let payload = JwtPayload::try_from(&upstream_identity_challenge_response).unwrap();
         let signed_encrypted_challenge = upstream_entity
-            .sign_and_encrypt_claim(&payload, &upstream_s_key, &request_initiation.temp_p_key)
+            .sign_and_encrypt_claim(
+                &payload,
+                &upstream_s_key,
+                &request_initiation.temp_p_key.unwrap(),
+            )
             .unwrap();
 
         upstream_identity_challenge_response.identity_challenge_signature =
@@ -654,41 +822,101 @@ mod tests {
     }
     #[test]
     fn test_write_structs_to_file() {
+        // ==========| Identity CR | ==============
         let temp_s_key: Jwk = serde_json::from_str(TEST_TEMP_KEY).unwrap();
         let initiation = CRInitiation {
-            temp_p_key: temp_s_key.to_public_key().unwrap(),
-            requester_details: RequesterDetails {
+            temp_p_key: Some(temp_s_key.to_public_key().unwrap()),
+            requester_details: Some(RequesterDetails {
                 requester_org: String::from("My Org"),
                 operator_name: String::from("John Doe"),
-            },
+            }),
         };
-        let initiation_json = to_json(&initiation).unwrap();
-
-        // write to file
-        let var_type: &str = type_name::<&CRInitiation>().split("::").last().unwrap();
-        println!("Type name: {}", var_type);
-        let directory_path = env::current_dir().unwrap();
-        let file_path = directory_path.join("test_initiation.json");
-        save_to_file(&file_path, initiation_json.as_str());
 
         // identity challenge
         let identity_challenge = CRIdentityChallenge {
             update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),
             identity_nonce: Some(Nonce::new()),
             identity_challenge_signature: Some(String::from("some challenge signature string")),
-            // identity_response_signature: Some(String::from("some response signature string")),
-            identity_response_signature: None,
+            identity_response_signature: Some(String::from("some response signature string")),
+            // identity_response_signature: None,
         };
 
-        identity_challenge.elementwise_serialize(&directory_path);
+        // ==========| Content CR | ==============
+        // get signing keys for DE from did document
+        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
 
-        // let identity_challenge_json = to_json(&identity_challenge).unwrap();
-        // let file_path = directory_path.join("test_identity_challenge.json");
-        // save_to_file(&file_path, identity_challenge_json.as_str());
+        // generate map with unencrypted nonces so UE can store them for later verification
+        let nonces: HashMap<String, Nonce> =
+            test_keys_map
+                .iter()
+                .fold(HashMap::new(), |mut acc, (key_id, _)| {
+                    acc.insert(String::from(key_id), Nonce::new());
+                    acc
+                });
+        let content_challenge_response = CRContentChallenge {
+            content_nonce: Some(nonces),
+            content_challenge_signature: Some(String::from(
+                "some content challenge signature string",
+            )),
+            content_response_signature: Some(String::from(
+                "some content response signature string",
+            )),
+        };
 
-        // iterate over fields of struct
+        // ==========| CR state | ==============
+        let cr_state = CRState {
+            initiation: Some(initiation),
+            identity_challenge_response: Some(identity_challenge),
+            content_challenge_response: Some(content_challenge_response),
+        };
+        // write to file
+        let directory_path = env::current_dir().unwrap();
+        cr_state.elementwise_serialize(&directory_path).unwrap();
+    }
+
+    #[test]
+    fn test_deserialize_initiation() {
+        let directory_path = env::current_dir().unwrap();
+        let initiation = CRInitiation::new()
+            .elementwise_deserialize(&directory_path)
+            .unwrap();
+        println!("Initiation deserialized from files: {:?}", initiation);
+    }
+
+    #[test]
+    fn test_deserialize_identity_challenge() {
+        let directory_path = env::current_dir().unwrap();
+        let identity_challenge = CRIdentityChallenge::new()
+            .elementwise_deserialize(&directory_path)
+            .unwrap();
+        println!(
+            "Identity challenge deserialized from files: {:?}",
+            identity_challenge
+        );
+    }
+
+    #[test]
+    fn test_deserialize_content_challenge() {
+        let directory_path = env::current_dir().unwrap();
+        let content_challenge = CRContentChallenge::new()
+            .elementwise_deserialize(&directory_path)
+            .unwrap();
+        println!(
+            "Content challenge deserialized from files: {:?}",
+            content_challenge
+        );
+    }
+
+    #[test]
+    fn test_deserialize_challenge_state() {
+        let directory_path = env::current_dir().unwrap();
+        let challenge_state = CRState::new()
+            .elementwise_deserialize(&directory_path)
+            .unwrap();
+        println!(
+            "Challenge state deserialized from files: {:?}",
+            challenge_state
+        );
     }
 }
-
-// todo:
-// - delete save_to_file function
