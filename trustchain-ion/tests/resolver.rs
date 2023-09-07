@@ -1,8 +1,33 @@
 use core::panic;
 
+use did_method_key::DIDKey;
+use ssi::did::{DIDMethod, Source};
 use ssi::did_resolve::Metadata;
+use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use trustchain_ion::get_ion_resolver;
+
+#[tokio::test]
+async fn resolve_did_key_method_secp256k1() {
+    // DID resolution for the "key" method is supported by the Trustchain resolver.
+    // Offline resolution using an algorithm that maps between the DID and the DID document
+    let did = "did:key:zQ3shokFTS3brHcDQrn82RUDfCZESWL1ZdCEJwekUDPQiYBme";
+    let resolver = get_ion_resolver("http://localhost:3000/");
+    let (res_meta, _doc, _doc_meta) = resolver.resolve_as_result(did).await.unwrap();
+    assert_eq!(res_meta.error, None);
+    println!("{}", serde_json::to_string_pretty(&_doc.unwrap()).unwrap());
+}
+
+#[tokio::test]
+async fn resolve_did_key_method_ed25519() {
+    // As above, for an ed25519 key
+    let key = JWK::generate_ed25519().unwrap();
+    let did = DIDKey.generate(&Source::Key(&key)).unwrap();
+    let resolver = get_ion_resolver("http://localhost:3000/");
+    let (res_meta, _doc, _doc_meta) = resolver.resolve_as_result(&did).await.unwrap();
+    assert_eq!(res_meta.error, None);
+    println!("{}", serde_json::to_string_pretty(&_doc.unwrap()).unwrap());
+}
 
 #[tokio::test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.

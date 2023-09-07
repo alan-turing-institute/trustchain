@@ -1,7 +1,8 @@
 //! DID resolution and `DIDResolver` implementation.
 use async_trait::async_trait;
+use did_method_key::DIDKey;
 use serde_json::Value;
-use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
+use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint, DIDURL};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
@@ -108,9 +109,14 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // Consider using ResolutionInputMetadata to optionally not perform transform.
-        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
-        self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+        match did.splitn(3, ":").nth(1).unwrap() {
+            "key" => DIDKey.resolve(did, input_metadata).await,
+            _ => {
+                // Consider using ResolutionInputMetadata to optionally not perform transform.
+                // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
+                self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+            }
+        }
     }
 }
 
