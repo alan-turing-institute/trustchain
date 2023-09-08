@@ -37,6 +37,8 @@ pub struct IONConfig {
     pub bitcoin_rpc_username: String,
     /// Bitcoin Core RPC password.
     pub bitcoin_rpc_password: String,
+    /// Ion server endpoint
+    pub ion_connection_string: String,
 }
 
 /// Wrapper struct for parsing the `ion` table.
@@ -63,6 +65,8 @@ mod tests {
         bitcoin_connection_string = "http://localhost:18332"
         bitcoin_rpc_username = "admin"
         bitcoin_rpc_password = "bitcoin_rpc_password"
+
+        ion_connection_string = "http://localhost:3000"
         "##;
 
         let config: IONConfig = parse_toml(config_string);
@@ -75,6 +79,7 @@ mod tests {
                 bitcoin_connection_string: "http://localhost:18332".to_string(),
                 bitcoin_rpc_username: "admin".to_string(),
                 bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
+                ion_connection_string: "http://localhost:3000".to_string(),
             }
         );
     }

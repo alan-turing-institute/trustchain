@@ -6,6 +6,7 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod did_methods;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
@@ -15,6 +16,9 @@ use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+
+#[macro_use]
+extern crate lazy_static;
 
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;

@@ -7,12 +7,14 @@ edition = "2021"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
+
 async-trait = "0.1"
 bitcoin = "0.29.2"
 bitcoincore-rpc = "0.16.0"
 canonical_json = "0.4.0"
 clap = { version = "~4.0", features=["derive", "cargo"] }
 did-ion="0.1.0"
+did-method-key = "*"
 flate2 = "1.0.24"
 futures = "0.3.21"
 hex = "0.4.3"
@@ -33,4 +35,3 @@ tokio = {version = "1.20.1", features = ["full"]}
 [dev-dependencies]
 glob = "0.3"
 mockall = "0.11.2"
-did-method-key = "*"

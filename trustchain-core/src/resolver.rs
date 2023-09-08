@@ -1,8 +1,7 @@
 //! DID resolution and `DIDResolver` implementation.
 use async_trait::async_trait;
-use did_method_key::DIDKey;
 use serde_json::Value;
-use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint, DIDURL};
+use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
 };
@@ -82,6 +81,9 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
     {
         self.0.to_resolver().resolve(did, input_metadata)
     }
+    fn to_did_method(&self) -> Option<&dyn DIDMethod> {
+        Some(&self.0)
+    }
 }
 
 // DIDMethodWrapper is used only to upcast a DIDMethod to a DIDResolver,
@@ -109,14 +111,18 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        match did.splitn(3, ":").nth(1).unwrap() {
-            "key" => DIDKey.resolve(did, input_metadata).await,
-            _ => {
-                // Consider using ResolutionInputMetadata to optionally not perform transform.
-                // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
-                self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
-            }
-        }
+        // Consider using ResolutionInputMetadata to optionally not perform transform.
+        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
+        self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+    }
+}
+
+impl<T: DIDResolver + Sync + Send> DIDMethod for Resolver<T> {
+    fn name(&self) -> &'static str {
+        self.wrapped_resolver.to_did_method().unwrap().name()
+    }
+    fn to_resolver(&self) -> &dyn DIDResolver {
+        self
     }
 }
 
