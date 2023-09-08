@@ -1,4 +1,4 @@
-//! Verifiable credential and presentation functionality for Trustchain.
+//! Verifiable credential functionality for Trustchain.
 use crate::verifier::VerifierError;
 use ssi::vc::VerificationResult;
 use thiserror::Error;
@@ -9,6 +9,9 @@ pub enum CredentialError {
     /// No issuer present in credential.
     #[error("No issuer.")]
     NoIssuerPresent,
+    /// Failed to decode JWT error.
+    #[error("Failed to decode JWT.")]
+    FailedToDecodeJWT,
     /// Wrapped error for Verifier error.
     #[error("A wrapped Verifier error: {0}")]
     VerifierError(VerifierError),
