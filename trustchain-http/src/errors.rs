@@ -3,8 +3,8 @@ use hyper::StatusCode;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError,
-    verifier::VerifierError,
+    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError, vc::CredentialError,
+    verifier::VerifierError, vp::PresentationError,
 };
 
 // TODO: refine and add doc comments for error variants
@@ -20,6 +20,8 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
+    #[error("Trustchain presentation error: {0}")]
+    PresentationError(PresentationError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -57,6 +59,12 @@ impl From<IssuerError> for TrustchainHTTPError {
     }
 }
 
+impl From<PresentationError> for TrustchainHTTPError {
+    fn from(err: PresentationError) -> Self {
+        TrustchainHTTPError::PresentationError(err)
+    }
+}
+
 // See axum IntoRespone example:
 // https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
 
@@ -67,10 +75,8 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_)) => {
-                (StatusCode::OK, err.to_string())
-            }
-            err @ TrustchainHTTPError::VerifierError(VerifierError::CommitmentFailure(_)) => {
+            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_))
+            | err @ TrustchainHTTPError::VerifierError(VerifierError::CommitmentFailure(_)) => {
                 (StatusCode::OK, err.to_string())
             }
             err @ TrustchainHTTPError::VerifierError(_) => {
@@ -83,6 +89,15 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::ResolverError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::PresentationError(PresentationError::CredentialError(
+                CredentialError::VerifierError(VerifierError::CommitmentFailure(_)),
+            ))
+            | err @ TrustchainHTTPError::PresentationError(PresentationError::CredentialError(
+                CredentialError::VerifierError(VerifierError::InvalidRoot(_)),
+            )) => (StatusCode::OK, err.to_string()),
+            err @ TrustchainHTTPError::PresentationError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CredentialDoesNotExist => {

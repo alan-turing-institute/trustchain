@@ -13,6 +13,7 @@ path = "src/bin/main.rs"
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
+trustchain-api = { path = "../trustchain-api" }
 async-trait = "0.1"
 axum = "0.6"
 axum-server = {version="0.5.1",  features = ["tls-rustls"] }
