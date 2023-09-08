@@ -2,9 +2,10 @@ use crate::config::HTTPConfig;
 use ssi::vc::Credential;
 use std::collections::HashMap;
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
+use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, Endpoint, IONResolver};
 
-const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
+const DEFAULT_VERIFIER_ENDPOINT_HOST: &str = "localhost";
+const DEFAULT_VERIFIER_ENDPOINT_PORT: u16 = 3000;
 
 /// A shared app state for handlers.
 pub struct AppState {
@@ -15,7 +16,10 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(config: HTTPConfig) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(&Endpoint::new(
+            DEFAULT_VERIFIER_ENDPOINT_HOST.to_string(),
+            DEFAULT_VERIFIER_ENDPOINT_PORT,
+        ))));
         let path = std::env::var(TRUSTCHAIN_DATA).expect("TRUSTCHAIN_DATA env not set.");
         let credentials: HashMap<String, Credential> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("credentials/offers/cache.json"))
@@ -30,7 +34,10 @@ impl AppState {
         }
     }
     pub fn new_with_cache(config: HTTPConfig, credentials: HashMap<String, Credential>) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(&Endpoint::new(
+            DEFAULT_VERIFIER_ENDPOINT_HOST.to_string(),
+            DEFAULT_VERIFIER_ENDPOINT_PORT,
+        ))));
         Self {
             config,
             verifier,

@@ -701,7 +701,7 @@ mod tests {
     #[ignore = "Integration test requires ION"]
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let target = IONVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
@@ -758,7 +758,7 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let target = IONVerifier::new(resolver);
 
         assert!(target.bundles.lock().unwrap().is_empty());
@@ -774,7 +774,7 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";

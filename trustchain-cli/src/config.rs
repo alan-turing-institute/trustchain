@@ -49,7 +49,7 @@ mod tests {
         let config_string = r##"
         [cli]
         root_event_time = 1666971942
-        ion_endpoint.host = "http://127.0.0.1"
+        ion_endpoint.host = "127.0.0.1"
         ion_endpoint.port = 3000
 
         [non_core]
@@ -62,7 +62,7 @@ mod tests {
             config,
             CLIConfig {
                 root_event_time: 1666971942,
-                ion_endpoint: Endpoint::new("http://127.0.0.1".to_string(), 3000)
+                ion_endpoint: Endpoint::new("127.0.0.1".to_string(), 3000)
             }
         );
     }

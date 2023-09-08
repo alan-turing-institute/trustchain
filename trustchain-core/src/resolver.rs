@@ -50,6 +50,45 @@ pub type ResolverResult = Result<
     ResolverError,
 >;
 
+/// Map resolution metadata, DID document and DID document metadata resolved from the passed DID
+/// to a `Result` type.
+pub fn resolution_to_result(
+    res: (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ),
+    did: &str,
+) -> ResolverResult {
+    let (did_res_meta, did_doc, did_doc_meta) = res;
+    // Handle error cases based on string content of the resolution metadata
+    if let Some(did_res_meta_error) = &did_res_meta.error {
+        if did_res_meta_error
+            .starts_with("Error sending HTTP request: error sending request for url")
+        {
+            Err(ResolverError::ConnectionFailure)
+        } else if did_res_meta_error == "invalidDid" {
+            Err(ResolverError::NonExistentDID(did.to_string()))
+        } else if did_res_meta_error == "notFound" {
+            Err(ResolverError::DIDNotFound(did.to_string()))
+        } else if did_res_meta_error == "Failed to convert to Truschain document and metadata." {
+            Err(ResolverError::FailedToConvertToTrustchain)
+        } else if did_res_meta_error == "Multiple Trustchain proof service entries are present." {
+            Err(ResolverError::MultipleTrustchainProofService)
+        } else {
+            eprintln!("Unhandled error message: {}", did_res_meta_error);
+            let eof_err_msg =
+                "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
+            if did_res_meta_error == eof_err_msg {
+                eprintln!("HINT: If using HTTP for resolution, ensure a valid client is in use.");
+            }
+            panic!();
+        }
+    } else {
+        Ok((did_res_meta, did_doc, did_doc_meta))
+    }
+}
+
 // Newtype pattern (workaround for lack of trait upcasting coercion).
 // Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
 // The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
@@ -81,6 +120,9 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
     {
         self.0.to_resolver().resolve(did, input_metadata)
     }
+    fn to_did_method(&self) -> Option<&dyn DIDMethod> {
+        Some(&self.0)
+    }
 }
 
 // DIDMethodWrapper is used only to upcast a DIDMethod to a DIDResolver,
@@ -88,6 +130,15 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
 // on Sync & Send. Both are empty implementations.
 unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
 unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
+
+impl<S: DIDMethod> DIDMethod for DIDMethodWrapper<S> {
+    fn name(&self) -> &'static str {
+        self.0.name()
+    }
+    fn to_resolver(&self) -> &dyn DIDResolver {
+        self.0.to_resolver()
+    }
+}
 
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
@@ -111,6 +162,15 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
         // Consider using ResolutionInputMetadata to optionally not perform transform.
         // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         self.transform(self.wrapped_resolver.resolve(did, input_metadata).await)
+    }
+}
+
+impl<T: DIDResolver + Sync + Send + DIDMethod> DIDMethod for Resolver<T> {
+    fn name(&self) -> &'static str {
+        self.wrapped_resolver.name()
+    }
+    fn to_resolver(&self) -> &dyn DIDResolver {
+        self
     }
 }
 
@@ -182,42 +242,11 @@ impl<T: DIDResolver + Sync + Send> Resolver<T> {
         }
     }
 
-    /// Sync Trustchain resolve function returning resolution metadata,
-    /// DID document and DID document metadata from a passed DID as a `Result` type.
     pub async fn resolve_as_result(&self, did: &str) -> ResolverResult {
-        // sidetree resolved resolution metadata, document and document metadata
-        let (did_res_meta, did_doc, did_doc_meta) =
-            self.resolve(did, &ResolutionInputMetadata::default()).await;
-
-        // Handle error cases based on string content of the resolution metadata
-        if let Some(did_res_meta_error) = &did_res_meta.error {
-            if did_res_meta_error
-                .starts_with("Error sending HTTP request: error sending request for url")
-            {
-                Err(ResolverError::ConnectionFailure)
-            } else if did_res_meta_error == "invalidDid" {
-                Err(ResolverError::NonExistentDID(did.to_string()))
-            } else if did_res_meta_error == "notFound" {
-                Err(ResolverError::DIDNotFound(did.to_string()))
-            } else if did_res_meta_error == "Failed to convert to Truschain document and metadata."
-            {
-                Err(ResolverError::FailedToConvertToTrustchain)
-            } else if did_res_meta_error == "Multiple Trustchain proof service entries are present."
-            {
-                Err(ResolverError::MultipleTrustchainProofService)
-            } else {
-                eprintln!("Unhandled error message: {}", did_res_meta_error);
-                let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
-                if did_res_meta_error == eof_err_msg {
-                    eprintln!(
-                        "HINT: If using HTTP for resolution, ensure a valid client is in use."
-                    );
-                }
-                panic!();
-            }
-        } else {
-            Ok((did_res_meta, did_doc, did_doc_meta))
-        }
+        resolution_to_result(
+            self.resolve(did, &ResolutionInputMetadata::default()).await,
+            did,
+        )
     }
 
     /// Gets a result of an index of a single Trustchain proof service, otherwise relevant error.

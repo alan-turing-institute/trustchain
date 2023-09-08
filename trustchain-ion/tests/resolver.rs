@@ -1,25 +1,54 @@
 use core::panic;
-
+use did_method_key::DIDKey;
+use ssi::did::{DIDMethod, Source};
 use ssi::did_resolve::Metadata;
+use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
+use trustchain_ion::config::ion_config;
+use trustchain_ion::did_methods::{build_methods_resolver, DID_METHODS};
 use trustchain_ion::get_ion_resolver;
+
+#[tokio::test]
+async fn resolve_did_key_method_ed25519() {
+    // DID resolution for the "key" method is inlcuded in the DIDMethodsResult implementation.
+    // Offline resolution using an algorithm that maps between the DID and the DID document
+    let key = JWK::generate_ed25519().unwrap();
+    let did = DIDKey.generate(&Source::Key(&key)).unwrap();
+    let resolver = &DID_METHODS;
+    let (res_meta, _doc, _doc_meta) = resolver.resolve_as_result(&did).await.unwrap();
+    assert_eq!(res_meta.error, None);
+    println!("{}", serde_json::to_string_pretty(&_doc.unwrap()).unwrap());
+}
+
+#[tokio::test]
+#[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
+async fn trustchain_resolution_with_prebuilt_resolver() {
+    let resolver = &DID_METHODS;
+    let did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
+    let result = resolver.resolve_as_result(did).await;
+    assert!(result.is_ok());
+}
 
 #[tokio::test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
 async fn trustchain_resolution() {
     // Integration test of the Trustchain resolution pipeline.
-
     let did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
 
-    // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = get_ion_resolver("http://localhost:3000/");
+    // Construct a set of Resolvers to handle a number of DIDMethods.
+    let ion_resolver = get_ion_resolver(&ion_config().ion_endpoint);
+    let resolvers: &[&dyn DIDMethod] = &[&ion_resolver];
+    let resolver = build_methods_resolver(resolvers);
 
     // Resolve DID Document & Metadata.
     let result = resolver.resolve_as_result(did).await;
 
     // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.
-    assert!(result.is_ok());
+    if !result.is_ok() {
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
 
     let (_res_meta, doc, doc_meta) = result.unwrap();
 
