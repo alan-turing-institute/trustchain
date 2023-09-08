@@ -6,7 +6,7 @@ use ssi::did_resolve::{
     Content, ContentMetadata, DIDResolver, DereferencingInputMetadata, DereferencingMetadata,
     DocumentMetadata, ResolutionInputMetadata, ResolutionMetadata,
 };
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver, ResolverError, ResolverResult};
+use trustchain_core::resolver::{resolution_to_result, DIDMethodWrapper, Resolver, ResolverResult};
 
 use crate::config::ion_config;
 use crate::IONResolver;
@@ -31,42 +31,11 @@ impl<'a> DIDMethodsResult<'a> {
     pub fn generate(&self, source: &Source) -> Option<String> {
         self.wrapped.generate(source)
     }
-    /// Sync Trustchain resolve function returning resolution metadata,
-    /// DID document and DID document metadata from a passed DID as a `Result` type.
     pub async fn resolve_as_result(&self, did: &str) -> ResolverResult {
-        // sidetree resolved resolution metadata, document and document metadata
-        let (did_res_meta, did_doc, did_doc_meta) =
-            self.resolve(did, &ResolutionInputMetadata::default()).await;
-
-        // Handle error cases based on string content of the resolution metadata
-        if let Some(did_res_meta_error) = &did_res_meta.error {
-            if did_res_meta_error
-                .starts_with("Error sending HTTP request: error sending request for url")
-            {
-                Err(ResolverError::ConnectionFailure)
-            } else if did_res_meta_error == "invalidDid" {
-                Err(ResolverError::NonExistentDID(did.to_string()))
-            } else if did_res_meta_error == "notFound" {
-                Err(ResolverError::DIDNotFound(did.to_string()))
-            } else if did_res_meta_error == "Failed to convert to Truschain document and metadata."
-            {
-                Err(ResolverError::FailedToConvertToTrustchain)
-            } else if did_res_meta_error == "Multiple Trustchain proof service entries are present."
-            {
-                Err(ResolverError::MultipleTrustchainProofService)
-            } else {
-                eprintln!("Unhandled error message: {}", did_res_meta_error);
-                let eof_err_msg = "Error parsing resolution response: EOF while parsing a value at line 1 column 0";
-                if did_res_meta_error == eof_err_msg {
-                    eprintln!(
-                        "HINT: If using HTTP for resolution, ensure a valid client is in use."
-                    );
-                }
-                panic!();
-            }
-        } else {
-            Ok((did_res_meta, did_doc, did_doc_meta))
-        }
+        resolution_to_result(
+            self.resolve(did, &ResolutionInputMetadata::default()).await,
+            did,
+        )
     }
 }
 
