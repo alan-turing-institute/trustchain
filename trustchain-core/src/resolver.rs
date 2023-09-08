@@ -92,6 +92,15 @@ impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
 unsafe impl<S: DIDMethod> Sync for DIDMethodWrapper<S> {}
 unsafe impl<S: DIDMethod> Send for DIDMethodWrapper<S> {}
 
+impl<S: DIDMethod> DIDMethod for DIDMethodWrapper<S> {
+    fn name(&self) -> &'static str {
+        self.0.name()
+    }
+    fn to_resolver(&self) -> &dyn DIDResolver {
+        self.0.to_resolver()
+    }
+}
+
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
 pub struct Resolver<T: DIDResolver + Sync + Send> {
@@ -117,9 +126,9 @@ impl<T: DIDResolver + Sync + Send> DIDResolver for Resolver<T> {
     }
 }
 
-impl<T: DIDResolver + Sync + Send> DIDMethod for Resolver<T> {
+impl<T: DIDResolver + Sync + Send + DIDMethod> DIDMethod for Resolver<T> {
     fn name(&self) -> &'static str {
-        self.wrapped_resolver.to_did_method().unwrap().name()
+        self.wrapped_resolver.name()
     }
     fn to_resolver(&self) -> &dyn DIDResolver {
         self
