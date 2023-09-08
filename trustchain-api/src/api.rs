@@ -20,7 +20,7 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier,
+    verifier::IONVerifier, Endpoint,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -133,7 +133,7 @@ pub trait TrustchainVPAPI {
         presentation: Presentation,
         did: &str,
         key_id: Option<&str>,
-        endpoint: &str,
+        endpoint: &Endpoint,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, PresentationError> {
         let resolver = get_ion_resolver(endpoint);
@@ -222,6 +222,7 @@ mod tests {
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
+    use trustchain_ion::config::ion_config;
     use trustchain_ion::get_ion_resolver;
     use trustchain_ion::verifier::IONVerifier;
 
@@ -261,7 +262,7 @@ mod tests {
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             None,
@@ -275,7 +276,7 @@ mod tests {
         vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
 
         // Verify: expect no warnings and a signature error as VC has changed
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             None,
@@ -301,7 +302,7 @@ mod tests {
         let holder = IONAttestor::new(holder_did);
 
         let vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
 
         // let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         // let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
@@ -373,7 +374,7 @@ mod tests {
         let issuer = IONAttestor::new(issuer_did);
 
         let vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let presentation = Presentation {
             verifiable_credential: Some(OneOrMany::Many(vec![CredentialOrJWT::Credential(
                 vc_with_proof,
@@ -396,7 +397,7 @@ mod tests {
 
     // Helper function to create a signed credential given an attesor.
     async fn signed_credential(attestor: IONAttestor) -> Credential {
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = get_ion_resolver(&ion_config().ion_endpoint);
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         attestor.sign(&vc, None, None, &resolver).await.unwrap()
     }

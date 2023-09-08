@@ -4,6 +4,7 @@ use ssi::did::{DIDMethod, Source};
 use ssi::did_resolve::Metadata;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
+use trustchain_ion::config::ion_config;
 use trustchain_ion::did_methods::{build_methods_resolver, DID_METHODS};
 use trustchain_ion::get_ion_resolver;
 
@@ -35,7 +36,7 @@ async fn trustchain_resolution() {
     let did = "did:ion:test:EiA8yZGuDKbcnmPRs9ywaCsoE2FT9HMuyD9WmOiQasxBBg";
 
     // Construct a set of Resolvers to handle a number of DIDMethods.
-    let ion_resolver = get_ion_resolver("http://localhost:3000/");
+    let ion_resolver = get_ion_resolver(&ion_config().ion_endpoint);
     let resolvers: &[&dyn DIDMethod] = &[&ion_resolver];
     let resolver = build_methods_resolver(resolvers);
 
@@ -44,7 +45,10 @@ async fn trustchain_resolution() {
 
     // Check the result is not an error.
     // If this fails, make sure the Sidetree server is up and listening on the above URL endpoint.
-    assert!(result.is_ok());
+    if !result.is_ok() {
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
 
     let (_res_meta, doc, doc_meta) = result.unwrap();
 

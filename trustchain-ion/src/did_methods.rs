@@ -115,7 +115,7 @@ pub fn build_methods_resolver<'a>(resolvers: &'a [&dyn DIDMethod]) -> DIDMethods
 
 lazy_static! {
     static ref TC: Resolver<DIDMethodWrapper<SidetreeClient<ION>>> = IONResolver::from(
-        SidetreeClient::<ION>::new(Some(ion_config().ion_connection_string.to_owned()))
+        SidetreeClient::<ION>::new(Some(ion_config().ion_endpoint.to_address()))
     );
     /// Static reference to a pre-built DIDMethods map using an ion_connection_string defined in
     /// TRUSTCHAIN_CONFIG

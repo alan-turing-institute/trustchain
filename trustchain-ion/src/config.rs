@@ -5,6 +5,8 @@ use std::fs;
 use toml;
 use trustchain_core::TRUSTCHAIN_CONFIG;
 
+use crate::Endpoint;
+
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
     pub static ref ION_CONFIG: IONConfig = parse_toml(
@@ -38,7 +40,7 @@ pub struct IONConfig {
     /// Bitcoin Core RPC password.
     pub bitcoin_rpc_password: String,
     /// Ion server endpoint
-    pub ion_connection_string: String,
+    pub ion_endpoint: Endpoint,
 }
 
 /// Wrapper struct for parsing the `ion` table.
@@ -50,6 +52,7 @@ struct Config {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -66,7 +69,8 @@ mod tests {
         bitcoin_rpc_username = "admin"
         bitcoin_rpc_password = "bitcoin_rpc_password"
 
-        ion_connection_string = "http://localhost:3000"
+        ion_endpoint.host = "127.0.0.1"
+        ion_endpoint.port = 3000
         "##;
 
         let config: IONConfig = parse_toml(config_string);
@@ -79,7 +83,7 @@ mod tests {
                 bitcoin_connection_string: "http://localhost:18332".to_string(),
                 bitcoin_rpc_username: "admin".to_string(),
                 bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
-                ion_connection_string: "http://localhost:3000".to_string(),
+                ion_endpoint: Endpoint::new("127.0.0.1".to_string(), 3000)
             }
         );
     }

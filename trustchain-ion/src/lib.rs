@@ -46,9 +46,9 @@ impl Endpoint {
     // TODO: add more flexible address methods
 }
 
-/// Test resolver
-pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
+/// Ion resolver
+pub fn get_ion_resolver(endpoint: &Endpoint) -> IONResolver {
+    IONResolver::from(SidetreeClient::<ION>::new(Some(endpoint.to_address())))
 }
 
 /// An error relating for Trustchain-ion crate.

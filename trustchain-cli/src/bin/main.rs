@@ -84,7 +84,7 @@ fn cli() -> Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
-    let endpoint = cli_config().ion_endpoint.to_address();
+    let endpoint = &cli_config().ion_endpoint;
     let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
     let resolver = verifier.resolver();
     match matches.subcommand() {
