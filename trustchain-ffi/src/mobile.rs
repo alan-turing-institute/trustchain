@@ -14,7 +14,9 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_core::{resolver::ResolverError, vc::CredentialError, verifier::VerifierError};
+use trustchain_core::{
+    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
+};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
 /// A speicfic error for FFI mobile making handling easier.
@@ -36,6 +38,8 @@ enum FFIMobileError {
     FailedToVerifyCredential(CredentialError),
     #[error("Credential proof created time ({0}) is in the future relative to now ({1}).")]
     FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
+    #[error("Failed to issue presentation error: {0}.")]
+    FailedToIssuePresentation(PresentationError),
 }
 
 /// Example greet function.
@@ -144,17 +148,22 @@ pub fn vp_issue_presentation(
                 proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
                 ..Default::default()
             });
-    let mut presentation: Presentation = serde_json::from_str(&presentation)?;
+    let mut presentation: Presentation =
+        serde_json::from_str(&presentation).map_err(FFIMobileError::FailedToDeserialize)?;
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
     let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
-    let proof = rt.block_on(async {
-        presentation
-            .generate_proof(&jwk, &ldp_opts, &resolver)
-            .await
-    })?;
+    let proof = rt
+        .block_on(async {
+            presentation
+                .generate_proof(&jwk, &ldp_opts, &resolver)
+                .await
+        })
+        .map_err(|err| {
+            FFIMobileError::FailedToIssuePresentation(PresentationError::SSIError(err))
+        })?;
     presentation.add_proof(proof);
-    Ok(serde_json::to_string_pretty(&presentation)?)
+    Ok(serde_json::to_string_pretty(&presentation).map_err(FFIMobileError::FailedToSerialize)?)
 }
 
 // // TODO: implement once verifiable presentations are included in API
