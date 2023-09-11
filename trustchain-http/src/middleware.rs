@@ -19,7 +19,10 @@ pub async fn validate_did(
 ) -> Result<impl IntoResponse, impl IntoResponse> {
     tracing::info!(did);
     // Validate length is 59 (testnet) or 54 (mainnet)
-    if ion_config().mongo_database_ion_core.contains("testnet") && did.len() != 59 {
+    if ion_config().mongo_database_ion_core.contains("testnet")
+        && did.len() != 59
+        && did.starts_with("did:ion")
+    {
         let message = json!({
             "error":
                 format!(
@@ -29,7 +32,10 @@ pub async fn validate_did(
                 )
         });
         return Err((StatusCode::BAD_REQUEST, Json(message)));
-    } else if ion_config().mongo_database_ion_core.contains("mainnet") && did.len() != 54 {
+    } else if ion_config().mongo_database_ion_core.contains("mainnet")
+        && did.len() != 54
+        && did.starts_with("did:ion")
+    {
         let message = json!({
             "error":
                 format!(
