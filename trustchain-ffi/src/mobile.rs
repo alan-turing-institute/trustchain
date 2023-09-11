@@ -174,6 +174,8 @@ pub fn vp_issue_presentation(
 
 #[cfg(test)]
 mod tests {
+    use ssi::vc::CredentialOrJWT;
+
     use crate::config::parse_toml;
 
     use super::*;
@@ -247,13 +249,41 @@ mod tests {
     fn test_vp_issue_presentation() {
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let root_plus_1_did: &str = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let presentation: Presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(credential))),
+            holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
+            ..Default::default()
+        };
         let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
         let presentation = vp_issue_presentation(
-            serde_json::to_string(&credential).unwrap(),
+            serde_json::to_string(&presentation).unwrap(),
             ffi_opts,
             root_plus_1_signing_key.to_string(),
         );
-        assert!(presentation.is_ok());
+        println!("{}", presentation.unwrap());
+        // assert!(presentation.is_ok());
+    }
+
+    #[test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_vp_issue_presentation_ed25519() {
+        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let did: &str = "did:key:z6MkhG98a8j2d3jqia13vrWqzHwHAgKTv9NjYEgdV3ndbEdD";
+        let key: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"Kbnao1EkojaLeZ135PuIf28opnQybD0lB-_CQxuvSDg","d":"vwJwnuhHd4J0UUvjfYr8YxYwvNLU_GVkdqEbC3sUtAY"}"#;
+        let presentation: Presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(credential))),
+            holder: Some(ssi::vc::URI::String(did.to_string())),
+            ..Default::default()
+        };
+
+        let presentation = vp_issue_presentation(
+            serde_json::to_string(&presentation).unwrap(),
+            ffi_opts,
+            key.to_string(),
+        );
+        println!("{}", presentation.unwrap());
     }
 
     // // TODO: implement once verifiable presentations are included in API
