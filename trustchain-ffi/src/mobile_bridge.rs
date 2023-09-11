@@ -85,6 +85,26 @@ fn wire_vc_verify_credential_impl(
         },
     )
 }
+fn wire_vp_issue_presentation_impl(
+    port_: MessagePort,
+    presentation: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
+    jwk_json: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "vp_issue_presentation",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_presentation = presentation.wire2api();
+            let api_opts = opts.wire2api();
+            let api_jwk_json = jwk_json.wire2api();
+            move |task_callback| vp_issue_presentation(api_presentation, api_opts, api_jwk_json)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks

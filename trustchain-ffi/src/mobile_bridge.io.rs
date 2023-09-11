@@ -33,6 +33,16 @@ pub extern "C" fn wire_vc_verify_credential(
     wire_vc_verify_credential_impl(port_, credential, opts)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_vp_issue_presentation(
+    port_: i64,
+    presentation: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
+    jwk_json: *mut wire_uint_8_list,
+) {
+    wire_vp_issue_presentation_impl(port_, presentation, opts, jwk_json)
+}
+
 // Section: allocate functions
 
 #[no_mangle]
