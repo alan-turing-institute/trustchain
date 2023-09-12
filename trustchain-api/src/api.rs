@@ -3,6 +3,7 @@ use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
 use ps_sig::rsssig::RSignature;
 use ssi::ldp::now_ms;
+use ssi::vc::VerificationResult;
 use ssi::{
     did_resolve::DIDResolver,
     ldp::LinkedDataDocument,
@@ -115,39 +116,52 @@ pub trait TrustchainVCAPI {
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
+        let mut results = VerificationResult::new();
         if let Some(proofs) = &credential.proof {
+            // Try verifying each proof until one succeeds
             for proof in proofs {
                 // TODO(?): filter proofs based on verification_method found in
                 // linked_data_proof_options.unwrap_or_default(), matching the behaviour of the
                 // credential.verify() method
-                let verification_result = if &proof.type_ == "RSSSignature" {
+                let mut verification_result = if &proof.type_ == "RSSSignature" {
                     // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
                     // orphan rule)
                     // more generally, some interface will be required to impl proof verification
                     // behaviour for RSignature - eg. ProofVerify trait with ::verify_proof()
                     //      this could return VerificationResult to have a return type the same as
                     //      proof.verify()
-                    RSignature::verify_proof(proof, credential)
+                    match RSignature::verify_proof(proof, credential) {
+                        Ok(_) => VerificationResult::new(),
+                        Err(e) => e.into(),
+                    }
+                    .into()
                 } else {
-                    // matches on proof.type_ for all proof types supported by ssi
-                    todo!()
-                    // proof.verify(document, resolver)
+                    // Proof.verify() calls LinkedDataProofs::verify() which matches on proof.type_
+                    // and verifies for all proof types supported by ssi
+                    // &Credential is passed as the LinkedDataDocument, as it is in
+                    // ssi::vc::Credential.verify()
+                    proof.verify(credential, verifier.resolver()).await
                 };
-
-                if verification_result.errors.is_empty() {
-                    // break checking proofs once one has been verified successfully
-                    break;
-                };
+                results.append(&mut verification_result);
             }
         } else {
             return Err(CredentialError::NoProofPresent);
         }
 
-        // Verify issuer
-        let issuer = credential
-            .get_issuer()
-            .ok_or(CredentialError::NoIssuerPresent)?;
-        Ok(verifier.verify(issuer, root_event_time).await?)
+        // Deviation from the ssi Credential verification algorithm:
+        // ssi return the results after the *first* proof passes verification (including any failed
+        // verification results in the returned results).
+        // This algorithm checks all proofs, and only proceeds to the Trustchain issuer verification
+        // if all proofs verified without error.
+        if results.errors.is_empty() {
+            // Verify issuer
+            let issuer = credential
+                .get_issuer()
+                .ok_or(CredentialError::NoIssuerPresent)?;
+            return Ok(verifier.verify(issuer, root_event_time).await?);
+        } else {
+            Err(CredentialError::VerificationResultError(results))
+        }
     }
 }
 

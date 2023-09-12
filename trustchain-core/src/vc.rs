@@ -1,17 +1,12 @@
 //! Verifiable credential functionality for Trustchain.
-
-use std::collections::{BTreeMap, HashMap};
-
+use crate::vc_encoding::CanonicalFlatten;
 use crate::verifier::VerifierError;
-use ps_sig::rsssig::RSignature;
-
-use serde_json::{Map, Value};
-use ssi::{
-    one_or_many::OneOrMany,
-    vc::{
-        Context, Contexts, Credential, CredentialSubject, Issuer, Proof, VerificationResult, URI,
-    },
+use ps_sig::{
+    keys::{PKrss, PKrssError},
+    message_structure::message_encode::EncodedMessages,
+    rsssig::{RSVerifyResult, RSignature},
 };
+use ssi::vc::{Credential, Proof, VerificationResult};
 use thiserror::Error;
 
 /// An error relating to verifiable credentials and presentations.
@@ -37,303 +32,87 @@ impl From<VerifierError> for CredentialError {
     }
 }
 
-pub trait CanonicalFlatten {
-    fn flatten(&self) -> Vec<String>;
-}
-
-/// Convert an un-ordered HashMap over json Value objects into an ordered json Map (which is used
-/// under the hood within json Value objects)
-fn convert_map(map: &HashMap<String, Value>) -> Map<String, Value> {
-    // json Value enum varients are all 'ordered' already, so only the top level HashMap must be
-    // sorted (the serde_json `Map` implementation uses either BTreeMap or indexmap::IndexMap
-    // depending on the selected feature)
-    Map::from_iter(map.clone().into_iter())
-}
-
-// Flatten a json Map of json Values with a 1-to-1 algorithm (ensuring two distinct map cannot
-// produce the same flattened result)
-fn flatten_map(map: &Map<String, Value>) -> Vec<String> {
-    let mut res = Vec::new();
-    for (k, v) in map {
-        match v {
-            Value::Null => {}
-            Value::Bool(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::Number(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::String(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::Array(_) => {
-                // res.push(k.to_owned() + ":[");
-                res.append(
-                    &mut v
-                        .flatten()
-                        .iter()
-                        .map(|s| k.to_owned() + ":[" + s)
-                        .collect(),
-                );
-            }
-            Value::Object(_) => {
-                // res.push(k.to_owned() + ":{");
-                res.append(
-                    &mut v
-                        .flatten()
-                        .iter()
-                        .map(|s| k.to_owned() + ":{" + s)
-                        .collect(),
-                );
-            }
-        }
-    }
-    res
-}
-
-impl CanonicalFlatten for Value {
-    fn flatten(&self) -> Vec<String> {
-        let mut res = Vec::new();
-        match self {
-            Value::Null => {}
-            Value::Bool(b) => res.push(b.to_string()),
-            Value::Number(n) => res.push(n.to_string()),
-            Value::String(s) => res.push(s.to_string()),
-            Value::Array(a) => {
-                res = a.iter().fold(res, |mut acc, val| {
-                    acc.append(&mut val.flatten());
-                    acc
-                });
-            }
-            Value::Object(map) => {
-                res.append(&mut flatten_map(map));
-            }
-        }
-        res
-    }
-}
-
-impl CanonicalFlatten for Credential {
-    fn flatten(&self) -> Vec<String> {
-        let mut res = Vec::new();
-
-        // flatten only credential_subject
-        match &self.credential_subject {
-            OneOrMany::One(cs) => {
-                // res.push("credentialSubject:{".to_string());
-                res.append(&mut handle_credential_subject(cs));
-            }
-            OneOrMany::Many(_) => {
-                panic!("TODO find *unique* flat representation for multiple subjects");
-                // res.push("credentialSubject:[".to_string());
-                // res.append(cs_vec.iter().fold(&mut Vec::new(), |acc, cs| {
-                //     acc.append(&mut handle_credential_subject(cs));
-                //     acc
-                // }));
-            }
-        }
-
-        // helper functions
-        fn handle_credential_subject(cs: &CredentialSubject) -> Vec<String> {
-            let mut res = Vec::new();
-            if let Some(uri) = &cs.id {
-                res.push("id:".to_string() + &handle_uri(uri));
-            }
-            if let Some(map) = &cs.property_set {
-                // res.push("propertySet:{".to_string());
-                res.append(&mut flatten_map(&convert_map(map)));
-            }
-            res
-        }
-        fn handle_uri(uri: &URI) -> String {
-            match uri {
-                URI::String(s) => s.to_string(),
-            }
-        }
-
-        // Build a metadata map containing all other fields, to then be compressed into one String.
-        // This simplifies the implementation, whilst only allowing the holder to redact fields from
-        // the credentialSubject field.
-        let mut metadata = BTreeMap::new();
-
-        // The metadata map must be strictly ordered (along with the flattened credentialSubject
-        // fields). All fields in the `Credential` struct that contain un-ordered data structures must
-        // be converted to ordered structures before serializing into metadata map values.
-        // Fields with unordered data structures are:
-        // context
-        // credential_subject
-        // issuer
-        // proof (this field is ignored by `flatten()` because the RSS proofs handled seperately)
-        // credential_status
-        // terms_of_use
-        // evidence
-        // credential_schema
-        // refresh_service
-        // property_set
-
-        // context _________________________________
-        let context_string = match &self.context {
-            Contexts::One(ctx) => match ctx {
-                Context::URI(_) => serde_json::to_string(ctx).unwrap(),
-                Context::Object(map) => serde_json::to_string(&convert_map(map)).unwrap(),
-            },
-            Contexts::Many(ctx_vec) => serde_json::to_string(
-                &ctx_vec
-                    .iter()
-                    .map(|ctx| {
-                        if let Context::Object(map) = ctx {
-                            serde_json::to_string(&convert_map(map)).unwrap()
-                        } else {
-                            serde_json::to_string(ctx).unwrap()
-                        }
-                    })
-                    .collect::<Vec<String>>(),
-            )
-            .unwrap(),
-        };
-        metadata.insert("@context", context_string);
-
-        // id _________________________________
-        metadata.insert("id", serde_json::to_string(&self.id).unwrap());
-
-        // type _________________________________
-        metadata.insert("type", serde_json::to_string(&self.type_).unwrap());
-
-        // issuer _________________________________
-        if let Some(v) = &self.issuer {
-            let issuer_string = match v {
-                Issuer::URI(_) => serde_json::to_string(v).unwrap(),
-                Issuer::Object(obj) => {
-                    if let Some(prop_set) = &obj.property_set {
-                        serde_json::to_string(&obj.id).unwrap()
-                            + &serde_json::to_string(&convert_map(&prop_set)).unwrap()
-                    } else {
-                        serde_json::to_string(v).unwrap()
-                    }
-                }
-            };
-            metadata.insert("issuer", issuer_string);
-        }
-
-        // issuance_date _________________________________
-        if let Some(v) = &self.issuance_date {
-            metadata.insert("issuanceDate", serde_json::to_string(v).unwrap());
-        }
-
-        // expiration_date _________________________________
-        if let Some(v) = &self.expiration_date {
-            metadata.insert("expirationDate", serde_json::to_string(v).unwrap());
-        }
-
-        // credential_status _________________________________
-        if let Some(v) = &self.credential_status {
-            let c_s_string = if let Some(prop_set) = &v.property_set {
-                serde_json::to_string(&v.id).unwrap()
-                    + &serde_json::to_string(&v.type_).unwrap()
-                    + &serde_json::to_string(&convert_map(&prop_set)).unwrap()
-            } else {
-                serde_json::to_string(v).unwrap()
-            };
-            metadata.insert("credentialStatus", c_s_string);
-        }
-
-        // unimplemented _________________________________
-        if let Some(_) = &self.terms_of_use {
-            todo!()
-        }
-        if let Some(_) = &self.evidence {
-            todo!()
-        }
-        if let Some(_) = &self.credential_schema {
-            todo!()
-        }
-        if let Some(_) = &self.refresh_service {
-            todo!()
-        }
-        if let Some(prop_set) = &self.property_set {
-            if prop_set.len() != 0 {
-                todo!()
-            }
-        }
-
-        res.push("metadata:".to_string() + &serde_json::to_string(&metadata).unwrap());
-
-        // fn handle_context(ctx: &Context) -> Vec<String> {
-        //     match ctx {
-        //         Context::URI(uri) => vec![handle_uri(uri)],
-        //         Context::Object(map) => flatten_map(&convert_map(map)),
-        //     }
-        // }
-
-        // // context
-        // res.push("context:{".to_string());
-        // match &self.context {
-        //     Contexts::One(ctx) => res.append(&mut handle_context(&ctx)),
-        //     Contexts::Many(ctx_vec) => {
-        //         res = ctx_vec.iter().fold(res, |mut acc, ctx| {
-        //             acc.append(&mut handle_context(ctx));
-        //             acc
-        //         });
-        //     }
-        // }
-
-        // // id
-        // if let Some(uri) = &self.id {
-        //     res.push("id".to_string() + ":" + &handle_uri(uri));
-        // }
-
-        // // type_
-        // match &self.type_ {
-        //     OneOrMany::One(t) => res.push("type".to_string() + ":" + t),
-        //     OneOrMany::Many(t_vec) => {
-        //         res.push("type:[".to_string());
-        //         for t in t_vec {
-        //             res.push(t.to_string());
-        //         }
-        //     }
-        // }
-
-        // // issuer
-        // if let Some(issuer) = &self.issuer {
-        //     match issuer {
-        //         ssi::vc::Issuer::URI(uri) => {
-        //             res.push("issuer".to_string() + ":" + &handle_uri(uri));
-        //         }
-        //         ssi::vc::Issuer::Object(obj) => {
-        //             res.push("issuer:{".to_string());
-        //             res.push("id:".to_string() + &handle_uri(&obj.id));
-        //             if let Some(map) = &obj.property_set {
-        //                 res.push("propertySet:{".to_string());
-        //                 res.append(&mut flatten_map(&convert_map(&map)));
-        //             }
-        //         }
-        //     }
-        // }
-
-        // // issuance_date
-        // if let Some(date) = &self.issuance_date {
-        //     res.push("issuanceDate:".to_string() + serde_json::to_string(date).unwrap());
-        // }
-
-        res
-    }
-}
-
-/// More flexible interface (compared to ssi::ldp::ProofSuite) to implement verification of
-/// `ssi::vc::Proof`s for new proof types (with access to the credential fields, which is required
-/// in the case of RSS proofs)
+/// Owned interface for proof verifcation across different proof suites. A simplified reimplementation
+///  of ssi::ldp::ProofSuite, including only the verification method and simplifying the api to
+/// constrain the &dyn LinkedDataDocument to a &Credential.
+/// An owned trait is required to avoid the orphan rule, when implementing this trait for RSS
+/// signatures (an external crate)
 pub trait ProofVerify {
-    // TODO: is ssi::vc::Proof the same as ssi::vp::Proof?
-    fn verify_proof(proof: &Proof, credential: &Credential) -> VerificationResult;
+    fn verify_proof(proof: &Proof, credential: &Credential) -> Result<(), ProofVerifyError>;
+}
+
+/// An error relating to proof verification.
+#[derive(Error, Debug)]
+pub enum ProofVerifyError {
+    /// No verification method present in proof.
+    #[error("Missing verification method.")]
+    MissingVerificationMethod,
+    /// No proof value present in proof.
+    #[error("Missing proof value.")]
+    MissingProofValue,
+    /// Wrapped error for PKrssError.
+    #[error("A wrapped PKrssError.")]
+    WrappedPKrssError(PKrssError),
+    /// Wrapped RSVerifyResult for RSignature verification.
+    #[error("A wrapped RSVerifyResult error: {0}")]
+    WrappedRSVerifyResultError(RSVerifyResult),
+}
+
+impl From<RSVerifyResult> for ProofVerifyError {
+    fn from(value: RSVerifyResult) -> Self {
+        ProofVerifyError::WrappedRSVerifyResultError(value)
+    }
+}
+
+impl Into<VerificationResult> for ProofVerifyError {
+    fn into(self) -> VerificationResult {
+        VerificationResult::error(&self.to_string())
+    }
 }
 
 impl ProofVerify for RSignature {
-    fn verify_proof(proof: &Proof, credential: &Credential) -> VerificationResult {
-        todo!()
+    fn verify_proof(proof: &Proof, credential: &Credential) -> Result<(), ProofVerifyError> {
+        // If there is a signature
+        if let Some(sig_ser) = &proof.proof_value {
+            // Parse from Hex
+            let rsig = Self::from_hex(&sig_ser);
+            // Parse public key from verification method on Proof
+            let pkrss = PKrss::from_hex(
+                &proof
+                    .verification_method
+                    .as_ref()
+                    .ok_or(ProofVerifyError::MissingVerificationMethod)?,
+            )
+            .map_err(|e| ProofVerifyError::WrappedPKrssError(e))?;
+            // Encode credential into sequence of FieldElements
+            let messages: EncodedMessages = credential.flatten().into();
+            let res = RSignature::verifyrsignature(
+                &pkrss,
+                &rsig,
+                messages.as_slice(),
+                &messages.infered_idxs,
+            );
+            if let RSVerifyResult::Valid = res {
+                Ok(())
+            } else {
+                Err(res.into())
+            }
+        } else {
+            Err(ProofVerifyError::MissingProofValue)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use ps_sig::{
+        keys::{rsskeygen, PKrss, Params},
+        message_structure::message_encode::{redact, EncodedMessages},
+        rsssig::RSignature,
+    };
+    use ssi::vc::{Credential, Proof};
 
-    use serde_json::{Map, Value};
-
-    use super::*;
+    use crate::{vc::ProofVerify, vc_encoding::CanonicalFlatten};
 
     const TEST_UNSIGNED_VC: &str = r##"{
         "@context": [
@@ -354,7 +133,7 @@ mod tests {
             "givenName": "Jane",
             "familyName": "Doe",
             "degree": {
-              "type": "BachelorDegree",
+              "type": "Degree Certificate",
               "name": "Bachelor of Science and Arts",
               "college": "College of Engineering",
               "nested" : {
@@ -363,8 +142,8 @@ mod tests {
               "testArray": [
                 "element",
                 {"objectInArray": {
-                    "two":"val",
-                    "one":"val"
+                    "two":"valOne",
+                    "one":"valTwo"
                 }}
               ]
             }
@@ -373,32 +152,126 @@ mod tests {
       "##;
 
     #[test]
-    fn deserialize() {
+    fn verify_rss_signature() {
+        // create rss keypair
+        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
+        // load complete (unredacted) vc
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        println!("{}", serde_json::to_string_pretty(&vc.flatten()).unwrap());
+        // flatten and encode
+        let messages = EncodedMessages::from(vc.flatten());
+        // check that the vc has been infered to include 10 (all) fields
+        assert_eq!(10, messages.infered_idxs.len());
+        // generate RSS signature
+        let rsig = RSignature::new(messages.as_slice(), &sk);
+        // generate proof from RSS signature
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        // verify proof
+        assert!(RSignature::verify_proof(&proof, &vc).is_ok());
     }
 
     #[test]
-    fn test_convert_map() {
-        let mut map = HashMap::new();
-        map.insert("c".to_string(), Value::String("conversion".to_string()));
-        map.insert("b".to_string(), Value::String("the".to_string()));
-        map.insert("a".to_string(), Value::String("test".to_string()));
-        map.insert(
-            "d".to_string(),
-            Value::Object(Map::from_iter(
-                vec![
-                    ("b".to_string(), Value::String("the".to_string())),
-                    ("c".to_string(), Value::String("conversion".to_string())),
-                    ("a".to_string(), Value::String("test".to_string())),
-                ]
-                .into_iter(),
-            )),
+    fn verify_redacted_rss_signature() {
+        let signed_vc = issue_vc();
+        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&signed_vc.flatten()).unwrap()
+        );
+        let redacted_seq = redact(signed_vc.flatten(), vec![1, 2, 6, 10]).unwrap();
+        println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
+
+        // encode redacted sequence
+        let messages = EncodedMessages::from(redacted_seq);
+
+        // derive redacted RSignature
+        let issuers_proofs = signed_vc.proof.as_ref().unwrap();
+        let issuers_pk = PKrss::from_hex(
+            &issuers_proofs
+                .first()
+                .unwrap()
+                .verification_method
+                .as_ref()
+                .unwrap(),
+        )
+        .unwrap();
+        let r_rsig = RSignature::from_hex(
+            &issuers_proofs
+                .first()
+                .unwrap()
+                .proof_value
+                .as_ref()
+                .unwrap(),
+        )
+        .derive_signature(
+            &issuers_pk,
+            EncodedMessages::from(signed_vc.flatten()).as_slice(),
+            &messages.infered_idxs,
         );
 
-        let json_map = convert_map(&map);
-        for (k, v) in json_map {
-            println!("{:?} : {:?}", k, v);
-        }
+        // generate proof from derived RSS signature
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(r_rsig.to_hex());
+        proof.verification_method = Some(issuers_pk.to_hex());
+
+        // redact fields on vc, currently this is easiest by parsing from a template
+        const REDACTED_UNSIGNED_VC: &str = r##"{
+            "@context": [
+              "https://www.w3.org/2018/credentials/v1",
+              "https://www.w3.org/2018/credentials/examples/v1",
+              "https://w3id.org/citizenship/v1",
+              {
+                "3":"did:example:testdidsuffix",
+                "1":"did:example:testdidsuffix",
+                "2":"did:example:testdidsuffix",
+                "0":"did:example:testdidsuffix"
+              }
+            ],
+            "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            "id": "did:ion:test_id_field",
+            "type": ["VerifiableCredential"],
+            "credentialSubject": {
+                "givenName": "",
+                "familyName": "",
+                "degree": {
+                  "type": "",
+                  "name": "Bachelor of Science and Arts",
+                  "college": "College of Engineering",
+                  "nested" : {
+                    "key" : ""
+                  },
+                  "testArray": [
+                    "",
+                    {"objectInArray": {
+                        "two":"valOne",
+                        "one":""
+                    }}
+                  ]
+                }
+            }
+          }
+          "##;
+        let redacted_unsigned_vc: Credential = serde_json::from_str(REDACTED_UNSIGNED_VC).unwrap();
+        // the redacted vc **with** a proof could now be assembled from the redacted_unsigned_vc and
+        // the proof, but the verification of the Credential will ultimately call the following:
+        assert!(RSignature::verify_proof(&proof, &redacted_unsigned_vc).is_ok());
+        // println!(
+        //     "{:?}",
+        //     RSignature::verify_proof(&proof, &redacted_unsigned_vc)
+        // )
+    }
+
+    fn issue_vc() -> Credential {
+        // create rss keypair
+        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
+        // load complete (unredacted) vc
+        let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        vc.add_proof(proof);
+        vc
     }
 }
