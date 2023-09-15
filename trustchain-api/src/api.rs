@@ -108,7 +108,7 @@ pub trait TrustchainVCAPI {
     /// Verifies a credential
     async fn verify_credential<T, U>(
         credential: &Credential,
-        linked_data_proof_options: Option<LinkedDataProofOptions>,
+        // linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &U,
     ) -> Result<DIDChain, CredentialError>
@@ -140,6 +140,10 @@ pub trait TrustchainVCAPI {
                     // and verifies for all proof types supported by ssi
                     // &Credential is passed as the LinkedDataDocument, as it is in
                     // ssi::vc::Credential.verify()
+                    // There are two steps excluded from the workflow used in Credential.verify():
+                    //      - "checks" are not parsed from ldp options passed into .verify().
+                    //      - The proofs are not filtered based on the verification_method in ldp
+                    //        options.
                     proof.verify(credential, verifier.resolver()).await
                 };
                 results.append(&mut verification_result);
@@ -213,7 +217,6 @@ pub trait TrustchainVPAPI {
                             println!("start {}: {}", idx, now_ms());
                             let v = TrustchainAPI::verify_credential(
                                 credential,
-                                ldp_options,
                                 root_event_time,
                                 verifier,
                             )
@@ -257,8 +260,13 @@ pub trait TrustchainVPAPI {
 mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
+    use ps_sig::keys::{rsskeygen, PKrss, Params};
+    use ps_sig::message_structure::message_encode::EncodedMessages;
+    use ps_sig::rsssig::RSignature;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, Presentation};
+    use ssi::vc::{Credential, CredentialOrJWT, Presentation, Proof};
+    use trustchain_core::vc_encoding::CanonicalFlatten;
+    use trustchain_core::vc_encoding::RedactValues;
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
@@ -274,13 +282,8 @@ mod tests {
           "https://www.w3.org/2018/credentials/examples/v1",
           "https://w3id.org/citizenship/v1"
         ],
-        "credentialSchema": {
-          "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
-          "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
-        },
         "type": ["VerifiableCredential"],
         "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-        "image": "some_base64_representation",
         "credentialSubject": {
           "givenName": "Jane",
           "familyName": "Doe",
@@ -301,12 +304,93 @@ mod tests {
         let resolver = get_ion_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
-            None,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
         )
         .await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_verify_rss_credential() {
+        // chose indicies to disclose
+        let idxs = vec![2, 3, 6];
+
+        // obtain a vc with an RSS proof
+        let signed_vc = issue_rss_vc();
+        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+
+        // produce a Vec<String> representation of the VC with only the selected fields disclosed
+        let mut redacted_seq = signed_vc.flatten();
+        redacted_seq.redact(&idxs).unwrap();
+        println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
+
+        // encode redacted sequence into FieldElements
+        let messages = EncodedMessages::from(redacted_seq);
+
+        // parse issuers PK from the proof on the signed vc
+        let issuers_proofs = signed_vc.proof.as_ref().unwrap();
+        let issuers_pk = PKrss::from_hex(
+            &issuers_proofs
+                .first()
+                .unwrap()
+                .verification_method
+                .as_ref()
+                .unwrap(),
+        )
+        .unwrap();
+
+        // derive redacted RSignature
+        let r_rsig = RSignature::from_hex(
+            &issuers_proofs
+                .first()
+                .unwrap()
+                .proof_value
+                .as_ref()
+                .unwrap(),
+        )
+        .derive_signature(
+            &issuers_pk,
+            EncodedMessages::from(signed_vc.flatten()).as_slice(),
+            &messages.infered_idxs,
+        );
+
+        // generate proof from derived RSS signature
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(r_rsig.to_hex());
+        proof.verification_method = Some(issuers_pk.to_hex());
+
+        // produce an unsigned, redacted vc
+        let mut redacted_vc = signed_vc;
+        redacted_vc.proof = None;
+        redacted_vc.redact(&idxs).unwrap();
+
+        // add the derived RSS proof
+        redacted_vc.add_proof(proof);
+
+        // verify redacted vc
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let res = TrustchainAPI::verify_credential(
+            &redacted_vc,
+            ROOT_EVENT_TIME_1,
+            &IONVerifier::new(resolver),
+        )
+        .await;
+        println!("{:?}", &res);
+        assert!(res.is_ok());
+    }
+
+    fn issue_rss_vc() -> Credential {
+        // create rss keypair
+        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
+        // load complete (unredacted) vc
+        let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        vc.add_proof(proof);
+        vc
     }
 
     #[tokio::test]

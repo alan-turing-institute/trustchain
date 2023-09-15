@@ -105,48 +105,33 @@ impl ProofVerify for RSignature {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        vc::ProofVerify,
+        vc_encoding::{CanonicalFlatten, RedactValues},
+    };
     use ps_sig::{
         keys::{rsskeygen, PKrss, Params},
-        message_structure::message_encode::{redact, EncodedMessages},
+        message_structure::message_encode::EncodedMessages,
         rsssig::RSignature,
     };
     use ssi::vc::{Credential, Proof};
-
-    use crate::{vc::ProofVerify, vc_encoding::CanonicalFlatten};
 
     const TEST_UNSIGNED_VC: &str = r##"{
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://www.w3.org/2018/credentials/examples/v1",
-          "https://w3id.org/citizenship/v1",
-          {
-            "3":"did:example:testdidsuffix",
-            "1":"did:example:testdidsuffix",
-            "2":"did:example:testdidsuffix",
-            "0":"did:example:testdidsuffix"
-          }
+          "https://w3id.org/citizenship/v1"
         ],
-        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-        "id": "did:ion:test_id_field",
         "type": ["VerifiableCredential"],
+        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         "credentialSubject": {
-            "givenName": "Jane",
-            "familyName": "Doe",
-            "degree": {
-              "type": "Degree Certificate",
-              "name": "Bachelor of Science and Arts",
-              "college": "College of Engineering",
-              "nested" : {
-                "key" : "value"
-              },
-              "testArray": [
-                "element",
-                {"objectInArray": {
-                    "two":"valOne",
-                    "one":"valTwo"
-                }}
-              ]
-            }
+          "givenName": "Jane",
+          "familyName": "Doe",
+          "degree": {
+            "type": "BachelorDegree",
+            "name": "Bachelor of Science and Arts",
+            "college": "College of Engineering"
+          }
         }
       }
       "##;
@@ -159,8 +144,8 @@ mod tests {
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         // flatten and encode
         let messages = EncodedMessages::from(vc.flatten());
-        // check that the vc has been infered to include 10 (all) fields
-        assert_eq!(10, messages.infered_idxs.len());
+        // check that the vc has been infered to include 6 (all) fields
+        assert_eq!(6, messages.infered_idxs.len());
         // generate RSS signature
         let rsig = RSignature::new(messages.as_slice(), &sk);
         // generate proof from RSS signature
@@ -173,19 +158,22 @@ mod tests {
 
     #[test]
     fn verify_redacted_rss_signature() {
-        let signed_vc = issue_vc();
+        // chose indicies to disclose
+        let idxs = vec![2, 3, 6];
+
+        // obtain a vc with an RSS proof
+        let signed_vc = issue_rss_vc();
         println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&signed_vc.flatten()).unwrap()
-        );
-        let redacted_seq = redact(signed_vc.flatten(), vec![1, 2, 6, 10]).unwrap();
+
+        // produce a Vec<String> representation of the VC with only the selected fields disclosed
+        let mut redacted_seq = signed_vc.flatten();
+        redacted_seq.redact(&idxs).unwrap();
         println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
 
-        // encode redacted sequence
+        // encode redacted sequence into FieldElements
         let messages = EncodedMessages::from(redacted_seq);
 
-        // derive redacted RSignature
+        // parse issuers PK from the proof on the signed vc
         let issuers_proofs = signed_vc.proof.as_ref().unwrap();
         let issuers_pk = PKrss::from_hex(
             &issuers_proofs
@@ -196,6 +184,8 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
+
+        // derive redacted RSignature
         let r_rsig = RSignature::from_hex(
             &issuers_proofs
                 .first()
@@ -215,54 +205,21 @@ mod tests {
         proof.proof_value = Some(r_rsig.to_hex());
         proof.verification_method = Some(issuers_pk.to_hex());
 
-        // redact fields on vc, currently this is easiest by parsing from a template
-        const REDACTED_UNSIGNED_VC: &str = r##"{
-            "@context": [
-              "https://www.w3.org/2018/credentials/v1",
-              "https://www.w3.org/2018/credentials/examples/v1",
-              "https://w3id.org/citizenship/v1",
-              {
-                "3":"did:example:testdidsuffix",
-                "1":"did:example:testdidsuffix",
-                "2":"did:example:testdidsuffix",
-                "0":"did:example:testdidsuffix"
-              }
-            ],
-            "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-            "id": "did:ion:test_id_field",
-            "type": ["VerifiableCredential"],
-            "credentialSubject": {
-                "givenName": "",
-                "familyName": "",
-                "degree": {
-                  "type": "",
-                  "name": "Bachelor of Science and Arts",
-                  "college": "College of Engineering",
-                  "nested" : {
-                    "key" : ""
-                  },
-                  "testArray": [
-                    "",
-                    {"objectInArray": {
-                        "two":"valOne",
-                        "one":""
-                    }}
-                  ]
-                }
-            }
-          }
-          "##;
-        let redacted_unsigned_vc: Credential = serde_json::from_str(REDACTED_UNSIGNED_VC).unwrap();
-        // the redacted vc **with** a proof could now be assembled from the redacted_unsigned_vc and
+        // produce an unsigned, redacted vc
+        let mut redacted_vc = signed_vc;
+        redacted_vc.proof = None;
+        redacted_vc.redact(&idxs).unwrap();
+
+        // the redacted vc **with** a proof could now be assembled from the redacted_vc and
         // the proof, but the verification of the Credential will ultimately call the following:
-        assert!(RSignature::verify_proof(&proof, &redacted_unsigned_vc).is_ok());
+        assert!(RSignature::verify_proof(&proof, &redacted_vc).is_ok());
         // println!(
         //     "{:?}",
         //     RSignature::verify_proof(&proof, &redacted_unsigned_vc)
         // )
     }
 
-    fn issue_vc() -> Credential {
+    fn issue_rss_vc() -> Credential {
         // create rss keypair
         let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
         // load complete (unredacted) vc

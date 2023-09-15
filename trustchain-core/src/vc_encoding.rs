@@ -3,10 +3,17 @@ use ssi::{
     one_or_many::OneOrMany,
     vc::{Context, Contexts, Credential, CredentialSubject, Issuer, URI},
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 pub trait CanonicalFlatten {
     fn flatten(&self) -> Vec<String>;
+}
+
+// Trivial impl to satify trait bound on RedactValues
+impl CanonicalFlatten for Vec<String> {
+    fn flatten(&self) -> Vec<String> {
+        self.to_owned()
+    }
 }
 
 impl CanonicalFlatten for Value {
@@ -24,7 +31,7 @@ impl CanonicalFlatten for Value {
                 });
             }
             Value::Object(map) => {
-                res.append(&mut flatten_map(map));
+                res.append(&mut map.flatten());
             }
         }
         res
@@ -38,16 +45,10 @@ impl CanonicalFlatten for Credential {
         // flatten only credential_subject
         match &self.credential_subject {
             OneOrMany::One(cs) => {
-                // res.push("credentialSubject:{".to_string());
                 res.append(&mut handle_credential_subject(cs));
             }
             OneOrMany::Many(_) => {
                 panic!("TODO find *unique* flat representation for multiple subjects");
-                // res.push("credentialSubject:[".to_string());
-                // res.append(cs_vec.iter().fold(&mut Vec::new(), |acc, cs| {
-                //     acc.append(&mut handle_credential_subject(cs));
-                //     acc
-                // }));
             }
         }
 
@@ -59,7 +60,7 @@ impl CanonicalFlatten for Credential {
             }
             if let Some(map) = &cs.property_set {
                 // res.push("propertySet:{".to_string());
-                res.append(&mut flatten_map(&convert_map(map)));
+                res.append(&mut convert_map(map).flatten());
             }
             res
         }
@@ -175,64 +176,6 @@ impl CanonicalFlatten for Credential {
         }
 
         res.push("metadata:".to_string() + &serde_json::to_string(&metadata).unwrap());
-
-        // fn handle_context(ctx: &Context) -> Vec<String> {
-        //     match ctx {
-        //         Context::URI(uri) => vec![handle_uri(uri)],
-        //         Context::Object(map) => flatten_map(&convert_map(map)),
-        //     }
-        // }
-
-        // // context
-        // res.push("context:{".to_string());
-        // match &self.context {
-        //     Contexts::One(ctx) => res.append(&mut handle_context(&ctx)),
-        //     Contexts::Many(ctx_vec) => {
-        //         res = ctx_vec.iter().fold(res, |mut acc, ctx| {
-        //             acc.append(&mut handle_context(ctx));
-        //             acc
-        //         });
-        //     }
-        // }
-
-        // // id
-        // if let Some(uri) = &self.id {
-        //     res.push("id".to_string() + ":" + &handle_uri(uri));
-        // }
-
-        // // type_
-        // match &self.type_ {
-        //     OneOrMany::One(t) => res.push("type".to_string() + ":" + t),
-        //     OneOrMany::Many(t_vec) => {
-        //         res.push("type:[".to_string());
-        //         for t in t_vec {
-        //             res.push(t.to_string());
-        //         }
-        //     }
-        // }
-
-        // // issuer
-        // if let Some(issuer) = &self.issuer {
-        //     match issuer {
-        //         ssi::vc::Issuer::URI(uri) => {
-        //             res.push("issuer".to_string() + ":" + &handle_uri(uri));
-        //         }
-        //         ssi::vc::Issuer::Object(obj) => {
-        //             res.push("issuer:{".to_string());
-        //             res.push("id:".to_string() + &handle_uri(&obj.id));
-        //             if let Some(map) = &obj.property_set {
-        //                 res.push("propertySet:{".to_string());
-        //                 res.append(&mut flatten_map(&convert_map(&map)));
-        //             }
-        //         }
-        //     }
-        // }
-
-        // // issuance_date
-        // if let Some(date) = &self.issuance_date {
-        //     res.push("issuanceDate:".to_string() + serde_json::to_string(date).unwrap());
-        // }
-
         res
     }
 }
@@ -242,52 +185,186 @@ impl CanonicalFlatten for Credential {
 fn convert_map(map: &HashMap<String, Value>) -> Map<String, Value> {
     // json Value enum varients are all 'ordered' already, so only the top level HashMap must be
     // sorted (the serde_json `Map` implementation uses either BTreeMap or indexmap::IndexMap
-    // depending on the selected feature)
-    Map::from_iter(map.clone().into_iter())
+    // depending on the selected feature - it's important that the indexMap feature is **not** set
+    // so that the ordering is canonical, based on sorting the keys)
+    let mut key_value_pairs = map.clone().into_iter().collect::<Vec<(String, Value)>>();
+    key_value_pairs.sort_by(|(ak, _), (bk, _)| ak.cmp(bk));
+    Map::from_iter(key_value_pairs)
 }
 
 // Flatten a json Map of json Values with a 1-to-1 algorithm (ensuring two distinct map cannot
 // produce the same flattened result)
-fn flatten_map(map: &Map<String, Value>) -> Vec<String> {
-    let mut res = Vec::new();
-    for (k, v) in map {
-        match v {
-            Value::Null => {}
-            Value::Bool(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::Number(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::String(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
-            Value::Array(_) => {
-                // res.push(k.to_owned() + ":[");
-                res.append(
-                    &mut v
-                        .flatten()
-                        .iter()
-                        .map(|s| k.to_owned() + ":[" + s)
-                        .collect(),
-                );
-            }
-            Value::Object(_) => {
-                // res.push(k.to_owned() + ":{");
-                res.append(
-                    &mut v
-                        .flatten()
-                        .iter()
-                        .map(|s| k.to_owned() + ":{" + s)
-                        .collect(),
-                );
+impl CanonicalFlatten for Map<String, Value> {
+    fn flatten(&self) -> Vec<String> {
+        let mut res = Vec::new();
+        for (k, v) in self {
+            match v {
+                Value::Null => res.push(k.to_owned() + ":"),
+                Value::Bool(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
+                Value::Number(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
+                Value::String(_) => res.push(k.to_owned() + ":" + &v.flatten().first().unwrap()),
+                Value::Array(_) => {
+                    res.append(
+                        &mut v
+                            .flatten()
+                            .iter()
+                            .map(|s| k.to_owned() + ":[" + s)
+                            .collect(),
+                    );
+                }
+                Value::Object(_) => {
+                    res.append(
+                        &mut v
+                            .flatten()
+                            .iter()
+                            .map(|s| k.to_owned() + ":{" + s)
+                            .collect(),
+                    );
+                }
             }
         }
+        res
     }
-    res
+}
+
+pub trait RedactValues: CanonicalFlatten {
+    /// Redact values from a nested object, **keeping** the values that map to the values at the
+    /// indicies idxs of the flattened object.
+    /// Eg. when idxs.is_empty(), self maintains the same data structure, but all leaf Values are set
+    /// to Value::Null.
+    fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError>;
+}
+
+#[derive(Debug)]
+pub enum RedactError {
+    InvalidSequenceElement(String),
+    MissingKeyInSourceSequence,
+    NullLeafInSourceSequence(String),
+    MissingCredentialSubject,
+}
+
+impl RedactValues for Vec<String> {
+    fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError> {
+        for (i, m) in self.iter_mut().enumerate() {
+            // redact using math indexing
+            if !idxs.contains(&(i + 1)) {
+                let mut m_vec = m.split(":").collect::<Vec<&str>>();
+                // special case if redacting metadata field (key-value seperates on first colon)
+                if m_vec
+                    .first()
+                    .ok_or(RedactError::InvalidSequenceElement(m.to_owned()))?
+                    == &"metadata"
+                {
+                    *m = "metadata:".to_string();
+                    continue;
+                }
+                // redact value from key value pair
+                let tail = m_vec
+                    .pop()
+                    .ok_or(RedactError::InvalidSequenceElement(m.to_owned()))?;
+                let mut rejoined = m_vec.join(":") + ":";
+                // in the case that this index was an element in an array
+                if tail
+                    .chars()
+                    .next()
+                    .ok_or(RedactError::MissingKeyInSourceSequence)?
+                    == '['
+                {
+                    // include array tag in the key after value has been redacted
+                    rejoined += "["
+                }
+                *m = rejoined;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RedactValues for Map<String, Value> {
+    fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError> {
+        let redacted: Vec<String> = self
+            .flatten()
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, string)| {
+                if !idxs.contains(&(i + 1)) {
+                    Some(string)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for path in redacted {
+            let mut parts = path.split(":").collect::<VecDeque<&str>>();
+            let root_k = parts
+                .pop_front()
+                .ok_or(RedactError::InvalidSequenceElement(path.clone()))?;
+
+            // initialise cursors
+            let mut k = root_k;
+            let mut parent = &mut *self;
+            let mut part = parts.pop_front();
+
+            while let Some(p) = part {
+                if let Some(leading_char) = p.chars().nth(0) {
+                    match leading_char {
+                        '[' => {
+                            todo!("redacting arrays")
+                        }
+                        '{' => {
+                            let val = parent.get_mut(k).unwrap();
+                            match val {
+                                Value::Object(map) => {
+                                    parent = map;
+                                    k = p.strip_prefix("{").expect("Previously matched.");
+                                }
+                                _ => panic!("Error parsing path:{}", path),
+                            }
+                        }
+                        _ => {
+                            *parent.get_mut(k).unwrap() = Value::Null;
+                        }
+                    }
+                } else {
+                    // Redacting an already partially redacted Map (with Value::Null leaves) is not supported
+                    return Err(RedactError::NullLeafInSourceSequence(path));
+                }
+                part = parts.pop_front();
+            }
+        }
+        Ok(())
+    }
+}
+
+impl RedactValues for Credential {
+    fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError> {
+        match &mut self.credential_subject {
+            OneOrMany::One(cs) => {
+                let mut redacted = convert_map(
+                    cs.property_set
+                        .as_ref()
+                        .ok_or(RedactError::MissingCredentialSubject)?,
+                );
+                println!("{}", serde_json::to_string_pretty(&redacted).unwrap());
+                redacted.redact(idxs)?;
+                *cs.property_set
+                    .as_mut()
+                    .ok_or(RedactError::MissingCredentialSubject)? =
+                    HashMap::from_iter(redacted.into_iter());
+            }
+            OneOrMany::Many(_) => {
+                panic!("TODO CanonicalFlatten unimplimented for multiple subjects")
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
-    use serde_json::{Map, Value};
-
     use super::*;
+    use serde_json::{Map, Value};
+    use std::collections::HashMap;
 
     const TEST_UNSIGNED_VC: &str = r##"{
         "@context": [
@@ -325,6 +402,111 @@ mod tests {
         }
       }
       "##;
+
+    fn test_map() -> Map<String, Value> {
+        let mut map = Map::new();
+        map.insert("a".to_string(), Value::String("test".to_string()));
+        map.insert(
+            "d".to_string(),
+            Value::Object(Map::from_iter(
+                vec![
+                    ("b".to_string(), Value::String("the".to_string())),
+                    (
+                        "c".to_string(),
+                        Value::Object(Map::from_iter(
+                            vec![
+                                ("b".to_string(), Value::String("the".to_string())),
+                                ("c".to_string(), Value::String("conversion".to_string())),
+                            ]
+                            .into_iter(),
+                        )),
+                    ),
+                ]
+                .into_iter(),
+            )),
+        );
+        map
+    }
+
+    #[test]
+    fn test_redact_vec_of_strings() {
+        let mut data: Vec<String> = vec![
+            "degree:{college:College of Engineering",
+            "degree:{name:Bachelor of Science and Arts",
+            "degree:{nested:{key:value",
+            "degree:{testArray:[element",
+            "degree:{testArray:[objectInArray:{one:valTwo",
+            "degree:{testArray:[objectInArray:{two:valOne",
+            "degree:{type:Degree Certificate",
+            "familyName:Doe",
+            "givenName:Jane",
+            "metadata:Remove:After:First:Colon",
+        ]
+        .into_iter()
+        .map(|el| el.to_string())
+        .collect();
+
+        data.redact(&vec![1, 2, 4, 6]).unwrap();
+        assert_eq!(
+            data,
+            vec![
+                "degree:{college:College of Engineering",
+                "degree:{name:Bachelor of Science and Arts",
+                "degree:{nested:{key:",
+                "degree:{testArray:[element",
+                "degree:{testArray:[objectInArray:{one:",
+                "degree:{testArray:[objectInArray:{two:valOne",
+                "degree:{type:",
+                "familyName:",
+                "givenName:",
+                "metadata:"
+            ]
+        )
+    }
+
+    #[test]
+    fn test_redact_map() {
+        let mut map = test_map();
+        println!("{}", serde_json::to_string_pretty(&map.flatten()).unwrap());
+        map.redact(&vec![1, 3]).unwrap();
+        println!("{}", serde_json::to_string_pretty(&map).unwrap());
+
+        let mut expected = Map::new();
+        expected.insert("a".to_string(), Value::String("test".to_string()));
+        expected.insert(
+            "d".to_string(),
+            Value::Object(Map::from_iter(
+                vec![
+                    ("b".to_string(), Value::Null),
+                    (
+                        "c".to_string(),
+                        Value::Object(Map::from_iter(
+                            vec![
+                                ("b".to_string(), Value::String("the".to_string())),
+                                ("c".to_string(), Value::Null),
+                            ]
+                            .into_iter(),
+                        )),
+                    ),
+                ]
+                .into_iter(),
+            )),
+        );
+
+        assert_eq!(expected, map);
+    }
+
+    #[test]
+    fn redact_impl_integrations() {
+        let mut map = test_map();
+        let mut flat = map.flatten();
+        // redact values from paths in Vec<String> (Vec length unchanged)
+        flat.redact(&vec![1, 3]).unwrap();
+        // redact values from nested map by setting Value::Null at redacted indicies
+        map.redact(&vec![1, 3]).unwrap();
+        // redacted Vec<String> = flattened redacted map
+        assert_eq!(flat, map.flatten());
+    }
 
     #[test]
     fn deserialize() {
