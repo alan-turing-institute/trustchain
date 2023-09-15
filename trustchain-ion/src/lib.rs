@@ -122,6 +122,9 @@ pub enum TrustchainBitcoinError {
     /// Wrapped bitcoincore_rpc error
     #[error("Bitcoin core RPC error: {0}")]
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
+    /// Failed to get block time at height.
+    #[error("Block time was None at height: {0}")]
+    BlockTimeAtHeightError(u64),
 }
 
 // MongoDB

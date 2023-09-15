@@ -1,7 +1,7 @@
 //! ION-related utilities.
 use crate::config::ion_config;
 use bitcoin::{BlockHash, BlockHeader, Transaction};
-use bitcoincore_rpc::RpcApi;
+use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
@@ -222,6 +222,26 @@ pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
 pub fn int_to_little_endian_hex(int: &u32) -> String {
     let hex = format!("{:x}", int);
     reverse_endianness(&hex).unwrap()
+}
+
+/// Gets the block time at a particular height, as a Unix time.
+pub fn time_at_block_height(
+    block_height: u64,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<u64, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return time_at_block_height(block_height, Some(&rpc_client));
+    };
+    match client
+        .unwrap()
+        .get_block_stats_fields(block_height, &[BlockStatsFields::Time])?
+        .time
+    {
+        Some(time) => Ok(time),
+        None => Err(TrustchainBitcoinError::BlockTimeAtHeightError(block_height)),
+    }
 }
 
 #[cfg(test)]
@@ -459,5 +479,19 @@ mod tests {
         let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
         let actual = tx_to_op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_time_at_block_height() {
+        // The block can be found on-chain at:
+        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+        let block_height = 2377445;
+        let result = time_at_block_height(block_height, None);
+
+        assert!(result.is_ok());
+        let time = result.unwrap();
+        let expected = 1666265405;
+        assert_eq!(time, expected);
     }
 }
