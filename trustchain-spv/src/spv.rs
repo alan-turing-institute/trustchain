@@ -4,10 +4,10 @@ use home::home_dir;
 use nakamoto::{
     chain::{
         block::cache::BlockCache,
-        store::{File, Genesis, Store},
+        store::{File, Genesis},
         BlockHash, BlockHeader, BlockReader,
     },
-    common::{bitcoin::consensus::Params, block::Height, nonempty::NonEmpty},
+    common::{bitcoin::consensus::Params, block::Height},
 };
 
 pub fn get_block(hash: &str) -> Option<(u64, BlockHeader)> {
@@ -20,14 +20,10 @@ pub fn get_block(hash: &str) -> Option<(u64, BlockHeader)> {
     let path = home_dir()
         .unwrap()
         .join(Path::new(".nakamoto/testnet/headers.db"));
-    let mut store: File<BlockHeader> = File::open(path, genesis).unwrap();
+    let store: File<BlockHeader> = File::open(path, genesis).unwrap();
 
     // Alternative approach with Memory (as opposed to File) Store:
     // let mut store = Memory::new(NonEmpty::new(block_header));
-
-    println!("{}", store.len().unwrap());
-    store.sync().unwrap();
-    println!("{}", store.len().unwrap());
 
     // TODO: needs to be configurable for mainnet/testnet.
     let params = Params::new(nakamoto::common::bitcoin::Network::Testnet);
@@ -39,9 +35,6 @@ pub fn get_block(hash: &str) -> Option<(u64, BlockHeader)> {
     let block_cache = block_cache.load().unwrap();
 
     let block_hash = BlockHash::from_str(hash).unwrap();
-
-    println!("{:?}", block_hash);
-    println!("{:?}", block_cache.get_block(&block_hash));
 
     if let Some((height, block_header)) = block_cache.get_block(&block_hash) {
         return Some((height, block_header.clone()));
