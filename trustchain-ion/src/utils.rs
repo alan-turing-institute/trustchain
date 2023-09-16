@@ -2,6 +2,7 @@
 use crate::config::ion_config;
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
+use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
@@ -225,7 +226,7 @@ pub fn int_to_little_endian_hex(int: &u32) -> String {
 }
 
 /// Gets the block time at a particular height, as a Unix time.
-pub fn time_at_block_height(
+fn time_at_block_height(
     block_height: u64,
     client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<u64, TrustchainBitcoinError> {
@@ -242,6 +243,72 @@ pub fn time_at_block_height(
         Some(time) => Ok(time),
         None => Err(TrustchainBitcoinError::BlockTimeAtHeightError(block_height)),
     }
+}
+
+/// Returns the unix timestamp at 00h:00m:00s on the given date.
+fn first_unixtime_on(date: NaiveDate) -> i64 {
+    let datetime = date.and_hms_opt(0, 0, 0).unwrap();
+    datetime.timestamp()
+}
+
+/// Returns the height of the last block mined before the given date.
+pub fn last_block_height_before(
+    date: NaiveDate,
+    start_height: Option<u64>,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<u64, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return last_block_height_before(date, start_height, Some(&rpc_client));
+    }
+    let client = client.unwrap();
+
+    // Following https://github.com/kristapsk/bitcoin-scripts/blob/master/blockheightat.sh
+
+    let mut start_height = match start_height {
+        Some(x) => x,
+        None => 1,
+    };
+    let start_unixtime = time_at_block_height(start_height, Some(&client))?;
+    let target_unixtime = first_unixtime_on(date);
+
+    if target_unixtime < start_unixtime as i64 {
+        return Err(TrustchainBitcoinError::TargetDateOutOfRange);
+    }
+
+    let mut end_height = client.get_block_count()?; // Latest block height
+    let end_unixtime = time_at_block_height(end_height, Some(&client))?;
+
+    if target_unixtime >= end_unixtime as i64 {
+        return Err(TrustchainBitcoinError::TargetDateOutOfRange);
+    }
+
+    while end_height - start_height > 1 {
+        let current_height = (start_height + end_height) / 2; // Rounds down.
+        let current_unixtime = time_at_block_height(current_height, Some(&client))?;
+
+        if current_unixtime as i64 > target_unixtime {
+            end_height = current_height; // TODO CHECK: original script has: current_height - 1;
+        } else if (current_unixtime as i64) < target_unixtime {
+            start_height = current_height; // TODO CHECK: original script has: current_height + 1;
+        }
+        // TODO: WHAT IF current_unixtime == target_unixtime?
+        // (does the loop exit and is start_height the right result in that case?)
+    }
+    Ok(start_height)
+}
+
+/// Returns the range of block heights mined on the given date.
+pub fn block_height_range_on_date(
+    date: NaiveDate,
+    start_height: Option<u64>,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<(u64, u64), TrustchainBitcoinError> {
+    let first_block = last_block_height_before(date, start_height, client)? + 1;
+    let next_date = date.succ_opt().unwrap();
+    let last_block = last_block_height_before(next_date, Some(first_block), client)?;
+    Ok((first_block, last_block))
 }
 
 #[cfg(test)]
@@ -493,5 +560,32 @@ mod tests {
         let time = result.unwrap();
         let expected = 1666265405;
         assert_eq!(time, expected);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_last_block_height_before() {
+        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+        let result = last_block_height_before(date, None, None).unwrap();
+
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377349.
+        assert_eq!(result, 2377348);
+
+        let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
+        let result = last_block_height_before(date, None, None).unwrap();
+
+        // The first testnet block mined on 2023-09-16 (UTC) was at height 2501883.
+        assert_eq!(result, 2501882);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_block_range_on_date() {
+        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+        let result = block_height_range_on_date(date, None, None).unwrap();
+
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377349.
+        // The last testnet block mined on 2022-10-20 (UTC) was at height 2377511.
+        assert_eq!(result, (2377349, 2377511));
     }
 }

@@ -125,6 +125,9 @@ pub enum TrustchainBitcoinError {
     /// Failed to get block time at height.
     #[error("Block time was None at height: {0}")]
     BlockTimeAtHeightError(u64),
+    /// Target date precedes start block timestamp or succeeds end block timestamp.
+    #[error("Target date out of range of block timestamps.")]
+    TargetDateOutOfRange,
 }
 
 // MongoDB
