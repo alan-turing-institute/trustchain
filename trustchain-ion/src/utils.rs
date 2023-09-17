@@ -85,22 +85,19 @@ pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsErro
     Ok(serde_json::from_str(&ipfs_content_str)?)
 }
 
+/// Gets a MongoDB client instance.
+pub async fn mongodb_client() -> Result<mongodb::Client, TrustchainMongodbError> {
+    let client_options = ClientOptions::parse(&ion_config().mongo_connection_string)
+        .await
+        .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
+    mongodb::Client::with_options(client_options)
+        .map_err(TrustchainMongodbError::ErrorCreatingClient)
+}
+
 /// Queries the ION MongoDB for a DID operation.
-pub async fn query_mongodb(
-    did: &str,
-    client: Option<mongodb::Client>,
-) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
-    // If necessary, construct a MongoDB client.
-    let client = match client {
-        Some(x) => x,
-        None => {
-            let client_options = ClientOptions::parse(&ion_config().mongo_connection_string)
-                .await
-                .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
-            mongodb::Client::with_options(client_options)
-                .map_err(TrustchainMongodbError::ErrorCreatingClient)?
-        }
-    };
+pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
+    // Construct a MongoDB client.
+    let client = mongodb_client().await?;
 
     // TODO: when extending to other operations aside from "create" consider other queries
     // (different to .find_one()) to see whether a fuller collection of DID operations can be obtained
@@ -245,7 +242,7 @@ fn time_at_block_height(
     }
 }
 
-/// Returns the unix timestamp at 00h:00m:00s on the given date.
+/// Returns the unix timestamp at 00h:00m:00s UTC on the given date.
 fn first_unixtime_on(date: NaiveDate) -> i64 {
     let datetime = date.and_hms_opt(0, 0, 0).unwrap();
     datetime.timestamp()
@@ -501,7 +498,7 @@ mod tests {
     #[ignore = "Integration test requires MongoDB"]
     async fn test_query_mongodb() {
         let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let doc = query_mongodb(suffix, None).await.unwrap();
+        let doc = query_mongodb(suffix).await.unwrap();
         let block_height: i32 = doc.get_i32("txnTime").unwrap();
         assert_eq!(block_height, 2377445);
     }

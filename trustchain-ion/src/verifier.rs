@@ -294,7 +294,7 @@ where
         let suffix = get_did_suffix(did);
 
         // Query the database for a bson::Document.
-        let doc = query_mongodb(suffix, None).await.map_err(|e| {
+        let doc = query_mongodb(suffix).await.map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Error querying MongoDB".to_string(),
                 e.into(),
