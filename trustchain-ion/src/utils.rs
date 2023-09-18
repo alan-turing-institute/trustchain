@@ -134,7 +134,10 @@ pub async fn query_mongodb_on_interval(
         .find(
             doc! {
                 MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
-                MONGO_FILTER_TXNTIME : [from, to]
+                MONGO_FILTER_TXNTIME : {
+                    "$gte" : from,
+                    "$lte" : to
+                }
             },
             None,
         )
@@ -550,13 +553,34 @@ mod tests {
         assert_eq!(block_height, 2377445);
     }
 
-    // // TODO.
-    // #[tokio::test]
-    // #[ignore = "Integration test requires MongoDB"]
-    // async fn test_query_mongodb_on_interval() {
-    //     let result = query_mongodb_on_interval(2377445, 2377555).await.unwrap();
-    //     todo!()
-    // }
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_query_mongodb_on_interval() {
+        let mut result = query_mongodb_on_interval(1902375, 1902377).await.unwrap();
+        let mut dids: Vec<String> = Vec::new();
+        assert_eq!(dids.len(), 0);
+        while let Some(doc) = result.next().await {
+            dids.push(
+                doc.unwrap()
+                    .get_str(MONGO_FILTER_DID_SUFFIX)
+                    .unwrap()
+                    .to_owned(),
+            );
+        }
+        assert_eq!(dids.len(), 4);
+        assert!(dids.contains(&String::from(
+            "EiDlkji8etHKKZl58SQNx02_HHSJkotwYmDqF77AfVvPtA"
+        )));
+        assert!(dids.contains(&String::from(
+            "EiAPQZILnRHafYaLCsgWBZF3peJpofXadG-POM6IGCa7mA"
+        )));
+        assert!(dids.contains(&String::from(
+            "EiAL1svnGisf6EY9OG_nPHJ2_fnU_IdO5Les_06NeT45-A"
+        )));
+        assert!(dids.contains(&String::from(
+            "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ"
+        )));
+    }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
