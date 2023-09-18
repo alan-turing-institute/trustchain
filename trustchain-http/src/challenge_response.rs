@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
+use tracing::field;
 
 use std::path::PathBuf;
 use thiserror::Error;
@@ -50,6 +51,9 @@ pub enum TrustchainCRError {
     /// Failed deserialize from file.
     #[error("Failed to deserialize.")]
     FailedToDeserialize,
+    /// Failed to check CR status.
+    #[error("Failed to determine CR status.")]
+    FailedStatusCheck,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -59,9 +63,26 @@ impl From<JoseError> for TrustchainCRError {
 }
 
 /// Interface for serializing and deserializing each field of structs to/from files.
-trait ElementwiseSerializeDeserialize {
-    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError>;
-    // todo: default implementation, look if exists already
+trait ElementwiseSerializeDeserialize
+where
+    Self: Serialize,
+{
+    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+        let serialized =
+            serde_json::to_value(&self).map_err(|_| TrustchainCRError::FailedToSave)?;
+        if let Value::Object(fields) = serialized {
+            for (field_name, field_value) in fields {
+                if !field_value.is_null() {
+                    let json_filename = format!("{}.json", field_name);
+                    let file_path = path.join(json_filename);
+
+                    self.save_to_file(&file_path, &to_json(&field_value).unwrap())?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn elementwise_deserialize(self, path: &PathBuf) -> Result<Self, TrustchainCRError>
     where
         Self: Sized;
@@ -95,6 +116,10 @@ trait ElementwiseSerializeDeserialize {
             Err(_) => Err(TrustchainCRError::FailedToSave),
         }
     }
+}
+
+pub trait IsComplete {
+    fn is_complete(&self) -> bool;
 }
 
 /// Interface for signing and then encrypting data.
@@ -262,21 +287,35 @@ impl CRInitiation {
 }
 
 impl ElementwiseSerializeDeserialize for CRInitiation {
-    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        let file_path = path.join("temp_p_key.json");
-        let data: &str = &to_json(&self.temp_p_key).unwrap();
-        if !file_path.exists() {
-            self.save_to_file(&file_path, data);
-        }
+    // fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+    //     // let file_path = path.join("temp_p_key.json");
+    //     // let data: &str = &to_json(&self.temp_p_key).unwrap();
+    //     // if !file_path.exists() {
+    //     //     self.save_to_file(&file_path, data);
+    //     // }
 
-        let file_path = path.join("requester_details.json");
-        let data: &str = &to_json(&self.requester_details).unwrap();
-        if !file_path.exists() {
-            self.save_to_file(&file_path, data);
-        }
+    //     // let file_path = path.join("requester_details.json");
+    //     // let data: &str = &to_json(&self.requester_details).unwrap();
+    //     // if !file_path.exists() {
+    //     //     self.save_to_file(&file_path, data);
+    //     // }
 
-        Ok(())
-    }
+    //     // =======| new version |===========
+    //     let serialized = serde_json::to_value(&self).expect("Serialization failed");
+
+    //     if let Value::Object(fields) = serialized {
+    //         for (field_name, field_value) in fields {
+    //             if !field_value.is_null() {
+    //                 let json_filename = format!("{}.json", field_name);
+    //                 let file_path = path.join(json_filename);
+
+    //                 self.save_to_file(&file_path, &to_json(&field_value).unwrap());
+    //             }
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -331,37 +370,37 @@ impl CRIdentityChallenge {
 
 // todo: add path to serialise/deserialise functions?
 impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
-    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        if let Some(update_p_key) = &self.update_p_key {
-            let file_path = path.join("update_p_key.json");
-            let data: &str = &to_json(update_p_key).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_nonce) = &self.identity_nonce {
-            let file_path = path.join("identity_nonce.json");
-            let data: &str = &to_json(identity_nonce).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_challenge_signature) = &self.identity_challenge_signature {
-            let file_path = path.join("identity_challenge_signature.json");
-            let data: &str = &to_json(identity_challenge_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(identity_response_signature) = &self.identity_response_signature {
-            let file_path = path.join("identity_response_signature.json");
-            let data: &str = &to_json(identity_response_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        Ok(())
-    }
+    // fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+    //     if let Some(update_p_key) = &self.update_p_key {
+    //         let file_path = path.join("update_p_key.json");
+    //         let data: &str = &to_json(update_p_key).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     if let Some(identity_nonce) = &self.identity_nonce {
+    //         let file_path = path.join("identity_nonce.json");
+    //         let data: &str = &to_json(identity_nonce).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     if let Some(identity_challenge_signature) = &self.identity_challenge_signature {
+    //         let file_path = path.join("identity_challenge_signature.json");
+    //         let data: &str = &to_json(identity_challenge_signature).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     if let Some(identity_response_signature) = &self.identity_response_signature {
+    //         let file_path = path.join("identity_response_signature.json");
+    //         let data: &str = &to_json(identity_response_signature).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     Ok(())
+    // }
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -450,30 +489,30 @@ impl CRContentChallenge {
 }
 
 impl ElementwiseSerializeDeserialize for CRContentChallenge {
-    fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        if let Some(content_nonce) = &self.content_nonce {
-            let file_path = path.join("content_nonce.json");
-            let data: &str = &to_json(content_nonce).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(content_challenge_signature) = &self.content_challenge_signature {
-            let file_path = path.join("content_challenge_signature.json");
-            let data: &str = &to_json(content_challenge_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        if let Some(content_response_signature) = &self.content_response_signature {
-            let file_path = path.join("content_response_signature.json");
-            let data: &str = &to_json(content_response_signature).unwrap();
-            if !file_path.exists() {
-                self.save_to_file(&file_path, data);
-            }
-        }
-        Ok(())
-    }
+    // fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
+    //     if let Some(content_nonce) = &self.content_nonce {
+    //         let file_path = path.join("content_nonce.json");
+    //         let data: &str = &to_json(content_nonce).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     if let Some(content_challenge_signature) = &self.content_challenge_signature {
+    //         let file_path = path.join("content_challenge_signature.json");
+    //         let data: &str = &to_json(content_challenge_signature).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     if let Some(content_response_signature) = &self.content_response_signature {
+    //         let file_path = path.join("content_response_signature.json");
+    //         let data: &str = &to_json(content_response_signature).unwrap();
+    //         if !file_path.exists() {
+    //             self.save_to_file(&file_path, data);
+    //         }
+    //     }
+    //     Ok(())
+    // }
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -586,6 +625,10 @@ fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, 
         }
     }
     Ok(my_map)
+}
+
+fn check_cr_state(state: CRState) -> Result<(), TrustchainCRError> {
+    todo!()
 }
 
 #[cfg(test)]
@@ -873,6 +916,22 @@ mod tests {
         // write to file
         let directory_path = env::current_dir().unwrap();
         cr_state.elementwise_serialize(&directory_path).unwrap();
+
+        // test serialise CR state
+        // let serialized = serde_json::to_value(&cr_state.initiation).expect("Serialization failed");
+
+        // if let Value::Object(fields) = serialized {
+        //     for (field_name, field_value) in fields {
+        //         match field_value {
+        //             Value::Null => println!("Field {} is empty.", field_name),
+        //             // _ => println!("Field {} has a value: {:?}", field_name, field_value),
+        //             _ => {
+        //                 let json_filename = format!("{}.json", field_name);
+        //                 write_to_json_file(&json_filename, &field_value);
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     #[test]
@@ -920,3 +979,7 @@ mod tests {
         );
     }
 }
+
+// notes:
+// - new version of elementwise serialise: is there much benefit?
+// - deserialise still still needs to be hardcoded
