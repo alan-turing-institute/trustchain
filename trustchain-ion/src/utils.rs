@@ -1,12 +1,12 @@
 //! ION-related utilities.
-use crate::config::ion_config;
+use crate::{config::ion_config, MONGO_FILTER_TXNTIME};
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
-use futures::TryStreamExt;
-use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
-use mongodb::{bson::doc, options::ClientOptions};
+use futures::{StreamExt, TryStreamExt};
+use ipfs_api_backend_hyper::{response::BitswapWantlistResponse, IpfsApi, IpfsClient};
+use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
@@ -94,7 +94,7 @@ pub async fn mongodb_client() -> Result<mongodb::Client, TrustchainMongodbError>
         .map_err(TrustchainMongodbError::ErrorCreatingClient)
 }
 
-/// Queries the ION MongoDB for a DID operation.
+/// Queries the ION MongoDB for a DID create operation.
 pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
     // Construct a MongoDB client.
     let client = mongodb_client().await?;
@@ -118,6 +118,28 @@ pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, Trustch
         Ok(None) => Err(TrustchainMongodbError::QueryReturnedNone),
         Err(e) => Err(TrustchainMongodbError::QueryReturnedError(e)),
     }
+}
+
+/// Queries the ION MongoDB for DID create operations over a block height interval.
+pub async fn query_mongodb_on_interval(
+    from: u32,
+    to: u32,
+) -> Result<Cursor<mongodb::bson::Document>, TrustchainMongodbError> {
+    // Construct a MongoDB client.
+    let client = mongodb_client().await?;
+
+    let cursor: Result<Cursor<mongodb::bson::Document>, mongodb::error::Error> = client
+        .database(&ion_config().mongo_database_ion_core)
+        .collection(MONGO_COLLECTION_OPERATIONS)
+        .find(
+            doc! {
+                MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                MONGO_FILTER_TXNTIME : [from, to]
+            },
+            None,
+        )
+        .await;
+    Ok(cursor?)
 }
 
 /// Gets a Bitcoin RPC client instance.
@@ -306,6 +328,31 @@ pub fn block_height_range_on_date(
     let next_date = date.succ_opt().unwrap();
     let last_block = last_block_height_before(next_date, Some(first_block), client)?;
     Ok((first_block, last_block))
+}
+
+pub async fn identify_root_did(date: NaiveDate) -> Option<String> {
+    let block_height_range = block_height_range_on_date(date, None, None);
+    if block_height_range.is_err() {
+        return None;
+    }
+    let block_height_range = block_height_range.unwrap();
+    let cursor =
+        query_mongodb_on_interval(block_height_range.0 as u32, block_height_range.1 as u32).await;
+    if cursor.is_err() {
+        return None;
+    }
+    // let docs = cursor.unwrap().collect();
+    let docs = cursor.unwrap().next();
+    // if docs..cou first_hit.is_none() {
+    //     return None
+    // }
+    // let first_hit = first_hit.unwrap();
+    // if first_hit.is_err() {
+    //     return None;
+    // }
+    // let first_hit = first_hit.unwrap();
+
+    None
 }
 
 #[cfg(test)]
@@ -503,6 +550,14 @@ mod tests {
         assert_eq!(block_height, 2377445);
     }
 
+    // // TODO.
+    // #[tokio::test]
+    // #[ignore = "Integration test requires MongoDB"]
+    // async fn test_query_mongodb_on_interval() {
+    //     let result = query_mongodb_on_interval(2377445, 2377555).await.unwrap();
+    //     todo!()
+    // }
+
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_transaction() {
@@ -565,14 +620,14 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
         let result = last_block_height_before(date, None, None).unwrap();
 
-        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377349.
-        assert_eq!(result, 2377348);
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+        assert_eq!(result, 2377359);
 
         let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
         let result = last_block_height_before(date, None, None).unwrap();
 
-        // The first testnet block mined on 2023-09-16 (UTC) was at height 2501883.
-        assert_eq!(result, 2501882);
+        // The first testnet block mined on 2023-09-16 (UTC) was at height 2501917.
+        assert_eq!(result, 2501916);
     }
 
     #[test]
@@ -581,8 +636,8 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
         let result = block_height_range_on_date(date, None, None).unwrap();
 
-        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377349.
-        // The last testnet block mined on 2022-10-20 (UTC) was at height 2377511.
-        assert_eq!(result, (2377349, 2377511));
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+        // The last testnet block mined on 2022-10-20 (UTC) was at height 2377519.
+        assert_eq!(result, (2377360, 2377519));
     }
 }

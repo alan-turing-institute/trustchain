@@ -75,6 +75,12 @@ pub enum TrustchainMongodbError {
     ErrorCreatingClient(mongodb::error::Error),
 }
 
+impl From<mongodb::error::Error> for TrustchainMongodbError {
+    fn from(err: mongodb::error::Error) -> Self {
+        TrustchainMongodbError::QueryReturnedError(err)
+    }
+}
+
 impl From<io::Error> for TrustchainIpfsError {
     fn from(err: io::Error) -> Self {
         TrustchainIpfsError::DataDecodingError(err)
@@ -135,6 +141,7 @@ pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
 pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
+pub const MONGO_FILTER_TXNTIME: &str = "txnTime";
 
 // Bitcoin
 // TODO: consider structs for deserialization similar to trustchain_ion::sidetree module
