@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
-use axum::Json;
+use axum::{Form, Json};
 use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,7 @@ use ssi::did_resolve::DIDResolver;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
+use std::collections::HashMap;
 use std::sync::Arc;
 use trustchain_core::issuer::Issuer;
 use trustchain_core::resolver::Resolver;
@@ -111,9 +112,14 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 
 impl TrustchainIssuerHTTPHandler {
     /// Generates QR code to display to holder to receive requested credential.
-    pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
-        // TODO: update to take query param entered by user.
-        let id = "7426a2e8-f932-11ed-968a-4bb02079f142".to_string();
+    pub async fn get_issuer_qrcode(
+        State(app_state): State<Arc<AppState>>,
+        Form(form): Form<HashMap<String, String>>,
+    ) -> Html<String> {
+        let id = form
+            .get("uuid")
+            .expect("'uuid' key not in form.")
+            .to_owned();
         let http_str = if !http_config().https {
             "http"
         } else {
