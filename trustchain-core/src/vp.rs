@@ -3,7 +3,7 @@ use crate::{holder::HolderError, vc::CredentialError, verifier::VerifierError};
 use ssi::vc::VerificationResult;
 use thiserror::Error;
 
-/// An error relating to verifiable credentials and presentations.
+/// An error relating to verifiable presentations.
 #[derive(Error, Debug)]
 pub enum PresentationError {
     /// No credentials present in presentation.
@@ -19,15 +19,12 @@ pub enum PresentationError {
     #[error("A wrapped Credential error: {0}")]
     CredentialError(CredentialError),
     /// Wrapped variant for Verifier Error.
-    #[error("A wrapped Verfier error: {0}")]
+    #[error("A wrapped Verifier error: {0}")]
     VerifierError(VerifierError),
     /// Credentials verified, but holder failed to authenticate with invalid or missing presentation
     /// proof.
-    #[error("Credentials verified for an unauthenticated holder.")]
+    #[error("Credentials verified for an unauthenticated holder: {0:?}")]
     VerifiedHolderUnauthenticated(VerificationResult),
-    /// Credentials verified, but holder DID failed verification (not part of valid Trustchain).
-    #[error("Credentials verified for an unverified holder.")]
-    VerifiedHolderUnverfied(VerifierError),
 }
 
 impl From<HolderError> for PresentationError {
@@ -47,6 +44,3 @@ impl From<VerifierError> for PresentationError {
         PresentationError::VerifierError(err)
     }
 }
-
-#[cfg(test)]
-mod tests {}

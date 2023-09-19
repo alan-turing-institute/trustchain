@@ -19,7 +19,7 @@ pub enum VerifierError {
     InvalidSignature(String),
     /// Invalid root DID after self-controller reached in path.
     #[error("Invalid root DID error: {0}")]
-    InvalidRoot(Box<dyn std::error::Error>),
+    InvalidRoot(Box<dyn std::error::Error + Send + Sync>),
     /// Invalid root with error:
     #[error("Invalid root DID ({0}) with timestamp: {1}.")]
     InvalidRootTimestamp(String, Timestamp),
@@ -122,7 +122,7 @@ pub enum VerifierError {
     TimestampVerificationError(String),
     /// Error fetching verification material.
     #[error("Error fetching verification material: {0}. Error: {1}")]
-    ErrorFetchingVerificationMaterial(String, Box<dyn Error>),
+    ErrorFetchingVerificationMaterial(String, Box<dyn Error + Send + Sync>),
     /// Failed to fetch verification material.
     #[error("Failed to fetch verification material: {0}")]
     FailureToFetchVerificationMaterial(String),

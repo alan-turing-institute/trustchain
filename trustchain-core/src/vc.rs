@@ -18,6 +18,9 @@ pub enum CredentialError {
     /// No proof present in credential.
     #[error("No proof.")]
     NoProofPresent,
+    /// Failed to decode JWT error.
+    #[error("Failed to decode JWT.")]
+    FailedToDecodeJWT,
     /// Wrapped error for Verifier error.
     #[error("A wrapped Verifier error: {0}")]
     VerifierError(VerifierError),

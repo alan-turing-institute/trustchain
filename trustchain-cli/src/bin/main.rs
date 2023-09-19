@@ -214,6 +214,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("Issuer... ❌ (with verifier error)");
                             err?;
                         }
+                        err @ Err(CredentialError::FailedToDecodeJWT) => {
+                            println!("Proof... ❌");
+                            println!("Issuer... ❌");
+                            err?;
+                        }
                         Ok(_) => {
                             println!("Proof... ✅");
                             println!("Issuer... ✅");

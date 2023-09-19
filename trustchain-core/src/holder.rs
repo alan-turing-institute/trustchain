@@ -10,11 +10,14 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum HolderError {
     /// Wrapped error for SSI error.
-    #[error("A wrapped variant for an SSI error.")]
+    #[error("A wrapped variant for an SSI error: {0}")]
     SSI(ssi::error::Error),
     /// Wrapped error for key manager error.
-    #[error("A wrapped variant for a key manager error.")]
+    #[error("A wrapped variant for a key manager error: {0}")]
     KeyManager(KeyManagerError),
+    /// Holder field mismatched with attestor DID.
+    #[error("Holder field mismatched with attestor DID.")]
+    MismatchedHolder,
 }
 
 impl From<ssi::error::Error> for HolderError {
@@ -29,7 +32,7 @@ impl From<KeyManagerError> for HolderError {
     }
 }
 
-/// A holder signs a credential to generate a verifiable credential.
+/// A holder signs a presentation to generate a verifiable presentation.
 #[async_trait]
 pub trait Holder: Subject {
     /// Attests to a given presentation of one or many credentials returning the presentation with a
@@ -38,8 +41,8 @@ pub trait Holder: Subject {
     async fn sign_presentation<T: DIDResolver>(
         &self,
         presentation: &Presentation,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
-        ldp_options: Option<LinkedDataProofOptions>,
     ) -> Result<Presentation, HolderError>;
 }
