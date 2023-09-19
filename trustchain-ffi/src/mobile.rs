@@ -120,7 +120,7 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
             }
         }
         Ok(
-            TrustchainAPI::verify_credential(&credential, ldp_opts, root_event_time, &verifier)
+            TrustchainAPI::verify_credential(&credential, root_event_time, &verifier)
                 .await
                 .map_err(FFIMobileError::FailedToVerifyCredential)
                 .and_then(|did_chain| {
