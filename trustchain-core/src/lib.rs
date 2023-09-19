@@ -13,6 +13,7 @@ pub mod resolver;
 pub mod subject;
 pub mod utils;
 pub mod vc;
+pub mod vc_encoding;
 pub mod verifier;
 pub mod vp;
 

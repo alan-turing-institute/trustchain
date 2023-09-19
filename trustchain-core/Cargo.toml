@@ -6,6 +6,8 @@ edition = "2021"
 
 
 [dependencies]
+ps_sig = { path = "../../RSS" }
+
 async-trait = "0.1"
 base64 = "0.13"
 canonical_json = "0.4.0"
