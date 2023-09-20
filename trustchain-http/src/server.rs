@@ -51,6 +51,18 @@ impl TrustchainRouter {
                     }),
                 )
                 .route(
+                    "/vc_rss/issuer/:id",
+                    get(issuer::TrustchainIssuerHTTPHandler::get_issuer).post({
+                        let state = shared_state.clone();
+                        move |(id, vc_info)| {
+                            issuer::TrustchainIssuerHTTPHandler::post_issuer_rss(
+                                (id, vc_info),
+                                state,
+                            )
+                        }
+                    }),
+                )
+                .route(
                     "/vc/verifier/:id",
                     get(verifier::TrustchainVerifierHTTPHandler::get_verifier).post({
                         let state = shared_state.clone();

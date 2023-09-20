@@ -9,11 +9,14 @@ use axum::response::{Html, IntoResponse};
 use axum::{Form, Json};
 use chrono::Utc;
 use log::info;
+use ps_sig::keys::{rsskeygen, Params};
+use ps_sig::message_structure::message_encode::EncodedMessages;
+use ps_sig::rsssig::RSignature;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
 use ssi::one_or_many::OneOrMany;
-use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
+use ssi::vc::{Credential, Proof};
 use std::collections::HashMap;
 use std::sync::Arc;
 use trustchain_core::issuer::Issuer;
@@ -69,6 +72,13 @@ pub trait TrustchainIssuerHTTP {
         issuer_did: &str,
         resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError>;
+    /// Issues a verifiable credential with an RSS signature for selective disclosure
+    async fn issue_credential_rss<T: DIDResolver + Send + Sync>(
+        credential: &Credential,
+        subject_id: Option<&str>,
+        issuer_did: &str,
+        resolver: &Resolver<T>,
+    ) -> Result<Credential, TrustchainHTTPError>;
 }
 
 /// Type for implementing the TrustchainIssuerHTTP trait that will contain additional handler methods.
@@ -105,6 +115,37 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
                 subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
             }
         }
+        let issuer = IONAttestor::new(issuer_did);
+        Ok(issuer.sign(&credential, None, None, resolver).await?)
+    }
+
+    async fn issue_credential_rss<T: DIDResolver + Send + Sync>(
+        credential: &Credential,
+        subject_id: Option<&str>,
+        issuer_did: &str,
+        resolver: &Resolver<T>,
+    ) -> Result<Credential, TrustchainHTTPError> {
+        let mut credential = credential.to_owned();
+        credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
+            issuer_did.to_string(),
+        )));
+        let now = chrono::offset::Utc::now();
+        credential.issuance_date = Some(VCDateTime::from(now));
+        if let Some(subject_id_str) = subject_id {
+            if let OneOrMany::One(ref mut subject) = credential.credential_subject {
+                subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
+            }
+        }
+        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
+        // let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let rsig = RSignature::new(EncodedMessages::from(credential.flatten()).as_slice(), &sk);
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        // remove existing non-RSS proof
+        vc.proof = None;
+        vc.add_proof(proof);
+
         let issuer = IONAttestor::new(issuer_did);
         Ok(issuer.sign(&credential, None, None, resolver).await?)
     }
@@ -174,6 +215,30 @@ impl TrustchainIssuerHTTPHandler {
         match app_state.credentials.get(&credential_id) {
             Some(credential) => {
                 let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
+                    credential,
+                    Some(&vc_info.subject_id),
+                    issuer_did,
+                    app_state.verifier.resolver(),
+                )
+                .await?;
+                Ok((StatusCode::OK, Json(credential_signed)))
+            }
+            None => Err(TrustchainHTTPError::CredentialDoesNotExist),
+        }
+    }
+    pub async fn post_issuer_rss(
+        (Path(credential_id), Json(vc_info)): (Path<String>, Json<VcInfo>),
+        app_state: Arc<AppState>,
+    ) -> impl IntoResponse {
+        info!("Received VC info: {:?}", vc_info);
+        let issuer_did = app_state
+            .config
+            .issuer_did
+            .as_ref()
+            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
+        match app_state.credentials.get(&credential_id) {
+            Some(credential) => {
+                let credential_signed = TrustchainIssuerHTTPHandler::issue_credential_rss(
                     credential,
                     Some(&vc_info.subject_id),
                     issuer_did,
