@@ -7,6 +7,7 @@ pub mod controller;
 pub mod create;
 pub mod data;
 pub mod sidetree;
+pub mod update;
 pub mod utils;
 pub mod verifier;
 
@@ -14,7 +15,10 @@ use did_ion::{sidetree::SidetreeClient, ION};
 use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
+use trustchain_core::{
+    key_manager::KeyManagerError,
+    resolver::{DIDMethodWrapper, Resolver, ResolverError},
+};
 
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
@@ -59,6 +63,27 @@ pub enum TrustchainIONError {
     /// Incorrect key type provided.
     #[error("Incorrect key type provided.")]
     IncorrectKeyType,
+    /// Next update key does not match commitment in resolved controlled DID.
+    #[error("Next update key does not match commitment in resolved controlled DID: {0}")]
+    FailedCommitmentToNextUpdateKey(String),
+    /// Wrapped `KeyManagerError`.
+    #[error("Wrapped KeyManagerError: {0}")]
+    KeyManagerError(KeyManagerError),
+    /// Wrapped `ResolverError`.
+    #[error("Wrapped ResolverError: {0}")]
+    ResolverError(ResolverError),
+}
+
+impl From<KeyManagerError> for TrustchainIONError {
+    fn from(err: KeyManagerError) -> Self {
+        Self::KeyManagerError(err)
+    }
+}
+
+impl From<ResolverError> for TrustchainIONError {
+    fn from(err: ResolverError) -> Self {
+        Self::ResolverError(err)
+    }
 }
 
 /// An error relating to a MongoDB query.

@@ -5,12 +5,13 @@ use did_ion::sidetree::{DIDStatePatch, PublicKeyJwk, ServiceEndpointEntry, Sidet
 use did_ion::ION;
 use serde_json::{Map, Value};
 use ssi::did::ServiceEndpoint;
-use ssi::did_resolve::{DocumentMetadata, Metadata};
+use ssi::did_resolve::{DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata};
 use ssi::jwk::JWK;
 use std::convert::TryFrom;
 use trustchain_core::attestor::Attestor;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyManager, KeyManagerError, KeyType};
+use trustchain_core::resolver::ResolverError;
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::generate_key;
 use trustchain_core::{TRUSTCHAIN_PROOF_SERVICE_ID_VALUE, TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE};
@@ -206,6 +207,33 @@ impl IONController {
                 Err(_) => Err(TrustchainIONError::FailedToConvertToCommitment),
             },
             Err(_) => Err(TrustchainIONError::FailedToConvertToCommitment),
+        }
+    }
+
+    /// Check and apply next update key
+    pub async fn check_and_apply_next_update_key(
+        &self,
+        resolver: &dyn DIDResolver,
+    ) -> Result<(), TrustchainIONError> {
+        // Confirm next update key corresponds to commitment in resolved DID
+        let (_, _, doc_meta) = resolver
+            .resolve(self.controlled_did(), &ResolutionInputMetadata::default())
+            .await;
+        let doc_meta = doc_meta.ok_or(ResolverError::MissingDocumentMetadata)?;
+        if let Ok(Some(key)) = self.next_update_key() {
+            // Check whether the key matches the update commitment
+            if self.is_commitment_key(&doc_meta, &key, KeyType::NextUpdateKey) {
+                // Set update_key as next_update_key (save to file, delete next_update_key)
+                self.apply_next_update_key(self.controlled_did_suffix(), &key)?;
+                Ok(())
+            } else {
+                Err(TrustchainIONError::FailedCommitmentToNextUpdateKey(
+                    self.controlled_did().to_string(),
+                ))
+            }
+        } else {
+            // If no next update key, nothing to apply and ok
+            Ok(())
         }
     }
 }

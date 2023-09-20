@@ -13,7 +13,8 @@ use trustchain_api::{
 use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
 use trustchain_ion::{
-    attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
+    attest::attest_operation, create::create_operation, get_ion_resolver, update::update_operation,
+    verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -43,6 +44,14 @@ fn cli() -> Command {
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-c --controlled_did <CONTROLLED_DID>).required(true))
                         .arg(arg!(-k --key_id <KEY_ID>).required(false)),
+                )
+                .subcommand(
+                    Command::new("update")
+                        .about("Controller updates a controlled DID.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-c --controlled_did <CONTROLLED_DID>).required(true))
+                        .arg(arg!(-f --file_path <FILE_PATH>).required(true)),
                 )
                 .subcommand(
                     Command::new("resolve")
@@ -103,6 +112,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     // Read from the file path to a "Reader"
                     create_operation(doc_state, verbose)?;
+                }
+                Some(("update", sub_matches)) => {
+                    let file_path = sub_matches
+                        .get_one::<String>("file_path")
+                        .expect("Missing DID state patches for update.");
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let controlled_did = sub_matches.get_one::<String>("controlled_did").unwrap();
+                    let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
+                    // Read DID state patches from file path
+                    let patches = serde_json::from_reader(File::open(file_path)?)?;
+                    update_operation(patches, did, controlled_did, resolver, verbose).await?;
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
