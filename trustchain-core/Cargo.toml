@@ -6,7 +6,7 @@ edition = "2021"
 
 
 [dependencies]
-ps_sig = { path = "../../../RSS" }
+ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", branch = "new_rss-vc-signing" }
 
 async-trait = "0.1"
 base64 = "0.13"
