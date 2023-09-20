@@ -110,6 +110,15 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DIDQRCode {
+    did: String,
+    route: String,
+    uuid: String,
+    endpoint: String,
+}
+
 impl TrustchainIssuerHTTPHandler {
     /// Generates QR code to display to holder to receive requested credential.
     pub async fn get_issuer_qrcode(
@@ -130,8 +139,23 @@ impl TrustchainIssuerHTTPHandler {
             "{}://{}:{}/vc/issuer/{id}",
             http_str, app_state.config.host_reference, app_state.config.port
         );
+
+        let did_qr_code_encoded = base64_url::encode(
+            &serde_json::to_string(&DIDQRCode {
+                did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
+                route: "/vc/issuer/".to_string(),
+                uuid: id,
+                endpoint: format!(
+                    "{}://{}:{}",
+                    http_str, app_state.config.host_reference, app_state.config.port
+                ),
+            })
+            .unwrap(),
+        );
+
         // Respond with the QR code as a png embedded in html
-        Html(str_to_qr_code_html(&address_str, "Issuer"))
+        // Html(str_to_qr_code_html(&address_str, "Issuer"))
+        Html(str_to_qr_code_html(&did_qr_code_encoded, "Issuer"))
     }
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
