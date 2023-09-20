@@ -191,17 +191,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
                     // Verify credential
-                    let verify_result = TrustchainAPI::verify_credential(
-                        &credential,
-                        None,
-                        root_event_time,
-                        &verifier,
-                    )
-                    .await;
+                    let verify_result =
+                        TrustchainAPI::verify_credential(&credential, root_event_time, &verifier)
+                            .await;
                     // Handle result
                     match verify_result {
                         err @ Err(CredentialError::VerificationResultError(_)) => {
                             println!("Proof... Invalid");
+                            err?;
+                        }
+                        err @ Err(CredentialError::NoProofPresent) => {
+                            println!("Proof... ❌ (missing proof)");
                             err?;
                         }
                         err @ Err(CredentialError::NoIssuerPresent) => {
