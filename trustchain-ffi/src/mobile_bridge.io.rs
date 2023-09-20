@@ -37,10 +37,11 @@ pub extern "C" fn wire_vc_verify_credential(
 pub extern "C" fn wire_vp_issue_presentation(
     port_: i64,
     presentation: *mut wire_uint_8_list,
+    idxs: *mut wire_uint_8_list,
     opts: *mut wire_uint_8_list,
     jwk_json: *mut wire_uint_8_list,
 ) {
-    wire_vp_issue_presentation_impl(port_, presentation, opts, jwk_json)
+    wire_vp_issue_presentation_impl(port_, presentation, idxs, opts, jwk_json)
 }
 
 // Section: allocate functions

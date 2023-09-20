@@ -88,6 +88,7 @@ fn wire_vc_verify_credential_impl(
 fn wire_vp_issue_presentation_impl(
     port_: MessagePort,
     presentation: impl Wire2Api<String> + UnwindSafe,
+    idxs: impl Wire2Api<Option<String>> + UnwindSafe,
     opts: impl Wire2Api<String> + UnwindSafe,
     jwk_json: impl Wire2Api<String> + UnwindSafe,
 ) {
@@ -99,9 +100,12 @@ fn wire_vp_issue_presentation_impl(
         },
         move || {
             let api_presentation = presentation.wire2api();
+            let api_idxs = idxs.wire2api();
             let api_opts = opts.wire2api();
             let api_jwk_json = jwk_json.wire2api();
-            move |task_callback| vp_issue_presentation(api_presentation, api_opts, api_jwk_json)
+            move |task_callback| {
+                vp_issue_presentation(api_presentation, api_idxs, api_opts, api_jwk_json)
+            }
         },
     )
 }

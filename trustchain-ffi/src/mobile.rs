@@ -2,6 +2,7 @@
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use ps_sig::{keys::PKrss, message_structure::message_encode::EncodedMessages, rsssig::RSignature};
 use ssi::{
     jwk::JWK,
     ldp::now_ms,
@@ -14,6 +15,8 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
+use trustchain_core::vc_encoding::CanonicalFlatten;
+use trustchain_core::vc_encoding::RedactValues;
 use trustchain_core::{
     resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
@@ -134,6 +137,7 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
 /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
 pub fn vp_issue_presentation(
     presentation: String,
+    idxs: Option<String>,
     opts: String,
     jwk_json: String,
 ) -> Result<String> {
@@ -153,16 +157,91 @@ pub fn vp_issue_presentation(
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
     let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
-    let proof = rt
-        .block_on(async {
-            presentation
-                .generate_proof(&jwk, &ldp_opts, &resolver)
-                .await
-        })
-        .map_err(|err| {
-            FFIMobileError::FailedToIssuePresentation(PresentationError::SSIError(err))
-        })?;
-    presentation.add_proof(proof);
+
+    // TODO refactor into seperate function (impl on Credential? or TrustchainAPI func?)
+    if let Some(i) = idxs {
+        let idxs: Vec<usize> = serde_json::from_str(&i)?;
+        println!("{:?}", idxs);
+        match presentation.verifiable_credential.as_mut().unwrap() {
+            OneOrMany::One(c) => match c {
+                ssi::vc::CredentialOrJWT::Credential(signed_vc) => {
+                    // produce a Vec<String> representation of the VC with only the selected fields disclosed
+                    let mut redacted_seq = signed_vc.flatten();
+                    redacted_seq.redact(&idxs).unwrap();
+
+                    // encode redacted sequence into FieldElements
+                    let messages = EncodedMessages::from(redacted_seq);
+
+                    // parse issuers PK from the proof on the signed vc
+                    let issuers_proofs = signed_vc.proof.as_ref().unwrap();
+                    let issuers_pk = PKrss::from_hex(
+                        &issuers_proofs
+                            .first()
+                            .unwrap()
+                            .verification_method
+                            .as_ref()
+                            .unwrap(),
+                    )
+                    .unwrap();
+
+                    // derive redacted RSignature
+                    let r_rsig = RSignature::from_hex(
+                        &issuers_proofs
+                            .first()
+                            .unwrap()
+                            .proof_value
+                            .as_ref()
+                            .unwrap(),
+                    )
+                    .derive_signature(
+                        &issuers_pk,
+                        EncodedMessages::from(signed_vc.flatten()).as_slice(),
+                        &messages.infered_idxs,
+                    );
+
+                    // generate proof from derived RSS signature
+                    let mut proof = Proof::new("RSSSignature");
+                    proof.created = Some(now_ms());
+                    proof.proof_purpose = Some(ssi::vc::ProofPurpose::AssertionMethod);
+                    proof.proof_value = Some(r_rsig.to_hex());
+                    proof.verification_method = Some(issuers_pk.to_hex());
+                    // proof.verification_method = Some(
+                    //     "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
+                    // );
+
+                    // produce an unsigned, redacted vc
+                    (*signed_vc).proof = None;
+                    (*signed_vc).redact(&idxs).unwrap();
+
+                    // add the derived RSS proof
+                    (*signed_vc).add_proof(proof);
+                }
+                ssi::vc::CredentialOrJWT::JWT(_) => {
+                    unimplemented!()
+                }
+            },
+            OneOrMany::Many(_) => {
+                unimplemented!()
+            }
+        }
+    // Unable to add a proof to an RSS presentation currently:
+    //      - Checks are made when the proof is added.
+    //      - The VC proof type_ must be a recognised proof mechanism according to ldp (so the error
+    //         occuring when "RSSSignature" is used is an ld "key expansion failure" error)
+    //      - Fields in the credential_subject must also be correctly typed according to ld! (so
+    //        setting degree>type to null, ie. redacting the degree>type field is not allowable)
+    } else {
+        let proof = rt
+            .block_on(async {
+                presentation
+                    .generate_proof(&jwk, &ldp_opts, &resolver)
+                    .await
+            })
+            .map_err(|err| {
+                FFIMobileError::FailedToIssuePresentation(PresentationError::SSIError(err))
+            })?;
+        presentation.add_proof(proof);
+    }
     Ok(serde_json::to_string_pretty(&presentation).map_err(FFIMobileError::FailedToSerialize)?)
 }
 
@@ -174,6 +253,7 @@ pub fn vp_issue_presentation(
 
 #[cfg(test)]
 mod tests {
+    use ps_sig::keys::{rsskeygen, Params};
     use ssi::vc::CredentialOrJWT;
 
     use crate::config::parse_toml;
@@ -258,6 +338,40 @@ mod tests {
         let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
         let presentation = vp_issue_presentation(
             serde_json::to_string(&presentation).unwrap(),
+            None,
+            ffi_opts,
+            root_plus_1_signing_key.to_string(),
+        );
+        println!("{}", presentation.unwrap());
+        // assert!(presentation.is_ok());
+    }
+
+    #[test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_vp_issue_rss_presentation() {
+        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        // let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        // create rss keypair
+        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
+        // load complete (unredacted) vc
+        let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        // remove existing non-RSS proof
+        vc.proof = None;
+        vc.add_proof(proof);
+        let root_plus_1_did: &str = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let presentation: Presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(vc))),
+            holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
+            ..Default::default()
+        };
+        let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
+        let presentation = vp_issue_presentation(
+            serde_json::to_string(&presentation).unwrap(),
+            Some(serde_json::to_string(&vec![1, 2, 6]).unwrap()),
             ffi_opts,
             root_plus_1_signing_key.to_string(),
         );
@@ -280,6 +394,7 @@ mod tests {
 
         let presentation = vp_issue_presentation(
             serde_json::to_string(&presentation).unwrap(),
+            None,
             ffi_opts,
             key.to_string(),
         );

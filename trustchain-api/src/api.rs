@@ -396,7 +396,7 @@ mod tests {
 
     fn issue_rss_vc() -> Credential {
         // create rss keypair
-        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
+        let (sk, pk) = rsskeygen(12, &Params::new("test".as_bytes()));
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
