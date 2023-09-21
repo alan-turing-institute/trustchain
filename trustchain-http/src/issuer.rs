@@ -134,27 +134,17 @@ impl TrustchainIssuerHTTPHandler {
         } else {
             "https"
         };
-        // Generate a QR code for server address and combination of name and UUID
-        let address_str = format!(
-            "{}://{}:{}/vc/issuer/{id}",
-            http_str, app_state.config.host_reference, app_state.config.port
-        );
-
-        let did_qr_code_encoded = base64_url::encode(
-            &serde_json::to_string(&DIDQRCode {
-                did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
-                route: "/vc/issuer/".to_string(),
-                uuid: id,
-                endpoint: format!(
-                    "{}://{}:{}",
-                    http_str, app_state.config.host_reference, app_state.config.port
-                ),
-            })
-            .unwrap(),
-        );
-
+        let did_qr_code_encoded = serde_json::to_string(&DIDQRCode {
+            did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
+            route: "/vc/issuer/".to_string(),
+            uuid: id,
+            endpoint: format!(
+                "{}://{}:{}",
+                http_str, app_state.config.host_reference, app_state.config.port
+            ),
+        })
+        .unwrap();
         // Respond with the QR code as a png embedded in html
-        // Html(str_to_qr_code_html(&address_str, "Issuer"))
         Html(str_to_qr_code_html(&did_qr_code_encoded, "Issuer"))
     }
 
