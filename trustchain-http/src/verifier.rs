@@ -1,6 +1,6 @@
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::str_to_qr_code_html;
+use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
@@ -151,13 +151,19 @@ impl TrustchainVerifierHTTPHandler {
                 } else {
                     "https"
                 };
-                let address_str = format!(
-                    "{}://{}:{}/vc/verifier/{}",
-                    http_str, app_state.config.host_reference, app_state.config.port, uid
-                );
+                let did_qr_code_encoded = serde_json::to_string(&DIDQRCode {
+                    did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
+                    route: "/vc/verifier/".to_string(),
+                    uuid: uid.to_owned(),
+                    endpoint: format!(
+                        "{}://{}:{}",
+                        http_str, app_state.config.host_reference, app_state.config.port
+                    ),
+                })
+                .unwrap();
                 (
                     StatusCode::OK,
-                    Html(str_to_qr_code_html(&address_str, "Verifier")),
+                    Html(str_to_qr_code_html(&did_qr_code_encoded, "Verifier")),
                 )
             })
     }

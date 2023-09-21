@@ -1,6 +1,6 @@
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::str_to_qr_code_html;
+use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
@@ -108,15 +108,6 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         let issuer = IONAttestor::new(issuer_did);
         Ok(issuer.sign(&credential, None, None, resolver).await?)
     }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DIDQRCode {
-    did: String,
-    route: String,
-    uuid: String,
-    endpoint: String,
 }
 
 impl TrustchainIssuerHTTPHandler {
