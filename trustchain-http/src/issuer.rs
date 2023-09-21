@@ -115,11 +115,12 @@ impl TrustchainIssuerHTTPHandler {
     pub async fn get_issuer_qrcode(
         State(app_state): State<Arc<AppState>>,
         Form(form): Form<HashMap<String, String>>,
-    ) -> Html<String> {
+    ) -> Result<Html<String>, TrustchainHTTPError> {
         let id = form
             .get("uuid")
-            .expect("'uuid' key not in form.")
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
             .to_owned();
+
         let http_str = if !http_config().https {
             "http"
         } else {
@@ -136,7 +137,7 @@ impl TrustchainIssuerHTTPHandler {
         })
         .unwrap();
         // Respond with the QR code as a png embedded in html
-        Html(str_to_qr_code_html(&did_qr_code_encoded, "Issuer"))
+        Ok(Html(str_to_qr_code_html(&did_qr_code_encoded, "Issuer")))
     }
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
