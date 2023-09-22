@@ -1,5 +1,5 @@
 //! ION-related utilities.
-use crate::{config::ion_config, MONGO_FILTER_TXNTIME};
+use crate::{config::ion_config, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME};
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
@@ -10,7 +10,7 @@ use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use trustchain_core::verifier::VerifierError;
+use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
@@ -21,6 +21,10 @@ use crate::{
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";
 const ION_OPERATION_COUNT_DELIMITER: &str = ".";
 const DID_DELIMITER: &str = ":";
+
+/// Locator for a transaction on the PoW ledger, given by the pair:
+/// (block_hash, tx_index_within_block).
+pub type TransactionLocator = (BlockHash, u32);
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
@@ -134,7 +138,7 @@ pub async fn query_mongodb_on_interval(
         .find(
             doc! {
                 MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
-                MONGO_FILTER_TXNTIME : {
+                MONGO_FILTER_TXN_TIME : {
                     "$gte" : from,
                     "$lte" : to
                 }
@@ -218,6 +222,56 @@ pub fn transaction(
         .unwrap()
         .get_block(block_hash)
         .map(|block| block.txdata[tx_index as usize].to_owned())?)
+}
+
+/// Returns the location on the ledger of the transaction embedding
+/// the most recent ION operation for the given DID.
+pub async fn locate_transaction(
+    did: &str,
+    client: &bitcoincore_rpc::Client,
+) -> Result<TransactionLocator, VerifierError> {
+    let suffix = get_did_suffix(did);
+
+    // Query the database for a bson::Document.
+    let doc = query_mongodb(suffix).await.map_err(|e| {
+        VerifierError::ErrorFetchingVerificationMaterial(
+            "Error querying MongoDB".to_string(),
+            e.into(),
+        )
+    })?;
+
+    // Extract the block height.
+    let block_height: i64 = doc
+        .get_i32(MONGO_FILTER_TXN_TIME)
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+        .into();
+
+    // Convert to block height u32
+    let block_height: u32 = block_height
+        .try_into()
+        .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
+
+    // Extract the index of the transaction inside the block.
+    let tx_index = doc
+        .get_i64(MONGO_FILTER_TXN_NUMBER)
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+        .to_string()
+        .strip_prefix(&block_height.to_string())
+        .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+        .parse::<u32>()
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
+
+    // If call to get_network_info fails, return error
+    client
+        .get_network_info()
+        .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
+
+    // Convert the block height to a block hash.
+    let block_hash = client
+        .get_block_hash(u64::from(block_height))
+        .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+
+    Ok((block_hash, tx_index))
 }
 
 /// Gets a Merkle proof for the given Bitcoin transaction via the RPC API.
@@ -331,31 +385,6 @@ pub fn block_height_range_on_date(
     let next_date = date.succ_opt().unwrap();
     let last_block = last_block_height_before(next_date, Some(first_block), client)?;
     Ok((first_block, last_block))
-}
-
-pub async fn identify_root_did(date: NaiveDate) -> Option<String> {
-    let block_height_range = block_height_range_on_date(date, None, None);
-    if block_height_range.is_err() {
-        return None;
-    }
-    let block_height_range = block_height_range.unwrap();
-    let cursor =
-        query_mongodb_on_interval(block_height_range.0 as u32, block_height_range.1 as u32).await;
-    if cursor.is_err() {
-        return None;
-    }
-    // let docs = cursor.unwrap().collect();
-    let docs = cursor.unwrap().next();
-    // if docs..cou first_hit.is_none() {
-    //     return None
-    // }
-    // let first_hit = first_hit.unwrap();
-    // if first_hit.is_err() {
-    //     return None;
-    // }
-    // let first_hit = first_hit.unwrap();
-
-    None
 }
 
 #[cfg(test)]
@@ -603,6 +632,44 @@ mod tests {
         // Expect a different transaction ID to fail.
         let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
         assert_ne!(tx.txid().to_string(), not_expected);
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_locate_transaction() {
+        let client = rpc_client();
+
+        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 1902377
+        let expected_block_hash =
+            BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 118);
+
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 2377445
+        let expected_block_hash =
+            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 3);
+
+        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 2377339
+        let expected_block_hash =
+            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 10);
+
+        // Invalid DID
+        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+        let result = locate_transaction(invalid_did, &client).await;
+        assert!(result.is_err());
     }
 
     #[test]

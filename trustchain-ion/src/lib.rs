@@ -6,6 +6,7 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod root;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
@@ -136,12 +137,17 @@ pub enum TrustchainBitcoinError {
     TargetDateOutOfRange,
 }
 
+// ION
+pub const ION_METHOD: &str = "ion";
+pub const ION_TEST_METHOD: &str = "ion:test";
+
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
 pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
-pub const MONGO_FILTER_TXNTIME: &str = "txnTime";
+pub const MONGO_FILTER_TXN_TIME: &str = "txnTime";
+pub const MONGO_FILTER_TXN_NUMBER: &str = "txnNumber";
 
 // Bitcoin
 // TODO: consider structs for deserialization similar to trustchain_ion::sidetree module

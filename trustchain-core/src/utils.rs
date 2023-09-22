@@ -8,6 +8,7 @@ use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethod
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Once;
 
 /// Gets the type of an object as a String. For diagnostic purposes (debugging) only.
@@ -97,6 +98,15 @@ pub fn get_operations_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 /// Returns the suffix of a short-form DID.
 pub fn get_did_suffix(did: &str) -> &str {
     did.split(':').last().unwrap()
+}
+
+/// Converts a short-form DID into a complete DID.
+pub fn get_did_from_suffix(did_suffix: &str, method: &str) -> String {
+    let mut did = String::from_str("did:").unwrap();
+    did.push_str(method);
+    did.push_str(":");
+    did.push_str(did_suffix);
+    did
 }
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)

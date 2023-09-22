@@ -3,9 +3,10 @@ use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
-    block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
+    block_header, decode_ipfs_content, locate_transaction, query_ipfs, query_mongodb, transaction,
+    tx_to_op_return_cid, TransactionLocator,
 };
-use crate::URL;
+use crate::{MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME, URL};
 use async_trait::async_trait;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -29,10 +30,6 @@ use trustchain_core::commitment::{
 use trustchain_core::resolver::{Resolver, ResolverError};
 use trustchain_core::utils::get_did_suffix;
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
-
-/// Locator for a transaction on the PoW ledger, given by the pair:
-/// (block_hash, tx_index_within_block).
-type TransactionLocator = (BlockHash, u32);
 
 /// Data bundle for DID timestamp verification.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -134,12 +131,12 @@ where
 
     /// Gets RPC client.
     fn rpc_client(&self) -> &bitcoincore_rpc::Client {
-        self.rpc_client.as_ref().unwrap()
+        self.rpc_client.as_ref().unwrap() // TODO: handle failure here.
     }
 
     /// Gets IPFS client.
     fn ipfs_client(&self) -> &IpfsClient {
-        self.ipfs_client.as_ref().unwrap()
+        self.ipfs_client.as_ref().unwrap() // TODO: handle failure here.
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
@@ -147,7 +144,7 @@ where
     // in-memory verifier HashMap.
     pub async fn fetch_bundle(&self, did: &str) -> Result<(), VerifierError> {
         let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
-        let (block_hash, tx_index) = self.locate_transaction(did).await?;
+        let (block_hash, tx_index) = locate_transaction(did, self.rpc_client()).await?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
         let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
         let cid = self.op_return_cid(&tx)?;
@@ -288,53 +285,54 @@ where
             .map(|block_header| bitcoin::consensus::serialize(&block_header))
     }
 
-    /// Returns the location on the ledger of the transaction embedding
-    /// the most recent ION operation for the given DID.
-    async fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
-        let suffix = get_did_suffix(did);
+    // MOVED TO utils.rs:
+    // /// Returns the location on the ledger of the transaction embedding
+    // /// the most recent ION operation for the given DID.
+    // async fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
+    //     let suffix = get_did_suffix(did);
 
-        // Query the database for a bson::Document.
-        let doc = query_mongodb(suffix).await.map_err(|e| {
-            VerifierError::ErrorFetchingVerificationMaterial(
-                "Error querying MongoDB".to_string(),
-                e.into(),
-            )
-        })?;
+    //     // Query the database for a bson::Document.
+    //     let doc = query_mongodb(suffix).await.map_err(|e| {
+    //         VerifierError::ErrorFetchingVerificationMaterial(
+    //             "Error querying MongoDB".to_string(),
+    //             e.into(),
+    //         )
+    //     })?;
 
-        // Extract the block height.
-        let block_height: i64 = doc
-            .get_i32("txnTime")
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-            .into();
+    //     // Extract the block height.
+    //     let block_height: i64 = doc
+    //         .get_i32(MONGO_FILTER_TXN_TIME)
+    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+    //         .into();
 
-        // Convert to block height u32
-        let block_height: u32 = block_height
-            .try_into()
-            .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
+    //     // Convert to block height u32
+    //     let block_height: u32 = block_height
+    //         .try_into()
+    //         .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
 
-        // Extract the index of the transaction inside the block.
-        let tx_index = doc
-            .get_i64("txnNumber")
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-            .to_string()
-            .strip_prefix(&block_height.to_string())
-            .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
-            .parse::<u32>()
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
+    //     // Extract the index of the transaction inside the block.
+    //     let tx_index = doc
+    //         .get_i64(MONGO_FILTER_TXN_NUMBER)
+    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+    //         .to_string()
+    //         .strip_prefix(&block_height.to_string())
+    //         .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+    //         .parse::<u32>()
+    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
 
-        // If call to get_network_info fails, return error
-        self.rpc_client()
-            .get_network_info()
-            .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
+    //     // If call to get_network_info fails, return error
+    //     self.rpc_client()
+    //         .get_network_info()
+    //         .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
 
-        // Convert the block height to a block hash.
-        let block_hash = self
-            .rpc_client()
-            .get_block_hash(u64::from(block_height))
-            .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+    //     // Convert the block height to a block hash.
+    //     let block_hash = self
+    //         .rpc_client()
+    //         .get_block_hash(u64::from(block_height))
+    //         .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
 
-        Ok((block_hash, tx_index))
-    }
+    //     Ok((block_hash, tx_index))
+    // }
 
     /// Gets a DID verification bundle, including a fetch if not initially cached.
     pub async fn verification_bundle(
@@ -637,44 +635,44 @@ mod tests {
         HTTPDIDResolver::new("http://localhost:3000/")
     }
 
-    #[tokio::test]
-    #[ignore = "Integration test requires MongoDB"]
-    async fn test_locate_transaction() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+    // #[tokio::test]
+    // #[ignore = "Integration test requires MongoDB"]
+    // async fn test_locate_transaction() {
+    //     let resolver = Resolver::new(get_http_resolver());
+    //     let target = IONVerifier::new(resolver);
 
-        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 1902377
-        let expected_block_hash =
-            BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 118);
+    //     let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
+    //     // Block 1902377
+    //     let expected_block_hash =
+    //         BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
+    //             .unwrap();
+    //     assert_eq!(block_hash, expected_block_hash);
+    //     assert_eq!(transaction_index, 118);
 
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 2377445
-        let expected_block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 3);
+    //     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
+    //     // Block 2377445
+    //     let expected_block_hash =
+    //         BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+    //             .unwrap();
+    //     assert_eq!(block_hash, expected_block_hash);
+    //     assert_eq!(transaction_index, 3);
 
-        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 2377339
-        let expected_block_hash =
-            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 10);
+    //     let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
+    //     // Block 2377339
+    //     let expected_block_hash =
+    //         BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
+    //             .unwrap();
+    //     assert_eq!(block_hash, expected_block_hash);
+    //     assert_eq!(transaction_index, 10);
 
-        // Invalid DID
-        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-        let result = target.locate_transaction(invalid_did).await;
-        assert!(result.is_err());
-    }
+    //     // Invalid DID
+    //     let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+    //     let result = target.locate_transaction(invalid_did).await;
+    //     assert!(result.is_err());
+    // }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin RPC"]
