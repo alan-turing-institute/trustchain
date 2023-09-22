@@ -34,6 +34,13 @@ pub extern "C" fn wire_vc_verify_credential(
 }
 
 #[no_mangle]
+pub extern "C" fn wire_flatten_credential(
+    credential: *mut wire_uint_8_list,
+) -> support::WireSyncReturn {
+    wire_flatten_credential_impl(credential)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_vp_issue_presentation(
     port_: i64,
     presentation: *mut wire_uint_8_list,

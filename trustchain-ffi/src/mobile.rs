@@ -2,6 +2,7 @@
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use flutter_rust_bridge::SyncReturn;
 use ps_sig::{keys::PKrss, message_structure::message_encode::EncodedMessages, rsssig::RSignature};
 use ssi::{
     jwk::JWK,
@@ -132,6 +133,15 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
                 })?,
         )
     })
+}
+
+pub fn flatten_credential(credential: String) -> SyncReturn<String> {
+    let vc: Credential = serde_json::from_str(&credential).unwrap();
+    SyncReturn(
+        serde_json::to_string_pretty(&vc.flatten())
+            .map_err(FFIMobileError::FailedToSerialize)
+            .unwrap(),
+    )
 }
 
 /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).

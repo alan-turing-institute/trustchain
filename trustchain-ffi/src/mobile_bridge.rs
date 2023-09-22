@@ -85,6 +85,21 @@ fn wire_vc_verify_credential_impl(
         },
     )
 }
+fn wire_flatten_credential_impl(
+    credential: impl Wire2Api<String> + UnwindSafe,
+) -> support::WireSyncReturn {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync(
+        WrapInfo {
+            debug_name: "flatten_credential",
+            port: None,
+            mode: FfiCallMode::Sync,
+        },
+        move || {
+            let api_credential = credential.wire2api();
+            Ok(flatten_credential(api_credential))
+        },
+    )
+}
 fn wire_vp_issue_presentation_impl(
     port_: MessagePort,
     presentation: impl Wire2Api<String> + UnwindSafe,
