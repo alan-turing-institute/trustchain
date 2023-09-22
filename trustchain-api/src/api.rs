@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
 use ps_sig::rsssig::RSignature;
+use ssi::one_or_many::OneOrMany;
 use ssi::vc::VerificationResult;
 use ssi::{
     did_resolve::DIDResolver,
@@ -235,7 +236,14 @@ pub trait TrustchainVPAPI {
                 }
             })
             .await?;
-
+        // TODO: Temporary skipping of holders signature check whilst holder signatures are
+        // unimplimented for RSS
+        if let Some(CredentialOrJWT::Credential(c)) = credentials.first() {
+            if c.type_.contains(&"RSSCredential".to_string()) && credentials.len() == 1 {
+                // no check for (non-existent) holders proof
+                return Ok(());
+            }
+        };
         // Verify signature by holder to authenticate
         let result = presentation
             .verify(ldp_options.clone(), verifier.resolver())
@@ -279,6 +287,7 @@ mod tests {
         "type": ["VerifiableCredential"],
         "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         "credentialSubject": {
+          "id" : "did:key:fhdjih784",
           "givenName": "Jane",
           "familyName": "Doe",
           "degree": {
@@ -396,7 +405,7 @@ mod tests {
 
     fn issue_rss_vc() -> Credential {
         // create rss keypair
-        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
+        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);

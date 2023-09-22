@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use trustchain_core::issuer::Issuer;
 use trustchain_core::resolver::Resolver;
+use trustchain_core::vc_encoding::CanonicalFlatten;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::attestor::IONAttestor;
 
@@ -73,11 +74,10 @@ pub trait TrustchainIssuerHTTP {
         resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError>;
     /// Issues a verifiable credential with an RSS signature for selective disclosure
-    async fn issue_credential_rss<T: DIDResolver + Send + Sync>(
+    fn issue_credential_rss(
         credential: &Credential,
         subject_id: Option<&str>,
         issuer_did: &str,
-        resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError>;
 }
 
@@ -119,11 +119,10 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         Ok(issuer.sign(&credential, None, None, resolver).await?)
     }
 
-    async fn issue_credential_rss<T: DIDResolver + Send + Sync>(
+    fn issue_credential_rss(
         credential: &Credential,
         subject_id: Option<&str>,
         issuer_did: &str,
-        resolver: &Resolver<T>,
     ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
@@ -131,23 +130,22 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         )));
         let now = chrono::offset::Utc::now();
         credential.issuance_date = Some(VCDateTime::from(now));
-        if let Some(subject_id_str) = subject_id {
-            if let OneOrMany::One(ref mut subject) = credential.credential_subject {
-                subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
-            }
-        }
-        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
-        // let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        // TODO: handle an id field with colons in RSS flattening, otherwise the did:key:fh47fjod...
+        // breaks the RSS flattening and signature deriving
+        // if let Some(subject_id_str) = subject_id {
+        //     if let OneOrMany::One(ref mut subject) = credential.credential_subject {
+        //         subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
+        //     }
+        // }
+        let (sk, pk) = rsskeygen(12, &Params::new("test".as_bytes()));
         let rsig = RSignature::new(EncodedMessages::from(credential.flatten()).as_slice(), &sk);
         let mut proof = Proof::new("RSSSignature");
         proof.proof_value = Some(rsig.to_hex());
         proof.verification_method = Some(pk.to_hex());
         // remove existing non-RSS proof
-        vc.proof = None;
-        vc.add_proof(proof);
-
-        let issuer = IONAttestor::new(issuer_did);
-        Ok(issuer.sign(&credential, None, None, resolver).await?)
+        credential.proof = None;
+        credential.add_proof(proof);
+        Ok(credential)
     }
 }
 
@@ -168,7 +166,7 @@ impl TrustchainIssuerHTTPHandler {
         };
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
-            "{}://{}:{}/vc/issuer/{id}",
+            "{}://{}:{}/vc_rss/issuer/{id}",
             http_str, app_state.config.host_reference, app_state.config.port
         );
         // Respond with the QR code as a png embedded in html
@@ -242,9 +240,7 @@ impl TrustchainIssuerHTTPHandler {
                     credential,
                     Some(&vc_info.subject_id),
                     issuer_did,
-                    app_state.verifier.resolver(),
-                )
-                .await?;
+                )?;
                 Ok((StatusCode::OK, Json(credential_signed)))
             }
             None => Err(TrustchainHTTPError::CredentialDoesNotExist),
