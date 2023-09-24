@@ -1,5 +1,6 @@
 use chrono::NaiveDate;
 use futures::{future, StreamExt};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use trustchain_core::utils::get_did_from_suffix;
 
@@ -38,6 +39,8 @@ impl From<TrustchainMongodbError> for TrustchainRootError {
 }
 
 /// Struct representing a root DID candidate.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RootCandidate {
     pub did: String,
     pub tx_id: String,

@@ -6,6 +6,7 @@ use trustchain_core::{
     commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError,
     verifier::VerifierError,
 };
+use trustchain_ion::root::TrustchainRootError;
 
 // TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
@@ -20,6 +21,8 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
+    #[error("Trustchain root candidates error: {0}")]
+    RootCandidatesError(TrustchainRootError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -43,9 +46,16 @@ impl From<VerifierError> for TrustchainHTTPError {
         TrustchainHTTPError::VerifierError(err)
     }
 }
+
 impl From<IssuerError> for TrustchainHTTPError {
     fn from(err: IssuerError) -> Self {
         TrustchainHTTPError::IssuerError(err)
+    }
+}
+
+impl From<TrustchainRootError> for TrustchainHTTPError {
+    fn from(err: TrustchainRootError) -> Self {
+        TrustchainHTTPError::RootCandidatesError(err)
     }
 }
 
@@ -81,6 +91,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
             err @ TrustchainHTTPError::NoCredentialIssuer => {
+                (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            err @ TrustchainHTTPError::RootCandidatesError(_) => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
         };
