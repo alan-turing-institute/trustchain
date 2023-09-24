@@ -1,5 +1,7 @@
 //! ION-related utilities.
-use crate::{config::ion_config, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME};
+use crate::{
+    config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
+};
 use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
@@ -124,20 +126,19 @@ pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, Trustch
     }
 }
 
-/// Queries the ION MongoDB for DID create operations over a block height interval.
+/// Queries the ION MongoDB for DID create operations with opIndex = 0 over a block height interval.
 pub async fn query_mongodb_on_interval(
     from: u32,
     to: u32,
 ) -> Result<Cursor<mongodb::bson::Document>, TrustchainMongodbError> {
-    // Construct a MongoDB client.
     let client = mongodb_client().await?;
-
     let cursor: Result<Cursor<mongodb::bson::Document>, mongodb::error::Error> = client
         .database(&ion_config().mongo_database_ion_core)
         .collection(MONGO_COLLECTION_OPERATIONS)
         .find(
             doc! {
                 MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                MONGO_FILTER_OP_INDEX : 0,
                 MONGO_FILTER_TXN_TIME : {
                     "$gte" : from,
                     "$lte" : to
@@ -394,8 +395,9 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::sidetree::CoreIndexFile;
+    use crate::{root::RootCandidate, sidetree::CoreIndexFile, ION_TEST_METHOD};
     use flate2::read::GzDecoder;
+    use futures::future;
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
@@ -405,7 +407,7 @@ mod tests {
             TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
             TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
         },
-        utils::{HasEndpoints, HasKeys},
+        utils::{get_did_from_suffix, HasEndpoints, HasKeys},
     };
 
     const TEST_TRANSACTION: &str = r#"{"version":2,"lock_time":0,"input":[{"previous_output":"5953f37dfeb8343d67cde66e752da195c38c07395d1ce03002e71a10bd04dd71:1","script_sig":"473044022021cc3feacddcdda52b0f8313d6e753c3fcd9f6aafb53e52f4e3aae5c5bdef3ba02204774e9ae6f36e9c58a635d64af99a5c2a665cb1ad992a983d0e6f7feab0c0502012103d28a65a6d49287eaf550380b3e9f71cf711069664b2c20826d77f19a0c035507","sequence":4294967295,"witness":[]}],"output":[{"value":0,"script_pubkey":"6a34696f6e3a332e516d5276675a6d344a334a5378666b3477526a453275324869325537566d6f62596e7071687148355150364a3937"},{"value":15617133,"script_pubkey":"76a914c7f6630ac4f5e2a92654163bce280931631418dd88ac"}]}"#;
@@ -584,8 +586,9 @@ mod tests {
 
     #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
-    async fn test_query_mongodb_on_interval() {
+    async fn test_query_mongodb_on_interval_1902375_to_1902377() {
         let mut result = query_mongodb_on_interval(1902375, 1902377).await.unwrap();
+
         let mut dids: Vec<String> = Vec::new();
         assert_eq!(dids.len(), 0);
         while let Some(doc) = result.next().await {
@@ -596,19 +599,30 @@ mod tests {
                     .to_owned(),
             );
         }
-        assert_eq!(dids.len(), 4);
+
+        // Two ION operations with opIndex = 0 exist on testnet during this interval.
+        // db.operations.find({opIndex: 0, txnTime: { $gte: 1902375, $lte: 1902377}})
+        assert_eq!(dids.len(), 2);
         assert!(dids.contains(&String::from(
             "EiDlkji8etHKKZl58SQNx02_HHSJkotwYmDqF77AfVvPtA"
         )));
         assert!(dids.contains(&String::from(
-            "EiAPQZILnRHafYaLCsgWBZF3peJpofXadG-POM6IGCa7mA"
-        )));
-        assert!(dids.contains(&String::from(
-            "EiAL1svnGisf6EY9OG_nPHJ2_fnU_IdO5Les_06NeT45-A"
-        )));
-        assert!(dids.contains(&String::from(
             "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ"
         )));
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_query_mongodb_on_interval_2377360_to_2377519() {
+        let result = query_mongodb_on_interval(2377360, 2377519).await.unwrap();
+        let docs = result
+            .try_collect::<Vec<mongodb::bson::Document>>()
+            .await
+            .unwrap();
+
+        // There are 38 testnet ION create operations with opIndex = 0 testnet during this interval.
+        // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gte: 2377360, $lte: 2377519}})
+        assert_eq!(docs.len(), 38);
     }
 
     #[test]

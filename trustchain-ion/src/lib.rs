@@ -148,6 +148,7 @@ pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
 pub const MONGO_FILTER_TXN_TIME: &str = "txnTime";
 pub const MONGO_FILTER_TXN_NUMBER: &str = "txnNumber";
+pub const MONGO_FILTER_OP_INDEX: &str = "opIndex";
 
 // Bitcoin
 // TODO: consider structs for deserialization similar to trustchain_ion::sidetree module
