@@ -1,6 +1,8 @@
 use crate::config::HTTPConfig;
+use crate::root::RootCandidatesResult;
+use chrono::NaiveDate;
 use ssi::vc::Credential;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 
@@ -11,6 +13,7 @@ pub struct AppState {
     pub config: HTTPConfig,
     pub verifier: IONVerifier<IONResolver>,
     pub credentials: HashMap<String, Credential>,
+    pub root_candidates: Mutex<HashMap<NaiveDate, RootCandidatesResult>>,
 }
 
 impl AppState {
@@ -23,18 +26,22 @@ impl AppState {
                 .as_slice(),
         )
         .expect("Credential cache could not be deserialized.");
+        let root_candidates = Mutex::new(HashMap::new());
         Self {
             config,
             verifier,
             credentials,
+            root_candidates,
         }
     }
     pub fn new_with_cache(config: HTTPConfig, credentials: HashMap<String, Credential>) -> Self {
         let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let root_candidates = Mutex::new(HashMap::new());
         Self {
             config,
             verifier,
             credentials,
+            root_candidates,
         }
     }
 }

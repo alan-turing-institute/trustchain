@@ -42,7 +42,7 @@ impl From<TrustchainMongodbError> for TrustchainRootError {
 }
 
 /// Struct representing a root DID candidate.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RootCandidate {
     pub did: String,

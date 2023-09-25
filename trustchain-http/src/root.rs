@@ -1,11 +1,14 @@
+use crate::state::AppState;
 use async_trait::async_trait;
-use axum::extract::Query;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use chrono::NaiveDate;
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use trustchain_ion::root::{root_did_candidates, RootCandidate, TrustchainRootError};
 
 use crate::errors::TrustchainHTTPError;
@@ -13,8 +16,11 @@ use crate::errors::TrustchainHTTPError;
 /// An HTTP API for identifying candidate root DIDs.
 #[async_trait]
 pub trait TrustchainRootHTTP {
-    /// Gets a vector of root DID candidates timestamped a given date.
-    async fn root_candidates(date: NaiveDate) -> Result<RootCandidatesResult, TrustchainHTTPError>;
+    /// Gets a vector of root DID candidates timestamped on a given date.
+    async fn root_candidates(
+        date: NaiveDate,
+        root_candidates: &Mutex<HashMap<NaiveDate, RootCandidatesResult>>,
+    ) -> Result<RootCandidatesResult, TrustchainHTTPError>;
 }
 
 /// Type for implementing the TrustchainIssuerHTTP trait that will contain additional handler methods.
@@ -22,11 +28,22 @@ pub struct TrustchainRootHTTPHandler {}
 
 #[async_trait]
 impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
-    async fn root_candidates(date: NaiveDate) -> Result<RootCandidatesResult, TrustchainHTTPError> {
+    async fn root_candidates(
+        date: NaiveDate,
+        root_candidates: &Mutex<HashMap<NaiveDate, RootCandidatesResult>>,
+    ) -> Result<RootCandidatesResult, TrustchainHTTPError> {
         debug!("Getting root candidates for {0}", date);
-        let result = RootCandidatesResult::new(root_did_candidates(date).await?);
 
-        debug!("Got root candidates: {:?}", result);
+        // Return the cached vector of root DID candidates, if available.
+        if root_candidates.lock().unwrap().contains_key(&date) {
+            return Ok(root_candidates.lock().unwrap().get(&date).cloned().unwrap());
+        }
+
+        let result = RootCandidatesResult::new(root_did_candidates(date).await?);
+        debug!("Got root candidates: {:?}", &result);
+
+        // Add the result to the cache.
+        root_candidates.lock().unwrap().insert(date, result.clone());
         Ok(result)
     }
 }
@@ -50,10 +67,12 @@ pub struct RootEventDay {
 }
 
 impl TrustchainRootHTTPHandler {
+    /// Handles GET request for root DID candidates.
     pub async fn get_root_candidates(
         Query(year): Query<RootEventYear>,
         Query(month): Query<RootEventMonth>,
         Query(day): Query<RootEventDay>,
+        State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         debug!(
             "Received date for root DID candidates: {:?}-{:?}-{:?}",
@@ -66,13 +85,13 @@ impl TrustchainRootHTTPHandler {
                 TrustchainRootError::InvalidDate(year.year, month.month, day.day),
             ));
         }
-        TrustchainRootHTTPHandler::root_candidates(date.unwrap())
+        TrustchainRootHTTPHandler::root_candidates(date.unwrap(), &app_state.root_candidates)
             .await
             .map(|vec| (StatusCode::OK, Json(vec)))
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 /// Type representing the result of converting a `DIDChain` to a chain of DID documents with [W3C](https://w3c-ccg.github.io/did-resolution/#did-resolution-result)
 /// data structure.
