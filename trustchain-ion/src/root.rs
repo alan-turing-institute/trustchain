@@ -24,6 +24,9 @@ pub enum TrustchainRootError {
     /// Failed to identify unique root DID.
     #[error("No unique root DID on date: {0}")]
     NoUniqueRootEvent(NaiveDate),
+    /// Invalid date.
+    #[error("Invalid date: {0}-{1}-{2}")]
+    InvalidDate(i32, u32, u32),
 }
 
 impl From<TrustchainBitcoinError> for TrustchainRootError {
