@@ -60,15 +60,12 @@ impl TrustchainRootHTTPHandler {
             year, month, day
         );
 
-        // TODO: handle case date is None.
         let date = chrono::NaiveDate::from_ymd_opt(year.year, month.month, day.day);
-
         if date.is_none() {
             return Err(TrustchainHTTPError::RootCandidatesError(
                 TrustchainRootError::InvalidDate(year.year, month.month, day.day),
             ));
         }
-
         TrustchainRootHTTPHandler::root_candidates(date.unwrap())
             .await
             .map(|vec| (StatusCode::OK, Json(vec)))
