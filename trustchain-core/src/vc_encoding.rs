@@ -383,12 +383,8 @@ impl RedactValues for Credential {
     /// verifiable.
     fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError> {
         if let Some(proofs) = self.proof.as_ref() {
-            // produce a Vec<String> representation of the VC with only the selected fields disclosed
-            let mut redacted_seq = self.flatten();
-            redacted_seq.redact(&idxs).unwrap();
-
-            // encode redacted sequence into FieldElements
-            let messages = EncodedMessages::from(redacted_seq);
+            // encode sequence into FieldElements
+            let messages = EncodedMessages::from(self.flatten());
 
             // parse issuers PK from the proof on the signed vc
             // TODO: resolve PK from the verification_method (which should be a DID or thumbprint)
@@ -434,6 +430,7 @@ impl RedactValues for Credential {
             (*self).proof = None;
             (*self).add_proof(proof);
         }
+        // redact the undisclosed fields from credential_subject
         match &mut self.credential_subject {
             OneOrMany::One(cs) => {
                 let mut redacted = convert_map(
@@ -626,10 +623,22 @@ mod tests {
         let mut signed_vc = issue_rss_vc();
         signed_vc.redact(&idxs).unwrap();
         println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        assert_eq!(
+            signed_vc
+                .credential_subject
+                .first()
+                .unwrap()
+                .property_set
+                .as_ref()
+                .unwrap()
+                .get("familyName")
+                .unwrap(),
+            &serde_json::Value::Null
+        )
     }
     fn issue_rss_vc() -> Credential {
         // create rss keypair
-        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
+        let (sk, pk) = rsskeygen(6, &Params::new("test".as_bytes()));
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);

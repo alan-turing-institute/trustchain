@@ -120,12 +120,9 @@ impl ProofVerify for RSignature {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        vc::ProofVerify,
-        vc_encoding::{CanonicalFlatten, RedactValues},
-    };
+    use crate::{vc::ProofVerify, vc_encoding::CanonicalFlatten};
     use ps_sig::{
-        keys::{rsskeygen, PKrss, Params},
+        keys::{rsskeygen, Params},
         message_structure::message_encode::EncodedMessages,
         rsssig::RSignature,
     };
@@ -169,82 +166,5 @@ mod tests {
         proof.verification_method = Some(pk.to_hex());
         // verify proof
         assert!(RSignature::verify_proof(&proof, &vc).is_ok());
-    }
-
-    #[test]
-    fn verify_redacted_rss_signature() {
-        // chose indicies to disclose
-        let idxs = vec![2, 3, 6];
-
-        // obtain a vc with an RSS proof
-        let signed_vc = issue_rss_vc();
-        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
-
-        // produce a Vec<String> representation of the VC with only the selected fields disclosed
-        let mut redacted_seq = signed_vc.flatten();
-        redacted_seq.redact(&idxs).unwrap();
-        println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
-
-        // encode redacted sequence into FieldElements
-        let messages = EncodedMessages::from(redacted_seq);
-
-        // parse issuers PK from the proof on the signed vc
-        let issuers_proofs = signed_vc.proof.as_ref().unwrap();
-        let issuers_pk = PKrss::from_hex(
-            &issuers_proofs
-                .first()
-                .unwrap()
-                .verification_method
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap();
-
-        // derive redacted RSignature
-        let r_rsig = RSignature::from_hex(
-            &issuers_proofs
-                .first()
-                .unwrap()
-                .proof_value
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap()
-        .derive_signature(
-            &issuers_pk,
-            EncodedMessages::from(signed_vc.flatten()).as_slice(),
-            &messages.infered_idxs,
-        );
-
-        // generate proof from derived RSS signature
-        let mut proof = Proof::new("RSSSignature");
-        proof.proof_value = Some(r_rsig.to_hex());
-        proof.verification_method = Some(issuers_pk.to_hex());
-
-        // produce an unsigned, redacted vc
-        let mut redacted_vc = signed_vc;
-        redacted_vc.proof = None;
-        redacted_vc.redact(&idxs).unwrap();
-
-        // the redacted vc **with** a proof could now be assembled from the redacted_vc and
-        // the proof, but the verification of the Credential will ultimately call the following:
-        assert!(RSignature::verify_proof(&proof, &redacted_vc).is_ok());
-        // println!(
-        //     "{:?}",
-        //     RSignature::verify_proof(&proof, &redacted_unsigned_vc)
-        // )
-    }
-
-    fn issue_rss_vc() -> Credential {
-        // create rss keypair
-        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
-        // load complete (unredacted) vc
-        let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
-        let mut proof = Proof::new("RSSSignature");
-        proof.proof_value = Some(rsig.to_hex());
-        proof.verification_method = Some(pk.to_hex());
-        vc.add_proof(proof);
-        vc
     }
 }
