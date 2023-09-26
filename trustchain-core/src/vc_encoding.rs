@@ -1,9 +1,18 @@
+use ps_sig::{
+    keys::{PKrss, PKrssError},
+    message_structure::message_encode::EncodedMessages,
+    rsssig::{RSignature, RSignatureError},
+};
 use serde_json::{Map, Value};
 use ssi::{
+    ldp::now_ms,
     one_or_many::OneOrMany,
-    vc::{Context, Contexts, Credential, CredentialSubject, Issuer, URI},
+    vc::{Context, Contexts, Credential, CredentialSubject, Issuer, Proof, URI},
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use thiserror::Error;
+
+use crate::vc::CredentialError;
 
 pub trait CanonicalFlatten {
     fn flatten(&self) -> Vec<String>;
@@ -235,12 +244,42 @@ pub trait RedactValues: CanonicalFlatten {
     fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RedactError {
+    /// Invalid element in flattened source sequence.
+    #[error("Invalid element in the flattened sequence: {0}")]
     InvalidSequenceElement(String),
-    MissingKeyInSourceSequence,
-    NullLeafInSourceSequence(String),
+    /// Missing value from key-value pairs in flattened source sequence.
+    #[error("Missing value in source: {0}")]
+    MissingValueInSource(String),
+    /// Missing credential subject field.
+    #[error("Missing credential subject field.")]
     MissingCredentialSubject,
+    /// Wrapped error for CredentialError.
+    #[error("A wrapped CredentialError: {0}")]
+    CredentialError(CredentialError),
+    /// Wrapped error for PKrssError.
+    #[error("A wrapped PKrssError: {0}")]
+    PKrssError(PKrssError),
+    /// Wrapped error for RSignatureError.
+    #[error("A wrapped RSignatureError: {0}")]
+    RSignatureError(RSignatureError),
+}
+
+impl From<CredentialError> for RedactError {
+    fn from(err: CredentialError) -> Self {
+        RedactError::CredentialError(err)
+    }
+}
+impl From<PKrssError> for RedactError {
+    fn from(err: PKrssError) -> Self {
+        RedactError::PKrssError(err)
+    }
+}
+impl From<RSignatureError> for RedactError {
+    fn from(err: RSignatureError) -> Self {
+        RedactError::RSignatureError(err)
+    }
 }
 
 impl RedactValues for Vec<String> {
@@ -267,7 +306,7 @@ impl RedactValues for Vec<String> {
                 if tail
                     .chars()
                     .next()
-                    .ok_or(RedactError::MissingKeyInSourceSequence)?
+                    .ok_or(RedactError::MissingValueInSource(m.to_owned()))?
                     == '['
                 {
                     // include array tag in the key after value has been redacted
@@ -327,7 +366,7 @@ impl RedactValues for Map<String, Value> {
                     }
                 } else {
                     // Redacting an already partially redacted Map (with Value::Null leaves) is not supported
-                    return Err(RedactError::NullLeafInSourceSequence(path));
+                    return Err(RedactError::MissingValueInSource(path));
                 }
                 part = parts.pop_front();
             }
@@ -337,7 +376,64 @@ impl RedactValues for Map<String, Value> {
 }
 
 impl RedactValues for Credential {
+    /// Redact values from credential_subject (the fields of which occur in the sequence
+    /// returned by calling Credential.flatten() with CanonicalFlatten). The proof on the credential
+    /// (which is assumed to be of type "RSSSignature") is updated with a new RSS proof derived on the
+    /// selectively disclosed crednetial_subject fields. This ensures the mutated credential is still
+    /// verifiable.
     fn redact(&mut self, idxs: &[usize]) -> Result<(), RedactError> {
+        if let Some(proofs) = self.proof.as_ref() {
+            // produce a Vec<String> representation of the VC with only the selected fields disclosed
+            let mut redacted_seq = self.flatten();
+            redacted_seq.redact(&idxs).unwrap();
+
+            // encode redacted sequence into FieldElements
+            let messages = EncodedMessages::from(redacted_seq);
+
+            // parse issuers PK from the proof on the signed vc
+            // TODO: resolve PK from the verification_method (which should be a DID or thumbprint)
+            let (r_sig, issuers_pk) = match proofs {
+                OneOrMany::One(proof) => {
+                    let issuers_pk = PKrss::from_hex(&proof.verification_method.as_ref().ok_or(
+                        RedactError::CredentialError(CredentialError::MissingVerificationMethod),
+                    )?)?;
+                    let proof_val =
+                        proof
+                            .proof_value
+                            .as_ref()
+                            .ok_or(RedactError::CredentialError(
+                                CredentialError::NoProofPresent,
+                            ))?;
+
+                    // derive redacted RSignature
+                    (
+                        RSignature::from_hex(&proof_val)?.derive_signature(
+                            &issuers_pk,
+                            messages.as_slice(),
+                            idxs,
+                        ),
+                        issuers_pk,
+                    )
+                }
+                OneOrMany::Many(_) => {
+                    unimplemented!("Credentials with multiple RSS proofs are not supported.")
+                }
+            };
+
+            // generate proof from derived RSS signature
+            let mut proof = Proof::new("RSSSignature");
+            proof.created = Some(now_ms());
+            proof.proof_purpose = Some(ssi::vc::ProofPurpose::AssertionMethod);
+            proof.proof_value = Some(r_sig.to_hex());
+            proof.verification_method = Some(issuers_pk.to_hex());
+            // proof.verification_method = Some(
+            //     "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI".to_string(),
+            // );
+
+            // replace the issuers RSS proof with the derived RSS proof
+            (*self).proof = None;
+            (*self).add_proof(proof);
+        }
         match &mut self.credential_subject {
             OneOrMany::One(cs) => {
                 let mut redacted = convert_map(
@@ -345,7 +441,6 @@ impl RedactValues for Credential {
                         .as_ref()
                         .ok_or(RedactError::MissingCredentialSubject)?,
                 );
-                println!("{}", serde_json::to_string_pretty(&redacted).unwrap());
                 redacted.redact(idxs)?;
                 *cs.property_set
                     .as_mut()
@@ -363,6 +458,7 @@ impl RedactValues for Credential {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ps_sig::keys::{rsskeygen, Params};
     use serde_json::{Map, Value};
     use std::collections::HashMap;
 
@@ -370,35 +466,18 @@ mod tests {
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://www.w3.org/2018/credentials/examples/v1",
-          "https://w3id.org/citizenship/v1",
-          {
-            "3":"did:example:testdidsuffix",
-            "1":"did:example:testdidsuffix",
-            "2":"did:example:testdidsuffix",
-            "0":"did:example:testdidsuffix"
-          }
+          "https://w3id.org/citizenship/v1"
         ],
-        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-        "id": "did:ion:test_id_field",
         "type": ["VerifiableCredential"],
+        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         "credentialSubject": {
-            "givenName": "",
-            "familyName": "Doe",
-            "degree": {
-              "type": "",
-              "name": "Bachelor of Science and Arts",
-              "college": "College of Engineering",
-              "nested" : {
-                "key" : "value"
-              },
-              "testArray": [
-                "element",
-                {"objectInArray": {
-                    "two":"",
-                    "one":""
-                }}
-              ]
-            }
+          "givenName": "Jane",
+          "familyName": "Doe",
+          "degree": {
+            "type": "BachelorDegree",
+            "name": "Bachelor of Science and Arts",
+            "college": "College of Engineering"
+          }
         }
       }
       "##;
@@ -536,5 +615,28 @@ mod tests {
         for (k, v) in json_map {
             println!("{:?} : {:?}", k, v);
         }
+    }
+
+    #[test]
+    fn redact_credential() {
+        // chose indicies to disclose
+        let idxs = vec![2, 3, 6];
+
+        // obtain a vc with an RSS proof
+        let mut signed_vc = issue_rss_vc();
+        signed_vc.redact(&idxs).unwrap();
+        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+    }
+    fn issue_rss_vc() -> Credential {
+        // create rss keypair
+        let (sk, pk) = rsskeygen(15, &Params::new("test".as_bytes()));
+        // load complete (unredacted) vc
+        let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
+        let mut proof = Proof::new("RSSSignature");
+        proof.proof_value = Some(rsig.to_hex());
+        proof.verification_method = Some(pk.to_hex());
+        vc.add_proof(proof);
+        vc
     }
 }

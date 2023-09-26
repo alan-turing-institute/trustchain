@@ -4,7 +4,7 @@ use crate::verifier::VerifierError;
 use ps_sig::{
     keys::{PKrss, PKrssError},
     message_structure::message_encode::EncodedMessages,
-    rsssig::{RSVerifyResult, RSignature},
+    rsssig::{RSVerifyResult, RSignature, RSignatureError},
 };
 use ssi::vc::{Credential, Proof, VerificationResult};
 use thiserror::Error;
@@ -18,6 +18,9 @@ pub enum CredentialError {
     /// No proof present in credential.
     #[error("No proof.")]
     NoProofPresent,
+    /// Missing verification method in credential proof.
+    #[error("Missing verification method in credential proof.")]
+    MissingVerificationMethod,
     /// Failed to decode JWT error.
     #[error("Failed to decode JWT.")]
     FailedToDecodeJWT,
@@ -54,16 +57,25 @@ pub enum ProofVerifyError {
     #[error("Missing proof value.")]
     MissingProofValue,
     /// Wrapped error for PKrssError.
-    #[error("A wrapped PKrssError.")]
-    WrappedPKrssError(PKrssError),
+    #[error("A wrapped PKrssError: {0}")]
+    PKrssError(PKrssError),
+    /// Wrapped error for RSignatureError.
+    #[error("A wrapped RSignatureError: {0}")]
+    RSignatureError(RSignatureError),
     /// Wrapped RSVerifyResult for RSignature verification.
     #[error("A wrapped RSVerifyResult error: {0}")]
-    WrappedRSVerifyResultError(RSVerifyResult),
+    RSVerifyResultError(RSVerifyResult),
 }
 
 impl From<RSVerifyResult> for ProofVerifyError {
     fn from(value: RSVerifyResult) -> Self {
-        ProofVerifyError::WrappedRSVerifyResultError(value)
+        ProofVerifyError::RSVerifyResultError(value)
+    }
+}
+
+impl From<RSignatureError> for ProofVerifyError {
+    fn from(value: RSignatureError) -> Self {
+        ProofVerifyError::RSignatureError(value)
     }
 }
 
@@ -78,7 +90,7 @@ impl ProofVerify for RSignature {
         // If there is a signature
         if let Some(sig_ser) = &proof.proof_value {
             // Parse from Hex
-            let rsig = Self::from_hex(&sig_ser);
+            let rsig = Self::from_hex(&sig_ser)?;
             // Parse public key from verification method on Proof
             let pkrss = PKrss::from_hex(
                 &proof
@@ -86,7 +98,7 @@ impl ProofVerify for RSignature {
                     .as_ref()
                     .ok_or(ProofVerifyError::MissingVerificationMethod)?,
             )
-            .map_err(|e| ProofVerifyError::WrappedPKrssError(e))?;
+            .map_err(|e| ProofVerifyError::PKrssError(e))?;
             // Encode credential into sequence of FieldElements
             let messages: EncodedMessages = credential.flatten().into();
             let res = RSignature::verifyrsignature(
@@ -197,6 +209,7 @@ mod tests {
                 .as_ref()
                 .unwrap(),
         )
+        .unwrap()
         .derive_signature(
             &issuers_pk,
             EncodedMessages::from(signed_vc.flatten()).as_slice(),
