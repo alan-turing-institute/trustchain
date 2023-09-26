@@ -39,7 +39,7 @@ impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
             return Ok(root_candidates.lock().unwrap().get(&date).cloned().unwrap());
         }
 
-        let result = RootCandidatesResult::new(root_did_candidates(date).await?);
+        let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
         debug!("Got root candidates: {:?}", &result);
 
         // Add the result to the cache.
@@ -93,15 +93,18 @@ impl TrustchainRootHTTPHandler {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-/// Type representing the result of converting a `DIDChain` to a chain of DID documents with [W3C](https://w3c-ccg.github.io/did-resolution/#did-resolution-result)
-/// data structure.
+/// Serializable type representing the result of a request for root DID candidates on a given date.
 pub struct RootCandidatesResult {
+    date: NaiveDate,
     root_candidates: Vec<RootCandidate>,
 }
 
 impl RootCandidatesResult {
-    pub fn new(root_candidates: Vec<RootCandidate>) -> Self {
-        Self { root_candidates }
+    pub fn new(date: NaiveDate, root_candidates: Vec<RootCandidate>) -> Self {
+        Self {
+            date,
+            root_candidates,
+        }
     }
 }
 
@@ -132,6 +135,8 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let result: RootCandidatesResult = serde_json::from_str(&response.text().await).unwrap();
+
+        assert_eq!(result.date, NaiveDate::from_ymd_opt(2022, 10, 20).unwrap());
 
         assert_eq!(
             result.root_candidates[16].did,
