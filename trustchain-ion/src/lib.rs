@@ -37,7 +37,11 @@ impl Endpoint {
         Self { host: url, port }
     }
     pub fn to_address(&self) -> String {
-        format!("http://{}:{}/", self.host, self.port)
+        if !self.host.starts_with("http") {
+            format!("http://{}:{}/", self.host, self.port)
+        } else {
+            format!("{}:{}/", self.host, self.port)
+        }
     }
     // TODO: add more flexible address methods
 }
