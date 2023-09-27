@@ -14,10 +14,11 @@ const DEFAULT_PORT: u16 = 8081;
 /// Server config.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HTTPConfig {
-    /// Hostname for server
+    /// Host address for server. For example, Android emulator `10.0.2.2` refers to `127.0.0.1` of
+    /// machine running emulator.
     pub host: IpAddr,
-    /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine running emulator.
-    pub host_reference: IpAddr,
+    /// Host address for front-end display.
+    pub host_reference: String,
     /// Port for server
     pub port: u16,
     /// Optional issuer DID
@@ -38,7 +39,7 @@ impl Default for HTTPConfig {
     fn default() -> Self {
         Self {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
-            host_reference: IpAddr::from_str(DEFAULT_HOST).unwrap(),
+            host_reference: DEFAULT_HOST.into(),
             port: DEFAULT_PORT,
             issuer_did: None,
             https: false,
