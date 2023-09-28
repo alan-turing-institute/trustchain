@@ -1,21 +1,22 @@
+//! DID issuer API.
 use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
+use ssi::vc::{Credential, LinkedDataProofOptions};
 use thiserror::Error;
 
 /// An error relating to a Trustchain Issuer.
 #[derive(Error, Debug)]
 pub enum IssuerError {
     /// Wrapped error for ssi-vc error.
-    #[error("A wrapped variant for an SSI VC error.")]
+    #[error("A wrapped variant for an SSI VC error: {0}")]
     VC(ssi::vc::Error),
     /// Wrapped error for ssi-ldp error.
-    #[error("A wrapped variant for an SSI LDP error.")]
+    #[error("A wrapped variant for an SSI LDP error: {0}")]
     LDP(ssi::ldp::Error),
     /// Wrapped error for key manager error.
-    #[error("A wrapped variant for a key manager error.")]
+    #[error("A wrapped variant for a key manager error: {0}")]
     KeyManager(KeyManagerError),
 }
 
@@ -44,6 +45,7 @@ pub trait Issuer: Subject {
     async fn sign<T: DIDResolver>(
         &self,
         credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
     ) -> Result<Credential, IssuerError>;

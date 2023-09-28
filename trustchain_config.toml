@@ -1,6 +1,3 @@
-[core]
-root_event_time = "<YOUR_ROOT_EVENT_TIME>"
-
 [ion]
 mongo_connection_string = "mongodb://localhost:27017/"
 mongo_database_ion_core = "ion-testnet-core"
@@ -8,3 +5,14 @@ mongo_database_ion_core = "ion-testnet-core"
 bitcoin_connection_string = "http://localhost:18332"
 bitcoin_rpc_username = "<YOUR_BITCOIN_RPC_USERNAME>"
 bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+[http]
+host = "127.0.0.1"
+host_reference = "127.0.0.1"
+port = 8081
+issuer_did = "<YOUR_ISSUER_DID>"
+
+[cli]
+root_event_time = "<YOUR_ROOT_EVENT_TIME>"
+ion_endpoint.host = "127.0.0.1"
+ion_endpoint.port = 3000

@@ -1,0 +1,44 @@
+[package]
+name = "trustchain-http"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[[bin]]
+name = "trustchain-http"
+path = "src/bin/main.rs"
+
+[dependencies]
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+async-trait = "0.1"
+axum = "0.6"
+base64 = "0.21.0"
+chrono = "^0.4"
+clap = { version = "^4", features=["derive", "env", "cargo"] }
+did-ion = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}
+execute = "0.2.11"
+gloo-console = "0.2.3"
+hyper = "0.14.26"
+image = "0.23.14"
+lazy_static="1.4.0"
+log = "0.4"
+qrcode = "0.12.0"
+reqwest = "0.11.16"
+serde = { version = "1.0", features = ["derive"] }
+serde_jcs = "0.1.0"
+serde_json = "1.0"
+ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt", features = ["http-did", "secp256k1"]}
+thiserror="1.0"
+tokio = {version = "1.20.1", features = ["full"]}
+tower = "0.4"
+tower-http = { version = "0.4.0", features = ["map-request-body", "util"] }
+toml="0.7.2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = {version="1.2.2", features = ["v4", "fast-rng", "macro-diagnostics"]}
+
+[dev-dependencies]
+axum-test-helper = "0.2.0"

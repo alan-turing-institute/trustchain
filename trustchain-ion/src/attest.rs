@@ -1,3 +1,4 @@
+//! ION operation for DID attestation.
 use crate::ion::IONTest as ION;
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;

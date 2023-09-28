@@ -1,3 +1,4 @@
+//! Data structures for deserializing Sidetree IPFS data.
 use crate::ion::IONTest as ION;
 use did_ion::sidetree::{Delta, Sidetree, SuffixData};
 use serde::{Deserialize, Serialize};

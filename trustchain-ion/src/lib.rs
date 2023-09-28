@@ -1,3 +1,4 @@
+//! Trustchain library for ION DID method.
 pub mod attest;
 pub mod attestor;
 pub mod commitment;
@@ -6,15 +7,14 @@ pub mod controller;
 pub mod create;
 pub mod data;
 pub mod ion;
-pub mod resolve;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
-use std::num::ParseIntError;
 
 use crate::ion::IONTest as ION;
 use did_ion::sidetree::SidetreeClient;
-use std::io;
+use serde::{Deserialize, Serialize};
+use std::{io, num::ParseIntError};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
@@ -22,7 +22,27 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
+// TODO: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
+// for better handling of URLs.
 pub type URL = String;
+
+/// Type for representing an endpoint as a base URL and port.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Endpoint {
+    pub host: String,
+    pub port: u16,
+}
+
+impl Endpoint {
+    pub fn new(url: String, port: u16) -> Self {
+        Self { host: url, port }
+    }
+    pub fn to_address(&self) -> String {
+        format!("http://{}:{}/", self.host, self.port)
+    }
+    // TODO: add more flexible address methods
+}
 
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
@@ -121,3 +141,7 @@ pub const HASH_PREV_BLOCK_KEY: &str = "hash_prev_block";
 pub const TIMESTAMP_KEY: &str = "timestamp";
 pub const BITS_KEY: &str = "bits";
 pub const NONCE_KEY: &str = "nonce";
+
+// Minimum number of zeros for PoW block hash of root
+// TODO: set differently for mainnet and testnet with features
+pub const MIN_POW_ZEROS: usize = 14;

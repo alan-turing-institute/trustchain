@@ -4,8 +4,6 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 async-trait = "0.1"
@@ -13,17 +11,15 @@ base64 = "0.13"
 canonical_json = "0.4.0"
 chrono = "0.4"
 futures = "0.3.21"
-lazy_static="1.4.0"
 petgraph = {version = "0.6"}
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
-sha2 = "0.10"
+sha2 = "0.10.7"
 ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt", features = ["http-did", "secp256k1"]}
 tempfile = { version = "3.3" }
 thiserror = "1.0"
 tokio = {version = "1.20.1", features = ["full"]}
-toml = "0.5"
 
 [dev-dependencies]
 mockall = "0.11.2"

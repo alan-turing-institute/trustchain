@@ -10,16 +10,17 @@ Trustchain enables the creation of DIDs which are themselves verifiable. Via thi
 
 More information about the concept and state of development can be found on our [wiki](https://github.com/alan-turing-institute/trustchain/wiki). The following links may be of particular interest:
 - [Trustchain on Github pages](https://alan-turing-institute.github.io/trustchain/#/)
+- [Trustchain preprint](https://arxiv.org/abs/2305.08533)
 - [Trustchain FAQ](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-FAQ)
-- [Slides & Videos](https://github.com/alan-turing-institute/trustchain/wiki#communication)
-- [Technical Notes](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes)
+- [Slides & videos](https://github.com/alan-turing-institute/trustchain/wiki#presentations)
+- [Technical notes](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes)
 
 ## Installation guide
 
-This brief guide is intended for experienced users/developers who want to get started quickly.
+This brief guide is intended for experienced users/developers who want to get started quickly. See the [full guide](https://alan-turing-institute.github.io/trustchain/#/installation?id=installation-amp-usage) for more detailed, platform-specific instructions.
 
 #### Step 1. Install ION
-Trustchain delegates all DID method operations to a node on the [ION](https://identity.foundation/ion/) network.
+Trustchain delegates all DID method operations to a wrapped node on the [ION](https://identity.foundation/ion/) network.
 
 The [ION install guide](https://identity.foundation/ion/install-guide/) gives step-by-step instructions on how to setup and run your own ION node.
 
@@ -37,15 +38,7 @@ cargo build
 ```
 Install the Trustchain CLI with:
 ```shell
-cargo install --path trustchain-ion
-```
-Run tests:
-```
-cargo test
-```
-To include integration tests, which will fail unless a running ION node is reachable on localhost, use:
-```
-cargo test -- --include-ignored
+cargo install --path trustchain-cli
 ```
 
 ## Usage Guide
@@ -55,11 +48,21 @@ trustchain-cli --help
 ```
 DID subcommands:
 ```
-truscthain-cli did --help
+trustchain-cli did --help
 ```
 Verifiable credential subcommands:
 ```
 trustchain-cli vc --help
+```
+
+## Testing
+Run unit tests with:
+```
+cargo test
+```
+To include integration tests, which will fail unless a running ION node is reachable on localhost, use:
+```
+cargo test -- --include-ignored
 ```
 
 ## License & disclaimer

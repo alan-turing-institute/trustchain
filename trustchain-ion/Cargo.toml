@@ -4,12 +4,6 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "trustchain-cli"
-path = "src/bin/main.rs"
 
 [dependencies]
 trustchain-core = { path = "../trustchain-core" }
@@ -31,7 +25,7 @@ reqwest = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
-sha256 = "1.1.1"
+sha2 = "0.10.7"
 ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt", features = ["http-did", "secp256k1"]}
 thiserror = "1.0"
 toml="0.7.2"
