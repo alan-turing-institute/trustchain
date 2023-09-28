@@ -186,9 +186,9 @@ mod tests {
     }
     #[test]
     fn test_ffi_options_from_toml() {
-        println!("{:?}", parse_toml(&TEST_FFI_OPTIONS));
+        println!("{:?}", parse_toml(TEST_FFI_OPTIONS));
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
@@ -197,7 +197,7 @@ mod tests {
             8081
         );
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .linked_data_proof()
                 .unwrap()
                 .proof_purpose
