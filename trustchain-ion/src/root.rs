@@ -9,6 +9,7 @@ use crate::{
         block_height_range_on_date, locate_transaction, query_mongodb_on_interval, transaction,
     },
     TrustchainBitcoinError, TrustchainMongodbError, ION_TEST_METHOD, MONGO_FILTER_DID_SUFFIX,
+    MONGO_FILTER_TXN_TIME,
 };
 
 /// An error relating to the root DID.
@@ -49,6 +50,7 @@ impl From<TrustchainMongodbError> for TrustchainRootError {
 pub struct RootCandidate {
     pub did: String,
     pub txid: String,
+    pub block_height: u64,
 }
 
 /// Identifies potential root DIDs whose (UTC) timestamp matches a given date.
@@ -99,7 +101,17 @@ pub async fn root_did_candidates(
                 return None;
             }
             let txid = tx.unwrap().txid().to_string();
-            Some(RootCandidate { did, txid })
+
+            let block_height = doc
+                .get_i32(MONGO_FILTER_TXN_TIME)
+                .unwrap()
+                .try_into()
+                .unwrap();
+            Some(RootCandidate {
+                did,
+                txid,
+                block_height,
+            })
         })
         .collect::<Vec<RootCandidate>>()
         .await;
@@ -130,6 +142,7 @@ mod tests {
             result[0].txid,
             "1fae017f2c9f14cec0487a04b3f1d1b7336bd38547f755748beb635296de3ee8"
         );
+        assert_eq!(result[0].block_height, 2377360);
 
         // This is the root DID used in testing:
         assert_eq!(
@@ -140,6 +153,7 @@ mod tests {
             result[16].txid,
             "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
         );
+        assert_eq!(result[16].block_height, 2377445);
 
         assert_eq!(
             result[37].did,
@@ -149,5 +163,6 @@ mod tests {
             result[37].txid,
             "502f1a418eff99e50b91aea33e43e4c270af05eb0381d57ca4f48f16d7efe9e1"
         );
+        assert_eq!(result[37].block_height, 2377514);
     }
 }
