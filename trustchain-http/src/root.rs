@@ -143,7 +143,7 @@ mod tests {
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
         );
         assert_eq!(
-            result.root_candidates[16].tx_id,
+            result.root_candidates[16].txid,
             "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
         );
     }

@@ -46,7 +46,7 @@ impl From<TrustchainMongodbError> for TrustchainRootError {
 #[serde(rename_all = "camelCase")]
 pub struct RootCandidate {
     pub did: String,
-    pub tx_id: String,
+    pub txid: String,
 }
 
 /// Identifies potential root DIDs whose (UTC) timestamp matches a given date.
@@ -96,8 +96,8 @@ pub async fn root_did_candidates(
             if tx.is_err() {
                 return None;
             }
-            let tx_id = tx.unwrap().txid().to_string();
-            Some(RootCandidate { did, tx_id })
+            let txid = tx.unwrap().txid().to_string();
+            Some(RootCandidate { did, txid })
         })
         .collect::<Vec<RootCandidate>>()
         .await;
@@ -125,7 +125,7 @@ mod tests {
             "did:ion:test:EiAcmytgsm-AUWtmJ9cioW-MWq-DnjIUfGYdIVUnrpg6kw"
         );
         assert_eq!(
-            result[0].tx_id,
+            result[0].txid,
             "1fae017f2c9f14cec0487a04b3f1d1b7336bd38547f755748beb635296de3ee8"
         );
 
@@ -135,7 +135,7 @@ mod tests {
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
         );
         assert_eq!(
-            result[16].tx_id,
+            result[16].txid,
             "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
         );
 
@@ -144,7 +144,7 @@ mod tests {
             "did:ion:test:EiBbes2IRKhGauhQc5r4T30i06S6dEWgzCKx-WCKT3x0Lw"
         );
         assert_eq!(
-            result[37].tx_id,
+            result[37].txid,
             "502f1a418eff99e50b91aea33e43e4c270af05eb0381d57ca4f48f16d7efe9e1"
         );
     }
