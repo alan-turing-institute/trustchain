@@ -67,6 +67,14 @@ impl TrustchainRouter {
                     get(resolver::TrustchainHTTPHandler::get_did_resolution)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
+                // Duplicate `did` and `identifier` routes as the resolver expects a
+                // `SidetreeClient` that can resolve at route `<ENDPOINT>/identifiers/<DID>`:
+                // See [here](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#1392-1400).
+                .route(
+                    "/identifiers/:id",
+                    get(resolver::TrustchainHTTPHandler::get_did_resolution)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
+                )
                 .route(
                     "/did/chain/:id",
                     get(resolver::TrustchainHTTPHandler::get_chain_resolution),
