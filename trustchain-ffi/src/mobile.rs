@@ -1,4 +1,4 @@
-// TODO: add module doc comments for mobile FFI
+//! Mobile FFI.
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -21,7 +21,7 @@ use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
-enum FFIMobileError {
+pub enum FFIMobileError {
     /// Failed to deserialize JSON.
     #[error("JSON Deserialization Error: {0}.")]
     FailedToDeserialize(serde_json::Error),
@@ -49,9 +49,8 @@ pub fn greet() -> String {
 
 /// Resolves a given DID document returning the serialized DID document as a JSON string.
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig =
-        serde_json::from_str(&opts).map_err(FFIMobileError::FailedToDeserialize)?;
-    let endpoint_opts = mobile_opts.endpoint().map_err(FFIMobileError::NoConfig)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
+    let endpoint_opts = mobile_opts.endpoint()?;
     let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -63,12 +62,12 @@ pub fn did_resolve(did: String, opts: String) -> Result<String> {
             })?)
     })
 }
+
 /// Verifies a given DID returning the serialized DIDChain as a JSON string.
 pub fn did_verify(did: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig =
-        serde_json::from_str(&opts).map_err(FFIMobileError::FailedToDeserialize)?;
-    let endpoint_opts = mobile_opts.endpoint().map_err(FFIMobileError::NoConfig)?;
-    let trustchain_opts = mobile_opts.trustchain().map_err(FFIMobileError::NoConfig)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
+    let endpoint_opts = mobile_opts.endpoint()?;
+    let trustchain_opts = mobile_opts.trustchain()?;
     let root_event_time = trustchain_opts.root_event_time;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -87,7 +86,7 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
 
 /// Verifies a verifiable credential returning the serialized DIDChain as a JSON string.
 pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let trustchain_opts = mobile_opts.trustchain()?;
     let ldp_opts = mobile_opts.linked_data_proof().cloned().ok();
@@ -137,7 +136,7 @@ pub fn vp_issue_presentation(
     opts: String,
     jwk_json: String,
 ) -> Result<String> {
-    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let ldp_opts =
         mobile_opts
