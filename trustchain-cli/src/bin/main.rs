@@ -147,7 +147,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
                     };
-                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    let did_chain =
+                        TrustchainAPI::verify(did, root_event_time.into(), &verifier).await?;
                     println!("{did_chain}");
                 }
                 _ => panic!("Unrecognised DID subcommand."),
@@ -179,8 +180,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
-                        Some(time) => time.parse::<u32>().unwrap(),
-                        None => cli_config().root_event_time,
+                        Some(time) => time.parse::<u64>().unwrap(),
+                        None => cli_config().root_event_time.into(),
                     };
                     // Deserialize
                     let credential: Credential =
@@ -230,10 +231,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let issuer = credential
                             .get_issuer()
                             .expect("No issuer present in credential.");
-                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
-                            .await
-                            // Can unwrap as already verified above.
-                            .unwrap();
+                        let chain =
+                            TrustchainAPI::verify(issuer, root_event_time.into(), &verifier)
+                                .await
+                                // Can unwrap as already verified above.
+                                .unwrap();
                         if verbose_count > 1 {
                             let (_, doc, doc_meta) =
                                 resolver.resolve_as_result(issuer).await.unwrap();

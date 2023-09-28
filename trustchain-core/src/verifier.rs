@@ -168,7 +168,7 @@ impl From<serde_json::Error> for VerifierError {
 }
 
 /// A Unix timestamp.
-pub type Timestamp = u32;
+pub type Timestamp = u64;
 
 /// A verifiably-timestamped DID.
 pub trait VerifiableTimestamp {

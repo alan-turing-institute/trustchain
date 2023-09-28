@@ -9,7 +9,6 @@ use crate::{
         block_height_range_on_date, locate_transaction, query_mongodb_on_interval, transaction,
     },
     TrustchainBitcoinError, TrustchainMongodbError, ION_TEST_METHOD, MONGO_FILTER_DID_SUFFIX,
-    MONGO_FILTER_OP_INDEX,
 };
 
 /// An error relating to the root DID.
@@ -27,6 +26,9 @@ pub enum TrustchainRootError {
     /// Invalid date.
     #[error("Invalid date: {0}-{1}-{2}")]
     InvalidDate(i32, u32, u32),
+    /// Failed to parse block height.
+    #[error("Failed to parse block height: {0}")]
+    FailedToParseBlockHeight(String),
 }
 
 impl From<TrustchainBitcoinError> for TrustchainRootError {

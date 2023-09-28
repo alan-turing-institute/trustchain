@@ -226,7 +226,7 @@ mod tests {
     use trustchain_ion::verifier::IONVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
-    const ROOT_EVENT_TIME_1: u32 = 1666265405;
+    const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
     const TEST_UNSIGNED_VC: &str = r##"{
         "@context": [

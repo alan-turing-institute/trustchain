@@ -21,8 +21,8 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
-    #[error("Trustchain root candidates error: {0}")]
-    RootCandidatesError(TrustchainRootError),
+    #[error("Trustchain root error: {0}")]
+    RootError(TrustchainRootError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -55,7 +55,7 @@ impl From<IssuerError> for TrustchainHTTPError {
 
 impl From<TrustchainRootError> for TrustchainHTTPError {
     fn from(err: TrustchainRootError) -> Self {
-        TrustchainHTTPError::RootCandidatesError(err)
+        TrustchainHTTPError::RootError(err)
     }
 }
 
@@ -93,9 +93,7 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
-            err @ TrustchainHTTPError::RootCandidatesError(_) => {
-                (StatusCode::BAD_REQUEST, err.to_string())
-            }
+            err @ TrustchainHTTPError::RootError(_) => (StatusCode::BAD_REQUEST, err.to_string()),
         };
         let body = Json(json!({ "error": err_message }));
         (status, body).into_response()

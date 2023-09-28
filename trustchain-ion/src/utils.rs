@@ -3,7 +3,10 @@ use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
 use bitcoin::{BlockHash, BlockHeader, Transaction};
-use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
+use bitcoincore_rpc::{
+    bitcoincore_rpc_json::{BlockStatsFields, HashOrHeight},
+    RpcApi,
+};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::{StreamExt, TryStreamExt};
@@ -12,7 +15,10 @@ use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
+use trustchain_core::{
+    utils::get_did_suffix,
+    verifier::{Timestamp, VerifierError},
+};
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
@@ -303,7 +309,7 @@ pub fn int_to_little_endian_hex(int: &u32) -> String {
 }
 
 /// Gets the block time at a particular height, as a Unix time.
-fn time_at_block_height(
+pub fn time_at_block_height(
     block_height: u64,
     client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<u64, TrustchainBitcoinError> {

@@ -71,6 +71,10 @@ impl TrustchainRouter {
                     "/root",
                     get(root::TrustchainRootHTTPHandler::get_root_candidates),
                 )
+                .route(
+                    "/root/timestamp/:height",
+                    get(root::TrustchainRootHTTPHandler::get_block_timestamp),
+                )
                 .with_state(shared_state),
         }
     }
