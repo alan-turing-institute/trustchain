@@ -95,7 +95,7 @@ mod tests {
         let config_string = r#"
         [http]
         host = "127.0.0.1"
-        host_reference = "127.0.0.1"
+        host_display = "127.0.0.1"
         port = 8081
         issuer_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
         https = false
