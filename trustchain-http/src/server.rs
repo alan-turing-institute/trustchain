@@ -112,7 +112,8 @@ pub async fn https_server(config: HTTPConfig) -> std::io::Result<()> {
         .await
 }
 
-/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs)
+/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on
+/// axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs).
 async fn rustls_config(path: &str) -> RustlsConfig {
     // Configure certificate and private key used by https
     let path = shellexpand::tilde(path);
