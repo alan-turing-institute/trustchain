@@ -1,7 +1,7 @@
 use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
-use axum::routing::IntoMakeService;
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;
@@ -34,7 +34,7 @@ impl TrustchainRouter {
             router: Router::new()
                 .route("/", get(static_handlers::index))
                 .route(
-                    "/issuer",
+                    "/issuer/:id",
                     get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode),
                 )
                 .route(

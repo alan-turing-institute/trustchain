@@ -114,12 +114,8 @@ impl TrustchainIssuerHTTPHandler {
     /// Generates QR code to display to holder to receive requested credential.
     pub async fn get_issuer_qrcode(
         State(app_state): State<Arc<AppState>>,
-        Form(form): Form<HashMap<String, String>>,
+        Path(id): Path<String>,
     ) -> Html<String> {
-        let id = form
-            .get("uuid")
-            .expect("'uuid' key not in form.")
-            .to_owned();
         let http_str = if !http_config().https {
             "http"
         } else {
