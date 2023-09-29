@@ -128,7 +128,7 @@ impl TrustchainIssuerHTTPHandler {
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
             "{}://{}:{}/vc/issuer/{id}",
-            http_str, app_state.config.host_reference, app_state.config.port
+            http_str, app_state.config.host_display, app_state.config.port
         );
         // Respond with the QR code as a png embedded in html
         Html(str_to_qr_code_html(&address_str, "Issuer"))

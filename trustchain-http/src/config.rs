@@ -17,7 +17,7 @@ pub struct HTTPConfig {
     /// Hostname for server
     pub host: IpAddr,
     /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine running emulator.
-    pub host_reference: String,
+    pub host_display: String,
     /// Port for server
     pub port: u16,
     /// Optional issuer DID
@@ -38,7 +38,7 @@ impl Default for HTTPConfig {
     fn default() -> Self {
         Self {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
-            host_reference: DEFAULT_HOST.to_string(),
+            host_display: DEFAULT_HOST.to_string(),
             port: DEFAULT_PORT,
             issuer_did: None,
             https: false,

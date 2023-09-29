@@ -153,7 +153,7 @@ impl TrustchainVerifierHTTPHandler {
                 };
                 let address_str = format!(
                     "{}://{}:{}/vc/verifier/{}",
-                    http_str, app_state.config.host_reference, app_state.config.port, uid
+                    http_str, app_state.config.host_display, app_state.config.port, uid
                 );
                 (
                     StatusCode::OK,
