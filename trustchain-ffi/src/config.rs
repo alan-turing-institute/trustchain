@@ -2,9 +2,11 @@ use anyhow::anyhow;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use ssi::vc::LinkedDataProofOptions;
-use std::fs;
+use std::{fs, str::FromStr};
 use trustchain_core::TRUSTCHAIN_CONFIG;
 use trustchain_ion::{Endpoint, URL};
+
+use crate::mobile::FFIMobileError;
 
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
@@ -76,19 +78,33 @@ pub struct FFIConfig {
 
 impl FFIConfig {
     pub fn endpoint(&self) -> anyhow::Result<&EndpointOptions> {
-        self.endpoint_options
+        Ok(self
+            .endpoint_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected endpoint options."))
+            .ok_or(anyhow!("Expected endpoint options."))
+            .map_err(FFIMobileError::NoConfig)?)
     }
     pub fn trustchain(&self) -> anyhow::Result<&TrustchainOptions> {
-        self.trustchain_options
+        Ok(self
+            .trustchain_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected trustchain options."))
+            .ok_or(anyhow!("Expected trustchain options."))
+            .map_err(FFIMobileError::NoConfig)?)
     }
     pub fn linked_data_proof(&self) -> anyhow::Result<&LinkedDataProofOptions> {
-        self.linked_data_proof_options
+        Ok(self
+            .linked_data_proof_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected linked data proof options."))
+            .ok_or(anyhow!("Expected linked data proof options."))
+            .map_err(FFIMobileError::NoConfig)?)
+    }
+}
+
+impl FromStr for FFIConfig {
+    type Err = FFIMobileError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s).map_err(FFIMobileError::FailedToDeserialize)
     }
 }
 
@@ -170,9 +186,9 @@ mod tests {
     }
     #[test]
     fn test_ffi_options_from_toml() {
-        println!("{:?}", parse_toml(&TEST_FFI_OPTIONS));
+        println!("{:?}", parse_toml(TEST_FFI_OPTIONS));
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
@@ -181,7 +197,7 @@ mod tests {
             8081
         );
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .linked_data_proof()
                 .unwrap()
                 .proof_purpose

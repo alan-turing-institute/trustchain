@@ -1,4 +1,4 @@
-// TODO: add module doc comments for mobile FFI
+//! Mobile FFI.
 use crate::config::FFIConfig;
 use anyhow::Result;
 use bip39::Mnemonic;
@@ -20,12 +20,14 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_core::{resolver::ResolverError, vc::CredentialError, verifier::VerifierError};
+use trustchain_core::{
+    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
+};
 use trustchain_ion::{create::create_operation_from_keys, get_ion_resolver, verifier::IONVerifier};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
-enum FFIMobileError {
+pub enum FFIMobileError {
     /// Failed to deserialize JSON.
     #[error("JSON Deserialization Error: {0}.")]
     FailedToDeserialize(serde_json::Error),
@@ -42,6 +44,8 @@ enum FFIMobileError {
     FailedToVerifyCredential(CredentialError),
     #[error("Credential proof created time ({0}) is in the future relative to now ({1}).")]
     FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
+    #[error("Failed to issue presentation error: {0}.")]
+    FailedToIssuePresentation(PresentationError),
 }
 
 /// Example greet function.
@@ -51,9 +55,8 @@ pub fn greet() -> String {
 
 /// Resolves a given DID document returning the serialized DID document as a JSON string.
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig =
-        serde_json::from_str(&opts).map_err(FFIMobileError::FailedToDeserialize)?;
-    let endpoint_opts = mobile_opts.endpoint().map_err(FFIMobileError::NoConfig)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
+    let endpoint_opts = mobile_opts.endpoint()?;
     let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -65,12 +68,12 @@ pub fn did_resolve(did: String, opts: String) -> Result<String> {
             })?)
     })
 }
+
 /// Verifies a given DID returning the serialized DIDChain as a JSON string.
 pub fn did_verify(did: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig =
-        serde_json::from_str(&opts).map_err(FFIMobileError::FailedToDeserialize)?;
-    let endpoint_opts = mobile_opts.endpoint().map_err(FFIMobileError::NoConfig)?;
-    let trustchain_opts = mobile_opts.trustchain().map_err(FFIMobileError::NoConfig)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
+    let endpoint_opts = mobile_opts.endpoint()?;
+    let trustchain_opts = mobile_opts.trustchain()?;
     let root_event_time = trustchain_opts.root_event_time;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -89,7 +92,7 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
 
 /// Verifies a verifiable credential returning the serialized DIDChain as a JSON string.
 pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> {
-    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let trustchain_opts = mobile_opts.trustchain()?;
     let ldp_opts = mobile_opts.linked_data_proof().cloned().ok();
@@ -139,7 +142,7 @@ pub fn vp_issue_presentation(
     opts: String,
     jwk_json: String,
 ) -> Result<String> {
-    let mobile_opts: FFIConfig = serde_json::from_str(&opts)?;
+    let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let ldp_opts =
         mobile_opts
@@ -150,17 +153,22 @@ pub fn vp_issue_presentation(
                 proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
                 ..Default::default()
             });
-    let mut presentation: Presentation = serde_json::from_str(&presentation)?;
+    let mut presentation: Presentation =
+        serde_json::from_str(&presentation).map_err(FFIMobileError::FailedToDeserialize)?;
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
     let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
     let rt = Runtime::new().unwrap();
-    let proof = rt.block_on(async {
-        presentation
-            .generate_proof(&jwk, &ldp_opts, &resolver)
-            .await
-    })?;
+    let proof = rt
+        .block_on(async {
+            presentation
+                .generate_proof(&jwk, &ldp_opts, &resolver)
+                .await
+        })
+        .map_err(|err| {
+            FFIMobileError::FailedToIssuePresentation(PresentationError::SSIError(err))
+        })?;
     presentation.add_proof(proof);
-    Ok(serde_json::to_string_pretty(&presentation)?)
+    Ok(serde_json::to_string_pretty(&presentation).map_err(FFIMobileError::FailedToSerialize)?)
 }
 
 // // TODO: implement once verifiable presentations are included in API
@@ -177,7 +185,7 @@ struct CreateOperationAndDID {
 }
 
 pub fn ion_create_operation(phrase: String) -> Result<String> {
-    // 1. Generate keys
+    // Generate keys from mnemonic
     let mnemonic = Mnemonic::parse(phrase)?;
     let ion_keys = trustchain_ion::mnemonic::generate_keys(&mnemonic, None)?;
     ION::validate_key(&ion_keys.update_key)?;
@@ -186,18 +194,19 @@ pub fn ion_create_operation(phrase: String) -> Result<String> {
     let update_public_key = PublicKeyJwk::try_from(ion_keys.update_key.to_public())?;
     let recovery_public_key = PublicKeyJwk::try_from(ion_keys.recovery_key.to_public())?;
 
-    // 2. Call create with keys as args
+    // Call create with keys as args
     let create_operation = create_operation_from_keys(
         &signing_public_key,
         &update_public_key,
         &recovery_public_key,
     )
     .unwrap();
-    // 3. Get DID from create operation
-    // Get DID information
+
+    // Get DID from create operation
     let did = SidetreeDID::<ION>::from_create_operation(&create_operation)?.to_string();
     let did = did.rsplit_once(':').unwrap().0.to_string();
-    // 4. Return DID and create operation as JSON
+
+    // Return DID and create operation as JSON
     Ok(serde_json::to_string_pretty(&CreateOperationAndDID {
         create_operation,
         did,
@@ -206,6 +215,8 @@ pub fn ion_create_operation(phrase: String) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use ssi::vc::CredentialOrJWT;
+
     use crate::config::parse_toml;
 
     use super::*;
@@ -279,13 +290,41 @@ mod tests {
     fn test_vp_issue_presentation() {
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let root_plus_1_did: &str = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let presentation: Presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(credential))),
+            holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
+            ..Default::default()
+        };
         let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
         let presentation = vp_issue_presentation(
-            serde_json::to_string(&credential).unwrap(),
+            serde_json::to_string(&presentation).unwrap(),
             ffi_opts,
             root_plus_1_signing_key.to_string(),
         );
-        assert!(presentation.is_ok());
+        println!("{}", presentation.unwrap());
+        // assert!(presentation.is_ok());
+    }
+
+    #[test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    fn test_vp_issue_presentation_ed25519() {
+        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let did: &str = "did:key:z6MkhG98a8j2d3jqia13vrWqzHwHAgKTv9NjYEgdV3ndbEdD";
+        let key: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"Kbnao1EkojaLeZ135PuIf28opnQybD0lB-_CQxuvSDg","d":"vwJwnuhHd4J0UUvjfYr8YxYwvNLU_GVkdqEbC3sUtAY"}"#;
+        let presentation: Presentation = Presentation {
+            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(credential))),
+            holder: Some(ssi::vc::URI::String(did.to_string())),
+            ..Default::default()
+        };
+
+        let presentation = vp_issue_presentation(
+            serde_json::to_string(&presentation).unwrap(),
+            ffi_opts,
+            key.to_string(),
+        );
+        println!("{}", presentation.unwrap());
     }
 
     // // TODO: implement once verifiable presentations are included in API
