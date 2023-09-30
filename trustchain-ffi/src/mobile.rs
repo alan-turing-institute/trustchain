@@ -216,6 +216,7 @@ pub fn ion_create_operation(phrase: String) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use ssi::vc::CredentialOrJWT;
+    use trustchain_core::utils::canonicalize_str;
 
     use crate::config::parse_toml;
 
@@ -260,6 +261,45 @@ mod tests {
         }
     }
     "#;
+
+    const TEST_ION_CREATE_OPERATION: &str = r#"
+    {
+        "createOperation": {
+          "delta": {
+            "patches": [
+              {
+                "action": "replace",
+                "document": {
+                  "publicKeys": [
+                    {
+                      "id": "--3rT8-n9BDn51S_rkdxR3G6J_a8YQlsQ8OIAx1Qqkk",
+                      "publicKeyJwk": {
+                        "crv": "Ed25519",
+                        "kty": "OKP",
+                        "x": "AI4pdGWalv3JXZcatmtBM8OfSIBCFC0o_RNzTg-mEAh6"
+                      },
+                      "purposes": [
+                        "assertionMethod",
+                        "authentication",
+                        "keyAgreement",
+                        "capabilityInvocation",
+                        "capabilityDelegation"
+                      ],
+                      "type": "JsonWebSignature2020"
+                    }
+                  ]
+                }
+              }
+            ],
+            "updateCommitment": "EiA2gSveT83s4DD4kJp6tLJuPfy_M3m_m6NtRJzjwtrlDg"
+          },
+          "suffixData": {
+            "deltaHash": "EiCzptro682kdNxcWXZ7xBnSzZqKu9jphkAfsXmU-7UA-g",
+            "recoveryCommitment": "EiDKEn4lG5ETCoQpQxAsMVahzuerhlk0rtqtuoHPYKEEog"
+          }
+        },
+        "did": "did:ion:test:EiB_YFqM3CcO93dnjlNWfljYesSUQxP_tzxEOQsXE3T4MQ"
+    }"#;
 
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
@@ -335,6 +375,9 @@ mod tests {
     fn test_ion_create_operation() {
         let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
         let create_op_and_did = ion_create_operation(phrase.to_string()).unwrap();
-        println!("{}", create_op_and_did);
+        assert_eq!(
+            canonicalize_str::<CreateOperationAndDID>(&create_op_and_did).unwrap(),
+            canonicalize_str::<CreateOperationAndDID>(TEST_ION_CREATE_OPERATION).unwrap()
+        );
     }
 }
