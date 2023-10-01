@@ -1,6 +1,8 @@
 use bip39::Mnemonic;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+use did_ion::sidetree::Sidetree;
+use did_ion::ION;
 use ed25519_hd_key;
 use ssi::jwk::{Base64urlUInt, ECParams, OctetParams, Params, JWK};
 use std::str::FromStr;
@@ -135,6 +137,8 @@ pub fn generate_keys(mnemonic: &Mnemonic, index: Option<u32>) -> Result<IONKeys,
     let signing_key = generate_ed25519_signing_key(mnemonic, index)?;
     let update_key = generate_secp256k1_update_key(mnemonic, index)?;
     let recovery_key = generate_secp256k1_recovery_key(mnemonic, index)?;
+    ION::validate_key(&update_key).unwrap();
+    ION::validate_key(&recovery_key).unwrap();
     Ok(IONKeys {
         signing_key,
         update_key,

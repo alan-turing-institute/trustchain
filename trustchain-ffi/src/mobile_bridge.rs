@@ -105,16 +105,19 @@ fn wire_vp_issue_presentation_impl(
         },
     )
 }
-fn wire_ion_create_operation_impl(port_: MessagePort, phrase: impl Wire2Api<String> + UnwindSafe) {
+fn wire_create_operation_phrase_impl(
+    port_: MessagePort,
+    phrase: impl Wire2Api<String> + UnwindSafe,
+) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "ion_create_operation",
+            debug_name: "create_operation_phrase",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
         move || {
             let api_phrase = phrase.wire2api();
-            move |task_callback| ion_create_operation(api_phrase)
+            move |task_callback| create_operation_phrase(api_phrase)
         },
     )
 }

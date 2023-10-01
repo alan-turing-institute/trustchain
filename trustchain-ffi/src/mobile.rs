@@ -1,12 +1,8 @@
 //! Mobile FFI.
 use crate::config::FFIConfig;
 use anyhow::Result;
-use bip39::Mnemonic;
 use chrono::{DateTime, Utc};
-use did_ion::{
-    sidetree::{CreateOperation, PublicKeyEntry, PublicKeyJwk, Sidetree, SidetreeDID},
-    ION,
-};
+use did_ion::sidetree::CreateOperation;
 use serde::{Deserialize, Serialize};
 use ssi::{
     jwk::JWK,
@@ -23,7 +19,11 @@ use trustchain_api::{
 use trustchain_core::{
     resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
-use trustchain_ion::{create::create_operation_from_keys, get_ion_resolver, verifier::IONVerifier};
+use trustchain_ion::{
+    create::{phrase_to_create_and_keys, OperationDID},
+    get_ion_resolver,
+    verifier::IONVerifier,
+};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
@@ -46,6 +46,8 @@ pub enum FFIMobileError {
     FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
     #[error("Failed to issue presentation error: {0}.")]
     FailedToIssuePresentation(PresentationError),
+    #[error("Failed to make create operation from phrase: {0}.")]
+    FailedCreateOperation(String),
 }
 
 /// Example greet function.
@@ -184,32 +186,17 @@ struct CreateOperationAndDID {
     did: String,
 }
 
-pub fn ion_create_operation(phrase: String) -> Result<String> {
-    // Generate keys from mnemonic
-    let mnemonic = Mnemonic::parse(phrase)?;
-    let ion_keys = trustchain_ion::mnemonic::generate_keys(&mnemonic, None)?;
-    ION::validate_key(&ion_keys.update_key)?;
-    ION::validate_key(&ion_keys.recovery_key)?;
-    let signing_public_key = PublicKeyEntry::try_from(ion_keys.signing_key.clone())?;
-    let update_public_key = PublicKeyJwk::try_from(ion_keys.update_key.to_public())?;
-    let recovery_public_key = PublicKeyJwk::try_from(ion_keys.recovery_key.to_public())?;
-
-    // Call create with keys as args
-    let create_operation = create_operation_from_keys(
-        &signing_public_key,
-        &update_public_key,
-        &recovery_public_key,
-    )
-    .unwrap();
-
-    // Get DID from create operation
-    let did = SidetreeDID::<ION>::from_create_operation(&create_operation)?.to_string();
-    let did = did.rsplit_once(':').unwrap().0.to_string();
+/// Makes a new ION DID from a mnemonic phrase.
+// TODO: consider optional index in API
+pub fn create_operation_phrase(phrase: String) -> Result<String> {
+    // Generate create operation from phrase
+    let (create_operation, _) = phrase_to_create_and_keys(&phrase, None)
+        .map_err(|err| FFIMobileError::FailedCreateOperation(err.to_string()))?;
 
     // Return DID and create operation as JSON
     Ok(serde_json::to_string_pretty(&CreateOperationAndDID {
+        did: create_operation.to_did(),
         create_operation,
-        did,
     })?)
 }
 
@@ -374,7 +361,7 @@ mod tests {
     #[test]
     fn test_ion_create_operation() {
         let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
-        let create_op_and_did = ion_create_operation(phrase.to_string()).unwrap();
+        let create_op_and_did = create_operation_phrase(phrase.to_string()).unwrap();
         assert_eq!(
             canonicalize_str::<CreateOperationAndDID>(&create_op_and_did).unwrap(),
             canonicalize_str::<CreateOperationAndDID>(TEST_ION_CREATE_OPERATION).unwrap()
