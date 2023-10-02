@@ -24,6 +24,8 @@ pub enum TrustchainHTTPError {
     CredentialDoesNotExist,
     #[error("No issuer available.")]
     NoCredentialIssuer,
+    #[error("Wrapped reqwest error: {0}")]
+    ReqwestError(reqwest::Error),
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -83,6 +85,10 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
+            TrustchainHTTPError::ReqwestError(err) => (
+                err.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                err.to_string(),
+            ),
         };
         let body = Json(json!({ "error": err_message }));
         (status, body).into_response()

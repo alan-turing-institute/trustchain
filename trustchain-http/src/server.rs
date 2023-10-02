@@ -1,6 +1,6 @@
 use crate::middleware::validate_did;
 use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
-use axum::routing::IntoMakeService;
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use hyper::server::conn::AddrIncoming;
 use std::sync::Arc;
@@ -64,6 +64,13 @@ impl TrustchainRouter {
                 .route(
                     "/did/bundle/:id",
                     get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+                )
+                .route(
+                    "/operations",
+                    post({
+                        let state = shared_state.clone();
+                        move |operation| crate::ion::post_operation(operation, state)
+                    }),
                 )
                 .with_state(shared_state),
         }
