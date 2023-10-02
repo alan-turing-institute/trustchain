@@ -6,6 +6,7 @@ use std::{
     str::FromStr,
 };
 use toml;
+use trustchain_core::verifier::Timestamp;
 use trustchain_core::TRUSTCHAIN_CONFIG;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
@@ -26,6 +27,8 @@ pub struct HTTPConfig {
     pub https: bool,
     /// Path containing certificate and key necessary for https
     pub https_path: Option<String>,
+    /// Root event time for verifier.
+    pub root_event_time: Option<Timestamp>,
 }
 
 impl std::fmt::Display for HTTPConfig {
@@ -43,6 +46,7 @@ impl Default for HTTPConfig {
             issuer_did: None,
             https: false,
             https_path: None,
+            root_event_time: None,
         }
     }
 }
