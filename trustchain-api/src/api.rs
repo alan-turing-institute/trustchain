@@ -245,7 +245,7 @@ mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
     use ssi::jsonld::ContextLoader;
-    use ssi::ldp::now_ms;
+    use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
     use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
     use trustchain_core::utils::init;
@@ -305,7 +305,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Change credential to make signature invalid
-        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
 
         // Verify: expect no warnings and a signature error as VC has changed
         let resolver = get_ion_resolver("http://localhost:3000/");
