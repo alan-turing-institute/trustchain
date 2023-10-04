@@ -47,6 +47,7 @@ hex = "0.4.3"
 rand = "0.8" 
 josekit = "0.8"
 serde_with = "*"
+tempfile = "*"
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"

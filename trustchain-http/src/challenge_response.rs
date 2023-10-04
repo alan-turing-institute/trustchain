@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
-use tracing::field;
 
 use std::path::PathBuf;
 use thiserror::Error;
@@ -320,29 +319,40 @@ impl ElementwiseSerializeDeserialize for CRInitiation {
         mut self,
         path: &PathBuf,
     ) -> Result<CRInitiation, TrustchainCRError> {
-        // temporary public key
-        let full_path = path.join("temp_p_key.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.temp_p_key = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
-        // requester details
-        let full_path = path.join("requester_details.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.requester_details = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        let temp_p_key_path = path.join("temp_p_key.json");
+        self.temp_p_key = match File::open(&temp_p_key_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+                // self.temp_p_key = serde_json::from_reader(reader)
+                //     .map_err(|_| TrustchainCRError::FailedToDeserialize)
+                //     .ok()
+            }
+            Err(_) => None,
+        };
 
-        // let initiation = CRInitiation {
-        //     temp_p_key: Some(temp_p_key),
-        //     requester_details: Some(requester_details),
+        // self.temp_p_key = match File::open(&temp_p_key_path) {
+        //     Ok(file) => {
+        //         let reader = std::io::BufReader::new(file);
+        //         serde_json::from_reader(reader)
+        //             .map_err(|_| TrustchainCRError::FailedToDeserialize)
+        //             .ok()
+        //     }
+        //     Err(_) => None,
         // };
+
+        let requester_details_path = path.join("requester_details.json");
+        self.requester_details = match File::open(&requester_details_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
 
         Ok(self)
     }
@@ -635,8 +645,7 @@ fn check_cr_state(state: CRState) -> Result<(), TrustchainCRError> {
 mod tests {
 
     use std::env;
-
-    use josekit::jwe::alg::direct::DirectJweAlgorithm;
+    use tempfile::tempdir;
 
     use crate::data::{
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
@@ -915,32 +924,9 @@ mod tests {
         };
         // write to file
         let directory_path = env::current_dir().unwrap();
-        cr_state.elementwise_serialize(&directory_path).unwrap();
-
-        // test serialise CR state
-        // let serialized = serde_json::to_value(&cr_state.initiation).expect("Serialization failed");
-
-        // if let Value::Object(fields) = serialized {
-        //     for (field_name, field_value) in fields {
-        //         match field_value {
-        //             Value::Null => println!("Field {} is empty.", field_name),
-        //             // _ => println!("Field {} has a value: {:?}", field_name, field_value),
-        //             _ => {
-        //                 let json_filename = format!("{}.json", field_name);
-        //                 write_to_json_file(&json_filename, &field_value);
-        //             }
-        //         }
-        //     }
-        // }
-    }
-
-    #[test]
-    fn test_deserialize_initiation() {
-        let directory_path = env::current_dir().unwrap();
-        let initiation = CRInitiation::new()
-            .elementwise_deserialize(&directory_path)
-            .unwrap();
-        println!("Initiation deserialized from files: {:?}", initiation);
+        println!("directory path: {:?}", directory_path);
+        let result = cr_state.elementwise_serialize(&directory_path);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
@@ -978,8 +964,55 @@ mod tests {
             challenge_state
         );
     }
-}
 
-// notes:
-// - new version of elementwise serialise: is there much benefit?
-// - deserialise still still needs to be hardcoded
+    #[test]
+    fn test_elementwise_deserialize_initiation() {
+        let cr_initiation = CRInitiation::new();
+        let temp_path = tempdir().unwrap().into_path();
+
+        // Test case 1: None of the json files exist
+        let result = cr_initiation.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let initiation = result.unwrap();
+        assert!(initiation.temp_p_key.is_none());
+        assert!(initiation.requester_details.is_none());
+
+        // Test case 2: Only one json file exists and can be deserialized
+        let cr_initiation = CRInitiation::new();
+        let temp_p_key_path = temp_path.join("temp_p_key.json");
+        let temp_p_key_file = File::create(&temp_p_key_path).unwrap();
+        let temp_p_key: Jwk = serde_json::from_str(TEST_TEMP_KEY).unwrap();
+        serde_json::to_writer(temp_p_key_file, &temp_p_key).unwrap();
+
+        let result = cr_initiation.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let initiation = result.unwrap();
+        assert!(initiation.temp_p_key.is_some());
+        assert!(initiation.requester_details.is_none());
+
+        // Test case 3: Both json files exist and can be deserialized
+        let cr_initiation = CRInitiation::new();
+        let requester_details_path = temp_path.join("requester_details.json");
+        let requester_details_file = File::create(&requester_details_path).unwrap();
+        let requester_details = RequesterDetails {
+            requester_org: String::from("My Org"),
+            operator_name: String::from("John Doe"),
+        };
+        serde_json::to_writer(requester_details_file, &requester_details).unwrap();
+        let result = cr_initiation.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let initiation = result.unwrap();
+        assert!(initiation.temp_p_key.is_some());
+        assert!(initiation.requester_details.is_some());
+
+        // Test case 4: Both json files exist but one is invalid json and cannot be
+        // deserialized
+        let cr_initiation = CRInitiation::new();
+        // override temp key with invalid key
+        let temp_p_key_file = File::create(&temp_p_key_path).unwrap();
+        serde_json::to_writer(temp_p_key_file, "this is not valid json").unwrap();
+        let result = cr_initiation.elementwise_deserialize(&temp_path);
+        assert!(result.is_err());
+        println!("Error: {:?}", result.unwrap_err());
+    }
+}
