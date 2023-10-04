@@ -150,6 +150,7 @@ impl Issuer for IONAttestor {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
@@ -160,7 +161,7 @@ impl Issuer for IONAttestor {
                 &signing_key,
                 &linked_data_proof_options.unwrap_or(LinkedDataProofOptions::default()),
                 resolver,
-                &mut ContextLoader::default(),
+                context_loader,
             )
             .await?;
 
@@ -187,6 +188,7 @@ impl Holder for IONAttestor {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Presentation, HolderError> {
         // If no ldp options passed, use default with ProofPurpose::Authentication.
         let options = linked_data_proof_options.unwrap_or(LinkedDataProofOptions {
@@ -210,12 +212,7 @@ impl Holder for IONAttestor {
 
         // Generate proof
         let proof = vp
-            .generate_proof(
-                &signing_key,
-                &options,
-                resolver,
-                &mut ContextLoader::default(),
-            )
+            .generate_proof(&signing_key, &options, resolver, context_loader)
             .await?;
         // Add proof to credential
         vp.add_proof(proof);
@@ -318,7 +315,9 @@ mod tests {
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
         // Attest to doc
-        let vc_with_proof = target.sign(&vc, None, None, &resolver).await;
+        let vc_with_proof = target
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await;
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());
@@ -352,7 +351,9 @@ mod tests {
 
         // Sign credential (expect failure).
         // Note: Signing a vc with a Some() issuer field requires a running ion node
-        let vc_with_proof = attestor.sign(&vc, None, None, &resolver).await;
+        let vc_with_proof = attestor
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await;
         assert!(vc_with_proof.is_err());
 
         // Check error matches
@@ -375,7 +376,10 @@ mod tests {
         let holder = IONAttestor::new(holder_did);
 
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        let vc_with_proof = issuer.sign(&vc, None, None, &resolver).await.unwrap();
+        let vc_with_proof = issuer
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await
+            .unwrap();
 
         // Create Presentation, initially with holder field defaulting to None
         let presentation = Presentation {
@@ -386,7 +390,13 @@ mod tests {
         // Holder field set to the DID of the signing holder by 'sign_presentation'
         // The DID is resolved during signing, which requires a running ion node.
         let vp = holder
-            .sign_presentation(&presentation, None, None, &resolver)
+            .sign_presentation(
+                &presentation,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await;
 
         assert!(vp.is_ok());

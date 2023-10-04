@@ -1,7 +1,7 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use serde_json::to_string_pretty;
-use ssi::{ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{stdin, BufReader},
@@ -87,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = cli_config().ion_endpoint.to_address();
     let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
     let resolver = verifier.resolver();
+    let mut context_loader = ContextLoader::default();
     match matches.subcommand() {
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
@@ -170,10 +171,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             serde_json::from_reader(buffer).unwrap()
                         };
 
-                    let credential_with_proof =
-                        TrustchainAPI::sign(credential, did, None, key_id, resolver)
-                            .await
-                            .expect("Failed to issue credential.");
+                    let credential_with_proof = TrustchainAPI::sign(
+                        credential,
+                        did,
+                        None,
+                        key_id,
+                        resolver,
+                        &mut context_loader,
+                    )
+                    .await
+                    .expect("Failed to issue credential.");
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -196,6 +203,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None,
                         root_event_time,
                         &verifier,
+                        &mut context_loader,
                     )
                     .await;
                     // Handle result

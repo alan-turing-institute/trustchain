@@ -10,6 +10,7 @@ use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
@@ -107,7 +108,16 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
             }
         }
         let issuer = IONAttestor::new(issuer_did);
-        Ok(issuer.sign(&credential, None, None, resolver).await?)
+        Ok(issuer
+            .sign(
+                &credential,
+                None,
+                None,
+                resolver,
+                // TODO: add context loader to app_state
+                &mut ContextLoader::default(),
+            )
+            .await?)
     }
 }
 

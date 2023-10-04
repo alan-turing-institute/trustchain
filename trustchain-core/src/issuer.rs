@@ -3,6 +3,7 @@ use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use thiserror::Error;
 
@@ -48,5 +49,6 @@ pub trait Issuer: Subject {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError>;
 }
