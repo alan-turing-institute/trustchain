@@ -326,22 +326,9 @@ impl ElementwiseSerializeDeserialize for CRInitiation {
                 let deserialized = serde_json::from_reader(reader)
                     .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
                 Some(deserialized)
-                // self.temp_p_key = serde_json::from_reader(reader)
-                //     .map_err(|_| TrustchainCRError::FailedToDeserialize)
-                //     .ok()
             }
             Err(_) => None,
         };
-
-        // self.temp_p_key = match File::open(&temp_p_key_path) {
-        //     Ok(file) => {
-        //         let reader = std::io::BufReader::new(file);
-        //         serde_json::from_reader(reader)
-        //             .map_err(|_| TrustchainCRError::FailedToDeserialize)
-        //             .ok()
-        //     }
-        //     Err(_) => None,
-        // };
 
         let requester_details_path = path.join("requester_details.json");
         self.requester_details = match File::open(&requester_details_path) {
@@ -416,42 +403,59 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
         path: &PathBuf,
     ) -> Result<CRIdentityChallenge, TrustchainCRError> {
         // update public key
-        let full_path = path.join("update_p_key.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.update_p_key = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        let mut full_path = path.join("update_p_key.json");
+        self.update_p_key = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
+
+        // if !full_path.exists() {
+        //     return Err(TrustchainCRError::FailedToDeserialize);
+        // }
+        // let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        // let reader = std::io::BufReader::new(file);
+        // self.update_p_key = serde_json::from_reader(reader)
+        //     .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
         // identity nonce
-        let full_path = path.join("identity_nonce.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.identity_nonce = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        full_path = path.join("identity_nonce.json");
+        self.identity_nonce = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
+
         // identity challenge signature
-        let full_path = path.join("identity_challenge_signature.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.identity_challenge_signature = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        full_path = path.join("identity_challenge_signature.json");
+        self.identity_challenge_signature = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
 
         // identity response signature
-        let full_path = path.join("identity_response_signature.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.identity_response_signature = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        full_path = path.join("identity_response_signature.json");
+        self.identity_response_signature = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
 
         Ok(self)
     }
@@ -528,32 +532,39 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
         path: &PathBuf,
     ) -> Result<CRContentChallenge, TrustchainCRError> {
         // content nonce(s)
-        let full_path = path.join("content_nonce.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.content_nonce = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        let mut full_path = path.join("content_nonce.json");
+        self.content_nonce = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
+
         // content challenge signature
-        let full_path = path.join("content_challenge_signature.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.content_challenge_signature = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        full_path = path.join("content_challenge_signature.json");
+        self.content_challenge_signature = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
         // content response signature
-        let full_path = path.join("content_response_signature.json");
-        if !full_path.exists() {
-            return Err(TrustchainCRError::FailedToDeserialize);
-        }
-        let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        let reader = std::io::BufReader::new(file);
-        self.content_response_signature = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
+        full_path = path.join("content_response_signature.json");
+        self.content_response_signature = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
 
         Ok(self)
     }
@@ -932,13 +943,8 @@ mod tests {
     #[test]
     fn test_deserialize_identity_challenge() {
         let directory_path = env::current_dir().unwrap();
-        let identity_challenge = CRIdentityChallenge::new()
-            .elementwise_deserialize(&directory_path)
-            .unwrap();
-        println!(
-            "Identity challenge deserialized from files: {:?}",
-            identity_challenge
-        );
+        let result = CRIdentityChallenge::new().elementwise_deserialize(&directory_path);
+        println!("Result identity challenge deserialization: {:?}", result);
     }
 
     #[test]
@@ -1014,5 +1020,77 @@ mod tests {
         let result = cr_initiation.elementwise_deserialize(&temp_path);
         assert!(result.is_err());
         println!("Error: {:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_elementwise_deserialize_identity_challenge() {
+        let identity_challenge = CRIdentityChallenge::new();
+        let temp_path = tempdir().unwrap().into_path();
+
+        // Test case 1: None of the json files exist
+        let result = identity_challenge.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let identity_challenge = result.unwrap();
+        assert!(identity_challenge.update_p_key.is_none());
+        assert!(identity_challenge.identity_nonce.is_none());
+        assert!(identity_challenge.identity_challenge_signature.is_none());
+        assert!(identity_challenge.identity_response_signature.is_none());
+
+        // Test case 2: Only one json file exists and can be deserialized
+        let update_p_key_path = temp_path.join("update_p_key.json");
+        let update_p_key_file = File::create(&update_p_key_path).unwrap();
+        let update_p_key: Jwk = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
+        serde_json::to_writer(update_p_key_file, &update_p_key).unwrap();
+        let identity_challenge = CRIdentityChallenge::new();
+        let result = identity_challenge.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let identity_challenge = result.unwrap();
+        assert_eq!(identity_challenge.update_p_key, Some(update_p_key));
+        assert!(identity_challenge.identity_nonce.is_none());
+        assert!(identity_challenge.identity_challenge_signature.is_none());
+        assert!(identity_challenge.identity_response_signature.is_none());
+
+        // Test case 3: One file exists but cannot be deserialized
+        let identity_nonce_path = temp_path.join("identity_nonce.json");
+        let identity_nonce_file = File::create(&identity_nonce_path).unwrap();
+        serde_json::to_writer(identity_nonce_file, &42).unwrap();
+        let identity_challenge = CRIdentityChallenge::new();
+        let result = identity_challenge.elementwise_deserialize(&temp_path);
+        assert!(result.is_err());
+        println!("Error: {:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_elementwise_deserialize_content_challenge() {
+        let content_challenge = CRContentChallenge::new();
+        let temp_path = tempdir().unwrap().into_path();
+
+        // Test case 1: None of the json files exist
+        let result = content_challenge.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let content_challenge = result.unwrap();
+        assert!(content_challenge.content_nonce.is_none());
+        assert!(content_challenge.content_challenge_signature.is_none());
+        assert!(content_challenge.content_response_signature.is_none());
+
+        // Test case 2: Only one json file exists and can be deserialized
+        let content_nonce_path = temp_path.join("content_nonce.json");
+        let content_nonce_file = File::create(&content_nonce_path).unwrap();
+        let mut nonces_map: HashMap<&str, Nonce> = HashMap::new();
+        nonces_map.insert("test_id", Nonce::new());
+        serde_json::to_writer(content_nonce_file, &nonces_map).unwrap();
+        let result = content_challenge.elementwise_deserialize(&temp_path);
+        assert!(result.is_ok());
+        let content_challenge = result.unwrap();
+        assert!(content_challenge.content_nonce.is_some());
+        assert!(content_challenge.content_challenge_signature.is_none());
+        assert!(content_challenge.content_response_signature.is_none());
+
+        // Test case 3: One file exists but cannot be deserialized
+        let content_nonce_file = File::create(&content_nonce_path).unwrap();
+        serde_json::to_writer(content_nonce_file, "thisisinvalid").unwrap();
+        let result = content_challenge.elementwise_deserialize(&temp_path);
+        print!("Result: {:?}", result);
+        assert!(result.is_err());
     }
 }
