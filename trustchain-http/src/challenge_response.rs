@@ -82,7 +82,7 @@ where
         Ok(())
     }
 
-    fn elementwise_deserialize(self, path: &PathBuf) -> Result<Self, TrustchainCRError>
+    fn elementwise_deserialize(self, path: &PathBuf) -> Result<Option<Self>, TrustchainCRError>
     where
         Self: Sized;
 
@@ -252,13 +252,16 @@ impl ElementwiseSerializeDeserialize for CRState {
         }
         Ok(())
     }
-    fn elementwise_deserialize(mut self, path: &PathBuf) -> Result<CRState, TrustchainCRError> {
-        self.initiation = Some(CRInitiation::new().elementwise_deserialize(path)?);
+    fn elementwise_deserialize(
+        mut self,
+        path: &PathBuf,
+    ) -> Result<Option<CRState>, TrustchainCRError> {
+        self.initiation = CRInitiation::new().elementwise_deserialize(path)?;
         self.identity_challenge_response =
-            Some(CRIdentityChallenge::new().elementwise_deserialize(path)?);
+            CRIdentityChallenge::new().elementwise_deserialize(path)?;
         self.content_challenge_response =
-            Some(CRContentChallenge::new().elementwise_deserialize(path)?);
-        Ok(self)
+            CRContentChallenge::new().elementwise_deserialize(path)?;
+        Ok(Some(self))
     }
 }
 
@@ -318,7 +321,7 @@ impl ElementwiseSerializeDeserialize for CRInitiation {
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
-    ) -> Result<CRInitiation, TrustchainCRError> {
+    ) -> Result<Option<CRInitiation>, TrustchainCRError> {
         let temp_p_key_path = path.join("temp_p_key.json");
         self.temp_p_key = match File::open(&temp_p_key_path) {
             Ok(file) => {
@@ -341,7 +344,11 @@ impl ElementwiseSerializeDeserialize for CRInitiation {
             Err(_) => None,
         };
 
-        Ok(self)
+        if self.temp_p_key.is_none() && self.requester_details.is_none() {
+            return Ok(None);
+        }
+
+        Ok(Some(self))
     }
 }
 
@@ -401,7 +408,7 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
-    ) -> Result<CRIdentityChallenge, TrustchainCRError> {
+    ) -> Result<Option<CRIdentityChallenge>, TrustchainCRError> {
         // update public key
         let mut full_path = path.join("update_p_key.json");
         self.update_p_key = match File::open(&full_path) {
@@ -413,14 +420,6 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
             }
             Err(_) => None,
         };
-
-        // if !full_path.exists() {
-        //     return Err(TrustchainCRError::FailedToDeserialize);
-        // }
-        // let file = File::open(full_path).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-        // let reader = std::io::BufReader::new(file);
-        // self.update_p_key = serde_json::from_reader(reader)
-        //     .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
         // identity nonce
         full_path = path.join("identity_nonce.json");
         self.identity_nonce = match File::open(&full_path) {
@@ -432,7 +431,6 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
             }
             Err(_) => None,
         };
-
         // identity challenge signature
         full_path = path.join("identity_challenge_signature.json");
         self.identity_challenge_signature = match File::open(&full_path) {
@@ -444,7 +442,6 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
             }
             Err(_) => None,
         };
-
         // identity response signature
         full_path = path.join("identity_response_signature.json");
         self.identity_response_signature = match File::open(&full_path) {
@@ -457,7 +454,15 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
             Err(_) => None,
         };
 
-        Ok(self)
+        if self.update_p_key.is_none()
+            && self.identity_nonce.is_none()
+            && self.identity_challenge_signature.is_none()
+            && self.identity_response_signature.is_none()
+        {
+            return Ok(None);
+        }
+
+        Ok(Some(self))
     }
 }
 
@@ -530,7 +535,7 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
-    ) -> Result<CRContentChallenge, TrustchainCRError> {
+    ) -> Result<Option<CRContentChallenge>, TrustchainCRError> {
         // content nonce(s)
         let mut full_path = path.join("content_nonce.json");
         self.content_nonce = match File::open(&full_path) {
@@ -566,7 +571,14 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
             Err(_) => None,
         };
 
-        Ok(self)
+        if self.content_nonce.is_none()
+            && self.content_challenge_signature.is_none()
+            && self.content_response_signature.is_none()
+        {
+            return Ok(None);
+        }
+
+        Ok(Some(self))
     }
 }
 
@@ -941,34 +953,44 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_identity_challenge() {
-        let directory_path = env::current_dir().unwrap();
-        let result = CRIdentityChallenge::new().elementwise_deserialize(&directory_path);
-        println!("Result identity challenge deserialization: {:?}", result);
-    }
-
-    #[test]
-    fn test_deserialize_content_challenge() {
-        let directory_path = env::current_dir().unwrap();
-        let content_challenge = CRContentChallenge::new()
-            .elementwise_deserialize(&directory_path)
-            .unwrap();
-        println!(
-            "Content challenge deserialized from files: {:?}",
-            content_challenge
-        );
-    }
-
-    #[test]
     fn test_deserialize_challenge_state() {
-        let directory_path = env::current_dir().unwrap();
-        let challenge_state = CRState::new()
-            .elementwise_deserialize(&directory_path)
-            .unwrap();
+        let path = tempdir().unwrap().into_path();
+        let challenge_state = CRState::new();
+
+        // Test case 1: some files exist and can be deserialised
+        let initiatiation = CRInitiation {
+            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            requester_details: Some(RequesterDetails {
+                requester_org: String::from("My Org"),
+                operator_name: String::from("John Doe"),
+            }),
+        };
+        let _ = initiatiation.elementwise_serialize(&path);
+        let identity_challenge = CRIdentityChallenge {
+            update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
+            identity_nonce: Some(Nonce::new()),
+            identity_challenge_signature: Some(String::from("some challenge signature string")),
+            identity_response_signature: Some(String::from("some response signature string")),
+        };
+        let _ = identity_challenge.elementwise_serialize(&path);
+
+        let result = challenge_state.elementwise_deserialize(&path);
+        assert!(result.is_ok());
+        let challenge_state = result.unwrap().unwrap();
         println!(
             "Challenge state deserialized from files: {:?}",
             challenge_state
         );
+        assert!(challenge_state.initiation.is_some());
+        assert!(challenge_state.identity_challenge_response.is_some());
+        assert!(challenge_state.content_challenge_response.is_none());
+
+        // Test case 2: one file cannot be deserialized
+        let identity_nonce_path = path.join("content_nonce.json");
+        let identity_nonce_file = File::create(&identity_nonce_path).unwrap();
+        serde_json::to_writer(identity_nonce_file, &42).unwrap();
+        let challenge_state = CRState::new().elementwise_deserialize(&path);
+        assert!(challenge_state.is_err());
     }
 
     #[test]
@@ -980,8 +1002,7 @@ mod tests {
         let result = cr_initiation.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
         let initiation = result.unwrap();
-        assert!(initiation.temp_p_key.is_none());
-        assert!(initiation.requester_details.is_none());
+        assert!(initiation.is_none());
 
         // Test case 2: Only one json file exists and can be deserialized
         let cr_initiation = CRInitiation::new();
@@ -992,7 +1013,7 @@ mod tests {
 
         let result = cr_initiation.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
-        let initiation = result.unwrap();
+        let initiation = result.unwrap().unwrap();
         assert!(initiation.temp_p_key.is_some());
         assert!(initiation.requester_details.is_none());
 
@@ -1007,7 +1028,7 @@ mod tests {
         serde_json::to_writer(requester_details_file, &requester_details).unwrap();
         let result = cr_initiation.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
-        let initiation = result.unwrap();
+        let initiation = result.unwrap().unwrap();
         assert!(initiation.temp_p_key.is_some());
         assert!(initiation.requester_details.is_some());
 
@@ -1019,7 +1040,6 @@ mod tests {
         serde_json::to_writer(temp_p_key_file, "this is not valid json").unwrap();
         let result = cr_initiation.elementwise_deserialize(&temp_path);
         assert!(result.is_err());
-        println!("Error: {:?}", result.unwrap_err());
     }
 
     #[test]
@@ -1031,10 +1051,7 @@ mod tests {
         let result = identity_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
         let identity_challenge = result.unwrap();
-        assert!(identity_challenge.update_p_key.is_none());
-        assert!(identity_challenge.identity_nonce.is_none());
-        assert!(identity_challenge.identity_challenge_signature.is_none());
-        assert!(identity_challenge.identity_response_signature.is_none());
+        assert!(identity_challenge.is_none());
 
         // Test case 2: Only one json file exists and can be deserialized
         let update_p_key_path = temp_path.join("update_p_key.json");
@@ -1044,7 +1061,7 @@ mod tests {
         let identity_challenge = CRIdentityChallenge::new();
         let result = identity_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
-        let identity_challenge = result.unwrap();
+        let identity_challenge = result.unwrap().unwrap();
         assert_eq!(identity_challenge.update_p_key, Some(update_p_key));
         assert!(identity_challenge.identity_nonce.is_none());
         assert!(identity_challenge.identity_challenge_signature.is_none());
@@ -1068,12 +1085,10 @@ mod tests {
         // Test case 1: None of the json files exist
         let result = content_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
-        let content_challenge = result.unwrap();
-        assert!(content_challenge.content_nonce.is_none());
-        assert!(content_challenge.content_challenge_signature.is_none());
-        assert!(content_challenge.content_response_signature.is_none());
+        assert!(result.unwrap().is_none());
 
         // Test case 2: Only one json file exists and can be deserialized
+        let content_challenge = CRContentChallenge::new();
         let content_nonce_path = temp_path.join("content_nonce.json");
         let content_nonce_file = File::create(&content_nonce_path).unwrap();
         let mut nonces_map: HashMap<&str, Nonce> = HashMap::new();
@@ -1081,7 +1096,7 @@ mod tests {
         serde_json::to_writer(content_nonce_file, &nonces_map).unwrap();
         let result = content_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
-        let content_challenge = result.unwrap();
+        let content_challenge = result.unwrap().unwrap();
         assert!(content_challenge.content_nonce.is_some());
         assert!(content_challenge.content_challenge_signature.is_none());
         assert!(content_challenge.content_response_signature.is_none());
