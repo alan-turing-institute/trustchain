@@ -3,10 +3,11 @@ use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use ssi::{
+    jsonld::ContextLoader,
     jwk::JWK,
-    ldp::now_ms,
+    ldp::{now_ns, Proof},
     one_or_many::OneOrMany,
-    vc::{Credential, LinkedDataProofOptions, Presentation, Proof},
+    vc::{Credential, LinkedDataProofOptions, Presentation},
 };
 use thiserror::Error;
 use tokio::runtime::Runtime;
@@ -44,7 +45,7 @@ pub enum FFIMobileError {
 
 /// Example greet function.
 pub fn greet() -> String {
-    format!("Hello from Rust at time: {}", now_ms())
+    format!("Hello from Rust at time: {}", now_ns())
 }
 
 /// Resolves a given DID document returning the serialized DID document as a JSON string.
@@ -111,22 +112,25 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
             ..
         })) = credential.proof.as_ref()
         {
-            let now = now_ms();
+            let now = now_ns();
             if &now < created_time {
                 return Err(
                     FFIMobileError::FutureProofCreatedTime(created_time.to_owned(), now).into(),
                 );
             }
         }
-        Ok(
-            TrustchainAPI::verify_credential(&credential, ldp_opts, root_event_time, &verifier)
-                .await
-                .map_err(FFIMobileError::FailedToVerifyCredential)
-                .and_then(|did_chain| {
-                    serde_json::to_string_pretty(&did_chain)
-                        .map_err(FFIMobileError::FailedToSerialize)
-                })?,
+        Ok(TrustchainAPI::verify_credential(
+            &credential,
+            ldp_opts,
+            root_event_time,
+            &verifier,
+            &mut ContextLoader::default(),
         )
+        .await
+        .map_err(FFIMobileError::FailedToVerifyCredential)
+        .and_then(|did_chain| {
+            serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
+        })?)
     })
 }
 
@@ -155,12 +159,10 @@ pub fn vp_issue_presentation(
     let proof = rt
         .block_on(async {
             presentation
-                .generate_proof(&jwk, &ldp_opts, &resolver)
+                .generate_proof(&jwk, &ldp_opts, &resolver, &mut ContextLoader::default())
                 .await
         })
-        .map_err(|err| {
-            FFIMobileError::FailedToIssuePresentation(PresentationError::SSIError(err))
-        })?;
+        .map_err(|err| FFIMobileError::FailedToIssuePresentation(PresentationError::VC(err)))?;
     presentation.add_proof(proof);
     Ok(serde_json::to_string_pretty(&presentation).map_err(FFIMobileError::FailedToSerialize)?)
 }

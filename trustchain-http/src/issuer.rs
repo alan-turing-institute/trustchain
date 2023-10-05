@@ -10,6 +10,7 @@ use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
@@ -40,7 +41,10 @@ impl CredentialOffer {
     /// Generates credential offer.
     pub fn generate(credential: &Credential, id: &str) -> Self {
         let mut credential: Credential = credential.to_owned();
-        credential.id = Some(ssi::vc::URI::String(format!("urn:uuid:{}", id)));
+        credential.id = Some(ssi::vc::StringOrURI::URI(ssi::vc::URI::String(format!(
+            "urn:uuid:{}",
+            id
+        ))));
         Self::new(credential)
     }
 }
@@ -104,7 +108,16 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
             }
         }
         let issuer = IONAttestor::new(issuer_did);
-        Ok(issuer.sign(&credential, None, None, resolver).await?)
+        Ok(issuer
+            .sign(
+                &credential,
+                None,
+                None,
+                resolver,
+                // TODO: add context loader to app_state
+                &mut ContextLoader::default(),
+            )
+            .await?)
     }
 }
 
@@ -186,6 +199,7 @@ mod tests {
     use lazy_static::lazy_static;
     use serde_json::json;
     use ssi::{
+        jsonld::ContextLoader,
         one_or_many::OneOrMany,
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
@@ -303,7 +317,9 @@ mod tests {
 
         // Test signature
         let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
-        let verify_credential_result = credential.verify(None, verifier.resolver()).await;
+        let verify_credential_result = credential
+            .verify(None, verifier.resolver(), &mut ContextLoader::default())
+            .await;
         assert!(verify_credential_result.errors.is_empty());
 
         // Test valid Trustchain issuer DID

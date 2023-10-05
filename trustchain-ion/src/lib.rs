@@ -6,11 +6,13 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
+pub mod ion;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
 
-use did_ion::{sidetree::SidetreeClient, ION};
+use crate::ion::IONTest as ION;
+use did_ion::sidetree::SidetreeClient;
 use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
