@@ -87,12 +87,13 @@ where
         Self: Sized;
 
     fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
-        // Open the new file
-        let new_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(path);
+        if path.exists() {
+            println!("File already exists: {:?}", path);
+            return Ok(());
+        }
+
+        // Open the new file if it doesn't exist yet
+        let new_file = OpenOptions::new().create(true).write(true).open(path);
 
         // Write key to file
         match new_file {
@@ -112,6 +113,7 @@ where
                     Err(_) => Err(TrustchainCRError::FailedToSave),
                 }
             }
+
             Err(_) => Err(TrustchainCRError::FailedToSave),
         }
     }
@@ -896,7 +898,7 @@ mod tests {
         assert_eq!(verified_response_map, nonces);
     }
     #[test]
-    fn test_write_structs_to_file() {
+    fn test_elementwise_serialize() {
         // ==========| Identity CR | ==============
         let temp_s_key: Jwk = serde_json::from_str(TEST_TEMP_KEY).unwrap();
         let initiation = CRInitiation {
@@ -946,10 +948,12 @@ mod tests {
             content_challenge_response: Some(content_challenge_response),
         };
         // write to file
-        let directory_path = env::current_dir().unwrap();
-        println!("directory path: {:?}", directory_path);
-        let result = cr_state.elementwise_serialize(&directory_path);
+        let path = tempdir().unwrap().into_path();
+        let result = cr_state.elementwise_serialize(&path);
         assert_eq!(result.is_ok(), true);
+
+        // try to write to file again
+        let result = cr_state.elementwise_serialize(&path);
     }
 
     #[test]
