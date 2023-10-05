@@ -6,6 +6,7 @@ edition = "2021"
 
 
 [dependencies]
+flutter_rust_bridge = "1"
 trustchain-core = { path = "../trustchain-core" }
 anyhow = "1.0"
 async-trait = "0.1"

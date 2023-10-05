@@ -22,7 +22,7 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
-// TODO: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
+// TODO [#126]: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
 // for better handling of URLs.
 pub type URL = String;
 
@@ -38,10 +38,13 @@ impl Endpoint {
     pub fn new(url: String, port: u16) -> Self {
         Self { host: url, port }
     }
+    // TODO: add more flexible address handling
     pub fn to_address(&self) -> String {
-        format!("http://{}:{}/", self.host, self.port)
+        match self.host.starts_with("http") {
+            true => format!("{}:{}/", self.host, self.port),
+            false => format!("http://{}:{}/", self.host, self.port),
+        }
     }
-    // TODO: add more flexible address methods
 }
 
 /// Test resolver
