@@ -11,6 +11,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::ldp::LinkedDataDocument;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
@@ -38,10 +39,15 @@ pub trait TrustchainVerifierHTTP {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        Ok(
-            TrustchainAPI::verify_presentation(presentation, None, root_event_time, verifier)
-                .await?,
+        Ok(TrustchainAPI::verify_presentation(
+            presentation,
+            None,
+            root_event_time,
+            verifier,
+            // TODO [#128]: move into API upon context loader added to app_state
+            &mut ContextLoader::default(),
         )
+        .await?)
     }
     /// Verifies verifiable credential.
     async fn verify_credential<T: DIDResolver + Send + Sync>(
@@ -49,7 +55,9 @@ pub trait TrustchainVerifierHTTP {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        let verify_credential_result = credential.verify(None, verifier.resolver()).await;
+        let verify_credential_result = credential
+            .verify(None, verifier.resolver(), &mut ContextLoader::default())
+            .await;
         if !verify_credential_result.errors.is_empty() {
             return Err(TrustchainHTTPError::InvalidSignature);
         }
