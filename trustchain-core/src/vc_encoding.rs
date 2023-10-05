@@ -5,9 +5,9 @@ use ps_sig::{
 };
 use serde_json::{Map, Value};
 use ssi::{
-    ldp::now_ms,
+    ldp::{now_ns, Proof},
     one_or_many::OneOrMany,
-    vc::{Context, Contexts, Credential, CredentialSubject, Issuer, Proof, URI},
+    vc::{Context, Contexts, Credential, CredentialSubject, Issuer, URI},
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use thiserror::Error;
@@ -418,7 +418,7 @@ impl RedactValues for Credential {
 
             // generate proof from derived RSS signature
             let mut proof = Proof::new("RSSSignature");
-            proof.created = Some(now_ms());
+            proof.created = Some(now_ns());
             proof.proof_purpose = Some(ssi::vc::ProofPurpose::AssertionMethod);
             proof.proof_value = Some(r_sig.to_hex());
             proof.verification_method = Some(issuers_pk.to_hex());

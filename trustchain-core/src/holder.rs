@@ -3,15 +3,19 @@ use crate::key_manager::KeyManagerError;
 use crate::subject::Subject;
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::vc::{LinkedDataProofOptions, Presentation};
 use thiserror::Error;
 
 /// An error relating to a Trustchain holder.
 #[derive(Error, Debug)]
 pub enum HolderError {
-    /// Wrapped error for SSI error.
-    #[error("A wrapped variant for an SSI error: {0}")]
-    SSI(ssi::error::Error),
+    /// Wrapped error for ssi-vc error.
+    #[error("A wrapped variant for an SSI VC error: {0}")]
+    VC(ssi::vc::Error),
+    /// Wrapped error for ssi-ldp error.
+    #[error("A wrapped variant for an SSI LDP error: {0}")]
+    LDP(ssi::ldp::Error),
     /// Wrapped error for key manager error.
     #[error("A wrapped variant for a key manager error: {0}")]
     KeyManager(KeyManagerError),
@@ -20,9 +24,15 @@ pub enum HolderError {
     MismatchedHolder,
 }
 
-impl From<ssi::error::Error> for HolderError {
-    fn from(err: ssi::error::Error) -> Self {
-        HolderError::SSI(err)
+impl From<ssi::vc::Error> for HolderError {
+    fn from(err: ssi::vc::Error) -> Self {
+        HolderError::VC(err)
+    }
+}
+
+impl From<ssi::ldp::Error> for HolderError {
+    fn from(err: ssi::ldp::Error) -> Self {
+        HolderError::LDP(err)
     }
 }
 
@@ -44,5 +54,6 @@ pub trait Holder: Subject {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Presentation, HolderError>;
 }

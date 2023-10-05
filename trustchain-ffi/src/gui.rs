@@ -55,9 +55,9 @@ fn attest(did: String, controlled_did: String, verbose: bool) -> anyhow::Result<
 /// Resolves a given DID using a resolver available at localhost:3000
 fn resolve(did: String, verbose: bool) -> anyhow::Result<String> {
     let rt = Runtime::new().unwrap();
+    let resolver = get_ion_resolver("http://localhost:3000/");
     rt.block_on(async {
-        let (res_meta, doc, doc_meta) =
-            TrustchainAPI::resolve(&did, "http://localhost:3000/".into()).await?;
+        let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(&did, &resolver).await?;
         // TODO: refactor conversion into trustchain-core resolve module
         Ok(serde_json::to_string_pretty(&ResolutionResult {
             context: Some(serde_json::Value::String(

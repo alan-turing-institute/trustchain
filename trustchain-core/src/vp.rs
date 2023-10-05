@@ -21,6 +21,12 @@ pub enum PresentationError {
     /// Wrapped variant for Verifier Error.
     #[error("A wrapped Verifier error: {0}")]
     VerifierError(VerifierError),
+    /// Wrapped error for ssi-vc error.
+    #[error("A wrapped variant for an SSI VC error: {0}")]
+    VC(ssi::vc::Error),
+    /// Wrapped error for ssi-ldp error.
+    #[error("A wrapped variant for an SSI LDP error: {0}")]
+    LDP(ssi::ldp::Error),
     /// Credentials verified, but holder failed to authenticate with invalid or missing presentation
     /// proof.
     #[error("Credentials verified for an unauthenticated holder: {0:?}")]
@@ -42,5 +48,17 @@ impl From<CredentialError> for PresentationError {
 impl From<VerifierError> for PresentationError {
     fn from(err: VerifierError) -> Self {
         PresentationError::VerifierError(err)
+    }
+}
+
+impl From<ssi::vc::Error> for PresentationError {
+    fn from(err: ssi::vc::Error) -> Self {
+        PresentationError::VC(err)
+    }
+}
+
+impl From<ssi::ldp::Error> for PresentationError {
+    fn from(err: ssi::ldp::Error) -> Self {
+        PresentationError::LDP(err)
     }
 }

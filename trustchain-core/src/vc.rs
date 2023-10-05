@@ -6,7 +6,11 @@ use ps_sig::{
     message_structure::message_encode::EncodedMessages,
     rsssig::{RSVerifyResult, RSignature, RSignatureError},
 };
-use ssi::vc::{Credential, Proof, VerificationResult};
+use ssi::{
+    ldp::Proof,
+    vc::{Credential, VerificationResult},
+};
+
 use thiserror::Error;
 
 /// An error relating to verifiable credentials and presentations.
@@ -126,7 +130,7 @@ mod tests {
         message_structure::message_encode::EncodedMessages,
         rsssig::RSignature,
     };
-    use ssi::vc::{Credential, Proof};
+    use ssi::{ldp::Proof, vc::Credential};
 
     const TEST_UNSIGNED_VC: &str = r##"{
         "@context": [

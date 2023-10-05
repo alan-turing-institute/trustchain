@@ -6,6 +6,7 @@ use ps_sig::rsssig::RSignature;
 use ssi::vc::VerificationResult;
 use ssi::{
     did_resolve::DIDResolver,
+    jsonld::ContextLoader,
     ldp::LinkedDataDocument,
     vc::{Credential, CredentialOrJWT, URI},
     vc::{LinkedDataProofOptions, Presentation},
@@ -95,11 +96,18 @@ pub trait TrustchainVCAPI {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
         attestor
-            .sign(&credential, linked_data_proof_options, key_id, resolver)
+            .sign(
+                &credential,
+                linked_data_proof_options,
+                key_id,
+                resolver,
+                context_loader,
+            )
             .await
     }
 
@@ -109,6 +117,7 @@ pub trait TrustchainVCAPI {
         // linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &U,
+        context_loader: &mut ContextLoader,
     ) -> Result<DIDChain, CredentialError>
     where
         T: DIDResolver + Send,
@@ -142,7 +151,9 @@ pub trait TrustchainVCAPI {
                     //      - "checks" are not parsed from ldp options passed into .verify().
                     //      - The proofs are not filtered based on the verification_method in ldp
                     //        options.
-                    proof.verify(credential, verifier.resolver()).await
+                    proof
+                        .verify(credential, verifier.resolver(), context_loader)
+                        .await
                 };
                 results.append(&mut verification_result);
             }
@@ -176,11 +187,18 @@ pub trait TrustchainVPAPI {
         key_id: Option<&str>,
         endpoint: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
+        context_loader: &mut ContextLoader,
     ) -> Result<Presentation, PresentationError> {
         let resolver = get_ion_resolver(endpoint);
         let attestor = IONAttestor::new(did);
         Ok(attestor
-            .sign_presentation(&presentation, linked_data_proof_options, key_id, &resolver)
+            .sign_presentation(
+                &presentation,
+                linked_data_proof_options,
+                key_id,
+                &resolver,
+                context_loader,
+            )
             .await?)
     }
     /// Verifies a verifiable presentation.
@@ -189,6 +207,7 @@ pub trait TrustchainVPAPI {
         ldp_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
+        context_loader: &mut ContextLoader,
     ) -> Result<(), PresentationError> {
         // Check credentials are present in presentation
         let credentials = presentation
@@ -199,46 +218,58 @@ pub trait TrustchainVPAPI {
         // Verify signatures and issuers for each credential included in the presentation
         // TODO: consider concurrency limit (as rate limiting for verifier requests)
         let limit = Some(5);
-        let ldp_options_vec: Vec<Option<LinkedDataProofOptions>> = (0..credentials.len())
-            .map(|_| ldp_options.clone())
+        let ldp_opts_and_context_loader: Vec<(Option<LinkedDataProofOptions>, ContextLoader)> = (0
+            ..credentials.len())
+            .map(|_| (ldp_options.clone(), context_loader.clone()))
             .collect();
-        stream::iter(credentials.into_iter().zip(ldp_options_vec))
+        stream::iter(credentials.into_iter().zip(ldp_opts_and_context_loader))
             .map(Ok)
-            .try_for_each_concurrent(limit, |(credential_or_jwt, ldp_options)| async move {
-                match credential_or_jwt {
-                    CredentialOrJWT::Credential(credential) => {
-                        TrustchainAPI::verify_credential(credential, root_event_time, verifier)
-                            .await
-                            .map(|_| ())
-                    }
-                    CredentialOrJWT::JWT(jwt) => {
-                        // decode and verify for credential jwts
-                        match Credential::decode_verify_jwt(
-                            jwt,
-                            ldp_options.clone(),
-                            verifier.resolver(),
-                        )
-                        .await
-                        .0
-                        .ok_or(CredentialError::FailedToDecodeJWT)
-                        {
-                            Ok(credential) => TrustchainAPI::verify_credential(
-                                &credential,
+            .try_for_each_concurrent(
+                limit,
+                |(credential_or_jwt, (ldp_opts, mut context_loader))| async move {
+                    match credential_or_jwt {
+                        CredentialOrJWT::Credential(credential) => {
+                            TrustchainAPI::verify_credential(
+                                credential,
                                 root_event_time,
                                 verifier,
+                                &mut context_loader,
                             )
                             .await
-                            .map(|_| ()),
-                            Err(e) => Err(e),
+                            .map(|_| ())
+                        }
+                        CredentialOrJWT::JWT(jwt) => {
+                            // decode and verify for credential jwts
+                            match Credential::decode_verify_jwt(
+                                jwt,
+                                ldp_opts.clone(),
+                                verifier.resolver(),
+                                &mut context_loader,
+                            )
+                            .await
+                            .0
+                            .ok_or(CredentialError::FailedToDecodeJWT)
+                            {
+                                Ok(credential) => TrustchainAPI::verify_credential(
+                                    &credential,
+                                    ldp_opts,
+                                    root_event_time,
+                                    verifier,
+                                    &mut context_loader,
+                                )
+                                .await
+                                .map(|_| ()),
+                                Err(e) => Err(e),
+                            }
                         }
                     }
-                }
-            })
+                },
+            )
             .await?;
 
         // Verify signature by holder to authenticate
         let result = presentation
-            .verify(ldp_options.clone(), verifier.resolver())
+            .verify(ldp_options.clone(), verifier.resolver(), context_loader)
             .await;
         if !result.errors.is_empty() {
             return Err(PresentationError::VerifiedHolderUnauthenticated(result));
@@ -254,7 +285,8 @@ mod tests {
     use ps_sig::keys::{rsskeygen, PKrss, Params};
     use ps_sig::message_structure::message_encode::EncodedMessages;
     use ps_sig::rsssig::RSignature;
-    use ssi::ldp::now_ms;
+    use ssi::jsonld::ContextLoader;
+    use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
     use ssi::vc::{Credential, CredentialOrJWT, Presentation, Proof, VCDateTime};
     use trustchain_core::utils::init;
@@ -298,16 +330,18 @@ mod tests {
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
+        let mut context_loader = ContextLoader::default();
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
+            &mut context_loader,
         )
         .await;
         assert!(res.is_ok());
 
         // Change credential to make signature invalid
-        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ms()).unwrap());
+        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
 
         // Verify: expect no warnings and a signature error as VC has changed
         let resolver = get_ion_resolver("http://localhost:3000/");
@@ -315,6 +349,7 @@ mod tests {
             &vc_with_proof,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
+            &mut context_loader,
         )
         .await;
         if let CredentialError::VerificationResultError(ver_res) = res.err().unwrap() {
@@ -384,10 +419,12 @@ mod tests {
 
         // verify redacted vc
         let resolver = get_ion_resolver("http://localhost:3000/");
+        let mut context_loader = ContextLoader::default();
         let res = TrustchainAPI::verify_credential(
             &redacted_vc,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
+            &mut context_loader,
         )
         .await;
         println!("{:?}", &res);
@@ -418,6 +455,7 @@ mod tests {
 
         let vc_with_proof = signed_credential(issuer).await;
         let resolver = get_ion_resolver("http://localhost:3000/");
+        let mut context_loader = ContextLoader::default();
 
         // let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         // let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
@@ -465,7 +503,7 @@ mod tests {
         };
 
         presentation = holder
-            .sign_presentation(&presentation, None, None, &resolver)
+            .sign_presentation(&presentation, None, None, &resolver, &mut context_loader)
             .await
             .unwrap();
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
@@ -474,6 +512,7 @@ mod tests {
             None,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
+            &mut context_loader,
         )
         .await;
         println!("{:?}", res);
@@ -504,6 +543,7 @@ mod tests {
                 None,
                 ROOT_EVENT_TIME_1,
                 &IONVerifier::new(resolver),
+                &mut ContextLoader::default()
             )
             .await,
             Err(PresentationError::VerifiedHolderUnauthenticated(..))
@@ -514,6 +554,9 @@ mod tests {
     async fn signed_credential(attestor: IONAttestor) -> Credential {
         let resolver = get_ion_resolver("http://localhost:3000/");
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        attestor.sign(&vc, None, None, &resolver).await.unwrap()
+        attestor
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await
+            .unwrap()
     }
 }
