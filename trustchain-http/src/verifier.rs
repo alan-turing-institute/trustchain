@@ -366,20 +366,6 @@ mod tests {
         let response = client.post(&uri).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Credential received and verified!", response.text().await);
-
-        // TODO: remove as root event time now determined by verifier
-        // // Test post of credential to verifier with bad root event time
-        // let app = TrustchainRouter::from(state.clone()).into_router();
-        // let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        // let uri = format!("/vc/verifier/{uid}");
-        // let client = TestClient::new(app);
-        // let mut post_verifier: PostVerifier =
-        //     serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
-        // post_verifier.root_event_time = 1666265406;
-        // let response = client.post(&uri).json(&post_verifier).send().await;
-        // assert_eq!(response.status(), StatusCode::OK);
-        // // TODO: consider refining error returned
-        // assert_eq!(response.text().await, r#"{"error":"Trustchain Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 
     #[tokio::test]
@@ -400,19 +386,5 @@ mod tests {
         let response = client.post(&uri).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Presentation received and verified!", response.text().await);
-
-        // TODO: remove as root event time now determined by verifier
-        // // Test post of presentation to verifier with bad root event time
-        // let app = TrustchainRouter::from(state.clone()).into_router();
-        // let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        // let uri = format!("/vc/verifier/{uid}");
-        // let client = TestClient::new(app);
-        // let mut post_verifier: PostVerifier =
-        //     serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
-        // post_verifier.root_event_time = 1666265406;
-        // let response = client.post(&uri).json(&post_verifier).send().await;
-        // assert_eq!(response.status(), StatusCode::OK);
-        // // TODO: consider refining error returned
-        // assert_eq!(response.text().await, r#"{"error":"Trustchain presentation error: A wrapped Credential error: A wrapped Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 }
