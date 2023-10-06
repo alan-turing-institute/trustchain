@@ -1,3 +1,4 @@
+use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::str_to_qr_code_html;
 use crate::state::AppState;
@@ -123,13 +124,19 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
 
 impl TrustchainIssuerHTTPHandler {
     /// Generates QR code to display to holder to receive requested credential.
-    pub async fn get_issuer_qrcode(State(app_state): State<Arc<AppState>>) -> Html<String> {
-        // TODO: update to take query param entered by user.
-        let id = "7426a2e8-f932-11ed-968a-4bb02079f142".to_string();
+    pub async fn get_issuer_qrcode(
+        State(app_state): State<Arc<AppState>>,
+        Path(id): Path<String>,
+    ) -> Html<String> {
+        let http_str = if !http_config().https {
+            "http"
+        } else {
+            "https"
+        };
         // Generate a QR code for server address and combination of name and UUID
         let address_str = format!(
-            "http://{}:{}/vc/issuer/{id}",
-            app_state.config.host_reference, app_state.config.port
+            "{}://{}:{}/vc/issuer/{id}",
+            http_str, app_state.config.host_display, app_state.config.port
         );
         // Respond with the QR code as a png embedded in html
         Html(str_to_qr_code_html(&address_str, "Issuer"))
@@ -203,7 +210,7 @@ mod tests {
         one_or_many::OneOrMany,
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
-    use std::sync::Arc;
+    use std::{collections::HashMap, sync::Arc};
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
     use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
@@ -245,6 +252,7 @@ mod tests {
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
         ));
         let app = TrustchainRouter::from(state.clone()).into_router();
         // Get offer for valid credential
@@ -289,6 +297,7 @@ mod tests {
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
         )))
         .into_router();
         let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
