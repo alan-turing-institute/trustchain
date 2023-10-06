@@ -54,7 +54,9 @@ fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value
     if let Err(err) = ION::validate_did_suffix(&ion_did_suffix) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({"error": err.to_string()})),
+            Json(
+                json!({"error": format!("DID: {did} does not have a valid ION suffix with error: {err}")}),
+            ),
         ));
     };
 

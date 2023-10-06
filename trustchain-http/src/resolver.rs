@@ -205,11 +205,11 @@ mod tests {
         let invalid_uri =
             "/did/did:ion:test:invalid_did__AsM3tgCut3OiBY4ekHTf__invalid_did".to_string();
         let response = client.get(&invalid_uri).send().await;
-        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
         assert_eq!(
             response.text().await,
-            r#"{"error":"Trustchain Resolver error: DID: did:ion:test:invalid_did__AsM3tgCut3OiBY4ekHTf__invalid_did does not exist."}"#
+            r#"{"error":"DID: did:ion:test:invalid_did__AsM3tgCut3OiBY4ekHTf__invalid_did does not have a valid ION suffix with error: Decode Base64"}"#
         )
     }
 
