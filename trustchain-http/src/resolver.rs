@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(
             response.text().await,
-            r#"{"error":"Trustchain Verifier error: A resolver error during verification."}"#
+            r#"{"error":"Trustchain Verifier error: A resolver error during verification: DID: did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65A is not found."}"#
                 .to_string()
         );
     }
