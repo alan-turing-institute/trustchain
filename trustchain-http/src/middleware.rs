@@ -34,14 +34,7 @@ fn error_message(did: &str, expected_prefix: &str) -> serde_json::Value {
     })
 }
 
-// See [example](https://github.com/tokio-rs/axum/blob/v0.6.x/examples/consume-body-in-extractor-or-middleware/src/main.rs)
-// from axum with middleware that shows how to consume the request body upfront
-pub async fn validate_did(
-    Path(did): Path<String>,
-    request: Request<Body>,
-    next: Next<Body>,
-) -> impl IntoResponse {
-    tracing::info!(did);
+fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
     let did_split = did.rsplit_once(':');
     if did_split.is_none() {
         return Err((
@@ -53,7 +46,7 @@ pub async fn validate_did(
 
     // Only validate ION DIDs. Allow others to pass.
     if !did_prefix.ne(&*ION_DID_PREFIX) && !did_prefix.ne(&*ION_DID_TEST_PREFIX) {
-        return Ok(next.run(request).await);
+        return Ok(());
     }
 
     // Validate the DID suffix given established DID method is ION.
@@ -67,20 +60,51 @@ pub async fn validate_did(
 
     // Validate the ION network prefix if testnet.
     if ion_config().mongo_database_ion_core.contains("testnet")
-        && did_prefix == *ION_DID_TEST_PREFIX
+        && did_prefix != *ION_DID_TEST_PREFIX
     {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(error_message(&did, &ION_DID_TEST_PREFIX)),
+            Json(error_message(did, &ION_DID_TEST_PREFIX)),
         ));
     }
 
     // Validate the ION network prefix if mainnet.
-    if ion_config().mongo_database_ion_core.contains("mainnet") && did_prefix == *ION_DID_PREFIX {
+    if ion_config().mongo_database_ion_core.contains("mainnet") && did_prefix != *ION_DID_PREFIX {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(error_message(&did, &ION_DID_PREFIX)),
+            Json(error_message(did, &ION_DID_PREFIX)),
         ));
     }
-    Ok(next.run(request).await)
+    Ok(())
+}
+// See [example](https://github.com/tokio-rs/axum/blob/v0.6.x/examples/consume-body-in-extractor-or-middleware/src/main.rs)
+// from axum with middleware that shows how to consume the request body upfront
+pub async fn validate_did(
+    Path(did): Path<String>,
+    request: Request<Body>,
+    next: Next<Body>,
+) -> impl IntoResponse {
+    tracing::info!(did);
+    match validate_did_str(&did) {
+        Ok(_) => Ok(next.run(request).await),
+        Err(e) => Err(e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_strings() {
+        assert_eq!("did:ion", *ION_DID_PREFIX);
+        assert_eq!("did:ion:test", *ION_DID_TEST_PREFIX);
+    }
+
+    #[test]
+    fn test_valid_did() {
+        assert!(
+            validate_did_str("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q").is_ok()
+        )
+    }
 }
