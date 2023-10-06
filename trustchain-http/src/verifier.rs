@@ -28,11 +28,6 @@ pub struct PresentationRequest(Value);
 /// An API for a Trustchain verifier server.
 #[async_trait]
 pub trait TrustchainVerifierHTTP {
-    /// Constructs a presentation request (given some `presentiation_id`) to send to a credential
-    /// holder from request wallet by ID.
-    fn generate_presentation_request(_presentation_id: &str) -> PresentationRequest {
-        todo!()
-    }
     /// Verifies verifiable presentation.
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
@@ -78,7 +73,7 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
 #[serde(rename_all = "camelCase")]
 pub struct PostVerifier {
     pub presentation_or_credential: PresentationOrCredential,
-    // TODO: remove field as obsolete
+    // TODO [#130]: update field upon root event time changing to date and confirmation code.
     pub root_event_time: Timestamp,
 }
 
