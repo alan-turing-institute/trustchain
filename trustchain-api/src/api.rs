@@ -5,11 +5,11 @@ use futures::{stream, StreamExt, TryStreamExt};
 use ssi::{
     did_resolve::DIDResolver,
     jsonld::ContextLoader,
-    ldp::LinkedDataDocument,
+    ldp::{now_ns, LinkedDataDocument},
     vc::{Credential, CredentialOrJWT, URI},
     vc::{LinkedDataProofOptions, Presentation},
 };
-use std::error::Error;
+use std::{error::Error, time::Instant};
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
@@ -171,11 +171,12 @@ pub trait TrustchainVPAPI {
         context_loader: &mut ContextLoader,
     ) -> Result<(), PresentationError> {
         // Check credentials are present in presentation
+        println!("Start 0");
         let credentials = presentation
             .verifiable_credential
             .as_ref()
             .ok_or(PresentationError::NoCredentialsPresent)?;
-
+        println!("Start 1");
         // Verify signatures and issuers for each credential included in the presentation
         // TODO: consider concurrency limit (as rate limiting for verifier requests)
         let limit = Some(5);
@@ -183,11 +184,15 @@ pub trait TrustchainVPAPI {
             ..credentials.len())
             .map(|_| (ldp_options.clone(), context_loader.clone()))
             .collect();
+        let t0 = now_ns();
         stream::iter(credentials.into_iter().zip(ldp_opts_and_context_loader))
+            .enumerate()
             .map(Ok)
             .try_for_each_concurrent(
                 limit,
-                |(credential_or_jwt, (ldp_opts, mut context_loader))| async move {
+                |(idx, (credential_or_jwt, (ldp_opts, mut context_loader)))| async move {
+                    let t1 = now_ns();
+                    println!("Credential {idx:2} seconds: {}", t1 - t0);
                     match credential_or_jwt {
                         CredentialOrJWT::Credential(credential) => {
                             TrustchainAPI::verify_credential(
@@ -228,14 +233,16 @@ pub trait TrustchainVPAPI {
                 },
             )
             .await?;
-
+        println!("-------------> verified credentials!");
         // Verify signature by holder to authenticate
         let result = presentation
             .verify(ldp_options.clone(), verifier.resolver(), context_loader)
             .await;
+        println!("-------------> verified presentation (holder)!");
         if !result.errors.is_empty() {
             return Err(PresentationError::VerifiedHolderUnauthenticated(result));
         }
+        println!("Start 3");
         Ok(())
     }
 }
@@ -303,7 +310,6 @@ mod tests {
         )
         .await;
         assert!(res.is_ok());
-
         // Change credential to make signature invalid
         vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
 
@@ -382,7 +388,7 @@ mod tests {
             // signing (with the did of the presentation signer) in `holder.sign_presentation()`
             ..Default::default()
         };
-
+        println!("Waiting to sign");
         presentation = holder
             .sign_presentation(&presentation, None, None, &resolver, &mut context_loader)
             .await

@@ -211,9 +211,11 @@ impl Holder for IONAttestor {
         };
 
         // Generate proof
+        println!("Start proof gen");
         let proof = vp
             .generate_proof(&signing_key, &options, resolver, context_loader)
             .await?;
+        println!("-----------> Made proof");
         // Add proof to credential
         vp.add_proof(proof);
         Ok(vp)

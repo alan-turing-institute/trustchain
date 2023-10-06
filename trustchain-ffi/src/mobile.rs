@@ -242,7 +242,8 @@ mod tests {
     fn test_vc_verify_credential() {
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
+        let t = serde_json::to_string(&credential).unwrap();
+        vc_verify_credential(t, ffi_opts).unwrap();
     }
 
     #[test]
