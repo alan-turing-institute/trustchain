@@ -34,7 +34,10 @@ fn error_message(did: &str, expected_prefix: &str) -> serde_json::Value {
     })
 }
 
-fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
+fn validate_did_str(
+    did: &str,
+    mongo_database_ion_core: &str,
+) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
     let did_split = did.rsplit_once(':');
     if did_split.is_none() {
         return Err((
@@ -45,7 +48,7 @@ fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value
     let (did_prefix, ion_did_suffix) = did_split.unwrap();
 
     // Only validate ION DIDs. Allow others to pass.
-    if !did_prefix.ne(&*ION_DID_PREFIX) && !did_prefix.ne(&*ION_DID_TEST_PREFIX) {
+    if did_prefix != *ION_DID_PREFIX && did_prefix != *ION_DID_TEST_PREFIX {
         return Ok(());
     }
 
@@ -61,9 +64,7 @@ fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value
     };
 
     // Validate the ION network prefix if testnet.
-    if ion_config().mongo_database_ion_core.contains("testnet")
-        && did_prefix != *ION_DID_TEST_PREFIX
-    {
+    if mongo_database_ion_core.contains("testnet") && did_prefix != *ION_DID_TEST_PREFIX {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(error_message(did, &ION_DID_TEST_PREFIX)),
@@ -71,7 +72,7 @@ fn validate_did_str(did: &str) -> Result<(), (StatusCode, Json<serde_json::Value
     }
 
     // Validate the ION network prefix if mainnet.
-    if ion_config().mongo_database_ion_core.contains("mainnet") && did_prefix != *ION_DID_PREFIX {
+    if mongo_database_ion_core.contains("mainnet") && did_prefix != *ION_DID_PREFIX {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(error_message(did, &ION_DID_PREFIX)),
@@ -87,7 +88,7 @@ pub async fn validate_did(
     next: Next<Body>,
 ) -> impl IntoResponse {
     tracing::info!(did);
-    match validate_did_str(&did) {
+    match validate_did_str(&did, &ion_config().mongo_database_ion_core) {
         Ok(_) => Ok(next.run(request).await),
         Err(e) => Err(e),
     }
@@ -105,8 +106,57 @@ mod tests {
 
     #[test]
     fn test_valid_did() {
-        assert!(
-            validate_did_str("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q").is_ok()
-        )
+        // Ok cases
+        for (did, network) in [
+            (
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "testnet",
+            ),
+            (
+                "did:ion:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "mainnet",
+            ),
+            (
+                "did:key:z6MkhG98a8j2d3jqia13vrWqzHwHAgKTv9NjYEgdV3ndbEdD",
+                "testnet",
+            ),
+        ] {
+            assert!(validate_did_str(did, network).is_ok());
+        }
+        // Error cases
+        for (did, network) in [
+            // Invalid length
+            (
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65",
+                "testnet",
+            ),
+            // Invalid suffix
+            (
+                "did:ion:test:1iAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "testnet",
+            ),
+            // Invalid network
+            (
+                "did:ion:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "testnet",
+            ),
+            // Invalid length
+            (
+                "did:ion:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65",
+                "mainnet",
+            ),
+            // Invalid suffix
+            (
+                "did:ion:1iAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "mainnet",
+            ),
+            // Invalid network
+            (
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+                "mainnet",
+            ),
+        ] {
+            assert!(validate_did_str(did, network).is_err());
+        }
     }
 }
