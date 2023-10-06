@@ -22,7 +22,7 @@ lazy_static! {
         format!("{}:{}", &*ION_DID_PREFIX, IONTest::NETWORK.unwrap());
 }
 
-/// Generates an error message given DID and expected string length.
+/// Generates an error message given DID and expected prefix.
 fn error_message(did: &str, expected_prefix: &str) -> serde_json::Value {
     json!({
         "error":
