@@ -77,11 +77,13 @@ impl TrustchainRouter {
                 )
                 .route(
                     "/did/chain/:id",
-                    get(resolver::TrustchainHTTPHandler::get_chain_resolution),
+                    get(resolver::TrustchainHTTPHandler::get_chain_resolution)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
                     "/did/bundle/:id",
-                    get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+                    get(resolver::TrustchainHTTPHandler::get_verification_bundle)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .with_state(shared_state),
         }
