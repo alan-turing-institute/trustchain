@@ -7,3 +7,4 @@ members = [
     "trustchain-cli",
     "trustchain-ffi"
 ]
+resolver = "2"

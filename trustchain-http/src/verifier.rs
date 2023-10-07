@@ -11,6 +11,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::ldp::LinkedDataDocument;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
@@ -27,21 +28,21 @@ pub struct PresentationRequest(Value);
 /// An API for a Trustchain verifier server.
 #[async_trait]
 pub trait TrustchainVerifierHTTP {
-    /// Constructs a presentation request (given some `presentiation_id`) to send to a credential
-    /// holder from request wallet by ID.
-    fn generate_presentation_request(_presentation_id: &str) -> PresentationRequest {
-        todo!()
-    }
     /// Verifies verifiable presentation.
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        Ok(
-            TrustchainAPI::verify_presentation(presentation, None, root_event_time, verifier)
-                .await?,
+        Ok(TrustchainAPI::verify_presentation(
+            presentation,
+            None,
+            root_event_time,
+            verifier,
+            // TODO [#128]: move into API upon context loader added to app_state
+            &mut ContextLoader::default(),
         )
+        .await?)
     }
     /// Verifies verifiable credential.
     async fn verify_credential<T: DIDResolver + Send + Sync>(
@@ -49,7 +50,9 @@ pub trait TrustchainVerifierHTTP {
         root_event_time: Timestamp,
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        let verify_credential_result = credential.verify(None, verifier.resolver()).await;
+        let verify_credential_result = credential
+            .verify(None, verifier.resolver(), &mut ContextLoader::default())
+            .await;
         if !verify_credential_result.errors.is_empty() {
             return Err(TrustchainHTTPError::InvalidSignature);
         }
@@ -70,6 +73,7 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
 #[serde(rename_all = "camelCase")]
 pub struct PostVerifier {
     pub presentation_or_credential: PresentationOrCredential,
+    // TODO [#130]: update field upon root event time changing to date and confirmation code.
     pub root_event_time: Timestamp,
 }
 
@@ -106,7 +110,10 @@ impl TrustchainVerifierHTTPHandler {
             PresentationOrCredential::Presentation(ref presentation) => {
                 TrustchainVerifierHTTPHandler::verify_presentation(
                     presentation,
-                    verification_info.root_event_time,
+                    app_state
+                        .config
+                        .root_event_time
+                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
                     &app_state.verifier,
                 )
                 .await
@@ -122,7 +129,10 @@ impl TrustchainVerifierHTTPHandler {
             PresentationOrCredential::Credential(ref credential) => {
                 TrustchainVerifierHTTPHandler::verify_credential(
                     credential,
-                    verification_info.root_event_time,
+                    app_state
+                        .config
+                        .root_event_time
+                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
                     &app_state.verifier,
                 )
                 .await
@@ -157,7 +167,7 @@ impl TrustchainVerifierHTTPHandler {
                     uuid: uid.to_owned(),
                     endpoint: format!(
                         "{}://{}:{}",
-                        http_str, app_state.config.host_reference, app_state.config.port
+                        http_str, app_state.config.host_display, app_state.config.port
                     ),
                 })
                 .unwrap();
@@ -185,6 +195,7 @@ mod tests {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
             issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            root_event_time: Some(1666265405),
             ..Default::default()
         };
     }
@@ -356,19 +367,6 @@ mod tests {
         let response = client.post(&uri).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Credential received and verified!", response.text().await);
-
-        // Test post of credential to verifier with bad root event time
-        let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
-        let client = TestClient::new(app);
-        let mut post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
-        post_verifier.root_event_time = 1666265406;
-        let response = client.post(&uri).json(&post_verifier).send().await;
-        assert_eq!(response.status(), StatusCode::OK);
-        // TODO: consider refining error returned
-        assert_eq!(response.text().await, r#"{"error":"Trustchain Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 
     #[tokio::test]
@@ -389,18 +387,5 @@ mod tests {
         let response = client.post(&uri).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Presentation received and verified!", response.text().await);
-
-        // Test post of presentation to verifier with bad root event time
-        let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
-        let client = TestClient::new(app);
-        let mut post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
-        post_verifier.root_event_time = 1666265406;
-        let response = client.post(&uri).json(&post_verifier).send().await;
-        assert_eq!(response.status(), StatusCode::OK);
-        // TODO: consider refining error returned
-        assert_eq!(response.text().await, r#"{"error":"Trustchain presentation error: A wrapped Credential error: A wrapped Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 }

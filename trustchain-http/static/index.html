@@ -5,20 +5,32 @@
         <title>VC server</title>
     </head>
     <body>
-        Receive a credential:
-        <form action=/issuer method=GET>
-            <select id="uuid">
-              <option value="7426a2e8-f932-11ed-968a-4bb02079f142" selected>BA Degree Certificate</option>
-              <option value="481935de-f93d-11ed-a309-d7ec1d02e89c">MSC Degree Certificate</option>
-              <option value="1f5ae8a4-56ee-11ee-a707-3be8d4460050">Driving License</option>
-            </select>
-            <button type=submit>Issuer</button>
+        <br>
+        <br>
+        <hr>
+        <br>
+        <div style="margin-left: 45px;">
+        <h2>Receive a credential</h2>
+        <form action=/issuer/7426a2e8-f932-11ed-968a-4bb02079f142 method=GET>
+            <button type=submit>BA Degree Certificate</button>
         </form>
         <br>
-        Present a credential:
+        <form action=/issuer/481935de-f93d-11ed-a309-d7ec1d02e89c method=GET>
+            <button type=submit>MSC Degree Certificate</button>
+        </form>
+        <br>
+        <form action=/issuer/1f5ae8a4-56ee-11ee-a707-3be8d4460050 method=GET>
+            <button type=submit>Driving License</button>
+        </form>
+        <br>
+        <br>
+        <h2>Present a credential</h2>
         <form action=/verifier method=GET>
             <button type=submit>Verifier</button>
         </form>
-        <hr>
+        <br>
+        <br>
+    </div>
+    <hr>
     </body>
 </html>

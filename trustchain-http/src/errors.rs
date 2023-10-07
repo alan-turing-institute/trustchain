@@ -34,6 +34,8 @@ pub enum TrustchainHTTPError {
     RequestDoesNotExist,
     #[error("Could not deserialize data: {0}")]
     FailedToDeserialize(serde_json::Error),
+    #[error("Root event time not configured for verification.")]
+    RootEventTimeNotSet,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -116,6 +118,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
             err @ TrustchainHTTPError::FailedToDeserialize(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::RootEventTimeNotSet => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };

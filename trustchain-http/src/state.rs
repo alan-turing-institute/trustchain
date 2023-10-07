@@ -20,17 +20,18 @@ impl AppState {
         let path = std::env::var(TRUSTCHAIN_DATA).expect("TRUSTCHAIN_DATA env not set.");
         let credentials: HashMap<String, Credential> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("credentials/offers/cache.json"))
-                .expect("Credential cache does not exist.")
+                // If no cache, default to empty
+                .unwrap_or_default()
                 .as_slice(),
         )
-        // TODO: change to unrwap_or_default() (empty cache)
         .expect("Credential cache could not be deserialized.");
         let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
-                .expect("Credential cache does not exist.")
+                // If no cache, default to empty
+                .unwrap_or_default()
                 .as_slice(),
         )
-        .expect("Credential cache could not be deserialized.");
+        .expect("Presentation cache could not be deserialized.");
         Self {
             config,
             verifier,

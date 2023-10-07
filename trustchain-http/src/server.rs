@@ -34,7 +34,7 @@ impl TrustchainRouter {
             router: Router::new()
                 .route("/", get(static_handlers::index))
                 .route(
-                    "/issuer",
+                    "/issuer/:id",
                     get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode),
                 )
                 .route(
@@ -77,11 +77,13 @@ impl TrustchainRouter {
                 )
                 .route(
                     "/did/chain/:id",
-                    get(resolver::TrustchainHTTPHandler::get_chain_resolution),
+                    get(resolver::TrustchainHTTPHandler::get_chain_resolution)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
                     "/did/bundle/:id",
-                    get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+                    get(resolver::TrustchainHTTPHandler::get_verification_bundle)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .with_state(shared_state),
         }
@@ -112,7 +114,8 @@ pub async fn https_server(config: HTTPConfig) -> std::io::Result<()> {
         .await
 }
 
-/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs)
+/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on
+/// axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs).
 async fn rustls_config(path: &str) -> RustlsConfig {
     // Configure certificate and private key used by https
     let path = shellexpand::tilde(path);

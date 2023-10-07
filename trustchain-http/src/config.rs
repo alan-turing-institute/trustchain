@@ -6,27 +6,30 @@ use std::{
     str::FromStr,
 };
 use toml;
+use trustchain_core::verifier::Timestamp;
 use trustchain_core::TRUSTCHAIN_CONFIG;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
 
-/// Server config.
+/// HTTP configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HTTPConfig {
     /// Host address for server. For example, Android emulator `10.0.2.2` refers to `127.0.0.1` of
     /// machine running emulator.
     pub host: IpAddr,
-    /// Host address for front-end display.
-    pub host_reference: String,
+    /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine running emulator.
+    pub host_display: String,
     /// Port for server
     pub port: u16,
     /// Optional issuer DID
     pub issuer_did: Option<String>,
     /// Flag indicating whether server uses https
     pub https: bool,
-    /// Path with certificate and key for https
+    /// Path containing certificate and key necessary for https
     pub https_path: Option<String>,
+    /// Root event time for verifier.
+    pub root_event_time: Option<Timestamp>,
 }
 
 impl std::fmt::Display for HTTPConfig {
@@ -39,11 +42,12 @@ impl Default for HTTPConfig {
     fn default() -> Self {
         Self {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
-            host_reference: DEFAULT_HOST.into(),
+            host_display: DEFAULT_HOST.to_string(),
             port: DEFAULT_PORT,
             issuer_did: None,
             https: false,
             https_path: None,
+            root_event_time: None,
         }
     }
 }
@@ -80,7 +84,7 @@ pub fn http_config() -> &'static HTTP_CONFIG {
     &HTTP_CONFIG
 }
 
-/// Wrapper struct for parsing the `http` table.
+/// Wrapper struct for parsing the `http` config table.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Config {
     /// HTTP configuration data.
@@ -93,17 +97,17 @@ mod tests {
 
     #[test]
     fn test_deserialize() {
-        let config_string = r##"
+        let config_string = r#"
         [http]
         host = "127.0.0.1"
-        host_reference = "127.0.0.1"
+        host_display = "127.0.0.1"
         port = 8081
         issuer_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
         https = false
 
         [non_http]
         key = "value"
-        "##;
+        "#;
 
         let config: HTTPConfig = parse_toml(config_string);
 
