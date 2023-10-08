@@ -10,6 +10,7 @@ pub mod holder;
 pub mod issuer;
 pub mod key_manager;
 pub mod resolver;
+pub mod root;
 pub mod subject;
 pub mod utils;
 pub mod vc;
