@@ -15,6 +15,7 @@ use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 
+use is_empty::IsEmpty;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -53,6 +54,9 @@ pub enum TrustchainCRError {
     /// Failed to check CR status.
     #[error("Failed to determine CR status.")]
     FailedStatusCheck,
+    /// Path for CR does not exist.
+    #[error("Path does not exist. No challenge-response record for this temporary key id.")]
+    CRPathNotFound,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -224,7 +228,7 @@ impl From<String> for Nonce {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, IsEmpty)]
 struct CRState {
     initiation: Option<CRInitiation>,
     identity_challenge_response: Option<CRIdentityChallenge>,
@@ -238,6 +242,73 @@ impl CRState {
             identity_challenge_response: None,
             content_challenge_response: None,
         }
+    }
+
+    fn check_cr_status(&self) -> Result<(), TrustchainCRError> {
+        if self.is_empty() {
+            println!("No records found for this challenge-response identifier. The challenge-response process has not been initiated yet. ");
+            return Ok(());
+        }
+
+        // CR complete
+        if self.is_complete() {
+            println!("Challenge-response complete.");
+            return Ok(());
+        }
+
+        // CR initation
+        let initiation = self.initiation.as_ref().unwrap();
+        if !initiation.is_complete() {
+            println!("Initiation incomplete.");
+            return Ok(());
+        }
+        println!("Initiation complete.");
+
+        // Identity challenge-response
+        let identity_challenge_response = self.identity_challenge_response.as_ref().unwrap();
+        if !identity_challenge_response.is_complete() {
+            if identity_challenge_response.update_p_key.is_some()
+                && identity_challenge_response.identity_nonce.is_some()
+                && identity_challenge_response
+                    .identity_challenge_signature
+                    .is_some()
+            {
+                println!("Identity challenge has been presented. Await response.");
+                return Ok(());
+            }
+            println!("Identity challenge incomplete.");
+            return Ok(());
+        }
+        println!("Identity challenge-response complete.");
+
+        // Content challenge-response
+        let content_challenge_response = self.content_challenge_response.as_ref().unwrap();
+        if !content_challenge_response.is_complete() {
+            if content_challenge_response.content_nonce.is_some()
+                && content_challenge_response
+                    .content_challenge_signature
+                    .is_some()
+            {
+                println!("Content challenge has been presented. Await response.");
+                return Ok(());
+            }
+            println!("Content challenge incomplete.");
+            return Ok(());
+        }
+        println!("Content challenge-response complete.");
+        Ok(())
+    }
+}
+
+impl IsComplete for CRState {
+    fn is_complete(&self) -> bool {
+        if self.initiation.is_some()
+            && self.identity_challenge_response.is_some()
+            && self.content_challenge_response.is_some()
+        {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -275,7 +346,7 @@ struct RequesterDetails {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, IsEmpty)]
 struct CRInitiation {
     temp_p_key: Option<Jwk>,
     requester_details: Option<RequesterDetails>,
@@ -287,6 +358,15 @@ impl CRInitiation {
             temp_p_key: None,
             requester_details: None,
         }
+    }
+}
+
+impl IsComplete for CRInitiation {
+    fn is_complete(&self) -> bool {
+        if self.temp_p_key.is_some() && self.requester_details.is_some() {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -355,7 +435,7 @@ impl ElementwiseSerializeDeserialize for CRInitiation {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, IsEmpty)]
 struct CRIdentityChallenge {
     update_p_key: Option<Jwk>,
     identity_nonce: Option<Nonce>, // make own Nonce type
@@ -371,6 +451,19 @@ impl CRIdentityChallenge {
             identity_challenge_signature: None,
             identity_response_signature: None,
         }
+    }
+}
+
+impl IsComplete for CRIdentityChallenge {
+    fn is_complete(&self) -> bool {
+        if self.update_p_key.is_some()
+            && self.identity_nonce.is_some()
+            && self.identity_challenge_signature.is_some()
+            && self.identity_response_signature.is_some()
+        {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -492,7 +585,7 @@ impl TryFrom<&JwtPayload> for CRIdentityChallenge {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, IsEmpty)]
 struct CRContentChallenge {
     content_nonce: Option<HashMap<String, Nonce>>,
     content_challenge_signature: Option<String>,
@@ -506,6 +599,18 @@ impl CRContentChallenge {
             content_challenge_signature: None,
             content_response_signature: None,
         }
+    }
+}
+
+impl IsComplete for CRContentChallenge {
+    fn is_complete(&self) -> bool {
+        if self.content_nonce.is_some()
+            && self.content_challenge_signature.is_some()
+            && self.content_response_signature.is_some()
+        {
+            return true;
+        }
+        return false;
     }
 }
 
@@ -662,14 +767,60 @@ fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, 
     Ok(my_map)
 }
 
-fn check_cr_state(state: CRState) -> Result<(), TrustchainCRError> {
-    todo!()
-}
+// fn check_cr_state(path: &PathBuf, key_id: &str, state: CRState) -> Result<(), TrustchainCRError> {
+//     if !path.exists() {
+//         return Err(TrustchainCRError::CRPathNotFound);
+//     }
+//     let cr_state = CRState::new().elementwise_deserialize(path).unwrap().unwrap();
+
+//     // The directory exists, but there are no json files
+//     if cr_state.is_empty() {
+//         println!("No records found for this challenge-response identifier. The challenge-response process has not been initiated yet. ")
+//         return Ok(());
+//     }
+
+//     // CR complete
+//     if cr_state.is_complete(){
+//         println!("Challenge-response complete.");
+//         return Ok(());
+//     }
+
+//     // CR initation
+//     if !cr_state.initiation.unwrap().is_complete() {
+//         println!("Initiation incomplete.");
+//         return Ok(());
+//     }
+//     println!("Initiation complete.");
+
+//     // Identity challenge-response
+//     if !cr_state.identity_challenge_response.unwrap().is_complete() {
+//         if cr_state.identity_challenge_response.unwrap().update_p_key.is_some() && cr_state.identity_challenge_response.unwrap().identity_nonce.is_some() && cr_state.identity_challenge_response.unwrap().identity_challenge_signature.is_some() {
+//             println!("Identity challenge has been presented. Await response.");
+//             return Ok(())
+//         }
+//         println!("Identity challenge incomplete.");
+//         return Ok(())
+//     }
+//     println!("Identity challenge-response complete.");
+
+//     // Content challenge-response
+//     if !cr_state.content_challenge_response.unwrap().is_complete() {
+//         if cr_state.content_challenge_response.unwrap().content_nonce.is_some() && cr_state.content_challenge_response.unwrap().content_challenge_signature.is_some() {
+//             println!("Content challenge has been presented. Await response.");
+//             return Ok(())
+//         }
+//         println!("Content challenge incomplete.");
+//         return Ok(())
+//     }
+//     println!("Content challenge-response complete.");
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
 
-    use std::env;
+    use std::fs::create_dir;
+
     use tempfile::tempdir;
 
     use crate::data::{
@@ -1111,5 +1262,20 @@ mod tests {
         let result = content_challenge.elementwise_deserialize(&temp_path);
         print!("Result: {:?}", result);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cr_status_check() {
+        let temp_path = tempdir().unwrap().into_path();
+        let key_id = "test_key_id";
+        let cr_path = temp_path.join(key_id);
+        let _ = create_dir(&cr_path);
+
+        // Test case 1: no files exist
+        let cr_state = CRState::new()
+            .elementwise_deserialize(&cr_path)
+            .unwrap()
+            .unwrap();
+        let result = cr_state.check_cr_status();
     }
 }

@@ -48,6 +48,7 @@ rand = "0.8"
 josekit = "0.8"
 serde_with = "*"
 tempfile = "*"
+is_empty = "*"
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"
