@@ -90,7 +90,7 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
     let trustchain_opts = mobile_opts.trustchain()?;
-    let ldp_opts = mobile_opts.linked_data_proof().cloned().ok();
+    // let ldp_opts = mobile_opts.linked_data_proof().cloned().ok();
     let credential: Credential = serde_json::from_str(&credential)?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -121,7 +121,6 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
         }
         Ok(TrustchainAPI::verify_credential(
             &credential,
-            ldp_opts,
             root_event_time,
             &verifier,
             &mut ContextLoader::default(),
@@ -227,14 +226,6 @@ mod tests {
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         did_resolve(did, ffi_opts).unwrap();
-    }
-
-    #[test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    fn test_did_verify() {
-        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
-        did_verify(did, ffi_opts).unwrap();
     }
 
     #[test]

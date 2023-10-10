@@ -130,31 +130,32 @@ pub trait TrustchainVCAPI {
                 // TODO(?): filter proofs based on verification_method found in
                 // linked_data_proof_options.unwrap_or_default(), matching the behaviour of the
                 // credential.verify() method
-                let mut verification_result = if &proof.type_ == "RSSSignature" {
-                    // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
-                    // orphan rule)
-                    // more generally, some interface will be required to impl proof verification
-                    // behaviour for RSignature - eg. ProofVerify trait with ::verify_proof()
-                    //      this could return VerificationResult to have a return type the same as
-                    //      proof.verify()
-                    match RSignature::verify_proof(proof, credential) {
-                        Ok(_) => VerificationResult::new(),
-                        Err(e) => e.into(),
-                    }
-                    .into()
-                } else {
-                    // Proof.verify() calls LinkedDataProofs::verify() which matches on proof.type_
-                    // and verifies for all proof types supported by ssi
-                    // &Credential is passed as the LinkedDataDocument, as it is in
-                    // ssi::vc::Credential.verify()
-                    // There are two steps excluded from the workflow used in Credential.verify():
-                    //      - "checks" are not parsed from ldp options passed into .verify().
-                    //      - The proofs are not filtered based on the verification_method in ldp
-                    //        options.
-                    proof
-                        .verify(credential, verifier.resolver(), context_loader)
-                        .await
-                };
+                let mut verification_result =
+                    if proof.type_ == ssi::ldp::ProofSuiteType::RSSSignature {
+                        // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
+                        // orphan rule)
+                        // more generally, some interface will be required to impl proof verification
+                        // behaviour for RSignature - eg. ProofVerify trait with ::verify_proof()
+                        //      this could return VerificationResult to have a return type the same as
+                        //      proof.verify()
+                        match RSignature::verify_proof(proof, credential) {
+                            Ok(_) => VerificationResult::new(),
+                            Err(e) => e.into(),
+                        }
+                        .into()
+                    } else {
+                        // Proof.verify() calls LinkedDataProofs::verify() which matches on proof.type_
+                        // and verifies for all proof types supported by ssi
+                        // &Credential is passed as the LinkedDataDocument, as it is in
+                        // ssi::vc::Credential.verify()
+                        // There are two steps excluded from the workflow used in Credential.verify():
+                        //      - "checks" are not parsed from ldp options passed into .verify().
+                        //      - The proofs are not filtered based on the verification_method in ldp
+                        //        options.
+                        proof
+                            .verify(credential, verifier.resolver(), context_loader)
+                            .await
+                    };
                 results.append(&mut verification_result);
             }
         } else {
@@ -252,7 +253,6 @@ pub trait TrustchainVPAPI {
                             {
                                 Ok(credential) => TrustchainAPI::verify_credential(
                                     &credential,
-                                    ldp_opts,
                                     root_event_time,
                                     verifier,
                                     &mut context_loader,
@@ -286,9 +286,9 @@ mod tests {
     use ps_sig::message_structure::message_encode::EncodedMessages;
     use ps_sig::rsssig::RSignature;
     use ssi::jsonld::ContextLoader;
-    use ssi::ldp::now_ns;
+    use ssi::ldp::{now_ns, Proof};
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, Presentation, Proof, VCDateTime};
+    use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
     use trustchain_core::utils::init;
     use trustchain_core::vc::CredentialError;
     use trustchain_core::vc_encoding::CanonicalFlatten;
@@ -398,6 +398,7 @@ mod tests {
                 .as_ref()
                 .unwrap(),
         )
+        .unwrap()
         .derive_signature(
             &issuers_pk,
             EncodedMessages::from(signed_vc.flatten()).as_slice(),
@@ -405,7 +406,7 @@ mod tests {
         );
 
         // generate proof from derived RSS signature
-        let mut proof = Proof::new("RSSSignature");
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
         proof.proof_value = Some(r_rsig.to_hex());
         proof.verification_method = Some(issuers_pk.to_hex());
 
@@ -437,7 +438,7 @@ mod tests {
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
-        let mut proof = Proof::new("RSSSignature");
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
         proof.proof_value = Some(rsig.to_hex());
         proof.verification_method = Some(pk.to_hex());
         vc.add_proof(proof);

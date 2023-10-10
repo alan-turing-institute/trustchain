@@ -165,7 +165,7 @@ mod tests {
         // generate RSS signature
         let rsig = RSignature::new(messages.as_slice(), &sk);
         // generate proof from RSS signature
-        let mut proof = Proof::new("RSSSignature");
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
         proof.proof_value = Some(rsig.to_hex());
         proof.verification_method = Some(pk.to_hex());
         // verify proof
