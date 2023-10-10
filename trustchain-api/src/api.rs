@@ -131,7 +131,7 @@ pub trait TrustchainVCAPI {
                 // linked_data_proof_options.unwrap_or_default(), matching the behaviour of the
                 // credential.verify() method
                 let mut verification_result =
-                    if proof.type_ == ssi::ldp::ProofSuiteType::RSSSignature {
+                    if proof.type_ == ssi::ldp::ProofSuiteType::RSSSignature2023 {
                         // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
                         // orphan rule)
                         // more generally, some interface will be required to impl proof verification
@@ -406,7 +406,7 @@ mod tests {
         );
 
         // generate proof from derived RSS signature
-        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
         proof.proof_value = Some(r_rsig.to_hex());
         proof.verification_method = Some(issuers_pk.to_hex());
 
@@ -438,7 +438,7 @@ mod tests {
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
-        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
         proof.proof_value = Some(rsig.to_hex());
         proof.verification_method = Some(pk.to_hex());
         vc.add_proof(proof);

@@ -19,7 +19,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
 sha2 = "0.10.7"
-ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="1-rss", features = ["http-did", "secp256k1"]}
+ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="1-rss", features = ["http-did", "secp256k1", "rss"]}
 tempfile = { version = "3.3" }
 thiserror = "1.0"
 tokio = {version = "1.20.1", features = ["full"]}

@@ -417,7 +417,7 @@ impl RedactValues for Credential {
             };
 
             // generate proof from derived RSS signature
-            let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
+            let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
             proof.created = Some(now_ns());
             proof.proof_purpose = Some(ssi::vc::ProofPurpose::AssertionMethod);
             proof.proof_value = Some(r_sig.to_hex());
@@ -642,7 +642,7 @@ mod tests {
         // load complete (unredacted) vc
         let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
-        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature);
+        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
         proof.proof_value = Some(rsig.to_hex());
         proof.verification_method = Some(pk.to_hex());
         vc.add_proof(proof);
