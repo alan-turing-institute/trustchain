@@ -15,10 +15,11 @@ const DEFAULT_PORT: u16 = 8081;
 /// HTTP configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HTTPConfig {
-    /// Host address for server. For example, Android emulator `10.0.2.2` refers to `127.0.0.1` of
+    /// Host address for server.
     /// machine running emulator.
     pub host: IpAddr,
-    /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine
+    /// Hostname display in QR codes. For example, if using local server with an Android emulator
+    /// `10.0.2.2` refers to `127.0.0.1` of machine
     /// running emulator.
     pub host_display: String,
     /// Port for server
