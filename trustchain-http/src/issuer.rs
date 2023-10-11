@@ -1,6 +1,6 @@
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::str_to_qr_code_html;
+use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
@@ -127,19 +127,24 @@ impl TrustchainIssuerHTTPHandler {
     pub async fn get_issuer_qrcode(
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
-    ) -> Html<String> {
-        let http_str = if !http_config().https {
-            "http"
+    ) -> Result<Html<String>, TrustchainHTTPError> {
+        let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+            serde_json::to_string(&DIDQRCode {
+                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                route: "/vc/issuer/".to_string(),
+                id,
+            })
+            .unwrap()
         } else {
-            "https"
+            format!(
+                "{}://{}:{}/vc/issuer/{id}",
+                http_config().http_scheme(),
+                app_state.config.host_display,
+                app_state.config.port
+            )
         };
-        // Generate a QR code for server address and combination of name and UUID
-        let address_str = format!(
-            "{}://{}:{}/vc/issuer/{id}",
-            http_str, app_state.config.host_display, app_state.config.port
-        );
         // Respond with the QR code as a png embedded in html
-        Html(str_to_qr_code_html(&address_str, "Issuer"))
+        Ok(Html(str_to_qr_code_html(&qr_code_str, "Issuer")))
     }
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
@@ -149,7 +154,7 @@ impl TrustchainIssuerHTTPHandler {
     ) -> impl IntoResponse {
         let issuer_did = app_state
             .config
-            .issuer_did
+            .server_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
 
@@ -176,7 +181,7 @@ impl TrustchainIssuerHTTPHandler {
         info!("Received VC info: {:?}", vc_info);
         let issuer_did = app_state
             .config
-            .issuer_did
+            .server_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
         match app_state.credentials.get(&credential_id) {
@@ -217,7 +222,7 @@ mod tests {
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             ..Default::default()
         };
     }
@@ -264,7 +269,7 @@ mod tests {
         let mut actual_offer = response.json::<CredentialOffer>().await;
         let mut credential = state.credentials.get(&uid).unwrap().clone();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            state.config.issuer_did.as_ref().unwrap().to_string(),
+            state.config.server_did.as_ref().unwrap().to_string(),
         )));
         let mut expected_offer = CredentialOffer::generate(&credential, &uid);
 
@@ -279,11 +284,11 @@ mod tests {
         );
 
         // Try to get an offer for non-existent credential
-        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
-        let uri = format!("/vc/issuer/{uid}");
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
+        let path = format!("/vc/issuer/{id}");
         let app = TrustchainRouter::from(state.clone()).into_router();
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response.text().await,
@@ -300,12 +305,12 @@ mod tests {
             HashMap::new(),
         )))
         .into_router();
-        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
-        let uri = format!("/vc/issuer/{uid}");
+        let path = format!("/vc/issuer/{id}");
         let client = TestClient::new(app);
         let response = client
-            .post(&uri)
+            .post(&path)
             .json(&VcInfo {
                 subject_id: expected_subject_id.to_string(),
             })
