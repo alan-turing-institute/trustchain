@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use ssi::vc::LinkedDataProofOptions;
 use std::{fs, str::FromStr};
-use trustchain_core::TRUSTCHAIN_CONFIG;
+use trustchain_core::{verifier::Timestamp, TRUSTCHAIN_CONFIG};
 use trustchain_ion::{Endpoint, URL};
 
 use crate::mobile::FFIMobileError;
@@ -65,7 +65,7 @@ impl Default for EndpointOptions {
 #[serde(rename_all = "camelCase")]
 pub struct TrustchainOptions {
     pub signature_only: bool,
-    pub root_event_time: u32,
+    pub root_event_time: Timestamp,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

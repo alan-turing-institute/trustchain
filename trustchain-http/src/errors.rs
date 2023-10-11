@@ -68,6 +68,9 @@ impl From<IssuerError> for TrustchainHTTPError {
 impl From<TrustchainRootError> for TrustchainHTTPError {
     fn from(err: TrustchainRootError) -> Self {
         TrustchainHTTPError::RootError(err)
+    }
+}
+
 impl From<PresentationError> for TrustchainHTTPError {
     fn from(err: PresentationError) -> Self {
         TrustchainHTTPError::PresentationError(err)

@@ -1,6 +1,6 @@
 use crate::root::RootCandidatesResult;
-use chrono::NaiveDate;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
+use chrono::NaiveDate;
 use ssi::vc::Credential;
 use std::{collections::HashMap, sync::Mutex};
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
