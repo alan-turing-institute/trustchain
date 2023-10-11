@@ -128,23 +128,23 @@ impl TrustchainIssuerHTTPHandler {
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
     ) -> Result<Html<String>, TrustchainHTTPError> {
-        let http_str = if !http_config().https {
-            "http"
+        let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+            serde_json::to_string(&DIDQRCode {
+                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                route: "/vc/issuer/".to_string(),
+                uuid: id,
+            })
+            .unwrap()
         } else {
-            "https"
+            format!(
+                "{}://{}:{}/vc/issuer/{id}",
+                http_config().http_scheme(),
+                app_state.config.host_display,
+                app_state.config.port
+            )
         };
-        let did_qr_code_encoded = serde_json::to_string(&DIDQRCode {
-            did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
-            route: "/vc/issuer/".to_string(),
-            uuid: id,
-            endpoint: format!(
-                "{}://{}:{}",
-                http_str, app_state.config.host_display, app_state.config.port
-            ),
-        })
-        .unwrap();
         // Respond with the QR code as a png embedded in html
-        Ok(Html(str_to_qr_code_html(&did_qr_code_encoded, "Issuer")))
+        Ok(Html(str_to_qr_code_html(&qr_code_str, "Issuer")))
     }
 
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
@@ -154,7 +154,7 @@ impl TrustchainIssuerHTTPHandler {
     ) -> impl IntoResponse {
         let issuer_did = app_state
             .config
-            .issuer_did
+            .server_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
 
@@ -181,7 +181,7 @@ impl TrustchainIssuerHTTPHandler {
         info!("Received VC info: {:?}", vc_info);
         let issuer_did = app_state
             .config
-            .issuer_did
+            .server_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
         match app_state.credentials.get(&credential_id) {
@@ -222,7 +222,7 @@ mod tests {
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             ..Default::default()
         };
     }
@@ -269,7 +269,7 @@ mod tests {
         let mut actual_offer = response.json::<CredentialOffer>().await;
         let mut credential = state.credentials.get(&uid).unwrap().clone();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            state.config.issuer_did.as_ref().unwrap().to_string(),
+            state.config.server_did.as_ref().unwrap().to_string(),
         )));
         let mut expected_offer = CredentialOffer::generate(&credential, &uid);
 

@@ -12,7 +12,6 @@ pub(crate) struct DIDQRCode {
     pub did: String,
     pub route: String,
     pub uuid: String,
-    pub endpoint: String,
 }
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {

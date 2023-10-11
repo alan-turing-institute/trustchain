@@ -156,24 +156,24 @@ impl TrustchainVerifierHTTPHandler {
             .next()
             .ok_or(TrustchainHTTPError::RequestDoesNotExist)
             .map(|(uid, _)| {
-                let http_str = if !http_config().https {
-                    "http"
+                let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+                    serde_json::to_string(&DIDQRCode {
+                        did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                        route: "/vc/verifier/".to_string(),
+                        uuid: uid.to_owned(),
+                    })
+                    .unwrap()
                 } else {
-                    "https"
+                    format!(
+                        "{}://{}:{}/vc/verifier/{uid}",
+                        http_config().http_scheme(),
+                        app_state.config.host_display,
+                        app_state.config.port
+                    )
                 };
-                let did_qr_code_encoded = serde_json::to_string(&DIDQRCode {
-                    did: app_state.config.issuer_did.as_ref().unwrap().to_owned(),
-                    route: "/vc/verifier/".to_string(),
-                    uuid: uid.to_owned(),
-                    endpoint: format!(
-                        "{}://{}:{}",
-                        http_str, app_state.config.host_display, app_state.config.port
-                    ),
-                })
-                .unwrap();
                 (
                     StatusCode::OK,
-                    Html(str_to_qr_code_html(&did_qr_code_encoded, "Verifier")),
+                    Html(str_to_qr_code_html(&qr_code_str, "Verifier")),
                 )
             })
     }
@@ -194,7 +194,7 @@ mod tests {
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             root_event_time: Some(1666265405),
             ..Default::default()
         };

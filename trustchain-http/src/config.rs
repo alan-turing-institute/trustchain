@@ -18,16 +18,20 @@ pub struct HTTPConfig {
     /// Host address for server. For example, Android emulator `10.0.2.2` refers to `127.0.0.1` of
     /// machine running emulator.
     pub host: IpAddr,
-    /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine running emulator.
+    /// Hostname reference. For example, Android emulator 10.0.2.2 refers to 127.0.0.1 of machine
+    /// running emulator.
     pub host_display: String,
     /// Port for server
     pub port: u16,
-    /// Optional issuer DID
-    pub issuer_did: Option<String>,
+    /// Optional server DID if issuing or verifying
+    pub server_did: Option<String>,
     /// Flag indicating whether server uses https
     pub https: bool,
     /// Path containing certificate and key necessary for https
     pub https_path: Option<String>,
+    /// Display downstream DIDs (instead of URLs) in QR codes for verifiable endpoint retrieval
+    /// (`None` by default and unwrapped as `true`)
+    pub verifiable_endpoints: Option<bool>,
     /// Root event time for verifier.
     pub root_event_time: Option<Timestamp>,
 }
@@ -44,9 +48,10 @@ impl Default for HTTPConfig {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
             host_display: DEFAULT_HOST.to_string(),
             port: DEFAULT_PORT,
-            issuer_did: None,
+            server_did: None,
             https: false,
             https_path: None,
+            verifiable_endpoints: None,
             root_event_time: None,
         }
     }
@@ -62,6 +67,14 @@ impl HTTPConfig {
         format!("{}:{}", self.host, self.port)
             .parse::<SocketAddr>()
             .unwrap()
+    }
+    /// Provide "http" or "https" according to config.
+    pub fn http_scheme(&self) -> &str {
+        if self.https {
+            "https"
+        } else {
+            "http"
+        }
     }
 }
 
@@ -102,7 +115,7 @@ mod tests {
         host = "127.0.0.1"
         host_display = "127.0.0.1"
         port = 8081
-        issuer_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
+        server_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
         https = false
 
         [non_http]
@@ -110,11 +123,11 @@ mod tests {
         "#;
 
         let config: HTTPConfig = parse_toml(config_string);
-
+        assert!(config.verifiable_endpoints.is_none());
         assert_eq!(
             config,
             HTTPConfig {
-                issuer_did: Some(
+                server_did: Some(
                     "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA".to_string()
                 ),
                 ..HTTPConfig::default()
