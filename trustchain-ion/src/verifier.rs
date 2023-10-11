@@ -370,7 +370,7 @@ where
     // in-memory verifier HashMap.
     // If running on a Trustchain light client, make an API call to a full node to request the bundle.
     pub async fn fetch_bundle(&self, did: &str) -> Result<(), VerifierError> {
-        let response = reqwest::get(format!("{}{did}", self.endpoint()))
+        let response = reqwest::get(format!("{}did/bundle/{did}", self.endpoint()))
             .await
             .map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(

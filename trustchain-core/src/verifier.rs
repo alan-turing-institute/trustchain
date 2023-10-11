@@ -133,13 +133,13 @@ pub enum VerifierError {
     #[error("A commitment error during verification: {0}")]
     CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
-    #[error("A resolver error during verification.")]
+    #[error("A resolver error during verification: {0}")]
     ResolverFailure(ResolverError),
     /// Wrapped chain error.
-    #[error("A chain error during verification.")]
+    #[error("A chain error during verification: {0}")]
     ChainFailure(ChainError),
     /// Wrapped serde JSON deserialization error.
-    #[error("Failed to deserialize.")]
+    #[error("Failed to deserialize: {0}")]
     FailedToDeserialize(serde_json::Error),
 }
 
