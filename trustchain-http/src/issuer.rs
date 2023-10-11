@@ -132,7 +132,7 @@ impl TrustchainIssuerHTTPHandler {
             serde_json::to_string(&DIDQRCode {
                 did: app_state.config.server_did.as_ref().unwrap().to_owned(),
                 route: "/vc/issuer/".to_string(),
-                uuid: id,
+                id,
             })
             .unwrap()
         } else {
@@ -284,11 +284,11 @@ mod tests {
         );
 
         // Try to get an offer for non-existent credential
-        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
-        let uri = format!("/vc/issuer/{uid}");
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1555".to_string();
+        let path = format!("/vc/issuer/{id}");
         let app = TrustchainRouter::from(state.clone()).into_router();
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response.text().await,
@@ -305,12 +305,12 @@ mod tests {
             HashMap::new(),
         )))
         .into_router();
-        let uid = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
-        let uri = format!("/vc/issuer/{uid}");
+        let path = format!("/vc/issuer/{id}");
         let client = TestClient::new(app);
         let response = client
-            .post(&uri)
+            .post(&path)
             .json(&VcInfo {
                 subject_id: expected_subject_id.to_string(),
             })

@@ -13,8 +13,8 @@ pub(crate) struct DIDQRCode {
     pub did: String,
     /// HTTP route for making issuer or verifer requests.
     pub route: String,
-    /// UUID for identifying credential offer or presentation request.
-    pub uuid: String,
+    /// ID for identifying credential offer or presentation request.
+    pub id: String,
 }
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {

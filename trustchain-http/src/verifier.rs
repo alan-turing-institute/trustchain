@@ -88,12 +88,12 @@ pub enum PresentationOrCredential {
 impl TrustchainVerifierHTTPHandler {
     /// API endpoint taking the UUID of a presentation request.
     pub async fn get_verifier(
-        Path(request_id): Path<String>,
+        Path(id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         app_state
             .presentation_requests
-            .get(&request_id)
+            .get(&id)
             .ok_or(TrustchainHTTPError::RequestDoesNotExist)
             .map(|request| (StatusCode::OK, Json(request.to_owned())))
     }
@@ -160,7 +160,7 @@ impl TrustchainVerifierHTTPHandler {
                     serde_json::to_string(&DIDQRCode {
                         did: app_state.config.server_did.as_ref().unwrap().to_owned(),
                         route: "/vc/verifier/".to_string(),
-                        uuid: uid.to_owned(),
+                        id: uid.to_owned(),
                     })
                     .unwrap()
                 } else {
@@ -323,25 +323,25 @@ mod tests {
         ));
         // Test response for request in cache
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
 
         // Test response is OK
         assert_eq!(response.status(), StatusCode::OK);
 
         // Test response json same as cache
-        let expected_request = state.presentation_requests.get(uid).unwrap();
+        let expected_request = state.presentation_requests.get(id).unwrap();
         let actual_request = response.json::<PresentationRequest>().await;
         assert_eq!(&actual_request, expected_request);
 
         // Test response for non-existent request
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "dd2f6d68-35c5-11ee-98c7-d317dc01648b";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "dd2f6d68-35c5-11ee-98c7-d317dc01648b";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response.text().await,
@@ -359,12 +359,12 @@ mod tests {
         ));
         // Test post of credential to verifier
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
         let post_verifier: PostVerifier =
             serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
-        let response = client.post(&uri).json(&post_verifier).send().await;
+        let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Credential received and verified!", response.text().await);
     }
@@ -379,12 +379,12 @@ mod tests {
         ));
         // Test post of presentation to verifier
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
         let post_verifier: PostVerifier =
             serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
-        let response = client.post(&uri).json(&post_verifier).send().await;
+        let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Presentation received and verified!", response.text().await);
     }
