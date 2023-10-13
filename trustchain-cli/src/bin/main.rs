@@ -13,7 +13,10 @@ use trustchain_api::{
 use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
 use trustchain_ion::{
-    attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
+    attest::attest_operation,
+    create::{create_operation, create_operation_phrase},
+    get_ion_resolver,
+    verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -34,6 +37,7 @@ fn cli() -> Command {
                     Command::new("create")
                         .about("Creates a new controlled DID from a document state.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false)),
                 )
                 .subcommand(
@@ -93,16 +97,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-
-                    // Read doc state from file path
-                    let doc_state = if let Some(file_path) = file_path {
-                        Some(serde_json::from_reader(File::open(file_path)?)?)
+                    let mnemonic = matches!(sub_matches.get_one::<bool>("mnemonic"), Some(true));
+                    if !mnemonic {
+                        // Read doc state from file path
+                        let doc_state = if let Some(file_path) = file_path {
+                            Some(serde_json::from_reader(File::open(file_path)?)?)
+                        } else {
+                            None
+                        };
+                        create_operation(doc_state, verbose)?;
                     } else {
-                        None
-                    };
-
-                    // Read from the file path to a "Reader"
-                    create_operation(doc_state, verbose)?;
+                        let mut mnemonic = String::new();
+                        println!("Enter a mnemonic:");
+                        std::io::stdin().read_line(&mut mnemonic).unwrap();
+                        create_operation_phrase(&mnemonic, None)?;
+                    }
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
