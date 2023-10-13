@@ -126,7 +126,7 @@ pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, Trustch
     }
 }
 
-/// Queries the ION MongoDB for DID create operations with opIndex = 0 over a block height interval.
+/// Queries the ION MongoDB for DID create operations over a block height interval.
 pub async fn query_mongodb_on_interval(
     from: u32,
     to: u32,
@@ -138,7 +138,6 @@ pub async fn query_mongodb_on_interval(
         .find(
             doc! {
                 MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
-                MONGO_FILTER_OP_INDEX : 0,
                 MONGO_FILTER_TXN_TIME : {
                     "$gte" : from,
                     "$lte" : to
