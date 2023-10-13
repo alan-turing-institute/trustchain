@@ -8,7 +8,7 @@ use chrono::NaiveDate;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use trustchain_core::verifier::Timestamp;
 use trustchain_ion::root::{root_did_candidates, RootCandidate, TrustchainRootError};
 use trustchain_ion::utils::time_at_block_height;
@@ -21,7 +21,7 @@ pub trait TrustchainRootHTTP {
     /// Gets a vector of root DID candidates timestamped on a given date.
     async fn root_candidates(
         date: NaiveDate,
-        root_candidates: &Mutex<HashMap<NaiveDate, RootCandidatesResult>>,
+        root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
     ) -> Result<RootCandidatesResult, TrustchainHTTPError>;
     /// Gets a unix timestamp for a given Bitcoin transaction ID.
     async fn block_timestamp(height: u64) -> Result<TimestampResult, TrustchainHTTPError>;
@@ -34,20 +34,24 @@ pub struct TrustchainRootHTTPHandler {}
 impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
     async fn root_candidates(
         date: NaiveDate,
-        root_candidates: &Mutex<HashMap<NaiveDate, RootCandidatesResult>>,
+        root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
     ) -> Result<RootCandidatesResult, TrustchainHTTPError> {
         debug!("Getting root candidates for {0}", date);
-
-        // Return the cached vector of root DID candidates, if available.
-        if root_candidates.lock().unwrap().contains_key(&date) {
-            return Ok(root_candidates.lock().unwrap().get(&date).cloned().unwrap());
+        {
+            let read_guard = root_candidates.read().unwrap();
+            // Return the cached vector of root DID candidates, if available.
+            if read_guard.contains_key(&date) {
+                return Ok(read_guard.get(&date).cloned().unwrap());
+            }
         }
-
         let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
         debug!("Got root candidates: {:?}", &result);
 
         // Add the result to the cache.
-        root_candidates.lock().unwrap().insert(date, result.clone());
+        root_candidates
+            .write()
+            .unwrap()
+            .insert(date, result.clone());
         Ok(result)
     }
 

@@ -101,12 +101,8 @@ pub fn get_did_suffix(did: &str) -> &str {
 }
 
 /// Converts a short-form DID into a complete DID.
-pub fn get_did_from_suffix(did_suffix: &str, method: &str) -> String {
-    let mut did = String::from_str("did:").unwrap();
-    did.push_str(method);
-    did.push(':');
-    did.push_str(did_suffix);
-    did
+pub fn get_did_from_suffix(did_suffix: &str, method_and_network: &str) -> String {
+    format!("did:{method_and_network}:{did_suffix}")
 }
 
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
@@ -311,6 +307,24 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS,
     };
     use ssi::did::Document;
+
+    #[test]
+    fn test_get_did_from_suffix() {
+        let did_suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let mut method_and_network = "ion";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+
+        method_and_network = "ion:test";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+    }
 
     #[test]
     fn test_generate_key() {
