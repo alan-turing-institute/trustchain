@@ -104,7 +104,7 @@ pub fn get_did_suffix(did: &str) -> &str {
 pub fn get_did_from_suffix(did_suffix: &str, method: &str) -> String {
     let mut did = String::from_str("did:").unwrap();
     did.push_str(method);
-    did.push_str(":");
+    did.push(':');
     did.push_str(did_suffix);
     did
 }
@@ -466,12 +466,12 @@ mod tests {
         assert!(!json_contains(&candidate, &expected));
 
         // Entire expected object nested:
-        let exp_str = r##"{"publicKeyJwk" : {
+        let exp_str = r#"{"publicKeyJwk" : {
         "crv": "secp256k1",
         "kty": "EC",
         "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
         "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-    }}"##;
+    }}"#;
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));

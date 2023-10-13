@@ -239,11 +239,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let issuer = credential
                             .get_issuer()
                             .expect("No issuer present in credential.");
-                        let chain =
-                            TrustchainAPI::verify(issuer, root_event_time.into(), &verifier)
-                                .await
-                                // Can unwrap as already verified above.
-                                .unwrap();
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
+                            .await
+                            // Can unwrap as already verified above.
+                            .unwrap();
                         if verbose_count > 1 {
                             let (_, doc, doc_meta) =
                                 resolver.resolve_as_result(issuer).await.unwrap();

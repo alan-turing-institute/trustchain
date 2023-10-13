@@ -3,10 +3,10 @@ use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
-    block_header, decode_ipfs_content, locate_transaction, query_ipfs, query_mongodb, transaction,
-    tx_to_op_return_cid, TransactionLocator,
+    block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
+    tx_to_op_return_cid,
 };
-use crate::{MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME, URL};
+use crate::URL;
 use async_trait::async_trait;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -20,7 +20,7 @@ use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
-use std::convert::TryInto;
+
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -28,7 +28,7 @@ use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
 use trustchain_core::resolver::{Resolver, ResolverError};
-use trustchain_core::utils::get_did_suffix;
+
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Data bundle for DID timestamp verification.

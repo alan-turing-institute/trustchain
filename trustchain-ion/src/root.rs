@@ -85,12 +85,12 @@ pub async fn root_did_candidates(
         .filter(|x| future::ready(x.is_ok()))
         .map(|x| x.unwrap())
         .filter_map(|doc| async move {
-            if !doc.get_str(MONGO_FILTER_DID_SUFFIX).is_ok() {
+            if doc.get_str(MONGO_FILTER_DID_SUFFIX).is_err() {
                 return None;
             }
             let did_suffix = doc.get_str(MONGO_FILTER_DID_SUFFIX).unwrap();
             // TODO: test vs mainnet needs handling here:
-            let did = get_did_from_suffix(&did_suffix, ION_TEST_METHOD);
+            let did = get_did_from_suffix(did_suffix, ION_TEST_METHOD);
             let tx_locator = locate_transaction(&did, rpc_client).await;
             if tx_locator.is_err() {
                 return None;

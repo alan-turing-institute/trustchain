@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_deserialize() {
-        let config_string = r##"
+        let config_string = r#"
         [cli]
         root_event_time = 1666971942
         ion_endpoint.host = "http://127.0.0.1"
@@ -54,7 +54,7 @@ mod tests {
 
         [non_core]
         key = "value"
-        "##;
+        "#;
 
         let config: CLIConfig = parse_toml(config_string);
 

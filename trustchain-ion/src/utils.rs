@@ -3,22 +3,16 @@ use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
 use bitcoin::{BlockHash, BlockHeader, Transaction};
-use bitcoincore_rpc::{
-    bitcoincore_rpc_json::{BlockStatsFields, HashOrHeight},
-    RpcApi,
-};
+use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::{StreamExt, TryStreamExt};
-use ipfs_api_backend_hyper::{response::BitswapWantlistResponse, IpfsApi, IpfsClient};
+use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use trustchain_core::{
-    utils::get_did_suffix,
-    verifier::{Timestamp, VerifierError},
-};
+use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
@@ -349,11 +343,8 @@ pub fn last_block_height_before(
 
     // Following https://github.com/kristapsk/bitcoin-scripts/blob/master/blockheightat.sh
 
-    let mut start_height = match start_height {
-        Some(x) => x,
-        None => 1,
-    };
-    let start_unixtime = time_at_block_height(start_height, Some(&client))?;
+    let mut start_height = start_height.unwrap_or(1);
+    let start_unixtime = time_at_block_height(start_height, Some(client))?;
     let target_unixtime = first_unixtime_on(date);
 
     if target_unixtime < start_unixtime as i64 {
@@ -361,7 +352,7 @@ pub fn last_block_height_before(
     }
 
     let mut end_height = client.get_block_count()?; // Latest block height
-    let end_unixtime = time_at_block_height(end_height, Some(&client))?;
+    let end_unixtime = time_at_block_height(end_height, Some(client))?;
 
     if target_unixtime >= end_unixtime as i64 {
         return Err(TrustchainBitcoinError::TargetDateOutOfRange);
@@ -369,7 +360,7 @@ pub fn last_block_height_before(
 
     while end_height - start_height > 1 {
         let current_height = (start_height + end_height) / 2; // Rounds down.
-        let current_unixtime = time_at_block_height(current_height, Some(&client))?;
+        let current_unixtime = time_at_block_height(current_height, Some(client))?;
 
         if current_unixtime as i64 > target_unixtime {
             end_height = current_height; // TODO CHECK: original script has: current_height - 1;
@@ -401,9 +392,9 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{root::RootCandidate, sidetree::CoreIndexFile, ION_TEST_METHOD};
+    use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
-    use futures::future;
+
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
@@ -413,7 +404,7 @@ mod tests {
             TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,
             TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF,
         },
-        utils::{get_did_from_suffix, HasEndpoints, HasKeys},
+        utils::{HasEndpoints, HasKeys},
     };
 
     const TEST_TRANSACTION: &str = r#"{"version":2,"lock_time":0,"input":[{"previous_output":"5953f37dfeb8343d67cde66e752da195c38c07395d1ce03002e71a10bd04dd71:1","script_sig":"473044022021cc3feacddcdda52b0f8313d6e753c3fcd9f6aafb53e52f4e3aae5c5bdef3ba02204774e9ae6f36e9c58a635d64af99a5c2a665cb1ad992a983d0e6f7feab0c0502012103d28a65a6d49287eaf550380b3e9f71cf711069664b2c20826d77f19a0c035507","sequence":4294967295,"witness":[]}],"output":[{"value":0,"script_pubkey":"6a34696f6e3a332e516d5276675a6d344a334a5378666b3477526a453275324869325537566d6f62596e7071687148355150364a3937"},{"value":15617133,"script_pubkey":"76a914c7f6630ac4f5e2a92654163bce280931631418dd88ac"}]}"#;
