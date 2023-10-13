@@ -118,7 +118,18 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
-            err @ TrustchainHTTPError::RootError(_) => (StatusCode::BAD_REQUEST, err.to_string()),
+            ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
+                TrustchainRootError::NoUniqueRootEvent(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::InvalidDate(_, _, _) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::FailedToParseBlockHeight(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
             err @ TrustchainHTTPError::FailedToVerifyCredential => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
