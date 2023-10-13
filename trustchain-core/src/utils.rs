@@ -8,7 +8,7 @@ use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethod
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
+
 use std::sync::Once;
 
 /// Gets the type of an object as a String. For diagnostic purposes (debugging) only.

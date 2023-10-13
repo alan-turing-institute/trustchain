@@ -8,7 +8,7 @@ use chrono::NaiveDate;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use trustchain_core::verifier::Timestamp;
 use trustchain_ion::root::{root_did_candidates, RootCandidate, TrustchainRootError};
 use trustchain_ion::utils::time_at_block_height;

@@ -2,8 +2,8 @@ use crate::root::RootCandidatesResult;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
 use chrono::NaiveDate;
 use ssi::vc::Credential;
+use std::collections::HashMap;
 use std::sync::RwLock;
-use std::{collections::HashMap, sync::Mutex};
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 
