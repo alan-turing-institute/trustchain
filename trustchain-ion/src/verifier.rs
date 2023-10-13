@@ -131,12 +131,12 @@ where
 
     /// Gets RPC client.
     fn rpc_client(&self) -> &bitcoincore_rpc::Client {
-        self.rpc_client.as_ref().unwrap() // TODO: handle failure here.
+        self.rpc_client.as_ref().unwrap()
     }
 
     /// Gets IPFS client.
     fn ipfs_client(&self) -> &IpfsClient {
-        self.ipfs_client.as_ref().unwrap() // TODO: handle failure here.
+        self.ipfs_client.as_ref().unwrap()
     }
 
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
