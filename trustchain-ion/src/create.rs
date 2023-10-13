@@ -121,7 +121,7 @@ mod test {
     use trustchain_core::utils::init;
 
     // Test document state for making a create operation from
-    const TEST_DOC_STATE: &str = r##"{
+    const TEST_DOC_STATE: &str = r#"{
         "publicKeys": [
         {
             "id": "Mz94EfSCueClM5qv62SXxtLWRj4Ti7rR2wLWmW37aCs",
@@ -151,7 +151,7 @@ mod test {
             }
         }
         ]
-    }"##;
+    }"#;
 
     #[test]
     fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,15 +1,18 @@
 //! ION-related utilities.
-use crate::config::ion_config;
+use crate::{
+    config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
+};
 use bitcoin::{BlockHash, BlockHeader, Transaction};
-use bitcoincore_rpc::RpcApi;
+use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
+use chrono::NaiveDate;
 use flate2::read::GzDecoder;
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
-use mongodb::{bson::doc, options::ClientOptions};
+use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use trustchain_core::verifier::VerifierError;
+use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
     TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
@@ -20,6 +23,10 @@ use crate::{
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";
 const ION_OPERATION_COUNT_DELIMITER: &str = ".";
 const DID_DELIMITER: &str = ":";
+
+/// Locator for a transaction on the PoW ledger, given by the pair:
+/// (block_hash, tx_index_within_block).
+pub type TransactionLocator = (BlockHash, u32);
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
@@ -84,22 +91,19 @@ pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsErro
     Ok(serde_json::from_str(&ipfs_content_str)?)
 }
 
-/// Queries the ION MongoDB for a DID operation.
-pub async fn query_mongodb(
-    did: &str,
-    client: Option<mongodb::Client>,
-) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
-    // If necessary, construct a MongoDB client.
-    let client = match client {
-        Some(x) => x,
-        None => {
-            let client_options = ClientOptions::parse(&ion_config().mongo_connection_string)
-                .await
-                .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
-            mongodb::Client::with_options(client_options)
-                .map_err(TrustchainMongodbError::ErrorCreatingClient)?
-        }
-    };
+/// Gets a MongoDB client instance.
+pub async fn mongodb_client() -> Result<mongodb::Client, TrustchainMongodbError> {
+    let client_options = ClientOptions::parse(&ion_config().mongo_connection_string)
+        .await
+        .map_err(TrustchainMongodbError::ErrorCreatingClient)?;
+    mongodb::Client::with_options(client_options)
+        .map_err(TrustchainMongodbError::ErrorCreatingClient)
+}
+
+/// Queries the ION MongoDB for a DID create operation.
+pub async fn query_mongodb(did: &str) -> Result<mongodb::bson::Document, TrustchainMongodbError> {
+    // Construct a MongoDB client.
+    let client = mongodb_client().await?;
 
     // TODO: when extending to other operations aside from "create" consider other queries
     // (different to .find_one()) to see whether a fuller collection of DID operations can be obtained
@@ -120,6 +124,30 @@ pub async fn query_mongodb(
         Ok(None) => Err(TrustchainMongodbError::QueryReturnedNone),
         Err(e) => Err(TrustchainMongodbError::QueryReturnedError(e)),
     }
+}
+
+/// Queries the ION MongoDB for DID create operations with opIndex = 0 over a block height interval.
+pub async fn query_mongodb_on_interval(
+    from: u32,
+    to: u32,
+) -> Result<Cursor<mongodb::bson::Document>, TrustchainMongodbError> {
+    let client = mongodb_client().await?;
+    let cursor: Result<Cursor<mongodb::bson::Document>, mongodb::error::Error> = client
+        .database(&ion_config().mongo_database_ion_core)
+        .collection(MONGO_COLLECTION_OPERATIONS)
+        .find(
+            doc! {
+                MONGO_FILTER_TYPE : MONGO_CREATE_OPERATION,
+                MONGO_FILTER_OP_INDEX : 0,
+                MONGO_FILTER_TXN_TIME : {
+                    "$gte" : from,
+                    "$lte" : to
+                }
+            },
+            None,
+        )
+        .await;
+    Ok(cursor?)
 }
 
 /// Gets a Bitcoin RPC client instance.
@@ -197,6 +225,56 @@ pub fn transaction(
         .map(|block| block.txdata[tx_index as usize].to_owned())?)
 }
 
+/// Returns the location on the ledger of the transaction embedding
+/// the most recent ION operation for the given DID.
+pub async fn locate_transaction(
+    did: &str,
+    client: &bitcoincore_rpc::Client,
+) -> Result<TransactionLocator, VerifierError> {
+    let suffix = get_did_suffix(did);
+
+    // Query the database for a bson::Document.
+    let doc = query_mongodb(suffix).await.map_err(|e| {
+        VerifierError::ErrorFetchingVerificationMaterial(
+            "Error querying MongoDB".to_string(),
+            e.into(),
+        )
+    })?;
+
+    // Extract the block height.
+    let block_height: i64 = doc
+        .get_i32(MONGO_FILTER_TXN_TIME)
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+        .into();
+
+    // Convert to block height u32
+    let block_height: u32 = block_height
+        .try_into()
+        .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
+
+    // Extract the index of the transaction inside the block.
+    let tx_index = doc
+        .get_i64(MONGO_FILTER_TXN_NUMBER)
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
+        .to_string()
+        .strip_prefix(&block_height.to_string())
+        .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
+        .parse::<u32>()
+        .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
+
+    // If call to get_network_info fails, return error
+    client
+        .get_network_info()
+        .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
+
+    // Convert the block height to a block hash.
+    let block_hash = client
+        .get_block_hash(u64::from(block_height))
+        .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+
+    Ok((block_hash, tx_index))
+}
+
 /// Gets a Merkle proof for the given Bitcoin transaction via the RPC API.
 pub fn merkle_proof(
     tx: &Transaction,
@@ -224,6 +302,89 @@ pub fn int_to_little_endian_hex(int: &u32) -> String {
     reverse_endianness(&hex).unwrap()
 }
 
+/// Gets the block time at a particular height, as a Unix time.
+pub fn time_at_block_height(
+    block_height: u64,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<u64, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return time_at_block_height(block_height, Some(&rpc_client));
+    };
+    match client
+        .unwrap()
+        .get_block_stats_fields(block_height, &[BlockStatsFields::Time])?
+        .time
+    {
+        Some(time) => Ok(time),
+        None => Err(TrustchainBitcoinError::BlockTimeAtHeightError(block_height)),
+    }
+}
+
+/// Returns the unix timestamp at 00h:00m:00s UTC on the given date.
+fn first_unixtime_on(date: NaiveDate) -> i64 {
+    let datetime = date.and_hms_opt(0, 0, 0).unwrap();
+    datetime.timestamp()
+}
+
+/// Returns the height of the last block mined before the given date.
+pub fn last_block_height_before(
+    date: NaiveDate,
+    start_height: Option<u64>,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<u64, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return last_block_height_before(date, start_height, Some(&rpc_client));
+    }
+    let client = client.unwrap();
+
+    // Following https://github.com/kristapsk/bitcoin-scripts/blob/master/blockheightat.sh
+
+    let mut start_height = start_height.unwrap_or(1);
+    let start_unixtime = time_at_block_height(start_height, Some(client))?;
+    let target_unixtime = first_unixtime_on(date);
+
+    if target_unixtime < start_unixtime as i64 {
+        return Err(TrustchainBitcoinError::TargetDateOutOfRange);
+    }
+
+    let mut end_height = client.get_block_count()?; // Latest block height
+    let end_unixtime = time_at_block_height(end_height, Some(client))?;
+
+    if target_unixtime >= end_unixtime as i64 {
+        return Err(TrustchainBitcoinError::TargetDateOutOfRange);
+    }
+
+    while end_height - start_height > 1 {
+        let current_height = (start_height + end_height) / 2; // Rounds down.
+        let current_unixtime = time_at_block_height(current_height, Some(client))?;
+
+        if current_unixtime as i64 > target_unixtime {
+            end_height = current_height; // TODO CHECK: original script has: current_height - 1;
+        } else if (current_unixtime as i64) < target_unixtime {
+            start_height = current_height; // TODO CHECK: original script has: current_height + 1;
+        }
+        // TODO: WHAT IF current_unixtime == target_unixtime?
+        // (does the loop exit and is start_height the right result in that case?)
+    }
+    Ok(start_height)
+}
+
+/// Returns the range of block heights mined on the given date.
+pub fn block_height_range_on_date(
+    date: NaiveDate,
+    start_height: Option<u64>,
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<(u64, u64), TrustchainBitcoinError> {
+    let first_block = last_block_height_before(date, start_height, client)? + 1;
+    let next_date = date.succ_opt().unwrap();
+    let last_block = last_block_height_before(next_date, Some(first_block), client)?;
+    Ok((first_block, last_block))
+}
+
 #[cfg(test)]
 mod tests {
     use core::panic;
@@ -233,6 +394,7 @@ mod tests {
     use super::*;
     use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
+
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
@@ -414,9 +576,50 @@ mod tests {
     #[ignore = "Integration test requires MongoDB"]
     async fn test_query_mongodb() {
         let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let doc = query_mongodb(suffix, None).await.unwrap();
+        let doc = query_mongodb(suffix).await.unwrap();
         let block_height: i32 = doc.get_i32("txnTime").unwrap();
         assert_eq!(block_height, 2377445);
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_query_mongodb_on_interval_1902375_to_1902377() {
+        let mut result = query_mongodb_on_interval(1902375, 1902377).await.unwrap();
+
+        let mut dids: Vec<String> = Vec::new();
+        assert_eq!(dids.len(), 0);
+        while let Some(doc) = result.next().await {
+            dids.push(
+                doc.unwrap()
+                    .get_str(MONGO_FILTER_DID_SUFFIX)
+                    .unwrap()
+                    .to_owned(),
+            );
+        }
+
+        // Two ION operations with opIndex = 0 exist on testnet during this interval.
+        // db.operations.find({opIndex: 0, txnTime: { $gte: 1902375, $lte: 1902377}})
+        assert_eq!(dids.len(), 2);
+        assert!(dids.contains(&String::from(
+            "EiDlkji8etHKKZl58SQNx02_HHSJkotwYmDqF77AfVvPtA"
+        )));
+        assert!(dids.contains(&String::from(
+            "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ"
+        )));
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_query_mongodb_on_interval_2377360_to_2377519() {
+        let result = query_mongodb_on_interval(2377360, 2377519).await.unwrap();
+        let docs = result
+            .try_collect::<Vec<mongodb::bson::Document>>()
+            .await
+            .unwrap();
+
+        // There are 38 testnet ION create operations with opIndex = 0 testnet during this interval.
+        // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gte: 2377360, $lte: 2377519}})
+        assert_eq!(docs.len(), 38);
     }
 
     #[test]
@@ -442,6 +645,44 @@ mod tests {
         assert_ne!(tx.txid().to_string(), not_expected);
     }
 
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_locate_transaction() {
+        let client = rpc_client();
+
+        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 1902377
+        let expected_block_hash =
+            BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 118);
+
+        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 2377445
+        let expected_block_hash =
+            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 3);
+
+        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
+        // Block 2377339
+        let expected_block_hash =
+            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
+                .unwrap();
+        assert_eq!(block_hash, expected_block_hash);
+        assert_eq!(transaction_index, 10);
+
+        // Invalid DID
+        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+        let result = locate_transaction(invalid_did, &client).await;
+        assert!(result.is_err());
+    }
+
     #[test]
     fn test_tx_to_op_return_data() {
         // The transaction, including OP_RETURN data, can be found on-chain:
@@ -459,5 +700,46 @@ mod tests {
         let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
         let actual = tx_to_op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_time_at_block_height() {
+        // The block can be found on-chain at:
+        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+        let block_height = 2377445;
+        let result = time_at_block_height(block_height, None);
+
+        assert!(result.is_ok());
+        let time = result.unwrap();
+        let expected = 1666265405;
+        assert_eq!(time, expected);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_last_block_height_before() {
+        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+        let result = last_block_height_before(date, None, None).unwrap();
+
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+        assert_eq!(result, 2377359);
+
+        let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
+        let result = last_block_height_before(date, None, None).unwrap();
+
+        // The first testnet block mined on 2023-09-16 (UTC) was at height 2501917.
+        assert_eq!(result, 2501916);
+    }
+
+    #[test]
+    #[ignore = "Integration test requires Bitcoin"]
+    fn test_block_range_on_date() {
+        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+        let result = block_height_range_on_date(date, None, None).unwrap();
+
+        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+        // The last testnet block mined on 2022-10-20 (UTC) was at height 2377519.
+        assert_eq!(result, (2377360, 2377519));
     }
 }

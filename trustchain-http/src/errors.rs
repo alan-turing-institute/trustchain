@@ -6,6 +6,7 @@ use trustchain_core::{
     commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError, vc::CredentialError,
     verifier::VerifierError, vp::PresentationError,
 };
+use trustchain_ion::root::TrustchainRootError;
 
 // TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
@@ -20,6 +21,8 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
+    #[error("Trustchain root error: {0}")]
+    RootError(TrustchainRootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
     #[error("Credential does not exist.")]
@@ -55,9 +58,16 @@ impl From<VerifierError> for TrustchainHTTPError {
         TrustchainHTTPError::VerifierError(err)
     }
 }
+
 impl From<IssuerError> for TrustchainHTTPError {
     fn from(err: IssuerError) -> Self {
         TrustchainHTTPError::IssuerError(err)
+    }
+}
+
+impl From<TrustchainRootError> for TrustchainHTTPError {
+    fn from(err: TrustchainRootError) -> Self {
+        TrustchainHTTPError::RootError(err)
     }
 }
 
@@ -108,6 +118,18 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
+            ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
+                TrustchainRootError::NoUniqueRootEvent(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::InvalidDate(_, _, _) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::FailedToParseBlockHeight(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
             err @ TrustchainHTTPError::FailedToVerifyCredential => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }

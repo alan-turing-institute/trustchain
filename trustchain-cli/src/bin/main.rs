@@ -148,7 +148,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
                     };
-                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    let did_chain =
+                        TrustchainAPI::verify(did, root_event_time.into(), &verifier).await?;
                     println!("{did_chain}");
                 }
                 _ => panic!("Unrecognised DID subcommand."),
@@ -186,8 +187,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
-                        Some(time) => time.parse::<u32>().unwrap(),
-                        None => cli_config().root_event_time,
+                        Some(time) => time.parse::<u64>().unwrap(),
+                        None => cli_config().root_event_time.into(),
                     };
                     // Deserialize
                     let credential: Credential =

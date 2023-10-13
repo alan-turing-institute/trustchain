@@ -1,6 +1,9 @@
+use crate::root::RootCandidatesResult;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
+use chrono::NaiveDate;
 use ssi::vc::Credential;
 use std::collections::HashMap;
+use std::sync::RwLock;
 use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 
@@ -11,6 +14,7 @@ pub struct AppState {
     pub config: HTTPConfig,
     pub verifier: IONVerifier<IONResolver>,
     pub credentials: HashMap<String, Credential>,
+    pub root_candidates: RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
     pub presentation_requests: HashMap<String, PresentationRequest>,
 }
 
@@ -25,6 +29,7 @@ impl AppState {
                 .as_slice(),
         )
         .expect("Credential cache could not be deserialized.");
+        let root_candidates = RwLock::new(HashMap::new());
         let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
                 // If no cache, default to empty
@@ -36,6 +41,7 @@ impl AppState {
             config,
             verifier,
             credentials,
+            root_candidates,
             presentation_requests,
         }
     }
@@ -45,10 +51,12 @@ impl AppState {
         presentation_requests: HashMap<String, PresentationRequest>,
     ) -> Self {
         let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let root_candidates = RwLock::new(HashMap::new());
         Self {
             config,
             verifier,
             credentials,
+            root_candidates,
             presentation_requests,
         }
     }

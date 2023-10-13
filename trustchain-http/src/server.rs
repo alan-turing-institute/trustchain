@@ -1,6 +1,8 @@
 use crate::config::http_config;
 use crate::middleware::validate_did;
-use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
+use crate::{
+    config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
+};
 use axum::routing::IntoMakeService;
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
@@ -84,6 +86,14 @@ impl TrustchainRouter {
                     "/did/bundle/:id",
                     get(resolver::TrustchainHTTPHandler::get_verification_bundle)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
+                )
+                .route(
+                    "/root",
+                    get(root::TrustchainRootHTTPHandler::get_root_candidates),
+                )
+                .route(
+                    "/root/timestamp/:height",
+                    get(root::TrustchainRootHTTPHandler::get_block_timestamp),
                 )
                 .with_state(shared_state),
         }
