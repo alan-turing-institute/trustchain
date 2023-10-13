@@ -4,7 +4,7 @@ use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 // The root event time of DID documents in `data.rs` used for unit tests and the test below.
-const ROOT_EVENT_TIME_1: u32 = 1666265405;
+const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
 #[tokio::test]
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000."]

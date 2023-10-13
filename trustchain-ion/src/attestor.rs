@@ -1,9 +1,10 @@
 //! Implementation of `Attestor` API for ION DID method.
+use crate::ion::IONTest as ION;
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use ssi::did::Document;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions, Presentation, URI};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
 use std::convert::TryFrom;
@@ -149,6 +150,7 @@ impl Issuer for IONAttestor {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         // Get the signing key.
         let signing_key = self.signing_key(key_id)?;
@@ -157,8 +159,9 @@ impl Issuer for IONAttestor {
         let proof = credential
             .generate_proof(
                 &signing_key,
-                &linked_data_proof_options.unwrap_or_default(),
+                &linked_data_proof_options.unwrap_or(LinkedDataProofOptions::default()),
                 resolver,
+                context_loader,
             )
             .await?;
 
@@ -185,6 +188,7 @@ impl Holder for IONAttestor {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &T,
+        context_loader: &mut ContextLoader,
     ) -> Result<Presentation, HolderError> {
         // If no ldp options passed, use default with ProofPurpose::Authentication.
         let options = linked_data_proof_options.unwrap_or(LinkedDataProofOptions {
@@ -207,7 +211,9 @@ impl Holder for IONAttestor {
         };
 
         // Generate proof
-        let proof = vp.generate_proof(&signing_key, &options, resolver).await?;
+        let proof = vp
+            .generate_proof(&signing_key, &options, resolver, context_loader)
+            .await?;
         // Add proof to credential
         vp.add_proof(proof);
         Ok(vp)
@@ -267,9 +273,9 @@ mod tests {
 
         // Check signature
         let proof_result = result?;
-        let valid_decoded: Result<String, ssi::error::Error> =
+        let valid_decoded: Result<String, ssi::jws::Error> =
             ssi::jwt::decode_verify(&proof_result, valid_key);
-        let invalid_decoded: Result<String, ssi::error::Error> =
+        let invalid_decoded: Result<String, ssi::jws::Error> =
             ssi::jwt::decode_verify(&proof_result, invalid_key);
         assert!(valid_decoded.is_ok());
         assert!(invalid_decoded.is_err());
@@ -309,7 +315,9 @@ mod tests {
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
 
         // Attest to doc
-        let vc_with_proof = target.sign(&vc, None, None, &resolver).await;
+        let vc_with_proof = target
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await;
 
         // Check attest was ok
         assert!(vc_with_proof.is_ok());
@@ -343,13 +351,18 @@ mod tests {
 
         // Sign credential (expect failure).
         // Note: Signing a vc with a Some() issuer field requires a running ion node
-        let vc_with_proof = attestor.sign(&vc, None, None, &resolver).await;
+        let vc_with_proof = attestor
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await;
         assert!(vc_with_proof.is_err());
 
+        // Check error matches
         assert!(matches!(
             vc_with_proof,
-            Err(IssuerError::SSI(ssi::error::Error::KeyMismatch))
-        ));
+            Err(IssuerError::LDP(ssi::ldp::Error::DID(
+                ssi::did::Error::KeyMismatch
+            )))
+        ))
     }
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
@@ -363,7 +376,10 @@ mod tests {
         let holder = IONAttestor::new(holder_did);
 
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        let vc_with_proof = issuer.sign(&vc, None, None, &resolver).await.unwrap();
+        let vc_with_proof = issuer
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await
+            .unwrap();
 
         // Create Presentation, initially with holder field defaulting to None
         let presentation = Presentation {
@@ -374,7 +390,13 @@ mod tests {
         // Holder field set to the DID of the signing holder by 'sign_presentation'
         // The DID is resolved during signing, which requires a running ion node.
         let vp = holder
-            .sign_presentation(&presentation, None, None, &resolver)
+            .sign_presentation(
+                &presentation,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await;
 
         assert!(vp.is_ok());

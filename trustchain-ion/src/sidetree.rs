@@ -1,8 +1,6 @@
 //! Data structures for deserializing Sidetree IPFS data.
-use did_ion::{
-    sidetree::{Delta, Sidetree, SuffixData},
-    ION,
-};
+use crate::ion::IONTest as ION;
+use did_ion::sidetree::{Delta, Sidetree, SuffixData};
 use serde::{Deserialize, Serialize};
 use trustchain_core::{commitment::CommitmentError, utils::get_did_suffix};
 

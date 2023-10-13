@@ -1,12 +1,12 @@
 //! ION operation for DID creation.
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
+use crate::ion::IONTest as ION;
 use crate::mnemonic::IONKeys;
 use bip39::Mnemonic;
 use did_ion::sidetree::{CreateOperation, DIDStatePatch};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
-use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
