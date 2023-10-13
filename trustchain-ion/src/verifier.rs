@@ -285,55 +285,6 @@ where
             .map(|block_header| bitcoin::consensus::serialize(&block_header))
     }
 
-    // MOVED TO utils.rs:
-    // /// Returns the location on the ledger of the transaction embedding
-    // /// the most recent ION operation for the given DID.
-    // async fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
-    //     let suffix = get_did_suffix(did);
-
-    //     // Query the database for a bson::Document.
-    //     let doc = query_mongodb(suffix).await.map_err(|e| {
-    //         VerifierError::ErrorFetchingVerificationMaterial(
-    //             "Error querying MongoDB".to_string(),
-    //             e.into(),
-    //         )
-    //     })?;
-
-    //     // Extract the block height.
-    //     let block_height: i64 = doc
-    //         .get_i32(MONGO_FILTER_TXN_TIME)
-    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-    //         .into();
-
-    //     // Convert to block height u32
-    //     let block_height: u32 = block_height
-    //         .try_into()
-    //         .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
-
-    //     // Extract the index of the transaction inside the block.
-    //     let tx_index = doc
-    //         .get_i64(MONGO_FILTER_TXN_NUMBER)
-    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-    //         .to_string()
-    //         .strip_prefix(&block_height.to_string())
-    //         .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
-    //         .parse::<u32>()
-    //         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
-
-    //     // If call to get_network_info fails, return error
-    //     self.rpc_client()
-    //         .get_network_info()
-    //         .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
-
-    //     // Convert the block height to a block hash.
-    //     let block_hash = self
-    //         .rpc_client()
-    //         .get_block_hash(u64::from(block_height))
-    //         .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
-
-    //     Ok((block_hash, tx_index))
-    // }
-
     /// Gets a DID verification bundle, including a fetch if not initially cached.
     pub async fn verification_bundle(
         &self,
