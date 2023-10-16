@@ -153,12 +153,26 @@ impl TrustchainIssuerHTTPHandler {
     /// Generates QR code to display to holder to receive requested credential.
     pub async fn get_issuer_qrcode(
         State(app_state): State<Arc<AppState>>,
-        Form(form): Form<HashMap<String, String>>,
+        Path(id): Path<String>,
     ) -> Html<String> {
-        let id = form
-            .get("uuid")
-            .expect("'uuid' key not in form.")
-            .to_owned();
+        let http_str = if !http_config().https {
+            "http"
+        } else {
+            "https"
+        };
+        // Generate a QR code for server address and combination of name and UUID
+        let address_str = format!(
+            "{}://{}:{}/vc/issuer/{id}",
+            http_str, app_state.config.host_reference, app_state.config.port
+        );
+        // Respond with the QR code as a png embedded in html
+        Html(str_to_qr_code_html(&address_str, "Issuer"))
+    }
+
+    pub async fn get_issuer_qrcode_rss(
+        State(app_state): State<Arc<AppState>>,
+        Path(id): Path<String>,
+    ) -> Html<String> {
         let http_str = if !http_config().https {
             "http"
         } else {
@@ -183,7 +197,6 @@ impl TrustchainIssuerHTTPHandler {
             .issuer_did
             .as_ref()
             .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
-
         app_state
             .credentials
             .get(&credential_id)

@@ -34,8 +34,12 @@ impl TrustchainRouter {
             router: Router::new()
                 .route("/", get(static_handlers::index))
                 .route(
-                    "/issuer",
+                    "/issuer/:id",
                     get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode),
+                )
+                .route(
+                    "/issuer_rss/:id",
+                    get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode_rss),
                 )
                 .route(
                     "/verifier",

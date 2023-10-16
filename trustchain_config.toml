@@ -1,18 +1,52 @@
+# Frozen version of the config to work with the end of hack week version of
+# the RSS impl on mobile work.
+
+# To run, set TRUSTCHAIN_CONFIG to reference this file (whilst keeping
+# TRUSTCHAIN_DATA pointing to the synced OneDrive folder)
+
+# eg. "export TRUSTCHAIN_CONFIG=./trustchain_config.toml"
+
+[core]
+root_event_time = 1666971942
+# root_event_time = 1697213008
+
 [ion]
 mongo_connection_string = "mongodb://localhost:27017/"
 mongo_database_ion_core = "ion-testnet-core"
 
 bitcoin_connection_string = "http://localhost:18332"
-bitcoin_rpc_username = "<YOUR_BITCOIN_RPC_USERNAME>"
-bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+bitcoin_rpc_username = "admin"
+bitcoin_rpc_password = "t13c3@J23gjduGcf5IYz8n4aXD8KP^szRwBHJi6kePVWi86"
 
 [http]
 host = "127.0.0.1"
-host_reference = "127.0.0.1"
+host_reference = "10.0.2.2"
+host_display = "10.0.2.2"
+# host_reference = "127.0.0.1"
 port = 8081
-issuer_did = "<YOUR_ISSUER_DID>"
+# dft as the issuer
+issuer_did = "did:ion:test:EiC9BR3CtYUNrc2c7LoxoA_g8DMViHd73a_O2IIsWMQu2g"
+https = false
+https_path = "~/.trustchain/http/self_signed_certs"
+root_event_time = 1666971942
+# root_event_time = 1697213008
 
 [cli]
-root_event_time = "<YOUR_ROOT_EVENT_TIME>"
+root_event_time = 1666971942
+# root_event_time = 1697213008
+
 ion_endpoint.host = "127.0.0.1"
 ion_endpoint.port = 3000
+# ion_endpoint.host = "127.0.0.1"
+# ion_endpoint.port = 8081
+# ion_endpoint.port = 8081
+# ion_endpoint.host = "https://trustchain.uksouth.cloudapp.azure.com"
+# ion_endpoint.port = 443
+
+[ffi]
+root_event_time = 1666971942
+# root_event_time = 1697213008
+ion_endpoint.host = "127.0.0.1"
+ion_endpoint.port = 3000
+trustchain_endpoint.host = "127.0.0.1"
+trustchain_endpoint.port = 8081
