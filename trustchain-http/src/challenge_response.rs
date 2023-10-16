@@ -73,7 +73,7 @@ enum CurrentCRState {
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
         CurrentCRState::NotStarted => {
-            return String::from("No records found for this challenge-response identifier. The challenge-response process has not been initiated yet.");
+            return String::from("No records found for this challenge-response identifier. \nThe challenge-response process has not been initiated yet.");
         }
         CurrentCRState::IdentityCRInitiated => {
             return String::from("Identity challenge-response initiated. Await response.");
@@ -229,7 +229,6 @@ impl DecryptVerify for Entity {}
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Nonce(String);
 
-// impl<const N: usize> Nonce<N> {
 impl Nonce {
     pub fn new() -> Self {
         Self(
@@ -291,6 +290,8 @@ impl CRState {
     }
 
     fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
+        println!("Checking current challenge-response status...");
+        println!(" ");
         let mut current_state = CurrentCRState::NotStarted;
         if self.is_empty() {
             println!("{}", get_status_message(&current_state));
