@@ -13,7 +13,8 @@ crate-type = ["cdylib", "staticlib"]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
-ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", branch = "new_rss-vc-signing" }
+# reference end of hack week version for frozen working demo of RSS
+ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", rev="2725e151c6a8268ffbc20facb407e6848d1d70db" }
 
 anyhow = "1.0"
 chrono = "0.4.26"
