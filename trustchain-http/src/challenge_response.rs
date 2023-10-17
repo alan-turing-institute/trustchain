@@ -70,6 +70,7 @@ enum CurrentCRState {
     ContentResponseComplete,
 }
 
+/// Returns message that corresponds to the current state of the challenge-response process.
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
         CurrentCRState::NotStarted => {
@@ -107,6 +108,7 @@ trait ElementwiseSerializeDeserialize
 where
     Self: Serialize,
 {
+    /// Serialize each field of the struct to a file.
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
         let serialized =
             serde_json::to_value(&self).map_err(|_| TrustchainCRError::FailedToSave)?;
@@ -122,11 +124,11 @@ where
         }
         Ok(())
     }
-
+    /// Deserializes each field of the struct from a file.
     fn elementwise_deserialize(self, path: &PathBuf) -> Result<Option<Self>, TrustchainCRError>
     where
         Self: Sized;
-
+    /// Save data to file. If file already exists, do nothing.
     fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
         if path.exists() {
             println!("File already exists: {:?}", path);
@@ -162,6 +164,7 @@ where
 
 /// Interface for signing and then encrypting data.
 pub trait SignEncrypt {
+    /// Cryptographically signs a payload with a secret key.
     fn sign(&self, payload: &JwtPayload, secret_key: &Jwk) -> Result<String, TrustchainCRError> {
         let mut header = JwsHeader::new();
         header.set_token_type("JWT");
@@ -171,6 +174,7 @@ pub trait SignEncrypt {
     }
     /// `JWTPayload` is a wrapped [`Map`](https://docs.rs/serde_json/1.0.79/serde_json/struct.Map.html)
     /// of claims.
+    /// Cryptographically encrypts a payload with a public key.
     fn encrypt(&self, payload: &JwtPayload, public_key: &Jwk) -> Result<String, TrustchainCRError> {
         let mut header = JweHeader::new();
         header.set_token_type("JWT");
@@ -181,26 +185,28 @@ pub trait SignEncrypt {
         let encrypted_jwt = jwt::encode_with_encrypter(payload, &header, &encrypter)?;
         Ok(encrypted_jwt)
     }
-    /// Combined sign and encryption
+    /// Wrapper function for signing and encrypting a payload.
     fn sign_and_encrypt_claim(
         &self,
         payload: &JwtPayload,
         secret_key: &Jwk,
         public_key: &Jwk,
     ) -> Result<String, TrustchainCRError> {
-        let signed_encoded_payload = self.sign(payload, secret_key)?;
+        let signed_payload = self.sign(payload, secret_key)?;
         let mut claims = JwtPayload::new();
-        claims.set_claim("claim", Some(Value::from(signed_encoded_payload)))?;
+        claims.set_claim("claim", Some(Value::from(signed_payload)))?;
         self.encrypt(&claims, &public_key)
     }
 }
 /// Interface for decrypting and then verifying data.
 trait DecryptVerify {
+    /// Decrypts a payload with a secret key.
     fn decrypt(&self, value: &Value, secret_key: &Jwk) -> Result<JwtPayload, TrustchainCRError> {
         let decrypter = ECDH_ES.decrypter_from_jwk(&secret_key)?;
         let (payload, _) = jwt::decode_with_decrypter(value.as_str().unwrap(), &decrypter)?;
         Ok(payload)
     }
+    /// Wrapper function that combines decrypting a payload with a secret key and then verifying it with a public key.
     fn decrypt_and_verify(
         &self,
         input: String,
@@ -277,7 +283,7 @@ impl CRState {
             content_challenge_response: None,
         }
     }
-
+    /// Returns true if all fields have a non-null value.
     fn is_complete(&self) -> bool {
         if self.identity_cr_initiation.is_some()
             && self.identity_challenge_response.is_some()
@@ -288,7 +294,7 @@ impl CRState {
         }
         return false;
     }
-
+    /// Determines current status of the challenge response process and accordingly prints messages to the console.
     fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
         println!("Checking current challenge-response status...");
         println!(" ");
@@ -374,6 +380,7 @@ impl CRState {
 }
 
 impl ElementwiseSerializeDeserialize for CRState {
+    /// Serialize each field of the struct to a file. Fields with null values are ignored.
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
         if let Some(identity_initiation) = &self.identity_cr_initiation {
             identity_initiation.elementwise_serialize(path)?;
@@ -389,6 +396,7 @@ impl ElementwiseSerializeDeserialize for CRState {
         }
         Ok(())
     }
+    /// Deserialize each field of the struct from a file. All fields are optional.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -460,6 +468,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
 
     //     Ok(())
     // }
+    /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -514,6 +523,7 @@ impl ContentCRInitiation {
 }
 
 impl ElementwiseSerializeDeserialize for ContentCRInitiation {
+    /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -566,19 +576,20 @@ impl CRIdentityChallenge {
             identity_response_signature: None,
         }
     }
-
+    /// Returns true if all fields required for the challenge have a non-null value.
     fn challenge_complete(&self) -> bool {
         return self.update_p_key.is_some()
             && self.identity_nonce.is_some()
             && self.identity_challenge_signature.is_some();
     }
-
+    /// Returns true if all fields of the challenge-response have a non-null value.
     fn response_complete(&self) -> bool {
         return self.challenge_complete() && self.identity_response_signature.is_some();
     }
 }
 
 impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
+    /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -679,11 +690,11 @@ impl CRContentChallenge {
             content_response_signature: None,
         }
     }
-
+    /// Returns true if all fields required for the challenge have a non-null value.
     fn challenge_complete(&self) -> bool {
         return self.content_nonce.is_some() && self.content_challenge_signature.is_some();
     }
-
+    /// Returns true if all fields required for the challenge-response have a non-null value.
     fn response_complete(&self) -> bool {
         return self.challenge_complete() && self.content_response_signature.is_some();
     }
@@ -714,6 +725,8 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
     //     }
     //     Ok(())
     // }
+
+    /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
@@ -793,19 +806,20 @@ impl TryFrom<&Nonce> for JwtPayload {
     }
 }
 
-// make a try_from instead
+/// Converts key from josekit Jwk into ssi JWK
 fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
     let key_as_str: &str = &serde_json::to_string(&key).unwrap();
     let ssi_key: JWK = serde_json::from_str(key_as_str).unwrap();
     Ok(ssi_key)
 }
-
+/// Converts key from ssi JWK into josekit Jwk
 fn ssi_to_josekit_jwk(key: &JWK) -> Result<Jwk, serde_json::Error> {
     let key_as_str: &str = &serde_json::to_string(&key).unwrap();
     let ssi_key: Jwk = serde_json::from_str(key_as_str).unwrap();
     Ok(ssi_key)
 }
 
+/// Extracts public keys contained in DID document
 fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, TrustchainCRError> {
     let mut my_map = HashMap::<String, Jwk>::new();
     if let Some(vms) = &document.verification_method {
