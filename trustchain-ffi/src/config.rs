@@ -37,26 +37,22 @@ struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointOptions {
-    pub ion_endpoint: Endpoint,
-    pub trustchain_endpoint: Option<Endpoint>,
+    pub trustchain_endpoint: Endpoint,
 }
 
 impl EndpointOptions {
-    pub fn ion_endpoint(&self) -> &Endpoint {
-        &self.ion_endpoint
-    }
-    pub fn trustchain_endpoint(&self) -> anyhow::Result<&Endpoint> {
-        self.trustchain_endpoint
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected trustchain endpoint."))
+    pub fn trustchain_endpoint(&self) -> &Endpoint {
+        &self.trustchain_endpoint
+        // self.trustchain_endpoint
+        //     .as_ref()
+        //     .ok_or_else(|| anyhow!("Expected trustchain endpoint."))
     }
 }
 
 impl Default for EndpointOptions {
     fn default() -> Self {
         Self {
-            ion_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 3000),
-            trustchain_endpoint: Some(Endpoint::new(URL::from("http://127.0.0.1"), 8081)),
+            trustchain_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 8081),
         }
     }
 }
@@ -116,10 +112,6 @@ mod tests {
 
     const TEST_ENDPOINT_OPTIONS: &str = r#"
         {
-            "ionEndpoint": {
-                "host": "http://127.0.0.1",
-                "port": 3000
-            },
             "trustchainEndpoint": {
                 "host": "http://127.0.0.1",
                 "port": 8081
@@ -142,9 +134,6 @@ mod tests {
     "#;
 
     const TEST_FFI_OPTIONS: &str = r#"
-    [ffi.endpointOptions.ionEndpoint]
-    host="http://127.0.0.1"
-    port=3000
     [ffi.endpointOptions.trustchainEndpoint]
     host="http://127.0.0.1"
     port=8081
@@ -192,7 +181,6 @@ mod tests {
                 .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
-                .unwrap()
                 .port,
             8081
         );
