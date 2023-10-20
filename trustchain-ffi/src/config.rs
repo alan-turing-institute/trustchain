@@ -43,9 +43,6 @@ pub struct EndpointOptions {
 impl EndpointOptions {
     pub fn trustchain_endpoint(&self) -> &Endpoint {
         &self.trustchain_endpoint
-        // self.trustchain_endpoint
-        //     .as_ref()
-        //     .ok_or_else(|| anyhow!("Expected trustchain endpoint."))
     }
 }
 
