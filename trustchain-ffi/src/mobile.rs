@@ -2,7 +2,7 @@
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use did_ion::sidetree::CreateOperation;
+use did_ion::sidetree::Operation;
 use serde::{Deserialize, Serialize};
 use ssi::{
     jsonld::ContextLoader,
@@ -184,7 +184,7 @@ pub fn vp_issue_presentation(
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CreateOperationAndDID {
-    create_operation: CreateOperation,
+    create_operation: Operation,
     did: String,
 }
 
@@ -198,7 +198,7 @@ pub fn create_operation_phrase(phrase: String) -> Result<String> {
     // Return DID and create operation as JSON
     Ok(serde_json::to_string_pretty(&CreateOperationAndDID {
         did: create_operation.to_did(),
-        create_operation,
+        create_operation: Operation::Create(create_operation),
     })?)
 }
 
@@ -254,6 +254,7 @@ mod tests {
     const TEST_ION_CREATE_OPERATION: &str = r#"
     {
         "createOperation": {
+          "type": "create",
           "delta": {
             "patches": [
               {

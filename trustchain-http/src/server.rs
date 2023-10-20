@@ -3,7 +3,7 @@ use crate::middleware::validate_did;
 use crate::{
     config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
 };
-use axum::routing::{IntoMakeService, post};
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;

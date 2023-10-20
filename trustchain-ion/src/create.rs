@@ -76,7 +76,10 @@ fn write_create_operation(
         "create_operation_{}.json",
         controller.controlled_did_suffix()
     );
-    std::fs::write(path.join(&filename), to_json(&create_operation).unwrap())?;
+    std::fs::write(
+        path.join(&filename),
+        to_json(&Operation::Create(create_operation)).unwrap(),
+    )?;
     Ok(filename)
 }
 
@@ -280,6 +283,7 @@ mod test {
         for path in paths {
             if let Ok(path_buf) = path {
                 let operation_string = std::fs::read_to_string(path_buf)?;
+                println!("{}", operation_string);
                 let _operation: Operation = serde_json::from_str(&operation_string)?;
                 operation_count += 1;
             } else {
