@@ -66,12 +66,13 @@ pub fn vc_verify_presentation(
 }
 
 /// Initializes the light Bitcoin node.
-pub fn spv_initialize(path: String, testnet: bool) -> Result<String> {
+pub fn spv_initialize(path: String, testnet: bool) -> Result<()> {
     initialize(PathBuf::from(path), testnet)?;
+    Ok(())
 }
 
 /// Gets a block header and height from the Bitcoin light client running locally.
 pub fn spv_get_block(hash: String) -> Result<String> {
     let (height, header) = get_block(path, testnet, hash)?;
-    todo!()
+    Ok(to_string_pretty((height, header)))
 }
