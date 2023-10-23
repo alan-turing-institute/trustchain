@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::{anyhow, Result};
 use serde_json::to_string_pretty;
 use tokio::runtime::Runtime;
@@ -72,7 +74,7 @@ pub fn spv_initialize(path: String, testnet: bool) -> Result<()> {
 }
 
 /// Gets a block header and height from the Bitcoin light client running locally.
-pub fn spv_get_block(hash: String) -> Result<String> {
-    let (height, header) = get_block(path, testnet, hash)?;
-    Ok(to_string_pretty((height, header)))
+pub fn spv_get_block(hash: String, path: String, testnet: bool) -> Result<String> {
+    let (height, header) = get_block(PathBuf::from(path), testnet, &hash)?;
+    Ok(to_string_pretty(&(height, header))?)
 }
