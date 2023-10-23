@@ -3,6 +3,8 @@ use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use did_ion::sidetree::Sidetree;
 use did_ion::ION;
+use ed25519_dalek_bip32::derivation_path::DerivationPath as Ed25519DerivationPath;
+use ed25519_dalek_bip32::derivation_path::DerivationPathParseError;
 use ed25519_dalek_bip32::ExtendedSigningKey;
 use ssi::jwk::{Base64urlUInt, ECParams, OctetParams, Params, JWK};
 use std::str::FromStr;
@@ -23,7 +25,7 @@ pub enum MnemonicError {
     Ed25519DalekBip32Error(ed25519_dalek_bip32::Error),
     /// Invalid ed25519 BIP32 derivation path.
     #[error("Invalid ed25519 BIP32 derivation path: {0}")]
-    InvalidDerivationPathEd25519(ed25519_dalek_bip32::derivation_path::DerivationPathParseError),
+    InvalidDerivationPathEd25519(DerivationPathParseError),
     /// Failed to deserialize private scalar.
     #[error("Failed to deserialize private scalar bytes: {0}")]
     FailedToDeserializeScalar(k256::elliptic_curve::Error),
@@ -44,9 +46,8 @@ impl From<k256::elliptic_curve::Error> for MnemonicError {
     }
 }
 
-// TODO: add imports to module
-impl From<ed25519_dalek_bip32::derivation_path::DerivationPathParseError> for MnemonicError {
-    fn from(err: ed25519_dalek_bip32::derivation_path::DerivationPathParseError) -> Self {
+impl From<DerivationPathParseError> for MnemonicError {
+    fn from(err: DerivationPathParseError) -> Self {
         MnemonicError::InvalidDerivationPathEd25519(err)
     }
 }
@@ -94,7 +95,7 @@ fn generate_secp256k1_key(
     let seed = mnemonic.to_seed("");
     let m = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed)?;
     let secp = Secp256k1::new();
-    let derivation_path = derivation_path(path, index)?;
+    let derivation_path = secp256k1_derivation_path(path, index)?;
     let xpriv = m.derive_priv(&secp, &derivation_path)?;
     let private_key = xpriv.to_priv();
     // let public_key: bitcoin::util::key::PublicKey = private_key.public_key(&secp);
@@ -111,35 +112,29 @@ fn generate_secp256k1_key(
     Ok(JWK::from(Params::EC(ec_params)))
 }
 
-fn derivation_path(
-    path: &str,
-    index: Option<u32>,
-) -> Result<DerivationPath, bitcoin::util::bip32::Error> {
+fn derivation_path(path: &str, index: Option<u32>) -> Result<String, bitcoin::util::bip32::Error> {
     let index = index.unwrap_or(0);
     // Handle case index > 2^31 - 1.
     if index > 2u32.pow(31) - 1 {
         return Err(bitcoin::util::bip32::Error::InvalidChildNumber(index));
     }
-    DerivationPath::from_str(&format!("{path}/{index}'"))
+    Ok(format!("{}/{index}'", path.replace('h', "'")))
+}
+
+fn secp256k1_derivation_path(
+    path: &str,
+    index: Option<u32>,
+) -> Result<DerivationPath, bitcoin::util::bip32::Error> {
+    DerivationPath::from_str(&derivation_path(path, index)?)
 }
 
 fn ed25519_derivation_path(
     path: &str,
     index: Option<u32>,
-) -> Result<ed25519_dalek_bip32::derivation_path::DerivationPath, MnemonicError> {
-    let index = index.unwrap_or(0);
-    // Handle case index > 2^31 - 1.
-    if index > 2u32.pow(31) - 1 {
-        return Err(MnemonicError::InvalidDerivationPath(
-            bitcoin::util::bip32::Error::InvalidChildNumber(index),
-        ));
-    }
-    Ok(
-        ed25519_dalek_bip32::derivation_path::DerivationPath::from_str(&format!(
-            "{}/{index}'",
-            path.replace('h', "'")
-        ))?,
-    )
+) -> Result<Ed25519DerivationPath, MnemonicError> {
+    Ok(Ed25519DerivationPath::from_str(&derivation_path(
+        path, index,
+    )?)?)
 }
 
 /// Generates a DID update key on the secp256k1 elliptic curve from a mnemonic seed phrase.
@@ -194,41 +189,96 @@ mod tests {
     }
 
     #[test]
-    fn test_derivation_path() {
+    fn test_secp256k1_derivation_path() {
         let path = "m/1h";
-        let expected = DerivationPath::from_str("m/1h/0h");
-        assert_eq!(expected, derivation_path(path, None));
+        let expected = DerivationPath::from_str("m/1'/0'");
+        assert_eq!(expected, secp256k1_derivation_path(path, None));
 
         let path = "m/1h";
         let index: u32 = 0;
         let expected = DerivationPath::from_str("m/1h/0h");
-        assert_eq!(expected, derivation_path(path, Some(index)));
+        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
 
         let path = "m/2h";
         let index: u32 = 2147483647;
         let expected = DerivationPath::from_str("m/2h/2147483647h");
-        assert_eq!(expected, derivation_path(path, Some(index)));
+        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
 
         let path = "m/2h";
         let index: u32 = 2147483647;
         let expected = DerivationPath::from_str("m/1h/2147483647h");
-        assert_ne!(expected, derivation_path(path, Some(index)));
+        assert_ne!(expected, secp256k1_derivation_path(path, Some(index)));
 
         let path = "m/1'";
         let index: u32 = 0;
         let expected = DerivationPath::from_str("m/1h/0h");
-        assert_eq!(expected, derivation_path(path, Some(index)));
+        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
 
         let path = "m/0'";
         let index: u32 = 0;
         let expected = DerivationPath::from_str("m/1h/0h");
-        assert_ne!(expected, derivation_path(path, Some(index)));
+        assert_ne!(expected, secp256k1_derivation_path(path, Some(index)));
 
         let derivation_path = DerivationPath::from_str("m/1h/0h").unwrap();
         let expected = "m/1'/0'";
         assert_eq!(expected, derivation_path.to_string());
 
         let derivation_path = DerivationPath::from_str("m/1'/0'").unwrap();
+        let expected = "m/1'/0'";
+        assert_eq!(expected, derivation_path.to_string());
+    }
+
+    #[test]
+    fn test_ed25519_derivation_path() {
+        let path = "m/1h";
+        let expected = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
+        assert_eq!(expected, ed25519_derivation_path(path, None).unwrap());
+
+        let path = "m/1h";
+        let index: u32 = 0;
+        let expected = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
+        assert_eq!(
+            expected,
+            ed25519_derivation_path(path, Some(index)).unwrap()
+        );
+
+        let path = "m/2h";
+        let index: u32 = 2147483647;
+        let expected = Ed25519DerivationPath::from_str("m/2'/2147483647'").unwrap();
+        assert_eq!(
+            expected,
+            ed25519_derivation_path(path, Some(index)).unwrap()
+        );
+
+        let path = "m/2h";
+        let index: u32 = 2147483647;
+        let expected = Ed25519DerivationPath::from_str("m/1'/2147483647'").unwrap();
+        assert_ne!(
+            expected,
+            ed25519_derivation_path(path, Some(index)).unwrap()
+        );
+
+        let path = "m/1'";
+        let index: u32 = 0;
+        let expected = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
+        assert_eq!(
+            expected,
+            ed25519_derivation_path(path, Some(index)).unwrap()
+        );
+
+        let path = "m/0'";
+        let index: u32 = 0;
+        let expected = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
+        assert_ne!(
+            expected,
+            ed25519_derivation_path(path, Some(index)).unwrap()
+        );
+
+        let derivation_path = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
+        let expected = "m/1'/0'";
+        assert_eq!(expected, derivation_path.to_string());
+
+        let derivation_path = Ed25519DerivationPath::from_str("m/1'/0'").unwrap();
         let expected = "m/1'/0'";
         assert_eq!(expected, derivation_path.to_string());
     }
