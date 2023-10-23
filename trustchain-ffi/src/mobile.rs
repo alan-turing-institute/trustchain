@@ -60,7 +60,7 @@ pub fn greet() -> String {
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
     let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
-    let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
+    let resolver = get_ion_resolver(&endpoint_opts.trustchain_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         Ok(TrustchainAPI::resolve(&did, &resolver)
@@ -81,8 +81,8 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = IONVerifier::with_endpoint(
-            get_ion_resolver(&endpoint_opts.ion_endpoint().to_address()),
-            endpoint_opts.trustchain_endpoint()?.to_address(),
+            get_ion_resolver(&endpoint_opts.trustchain_endpoint().to_address()),
+            endpoint_opts.trustchain_endpoint().to_address(),
         );
         Ok(TrustchainAPI::verify(&did, root_event_time, &verifier)
             .await
@@ -103,8 +103,8 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = IONVerifier::with_endpoint(
-            get_ion_resolver(&endpoint_opts.ion_endpoint().to_address()),
-            endpoint_opts.trustchain_endpoint()?.to_address(),
+            get_ion_resolver(&endpoint_opts.trustchain_endpoint().to_address()),
+            endpoint_opts.trustchain_endpoint().to_address(),
         );
         let root_event_time = trustchain_opts.root_event_time;
 
@@ -162,7 +162,7 @@ pub fn vp_issue_presentation(
     let mut presentation: Presentation =
         serde_json::from_str(&presentation).map_err(FFIMobileError::FailedToDeserialize)?;
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
-    let resolver = get_ion_resolver(&endpoint_opts.ion_endpoint().to_address());
+    let resolver = get_ion_resolver(&endpoint_opts.trustchain_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     let proof = rt
         .block_on(async {
@@ -216,8 +216,6 @@ mod tests {
     signatureOnly = false
 
     [ffi.endpointOptions]
-    ionEndpoint.host = "127.0.0.1"
-    ionEndpoint.port = 3000
     trustchainEndpoint.host = "127.0.0.1"
     trustchainEndpoint.port = 8081
     "#;
