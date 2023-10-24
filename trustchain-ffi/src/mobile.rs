@@ -179,14 +179,14 @@ pub fn vp_issue_presentation(
 /// Initializes a local Bitcoin SPV client with a directory path for
 /// writing block headers data.
 pub fn spv_initialize(path: String, testnet: bool) -> Result<()> {
-    initialize(&PathBuf::from(path), testnet)?;
+    initialize(PathBuf::from(path), testnet)?;
     Ok(())
 }
 
 /// Gets a block header from the local Bitcoin SPV client by reading
 /// data from the given path.
 pub fn spv_get_block_header(hash: String, path: String, testnet: bool) -> Result<String> {
-    let header = get_block_header(&hash, &PathBuf::from(path), testnet)?;
+    let header = get_block_header(&hash, PathBuf::from(path), testnet)?;
     Ok(serde_json::to_string_pretty(&header)?)
 }
 
