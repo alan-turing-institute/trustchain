@@ -5,6 +5,7 @@ members = [
     "trustchain-http",
     "trustchain-api",
     "trustchain-cli",
-    "trustchain-ffi"
+    "trustchain-ffi",
+    "trustchain-spv"
 ]
 resolver = "2"
