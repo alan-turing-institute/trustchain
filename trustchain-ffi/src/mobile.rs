@@ -1,4 +1,6 @@
 //! Mobile FFI.
+use std::path::PathBuf;
+
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -19,6 +21,7 @@ use trustchain_core::{
     resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+use trustchain_spv::{get_block_header, initialize};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
@@ -172,6 +175,20 @@ pub fn vp_issue_presentation(
 // pub fn vc_verify_presentation(presentation: String, opts: String) -> Result<String> {
 //     todo!()
 // }
+
+/// Initializes a local Bitcoin SPV client with a directory path for
+/// writing block headers data.
+pub fn spv_initialize(path: String, testnet: bool) -> Result<()> {
+    initialize(&PathBuf::from(path), testnet)?;
+    Ok(())
+}
+
+/// Gets a block header from the local Bitcoin SPV client by reading
+/// data from the given path.
+pub fn spv_get_block_header(hash: String, path: String, testnet: bool) -> Result<String> {
+    let header = get_block_header(&hash, &PathBuf::from(path), testnet)?;
+    Ok(serde_json::to_string_pretty(&header)?)
+}
 
 #[cfg(test)]
 mod tests {
