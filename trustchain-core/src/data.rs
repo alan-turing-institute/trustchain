@@ -1,5 +1,6 @@
+//! Test fixtures for crate.
 #![allow(dead_code)]
-pub const TEST_SIDETREE_DOCUMENT: &str = r##"
+pub(crate) const TEST_SIDETREE_DOCUMENT: &str = r##"
 {
    "@context" : [
       "https://www.w3.org/ns/did/v1",
@@ -273,7 +274,7 @@ pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS: &str = r##"
 // Previous versions that don't match example keys, to remove:
 // "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
 // "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
-pub const TEST_SIDETREE_DOCUMENT_METADATA: &str = r##"
+pub const TEST_SIDETREE_DOCUMENT_METADATA: &str = r#"
 {
    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
    "method" : {
@@ -282,12 +283,12 @@ pub const TEST_SIDETREE_DOCUMENT_METADATA: &str = r##"
       "updateCommitment" : "EiBWPR1JNdAQ4j3ZMqurb4rt10NA7s17lztFF9OIcEO3ew"
    }
 }
-"##;
+"#;
 
 // Previous versions that don't match example keys, to remove:
 // "recoveryCommitment" : "EiBKWQyomumgZvqiRVZnqwA2-7RVZ6Xr-cwDRmeXJT_k9g",
 // "updateCommitment" : "EiCe3q-ZByJnzI6CwGIDj-M67W-Yv78L3ejxcuEDxnWzMg"
-pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &str = r##"
+pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &str = r#"
 {
    "canonicalId" : "did:ion:test:EiCBr7qGDecjkR2yUBhn3aNJPUR3TSEOlkpNcL0Q5Au9ZQ",
    "method" : {
@@ -301,7 +302,7 @@ pub const TEST_TRUSTCHAIN_DOCUMENT_METADATA: &str = r##"
       "proofValue" : "eyJhbGciOiJFUzI1NksifQ.IkVpQmNiTkRRcjZZNHNzZGc5QXo4eC1qNy1yS1FuNWk5T2Q2S3BjZ2c0RU1KOXci.Nii8p38DtzyurmPHO9sV2JLSH7-Pv-dCKQ0Y-H34rplwhhwca2nSra4ZofcUsHCG6u1oKJ0x4AmMUD2_3UIhRA"
   }
 }
-"##;
+"#;
 
 pub const TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER: &str = r##"
 {
@@ -395,7 +396,7 @@ pub const TEST_TRUSTCHAIN_DOCUMENT: &str = r##"
  }
 "##;
 
-pub const TEST_SIGNING_KEYS: &str = r##"[
+pub const TEST_SIGNING_KEYS: &str = r#"[
         {
             "kty": "EC",
             "crv": "secp256k1",
@@ -411,49 +412,49 @@ pub const TEST_SIGNING_KEYS: &str = r##"[
             "d": "U7pUq3BovVnYT1mi1lds60wbueUKb5GobV_WvjOuY14"
         }
     ]
-    "##;
+    "#;
 
-pub const TEST_UPDATE_KEY: &str = r##"{
+pub const TEST_UPDATE_KEY: &str = r#"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "2hm19BwmXmR8Vfuw2XbGrusm89Pg6dyExlzDfc-CiM8",
         "y": "uFjW0fKdhHaY4c_5E9Wkk3cPi9sJ5rP3oyl1ssV_X6A",
         "d": "Z2vJqNRjbWvJX2NzABKlHI2V00HWmV2KNI5P4mmxRbg"
-    }"##;
+    }"#;
 
-pub const TEST_NEXT_UPDATE_KEY: &str = r##"{
+pub const TEST_NEXT_UPDATE_KEY: &str = r#"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "hm_Pj46yibXbFNyARPXfOKIAEI_UKqfmZwzZDfbUSSk",
         "y": "Djxgs6Ex71m6K0QCrn4l2naNo4F6IYXfu0LrBhW2RQU",
         "d": "rAUu7DWaQ2ceSap_NzJNj1YOD2yP_bf1JqabuQJz6rc"
-    }"##;
+    }"#;
 
-pub const TEST_RECOVERY_KEY: &str = r##"{
+pub const TEST_RECOVERY_KEY: &str = r#"{
         "kty": "EC",
         "crv": "secp256k1",
         "x": "_Z1JRmGwvj0jIpDW-QF0dmQnAL8D_FuNg2WxF7uJSYo",
         "y": "orKbmG6L6kRugAB2OWzWNgulXRfyOR06GTm353Er--c",
         "d": "YobJpI7p7T5dfU0cDRE4SQwp0eOFR6LOGrsqZE1GG1A"
-    }"##;
+    }"#;
 
-pub const TEST_ROOT_SIGNING_PK: &str = r##"
+pub const TEST_ROOT_SIGNING_PK: &str = r#"
 {
    "kty": "EC",
    "crv": "secp256k1",
    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
    "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
 }
-"##;
+"#;
 
-pub const TEST_ROOT_PLUS_1_SIGNING_KEY: &str = r##"
+pub const TEST_ROOT_PLUS_1_SIGNING_KEY: &str = r#"
 {
    "kty": "EC",
    "crv": "secp256k1",
    "x": "aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU",
    "y": "dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0"
 }
-"##;
+"#;
 
 pub const TEST_ROOT_DOCUMENT: &str = r##"
 {
@@ -598,7 +599,7 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT: &str = r##"
 }
 "##;
 
-pub const TEST_ROOT_DOCUMENT_METADATA: &str = r##"
+pub const TEST_ROOT_DOCUMENT_METADATA: &str = r#"
 {
    "canonicalId": "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg",
    "method": {
@@ -607,9 +608,9 @@ pub const TEST_ROOT_DOCUMENT_METADATA: &str = r##"
      "recoveryCommitment": "EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w"
    }
 }
-"##;
+"#;
 
-pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r##"
+pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r#"
 {
    "proof": {
      "type": "JsonWebSignature2020",
@@ -623,22 +624,22 @@ pub const TEST_ROOT_PLUS_1_DOCUMENT_METADATA: &str = r##"
      "updateCommitment": "EiA0-GpdeoAa4v0-K4YCHoNTjAPsoroDy7pleDIc4a3_QQ"
    }
 }
-"##;
+"#;
 
 /// Root JWK public key
-pub const TEST_ROOT_JWK_PK: &str = r##"
+pub const TEST_ROOT_JWK_PK: &str = r#"
 {
    "kty": "EC",
    "crv": "secp256k1",
    "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
    "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
 }
-"##;
+"#;
 
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_1_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g";
 
-pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
+pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r#"
 {
    "canonicalId": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
    "method": {
@@ -652,7 +653,7 @@ pub const TEST_ROOT_PLUS_2_DOCUMENT_METADATA: &str = r##"
      "type": "JsonWebSignature2020"
    }
 }
-"##;
+"#;
 /// Proof value from metadata
 pub const TEST_ROOT_PLUS_2_JWT: &str = "eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw";
 
@@ -1031,7 +1032,7 @@ pub const TEST_DID_CHAIN_REVERSED: &str = r##"
 "##;
 
 /// Test credential: no issuer is present for the unit test
-pub const TEST_CREDENTIAL: &str = r##"{
+pub const TEST_CREDENTIAL: &str = r#"{
   "@context": [
     "https://www.w3.org/2018/credentials/v1",
     "https://www.w3.org/2018/credentials/examples/v1",
@@ -1053,4 +1054,4 @@ pub const TEST_CREDENTIAL: &str = r##"{
     }
   }
 }
-"##;
+"#;

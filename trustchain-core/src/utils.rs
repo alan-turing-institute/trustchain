@@ -1,10 +1,14 @@
-//! Utils module.
+//! Core utilities.
+use crate::key_manager::KeyManager;
+use crate::key_manager::KeyType;
 use crate::TRUSTCHAIN_DATA;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
+use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
+
 use std::sync::Once;
 
 /// Gets the type of an object as a String. For diagnostic purposes (debugging) only.
@@ -12,14 +16,31 @@ pub fn type_of<T>(_: &T) -> String {
     std::any::type_name::<T>().to_string()
 }
 
+/// Utility key manager.
+struct UtilsKeyManager;
+
+impl KeyManager for UtilsKeyManager {}
+
 /// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 static INIT: Once = Once::new();
 pub fn init() {
     INIT.call_once(|| {
+        let utils_key_manager = UtilsKeyManager;
         // initialization code here
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+        // Manually drop here so additional writes in the init call are not removed
+        drop(tempdir);
+        // Include test signing keys for two resolvable DIDs
+        let root_plus_1_did_suffix = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+        let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
+        let root_plus_2_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY","d":"bJnhIQgj0eQoRXIw5Xna6LErnili2ajMstoJLI21HiQ"}"#;
+        let root_plus_1_signing_jwk: JWK= serde_json::from_str(root_plus_1_signing_key).unwrap();
+        let root_plus_2_signing_jwk: JWK= serde_json::from_str(root_plus_2_signing_key).unwrap();
+        utils_key_manager.save_keys(root_plus_1_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_1_signing_jwk), false).unwrap();
+        utils_key_manager.save_keys(root_plus_2_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_signing_jwk), false).unwrap();
     });
 }
 
@@ -79,6 +100,11 @@ pub fn get_did_suffix(did: &str) -> &str {
     did.split(':').last().unwrap()
 }
 
+/// Converts a short-form DID into a complete DID.
+pub fn get_did_from_suffix(did_suffix: &str, method_and_network: &str) -> String {
+    format!("did:{method_and_network}:{did_suffix}")
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
@@ -114,12 +140,12 @@ pub fn hash(data: &str) -> String {
 }
 
 /// Extracts payload from JWT and verifies signature.
-pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> {
+pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::jws::Error> {
     ssi::jwt::decode_verify(jwt, key)
 }
 
 /// Extracts and decodes the payload from the JWT.
-pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
+pub fn decode(jwt: &str) -> Result<String, ssi::jws::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
@@ -283,6 +309,24 @@ mod tests {
     use ssi::did::Document;
 
     #[test]
+    fn test_get_did_from_suffix() {
+        let did_suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let mut method_and_network = "ion";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+
+        method_and_network = "ion:test";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+    }
+
+    #[test]
     fn test_generate_key() {
         let result = generate_key();
 
@@ -436,12 +480,12 @@ mod tests {
         assert!(!json_contains(&candidate, &expected));
 
         // Entire expected object nested:
-        let exp_str = r##"{"publicKeyJwk" : {
+        let exp_str = r#"{"publicKeyJwk" : {
         "crv": "secp256k1",
         "kty": "EC",
         "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
         "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-    }}"##;
+    }}"#;
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));

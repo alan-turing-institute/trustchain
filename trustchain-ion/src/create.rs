@@ -1,9 +1,10 @@
+//! ION operation for DID creation.
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
+use crate::ion::IONTest as ION;
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
-use did_ion::ION;
 use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
@@ -14,7 +15,7 @@ use trustchain_core::utils::{generate_key, get_operations_path};
 pub fn create_operation(
     document_state: Option<DocumentState>,
     verbose: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<String, Box<dyn std::error::Error>> {
     // Generate random keys
     let update_key = generate_key();
     let recovery_key = generate_key();
@@ -107,12 +108,10 @@ pub fn create_operation(
 
     // Write create operation to push to ION server
     let path = get_operations_path()?;
-    std::fs::write(
-        path.join(format!("create_operation_{}.json", controlled_did_suffix)),
-        to_json(&operation).unwrap(),
-    )?;
+    let filename = format!("create_operation_{}.json", controlled_did_suffix);
+    std::fs::write(path.join(&filename), to_json(&operation).unwrap())?;
 
-    Ok(())
+    Ok(filename)
 }
 
 #[cfg(test)]
@@ -122,7 +121,7 @@ mod test {
     use trustchain_core::utils::init;
 
     // Test document state for making a create operation from
-    const TEST_DOC_STATE: &str = r##"{
+    const TEST_DOC_STATE: &str = r#"{
         "publicKeys": [
         {
             "id": "Mz94EfSCueClM5qv62SXxtLWRj4Ti7rR2wLWmW37aCs",
@@ -152,7 +151,7 @@ mod test {
             }
         }
         ]
-    }"##;
+    }"#;
 
     #[test]
     fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {

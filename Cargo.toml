@@ -3,5 +3,8 @@ members = [
     "trustchain-core",
     "trustchain-ion",
     "trustchain-http",
-    "trustchain-issuer-frontend",
+    "trustchain-api",
+    "trustchain-cli",
+    "trustchain-ffi"
 ]
+resolver = "2"

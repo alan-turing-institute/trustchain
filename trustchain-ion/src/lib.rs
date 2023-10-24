@@ -1,3 +1,4 @@
+//! Trustchain library for ION DID method.
 pub mod attest;
 pub mod attestor;
 pub mod commitment;
@@ -5,14 +6,16 @@ pub mod config;
 pub mod controller;
 pub mod create;
 pub mod data;
-pub mod resolve;
+pub mod ion;
+pub mod root;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
-use std::num::ParseIntError;
 
-use did_ion::{sidetree::SidetreeClient, ION};
-use std::io;
+use crate::ion::IONTest as ION;
+use did_ion::sidetree::SidetreeClient;
+use serde::{Deserialize, Serialize};
+use std::{io, num::ParseIntError};
 use thiserror::Error;
 use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
@@ -20,7 +23,30 @@ use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
 /// Type alias for URL
+// TODO [#126]: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
+// for better handling of URLs.
 pub type URL = String;
+
+/// Type for representing an endpoint as a base URL and port.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Endpoint {
+    pub host: String,
+    pub port: u16,
+}
+
+impl Endpoint {
+    pub fn new(url: String, port: u16) -> Self {
+        Self { host: url, port }
+    }
+    // TODO: add more flexible address handling
+    pub fn to_address(&self) -> String {
+        match self.host.starts_with("http") {
+            true => format!("{}:{}/", self.host, self.port),
+            false => format!("http://{}:{}/", self.host, self.port),
+        }
+    }
+}
 
 /// Test resolver
 pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
@@ -53,6 +79,12 @@ pub enum TrustchainMongodbError {
     /// `Error` creating client.
     #[error("Error creating client: {0}")]
     ErrorCreatingClient(mongodb::error::Error),
+}
+
+impl From<mongodb::error::Error> for TrustchainMongodbError {
+    fn from(err: mongodb::error::Error) -> Self {
+        TrustchainMongodbError::QueryReturnedError(err)
+    }
 }
 
 impl From<io::Error> for TrustchainIpfsError {
@@ -102,13 +134,26 @@ pub enum TrustchainBitcoinError {
     /// Wrapped bitcoincore_rpc error
     #[error("Bitcoin core RPC error: {0}")]
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
+    /// Failed to get block time at height.
+    #[error("Block time was None at height: {0}")]
+    BlockTimeAtHeightError(u64),
+    /// Target date precedes start block timestamp or succeeds end block timestamp.
+    #[error("Target date out of range of block timestamps.")]
+    TargetDateOutOfRange,
 }
+
+// ION
+pub const ION_METHOD: &str = "ion";
+pub const ION_TEST_METHOD: &str = "ion:test";
 
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
 pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
+pub const MONGO_FILTER_TXN_TIME: &str = "txnTime";
+pub const MONGO_FILTER_TXN_NUMBER: &str = "txnNumber";
+pub const MONGO_FILTER_OP_INDEX: &str = "opIndex";
 
 // Bitcoin
 // TODO: consider structs for deserialization similar to trustchain_ion::sidetree module
@@ -119,3 +164,7 @@ pub const HASH_PREV_BLOCK_KEY: &str = "hash_prev_block";
 pub const TIMESTAMP_KEY: &str = "timestamp";
 pub const BITS_KEY: &str = "bits";
 pub const NONCE_KEY: &str = "nonce";
+
+// Minimum number of zeros for PoW block hash of root
+// TODO: set differently for mainnet and testnet with features
+pub const MIN_POW_ZEROS: usize = 14;

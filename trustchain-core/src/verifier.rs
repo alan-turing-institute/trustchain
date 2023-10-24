@@ -1,11 +1,10 @@
+//! DID verifier API and default implementation.
 use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};
-use crate::commitment::{Commitment, CommitmentError, DIDCommitment, TimestampCommitment};
+use crate::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
 use crate::resolver::{Resolver, ResolverError};
-use crate::utils::{json_contains, HasEndpoints, HasKeys};
 use async_trait::async_trait;
-use serde_json::json;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
 
@@ -19,8 +18,11 @@ pub enum VerifierError {
     #[error("Invalid signature for proof in dDID: {0}.")]
     InvalidSignature(String),
     /// Invalid root DID after self-controller reached in path.
-    #[error("Invalid root DID: {0}.")]
-    InvalidRoot(String),
+    #[error("Invalid root DID error: {0}")]
+    InvalidRoot(Box<dyn std::error::Error + Send + Sync>),
+    /// Invalid root with error:
+    #[error("Invalid root DID ({0}) with timestamp: {1}.")]
+    InvalidRootTimestamp(String, Timestamp),
     /// Failed to build DID chain.
     #[error("Failed to build chain: {0}.")]
     ChainBuildFailure(String),
@@ -120,7 +122,7 @@ pub enum VerifierError {
     TimestampVerificationError(String),
     /// Error fetching verification material.
     #[error("Error fetching verification material: {0}. Error: {1}")]
-    ErrorFetchingVerificationMaterial(String, Box<dyn Error>),
+    ErrorFetchingVerificationMaterial(String, Box<dyn Error + Send + Sync>),
     /// Failed to fetch verification material.
     #[error("Failed to fetch verification material: {0}")]
     FailureToFetchVerificationMaterial(String),
@@ -128,16 +130,16 @@ pub enum VerifierError {
     #[error("Verification material not yet fetched for DID: {0}.")]
     VerificationMaterialNotYetFetched(String),
     /// Wrapped commitment error.
-    #[error("A commitment error during verification.")]
+    #[error("A commitment error during verification: {0}")]
     CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
-    #[error("A resolver error during verification.")]
+    #[error("A resolver error during verification: {0}")]
     ResolverFailure(ResolverError),
     /// Wrapped chain error.
-    #[error("A chain error during verification.")]
+    #[error("A chain error during verification: {0}")]
     ChainFailure(ChainError),
     /// Wrapped serde JSON deserialization error.
-    #[error("Failed to deserialize.")]
+    #[error("Failed to deserialize: {0}")]
     FailedToDeserialize(serde_json::Error),
 }
 
@@ -166,80 +168,26 @@ impl From<serde_json::Error> for VerifierError {
 }
 
 /// A Unix timestamp.
-pub type Timestamp = u32;
+pub type Timestamp = u64;
 
-/// A verifiably timestamped DID Document.
-pub struct VerifiableTimestamp {
-    did_commitment: Box<dyn DIDCommitment>,
-    timestamp: Timestamp,
-}
-
-impl VerifiableTimestamp {
-    fn new(did_commitment: Box<dyn DIDCommitment>, expected_timestamp: Timestamp) -> Self {
-        Self {
-            did_commitment,
-            timestamp: expected_timestamp,
-        }
+/// A verifiably-timestamped DID.
+pub trait VerifiableTimestamp {
+    /// Gets the wrapped DIDCommitment.
+    fn did_commitment(&self) -> &dyn DIDCommitment;
+    /// Gets the wrapped TimestampCommitment.
+    fn timestamp_commitment(&self) -> &dyn TimestampCommitment;
+    /// Gets the Timestamp.
+    fn timestamp(&self) -> Timestamp {
+        self.timestamp_commitment().timestamp()
     }
-
-    /// Gets the DID Commitment.
-    fn did_commitment(&self) -> &dyn DIDCommitment {
-        self.did_commitment.as_ref()
-    }
-
-    /// Gets a Timestamp Commitment with hash, hasher and candidate data identical to the
-    /// owned DID Commitment, and with the expected timestamp as expected data.
-    pub fn timestamp_commitment(&self) -> Result<TimestampCommitment, VerifierError> {
-        Ok(TimestampCommitment::new(
-            self.did_commitment(),
-            self.timestamp,
-        )?)
-    }
-
-    /// Gets the hash (PoW) commitment.
-    pub fn hash(&self) -> Result<String, VerifierError> {
-        Ok(self.did_commitment.hash()?)
-    }
-
-    /// Gets the timestamp as a Unix time.
-    pub fn timestamp(&self) -> Timestamp {
-        self.timestamp
-    }
-
-    /// Verifies that the DID Document data (public keys & endpoints)
-    /// are contained as expected data in the DID Commitment.
-    fn verify_content(&self) -> Result<(), VerifierError> {
-        // Check each expected key is found in the vector of verified keys.
-        if let Some(expected_keys) = self.did_commitment().did_document().get_keys() {
-            if let Some(candidate_keys) = self.did_commitment().candidate_keys() {
-                if !expected_keys.iter().all(|key| candidate_keys.contains(key)) {
-                    return Err(VerifierError::KeyNotFoundInVerifiedContent(
-                        self.did_commitment().did().to_string(),
-                    ));
-                }
-            } else {
-                return Err(VerifierError::NoKeysFoundInVerifiedContent(
-                    self.did_commitment().did().to_string(),
-                ));
-            }
-        }
-        // Check each expected endpoint is found in the vector of verified endpoints.
-        if let Some(expected_endpoints) = self.did_commitment().did_document().get_endpoints() {
-            if let Some(candidate_endpoints) = self.did_commitment().candidate_endpoints() {
-                if !expected_endpoints
-                    .iter()
-                    .all(|uri| candidate_endpoints.contains(uri))
-                {
-                    return Err(VerifierError::EndpointNotFoundInVerifiedContent(
-                        self.did_commitment().did().to_string(),
-                    ));
-                }
-            } else {
-                return Err(VerifierError::NoEndpointsFoundInVerifiedContent(
-                    self.did_commitment().did().to_string(),
-                ));
-            }
-        }
+    /// Verifies both the DIDCommitment and the TimestampCommitment against the same target.
+    fn verify(&self, target: &str) -> Result<(), CommitmentError> {
+        // The expected data in the TimestampCommitment is the timestamp, while in the
+        // DIDCommitment the expected data are the public keys & service endpoints.
+        // By verifying both commitments using the same target, we confirm that the *same*
+        // hash commits to *both* the DID Document data and the timestamp.
+        self.did_commitment().verify(target)?;
+        self.timestamp_commitment().verify(target)?;
         Ok(())
     }
 }
@@ -262,68 +210,41 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
 
         // Verify the root timestamp.
         let root = chain.root();
-        let verifiable_timestamp = self.verifiable_timestamp(root).await?;
-        self.verify_timestamp(&verifiable_timestamp)?;
 
-        // At this point we know that the same PoW commits to both the timestamp
-        // in verifiable_timestamp and the data (keys & endpoints) in the root DID Document.
-        // It only remains to check that the verified timestamp matches the expected root timestamp.
+        let verifiable_timestamp = self.verifiable_timestamp(root, root_timestamp).await?;
+
+        // Verify that the root DID content (keys & endpoints) and the timestamp share a common
+        // commitment target.
+        verifiable_timestamp.verify(&verifiable_timestamp.timestamp_commitment().hash()?)?;
+
+        // Validate the PoW on the common target hash.
+        self.validate_pow_hash(&verifiable_timestamp.timestamp_commitment().hash()?)?;
+
+        // Verify explicitly that the return value from the timestamp method equals the expected
+        // root timestamp (in case the default timestamp method implementation has been overridden).
         if !verifiable_timestamp.timestamp().eq(&root_timestamp) {
-            Err(VerifierError::InvalidRoot(root.to_string()))
+            Err(VerifierError::InvalidRootTimestamp(
+                root.to_string(),
+                verifiable_timestamp.timestamp(),
+            ))
         } else {
             Ok(chain)
         }
     }
 
     /// Constructs a verifiable timestamp for the given DID, including an expected
-    /// value for the timestamp retreived from a local PoW network node.
-    async fn verifiable_timestamp(&self, did: &str) -> Result<VerifiableTimestamp, VerifierError> {
-        // Get the DID Commitment.
-        let did_commitment = self.did_commitment(did).await?;
-        // Hash the DID commitment
-        let hash = did_commitment.hash()?;
-        // Get the expected timestamp for the PoW hash by querying a *local* node.
-        let expected_timestamp = self.expected_timestamp(&hash)?;
-        Ok(VerifiableTimestamp::new(did_commitment, expected_timestamp))
-    }
-
-    /// Verifies a given verifiable timestamp.
-    fn verify_timestamp(
+    /// value for the timestamp retrieved from a local PoW network node.
+    async fn verifiable_timestamp(
         &self,
-        verifiable_timestamp: &VerifiableTimestamp,
-    ) -> Result<(), VerifierError> {
-        // Verify that the DID Commitment commits to the DID Document data.
-        verifiable_timestamp.verify_content()?;
-
-        let did_commitment = verifiable_timestamp.did_commitment();
-        let timestamp_commitment = verifiable_timestamp.timestamp_commitment()?;
-
-        // Verify that the expected data in the Timestamp Commitment matches the timestamp itself.
-        if !json_contains(
-            timestamp_commitment.expected_data(),
-            &json!(verifiable_timestamp.timestamp()),
-        ) {
-            return Err(VerifierError::TimestampVerificationError(
-                did_commitment.did().to_string(),
-            ));
-        }
-
-        // Verify both the commitments with the *same* target hash, thereby confirming
-        // that the same PoW commits to both the DID Document data & the timestamp.
-        let hash = verifiable_timestamp.hash()?;
-        did_commitment.verify(&hash)?;
-        timestamp_commitment.verify(&hash)?;
-
-        Ok(())
-    }
-
-    /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
-    fn expected_timestamp(&self, hash: &str) -> Result<Timestamp, VerifierError>;
+        did: &str,
+        expected_timestamp: Timestamp,
+    ) -> Result<Box<dyn VerifiableTimestamp>, VerifierError>;
 
     /// Gets a block hash (PoW) Commitment for the given DID.
-    /// The mutable reference to self enables a newly-fetched Commitment
-    /// to be stored locally for faster subsequent retrieval.
     async fn did_commitment(&self, did: &str) -> Result<Box<dyn DIDCommitment>, VerifierError>;
+
+    /// Queries a local PoW node to get the expected timestamp for a given PoW hash.
+    fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
 
     /// Gets the resolver used for DID verification.
     fn resolver(&self) -> &Resolver<T>;

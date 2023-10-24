@@ -1,3 +1,4 @@
+//! Graph API for constructing networks from `DIDChain`.
 use crate::chain::{Chain, DIDChain};
 use crate::display::PrettyDID;
 use petgraph::dot::{Config, Dot};
