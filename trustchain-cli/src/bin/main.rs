@@ -99,6 +99,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
                     let mnemonic = matches!(sub_matches.get_one::<bool>("mnemonic"), Some(true));
+                    if mnemonic && file_path.is_some() {
+                        panic!("Please use only one of '--file_path' and '--mnemonic'.")
+                    }
                     if !mnemonic {
                         // Read doc state from file path
                         let doc_state = if let Some(file_path) = file_path {
@@ -124,6 +127,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // TODO: pass optional key_id
                     attest_operation(did, controlled_did, verbose).await?;
                 }
+                // TODO: add a flag for update operation with a mnemonic to add a
+                // key generated on mobile to the DID.
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
