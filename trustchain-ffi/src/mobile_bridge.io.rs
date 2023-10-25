@@ -44,8 +44,8 @@ pub extern "C" fn wire_vp_issue_presentation(
 }
 
 #[no_mangle]
-pub extern "C" fn wire_create_operation_phrase(port_: i64, phrase: *mut wire_uint_8_list) {
-    wire_create_operation_phrase_impl(port_, phrase)
+pub extern "C" fn wire_create_operation_mnemonic(port_: i64, mnemonic: *mut wire_uint_8_list) {
+    wire_create_operation_mnemonic_impl(port_, mnemonic)
 }
 
 // Section: allocate functions

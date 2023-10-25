@@ -14,7 +14,7 @@ use crate::{
     RECOVERY_KEY_DERIVATION_PATH, SIGNING_KEY_DERIVATION_PATH, UPDATE_KEY_DERIVATION_PATH,
 };
 
-/// An error relating to key generation from a mnemonic seed phrase.
+/// An error relating to key generation from a mnemonic.
 #[derive(Error, Debug)]
 pub enum MnemonicError {
     /// Invalid BIP32 derivation path.
@@ -65,7 +65,7 @@ fn with_zero_byte(public_key: [u8; 32]) -> [u8; 33] {
     new_public_key
 }
 
-/// Generates a signing key on the ed25519 elliptic curve from a mnemonic seed phrase.
+/// Generates a signing key on the ed25519 elliptic curve from a mnemonic.
 fn generate_ed25519_signing_key(
     mnemonic: &Mnemonic,
     index: Option<u32>,
@@ -86,7 +86,7 @@ fn generate_ed25519_signing_key(
     })))
 }
 
-/// Generates a key on the secp256k1 elliptic curve from a mnemonic seed phrase.
+/// Generates a key on the secp256k1 elliptic curve from a mnemonic.
 fn generate_secp256k1_key(
     mnemonic: &Mnemonic,
     path: &str,
@@ -98,10 +98,8 @@ fn generate_secp256k1_key(
     let derivation_path = secp256k1_derivation_path(path, index)?;
     let xpriv = m.derive_priv(&secp, &derivation_path)?;
     let private_key = xpriv.to_priv();
-    // let public_key: bitcoin::util::key::PublicKey = private_key.public_key(&secp);
 
     // Now convert the bitcoin::util::bip32::ExtendedPrivKey into a JWK.
-
     let k256_secret_key = k256::SecretKey::from_slice(&private_key.to_bytes())?;
     let k256_public_key = k256_secret_key.public_key();
     let mut ec_params = match ECParams::try_from(&k256_public_key) {
@@ -137,7 +135,7 @@ fn ed25519_derivation_path(
     )?)?)
 }
 
-/// Generates a DID update key on the secp256k1 elliptic curve from a mnemonic seed phrase.
+/// Generates a DID update key on the secp256k1 elliptic curve from a mnemonic.
 fn generate_secp256k1_update_key(
     mnemonic: &Mnemonic,
     index: Option<u32>,
@@ -145,7 +143,7 @@ fn generate_secp256k1_update_key(
     generate_secp256k1_key(mnemonic, UPDATE_KEY_DERIVATION_PATH, index)
 }
 
-/// Generates a DID recovery key on the secp256k1 elliptic curve from a mnemonic seed phrase.
+/// Generates a DID recovery key on the secp256k1 elliptic curve from a mnemonic.
 fn generate_secp256k1_recovery_key(
     mnemonic: &Mnemonic,
     index: Option<u32>,
@@ -158,7 +156,7 @@ pub struct IONKeys {
     pub recovery_key: JWK,
 }
 
-/// Generates a set of signing, update and recovery keys from a mnemonic phrase and child index.
+/// Generates a set of signing, update and recovery keys from a mnemonic and child index.
 pub fn generate_keys(mnemonic: &Mnemonic, index: Option<u32>) -> Result<IONKeys, MnemonicError> {
     let signing_key = generate_ed25519_signing_key(mnemonic, index)?;
     let update_key = generate_secp256k1_update_key(mnemonic, index)?;
@@ -184,8 +182,10 @@ mod tests {
     use std::str::FromStr;
 
     fn get_test_mnemonic() -> Mnemonic {
-        let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
-        Mnemonic::parse(phrase).unwrap()
+        Mnemonic::parse(
+            "state draft moral repeat knife trend animal pretty delay collect fall adjust",
+        )
+        .unwrap()
     }
 
     #[test]
@@ -332,8 +332,7 @@ mod tests {
 
     #[test]
     fn test_mnemonic_secp256k1() -> Result<(), Box<dyn std::error::Error>> {
-        let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
-        let mnemonic = Mnemonic::parse(phrase).unwrap();
+        let mnemonic = get_test_mnemonic();
         let seed = mnemonic.to_seed("");
         let path = "m/0'/0'";
 
@@ -369,33 +368,4 @@ mod tests {
 
         Ok(())
     }
-
-    // #[test]
-    // fn test_mnemonic_ed22519() {
-    //     // Test case:
-    //     // https://github.com/alan-turing-institute/trustchain-mobile/blob/1b735645fd140b94bf1360bd5546643214c423b6/test/app/key_tests.dart
-    //     let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
-    //     let mnemonic = Mnemonic::parse(phrase).unwrap();
-    //     let seed = mnemonic.to_seed("");
-    //     let path = "m/0'/0'";
-    //     let (private_key, _chain_code) = ed25519_hd_key::derive_from_path(path, &seed);
-    //     let public_key = ed25519_hd_key::get_public_key(&private_key);
-    //     // For some reason zero byte is required despite the false arg here:
-    //     // https://github.com/alan-turing-institute/trustchain-mobile/blob/1b735645fd140b94bf1360bd5546643214c423b6/lib/app/shared/key_generation.dart#L12
-    //     let public_key = with_zero_byte(public_key);
-
-    //     // Compare to test case JWK:
-    //     let expected = r#"{"kty":"OKP","crv":"Ed25519","d":"wHwSUdy4a00qTxAhnuOHeWpai4ERjdZGslaou-Lig5g=","x":"AI4pdGWalv3JXZcatmtBM8OfSIBCFC0o_RNzTg-mEAh6"}"#;
-    //     let expected_jwk: JWK = serde_json::from_str(expected).unwrap();
-
-    //     // Make a JWK from bytes: https://docs.rs/ssi/0.4.0/src/ssi/jwk.rs.html#251-265
-    //     let jwk = JWK::from(Params::OKP(OctetParams {
-    //         curve: "Ed25519".to_string(),
-    //         public_key: Base64urlUInt(public_key.to_vec()),
-    //         private_key: Some(Base64urlUInt(private_key.to_vec())),
-    //     }));
-    //     // println!("{}", serde_json::to_string_pretty(&jwk).unwrap());
-    //     // println!("{}", serde_json::to_string_pretty(&expected_jwk).unwrap());
-    //     assert_eq!(jwk, expected_jwk);
-    // }
 }

@@ -21,7 +21,7 @@ use trustchain_core::{
     resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
 use trustchain_ion::{
-    create::{phrase_to_create_and_keys, OperationDID},
+    create::{mnemonic_to_create_and_keys, OperationDID},
     get_ion_resolver,
     verifier::IONVerifier,
 };
@@ -47,7 +47,7 @@ pub enum FFIMobileError {
     FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
     #[error("Failed to issue presentation error: {0}.")]
     FailedToIssuePresentation(PresentationError),
-    #[error("Failed to make create operation from phrase: {0}.")]
+    #[error("Failed to make create operation from mnemonic: {0}.")]
     FailedCreateOperation(String),
 }
 
@@ -188,11 +188,11 @@ struct CreateOperationAndDID {
     did: String,
 }
 
-/// Makes a new ION DID from a mnemonic phrase.
+/// Makes a new ION DID from a mnemonic.
 // TODO: consider optional index in API
-pub fn create_operation_phrase(phrase: String) -> Result<String> {
-    // Generate create operation from phrase
-    let (create_operation, _) = phrase_to_create_and_keys(&phrase, None)
+pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
+    // Generate create operation from mnemonic
+    let (create_operation, _) = mnemonic_to_create_and_keys(&mnemonic, None)
         .map_err(|err| FFIMobileError::FailedCreateOperation(err.to_string()))?;
 
     // Return DID and create operation as JSON
@@ -361,8 +361,9 @@ mod tests {
 
     #[test]
     fn test_ion_create_operation() {
-        let phrase = "state draft moral repeat knife trend animal pretty delay collect fall adjust";
-        let create_op_and_did = create_operation_phrase(phrase.to_string()).unwrap();
+        let mnemonic =
+            "state draft moral repeat knife trend animal pretty delay collect fall adjust";
+        let create_op_and_did = create_operation_mnemonic(mnemonic.to_string()).unwrap();
         assert_eq!(
             canonicalize_str::<CreateOperationAndDID>(&create_op_and_did).unwrap(),
             canonicalize_str::<CreateOperationAndDID>(TEST_ION_CREATE_OPERATION).unwrap()

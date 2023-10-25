@@ -185,12 +185,12 @@ pub fn create_operation(
     )
 }
 
-/// Generates a create operation and corresponding keys from a mnemonic phrase.
-pub fn phrase_to_create_and_keys(
-    phrase: &str,
+/// Generates a create operation and corresponding keys from a mnemonic.
+pub fn mnemonic_to_create_and_keys(
+    mnemonic: &str,
     index: Option<u32>,
 ) -> Result<(CreateOperation, IONKeys), Box<dyn std::error::Error>> {
-    let ion_keys = crate::mnemonic::generate_keys(&Mnemonic::parse(phrase)?, index)?;
+    let ion_keys = crate::mnemonic::generate_keys(&Mnemonic::parse(mnemonic)?, index)?;
     let signing_public_key = PublicKeyEntry::try_from(ion_keys.signing_key.clone())?;
     let update_public_key = PublicKeyJwk::try_from(ion_keys.update_key.to_public())?;
     let recovery_public_key = PublicKeyJwk::try_from(ion_keys.recovery_key.to_public())?;
@@ -206,13 +206,13 @@ pub fn phrase_to_create_and_keys(
 }
 
 /// Makes a new DID subject to be controlled with corresponding create operation written to file
-/// from a mnemonic phrase.
-pub fn create_operation_phrase(
-    phrase: &str,
+/// from a mnemonic.
+pub fn create_operation_mnemonic(
+    mnemonic: &str,
     index: Option<u32>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Generate operation and keys
-    let (create_operation, ion_keys) = phrase_to_create_and_keys(phrase, index)?;
+    let (create_operation, ion_keys) = mnemonic_to_create_and_keys(mnemonic, index)?;
 
     // Write create operation
     write_create_operation(

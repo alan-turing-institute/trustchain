@@ -14,7 +14,7 @@ use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
 use trustchain_ion::{
     attest::attest_operation,
-    create::{create_operation, create_operation_phrase},
+    create::{create_operation, create_operation_mnemonic},
     get_ion_resolver,
     verifier::IONVerifier,
 };
@@ -114,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let mut mnemonic = String::new();
                         println!("Enter a mnemonic:");
                         std::io::stdin().read_line(&mut mnemonic).unwrap();
-                        create_operation_phrase(&mnemonic, None)?;
+                        create_operation_mnemonic(&mnemonic, None)?;
                     }
                 }
                 Some(("attest", sub_matches)) => {
