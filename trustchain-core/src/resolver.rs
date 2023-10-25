@@ -39,6 +39,9 @@ pub enum ResolverError {
     /// General resolver error with resolution metadata.
     #[error("Resolver error with resolution metadata.")]
     FailureWithMetadata(ResolutionMetadata),
+    /// Missing document metadata.
+    #[error("Resolver error with missing document metadata.")]
+    MissingDocumentMetadata,
 }
 
 /// Type for resolver result.
