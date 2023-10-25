@@ -1,10 +1,23 @@
 pub mod logger;
 
-use std::{path::PathBuf, thread};
+use std::{
+    ops::{Deref, DerefMut},
+    path::{Path, PathBuf},
+    str::FromStr,
+    thread,
+};
 
 use nakamoto::{
-    chain::BlockHeader,
+    chain::{
+        cache::BlockCache,
+        store::{File, Genesis},
+        BlockHash, BlockHeader, BlockReader,
+    },
     client::{Client, Config},
+    common::{
+        bitcoin::consensus::Params,
+        block::{checkpoints, Height},
+    },
 };
 use thiserror::Error;
 
@@ -14,6 +27,9 @@ pub enum TrustchainSPVError {
     /// Bitcoin client error.
     #[error("Bitcoin client error: {0}")]
     NakamotoClientError(nakamoto::client::Error),
+    /// Bitcoin client chain error.
+    #[error("Bitcoin client chain error: {0}")]
+    NakamotoChainError(nakamoto::chain::Error),
     /// Block hash not found.
     #[error("Block hash not found: {0}")]
     BlockHashNotFound(String),
@@ -25,7 +41,20 @@ impl From<nakamoto::client::Error> for TrustchainSPVError {
     }
 }
 
+impl From<nakamoto::chain::Error> for TrustchainSPVError {
+    fn from(err: nakamoto::chain::Error) -> Self {
+        TrustchainSPVError::NakamotoChainError(err)
+    }
+}
+
 type Reactor = nakamoto::net::poll::Reactor<std::net::TcpStream>;
+
+fn bitcoin_network(testnet: bool) -> nakamoto::common::bitcoin::Network {
+    match testnet {
+        true => nakamoto::common::bitcoin::Network::Testnet,
+        false => nakamoto::common::bitcoin::Network::Bitcoin,
+    }
+}
 
 fn client_network(testnet: bool) -> nakamoto::client::Network {
     match testnet {
@@ -57,7 +86,28 @@ pub fn get_block_header(
     path: PathBuf,
     testnet: bool,
 ) -> Result<BlockHeader, TrustchainSPVError> {
-    todo!()
+    let genesis = BlockHeader::genesis(client_network(testnet));
+
+    // Construct the path to the block headers database file.
+    let path = path.join(Path::new("headers.db"));
+    let store: File<BlockHeader> = File::open(path, genesis).unwrap();
+
+    let params = Params::new(bitcoin_network(testnet));
+
+    // TODO: work out how to add checkpoints.
+    // The nakamoto::client::Network enum has a checkpoints method, but it
+    // returns an Iterator. Here we need an array slice.
+    let checkpoints: &[(Height, BlockHash)] = &[];
+
+    let block_cache = BlockCache::new(store, params, &checkpoints)?;
+    let block_cache = block_cache.load()?;
+
+    let block_hash = BlockHash::from_str(hash).unwrap();
+
+    if let Some((_, block_header)) = block_cache.get_block(&block_hash) {
+        return Ok(block_header.clone());
+    }
+    Err(TrustchainSPVError::BlockHashNotFound(hash.to_string()))
 }
 
 #[cfg(test)]
@@ -68,6 +118,7 @@ mod tests {
     #[test]
     fn test_initialize() {
         // Create a temp directory for the block store.
+        // Its location is printed in the log.
         let path = TempDir::new("nakamoto").unwrap().into_path();
         let testnet = true;
 
