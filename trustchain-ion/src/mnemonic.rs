@@ -58,13 +58,6 @@ impl From<ed25519_dalek_bip32::Error> for MnemonicError {
     }
 }
 
-// See: https://github.com/alepop/dart-ed25519-hd-key/blob/f785c73b1248037df58f8d582e6f71c480e49d39/lib/src/hd_key.dart#L45-L56
-fn with_zero_byte(public_key: [u8; 32]) -> [u8; 33] {
-    let mut new_public_key = [0u8; 33];
-    new_public_key[1..33].copy_from_slice(public_key.as_slice());
-    new_public_key
-}
-
 /// Generates a signing key on the ed25519 elliptic curve from a mnemonic.
 fn generate_ed25519_signing_key(
     mnemonic: &Mnemonic,
@@ -75,9 +68,6 @@ fn generate_ed25519_signing_key(
     let derivation_path = ed25519_derivation_path(SIGNING_KEY_DERIVATION_PATH, index)?;
     let private_key = extended_secret_key.derive(&derivation_path)?;
     let public_key = private_key.verifying_key().to_bytes();
-    // For some reason zero byte is required despite the false arg here:
-    // https://github.com/alan-turing-institute/trustchain-mobile/blob/1b735645fd140b94bf1360bd5546643214c423b6/lib/app/shared/key_generation.dart#L12
-    let public_key = with_zero_byte(public_key);
     // Make a JWK from bytes: https://docs.rs/ssi/0.4.0/src/ssi/jwk.rs.html#251-265
     Ok(JWK::from(Params::OKP(OctetParams {
         curve: "Ed25519".to_string(),
@@ -307,13 +297,13 @@ mod tests {
     #[test]
     fn test_generate_ed25519_signing_key() -> Result<(), Box<dyn std::error::Error>> {
         let mnemonic = get_test_mnemonic();
-        let result = generate_ed25519_signing_key(&mnemonic, Some(22))?;
+        let result = generate_ed25519_signing_key(&mnemonic, Some(0))?;
         let expected = r#"
         {
             "kty": "OKP",
             "crv": "Ed25519",
-            "x": "AFPB4OPrkVLsxAxppQ2QrqcX1vK_dLP1pJfNuwUA8WGA",
-            "d": "065j_kBmgaYT5JCMbIebOSRkkneHJ83JKkjVrogSamI"
+            "x": "jil0ZZqW_cldlxq2a0Ezw59IgEIULSj9E3NOD6YQCHo",
+            "d": "wHwSUdy4a00qTxAhnuOHeWpai4ERjdZGslaou-Lig5g"
         }"#;
         assert_eq!(result, serde_json::from_str::<JWK>(expected)?);
         Ok(())
@@ -330,7 +320,7 @@ mod tests {
             "x": "pALnEGubf31SDdZQsbjSXqqDRivTSQXteERlggq3vYI",
             "y": "sWjJLyW3dDbqXnYNNPnyeuQGBkBmBH2K_XV3LVCDCDQ",
             "d": "LxQYTvQ2naxEl-XsTWxekhMroP4LtkTW5mdOXuoyS0E"
-          }"#;
+        }"#;
         assert_eq!(result, serde_json::from_str::<JWK>(expected)?);
         Ok(())
     }
@@ -388,5 +378,16 @@ mod tests {
         assert_eq!(jwk, serde_json::from_str::<JWK>(expected_jwk)?);
 
         Ok(())
+    }
+
+    #[test]
+    fn test_ed25519_signing_key_signature() {
+        let key = generate_ed25519_signing_key(&get_test_mnemonic(), None).unwrap();
+        let algorithm = key.get_algorithm().unwrap();
+        let payload = "payload";
+        let signed = ssi::jws::encode_sign(algorithm, payload, &key).unwrap();
+        let verified = ssi::jws::decode_verify(&signed, &key.to_public());
+        assert!(verified.is_ok());
+        assert_eq!(payload, String::from_utf8(verified.unwrap().1).unwrap());
     }
 }

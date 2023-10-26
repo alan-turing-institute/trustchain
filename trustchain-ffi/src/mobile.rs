@@ -252,7 +252,6 @@ mod tests {
     const TEST_ION_CREATE_OPERATION: &str = r#"
     {
         "createOperation": {
-          "type": "create",
           "delta": {
             "patches": [
               {
@@ -260,11 +259,11 @@ mod tests {
                 "document": {
                   "publicKeys": [
                     {
-                      "id": "--3rT8-n9BDn51S_rkdxR3G6J_a8YQlsQ8OIAx1Qqkk",
+                      "id": "CIMzmuW8XaQoc2DyccLwMZ35GyLhPj4yG2k38JNw5P4",
                       "publicKeyJwk": {
                         "crv": "Ed25519",
                         "kty": "OKP",
-                        "x": "AI4pdGWalv3JXZcatmtBM8OfSIBCFC0o_RNzTg-mEAh6"
+                        "x": "jil0ZZqW_cldlxq2a0Ezw59IgEIULSj9E3NOD6YQCHo"
                       },
                       "purposes": [
                         "assertionMethod",
@@ -282,11 +281,12 @@ mod tests {
             "updateCommitment": "EiA2gSveT83s4DD4kJp6tLJuPfy_M3m_m6NtRJzjwtrlDg"
           },
           "suffixData": {
-            "deltaHash": "EiCzptro682kdNxcWXZ7xBnSzZqKu9jphkAfsXmU-7UA-g",
+            "deltaHash": "EiBtaFhQ3mbpKXwOXD2wr7so32FvbZDGvRyGJ-yOfforGQ",
             "recoveryCommitment": "EiDKEn4lG5ETCoQpQxAsMVahzuerhlk0rtqtuoHPYKEEog"
-          }
+          },
+          "type": "create"
         },
-        "did": "did:ion:test:EiB_YFqM3CcO93dnjlNWfljYesSUQxP_tzxEOQsXE3T4MQ"
+        "did": "did:ion:test:EiA1dZD7jVkS5ZP7JJO01t6HgTU3eeLpbKEV1voOFWJV0g"
     }"#;
 
     #[test]
