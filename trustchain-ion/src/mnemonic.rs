@@ -110,22 +110,27 @@ fn generate_secp256k1_key(
     Ok(JWK::from(Params::EC(ec_params)))
 }
 
-fn derivation_path(path: &str, index: Option<u32>) -> Result<String, bitcoin::util::bip32::Error> {
+/// Generates derivation path.
+fn derivation_path(path: &str, index: Option<u32>) -> Result<String, MnemonicError> {
     let index = index.unwrap_or(0);
     // Handle case index > 2^31 - 1.
     if index > 2u32.pow(31) - 1 {
-        return Err(bitcoin::util::bip32::Error::InvalidChildNumber(index));
+        return Err(MnemonicError::InvalidDerivationPath(
+            bitcoin::util::bip32::Error::InvalidChildNumber(index),
+        ));
     }
     Ok(format!("{}/{index}'", path.replace('h', "'")))
 }
 
+/// Generates derivation path.
 fn secp256k1_derivation_path(
     path: &str,
     index: Option<u32>,
-) -> Result<DerivationPath, bitcoin::util::bip32::Error> {
-    DerivationPath::from_str(&derivation_path(path, index)?)
+) -> Result<DerivationPath, MnemonicError> {
+    Ok(DerivationPath::from_str(&derivation_path(path, index)?)?)
 }
 
+/// Generates an ed25519_dalek_bip32 derivation path.
 fn ed25519_derivation_path(
     path: &str,
     index: Option<u32>,
@@ -150,6 +155,7 @@ fn generate_secp256k1_recovery_key(
 ) -> Result<JWK, MnemonicError> {
     generate_secp256k1_key(mnemonic, RECOVERY_KEY_DERIVATION_PATH, index)
 }
+/// A type for the set of JWK required for an ION create operation.
 pub struct IONKeys {
     pub signing_key: JWK,
     pub update_key: JWK,
@@ -191,33 +197,48 @@ mod tests {
     #[test]
     fn test_secp256k1_derivation_path() {
         let path = "m/1h";
-        let expected = DerivationPath::from_str("m/1'/0'");
-        assert_eq!(expected, secp256k1_derivation_path(path, None));
+        let expected = DerivationPath::from_str("m/1'/0'").unwrap();
+        assert_eq!(expected, secp256k1_derivation_path(path, None).unwrap());
 
         let path = "m/1h";
         let index: u32 = 0;
-        let expected = DerivationPath::from_str("m/1h/0h");
-        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
+        let expected = DerivationPath::from_str("m/1h/0h").unwrap();
+        assert_eq!(
+            expected,
+            secp256k1_derivation_path(path, Some(index)).unwrap()
+        );
 
         let path = "m/2h";
         let index: u32 = 2147483647;
-        let expected = DerivationPath::from_str("m/2h/2147483647h");
-        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
+        let expected = DerivationPath::from_str("m/2h/2147483647h").unwrap();
+        assert_eq!(
+            expected,
+            secp256k1_derivation_path(path, Some(index)).unwrap()
+        );
 
         let path = "m/2h";
         let index: u32 = 2147483647;
-        let expected = DerivationPath::from_str("m/1h/2147483647h");
-        assert_ne!(expected, secp256k1_derivation_path(path, Some(index)));
+        let expected = DerivationPath::from_str("m/1h/2147483647h").unwrap();
+        assert_ne!(
+            expected,
+            secp256k1_derivation_path(path, Some(index)).unwrap()
+        );
 
         let path = "m/1'";
         let index: u32 = 0;
-        let expected = DerivationPath::from_str("m/1h/0h");
-        assert_eq!(expected, secp256k1_derivation_path(path, Some(index)));
+        let expected = DerivationPath::from_str("m/1h/0h").unwrap();
+        assert_eq!(
+            expected,
+            secp256k1_derivation_path(path, Some(index)).unwrap()
+        );
 
         let path = "m/0'";
         let index: u32 = 0;
-        let expected = DerivationPath::from_str("m/1h/0h");
-        assert_ne!(expected, secp256k1_derivation_path(path, Some(index)));
+        let expected = DerivationPath::from_str("m/1h/0h").unwrap();
+        assert_ne!(
+            expected,
+            secp256k1_derivation_path(path, Some(index)).unwrap()
+        );
 
         let derivation_path = DerivationPath::from_str("m/1h/0h").unwrap();
         let expected = "m/1'/0'";
