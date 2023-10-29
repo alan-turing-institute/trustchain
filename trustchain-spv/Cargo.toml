@@ -8,9 +8,9 @@ edition = "2021"
 [dependencies]
 chrono = { version = "0.4", features = ["std"], default-features = false }
 colored = "1.9"
+fs2 = "0.4.3"
 log = { version = "0.4", features = ["std"] }
 nakamoto = "0.4.0"
-# nakamoto-client = "0.4.0"
 thiserror="1.0"
 
 [dev-dependencies]
