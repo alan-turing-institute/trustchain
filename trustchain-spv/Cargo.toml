@@ -1,0 +1,17 @@
+[package]
+name = "trustchain-spv"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4", features = ["std"], default-features = false }
+colored = "1.9"
+fs2 = "0.4.3"
+log = { version = "0.4", features = ["std"] }
+nakamoto = "0.4.0"
+thiserror="1.0"
+
+[dev-dependencies]
+tempdir = "0.3.7"
