@@ -50,6 +50,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires reading trustchain_config.toml"]
     async fn test_post_operation() {
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let trustchain_addr = listener.local_addr().unwrap();
