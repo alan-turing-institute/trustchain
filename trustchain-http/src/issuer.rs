@@ -216,8 +216,11 @@ mod tests {
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
     use std::{collections::HashMap, sync::Arc};
-    use trustchain_core::{utils::canonicalize, verifier::Verifier};
-    use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+    use trustchain_core::{
+        utils::{canonicalize, init},
+        verifier::Verifier,
+    };
+    use trustchain_ion::{config::ion_config, get_ion_resolver, verifier::IONVerifier};
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
@@ -299,6 +302,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
+        init();
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
@@ -330,7 +334,7 @@ mod tests {
         }
 
         // Test signature
-        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"), ion_config());
         let verify_credential_result = credential
             .verify(None, verifier.resolver(), &mut ContextLoader::default())
             .await;

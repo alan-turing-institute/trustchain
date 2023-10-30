@@ -5,6 +5,7 @@ use thiserror::Error;
 use trustchain_core::utils::get_did_from_suffix;
 
 use crate::{
+    config::IONConfig,
     utils::{
         block_height_range_on_date, locate_transaction, query_mongodb_on_interval, transaction,
     },
@@ -59,10 +60,15 @@ pub struct RootCandidate {
 /// the first DID operation associated with a particular Bitcoin transaction.
 pub async fn root_did_candidates(
     date: NaiveDate,
+    config: &IONConfig,
 ) -> Result<Vec<RootCandidate>, TrustchainRootError> {
-    let block_height_range = block_height_range_on_date(date, None, None)?;
-    let cursor =
-        query_mongodb_on_interval(block_height_range.0 as u32, block_height_range.1 as u32).await?;
+    let block_height_range = block_height_range_on_date(date, None, None, config)?;
+    let cursor = query_mongodb_on_interval(
+        block_height_range.0 as u32,
+        block_height_range.1 as u32,
+        config,
+    )
+    .await?;
 
     // The mongodb Cursor instance streams all bson documents that:
     // - represent ION DID create operations, and
@@ -80,7 +86,7 @@ pub async fn root_did_candidates(
     //  - resolve the DID (using an IONResolver passed in to this function)
     //  - inspect the document metadata...
 
-    let rpc_client = &crate::utils::rpc_client();
+    let rpc_client = &crate::utils::rpc_client(config);
     let vec = cursor
         .filter(|x| future::ready(x.is_ok()))
         .map(|x| x.unwrap())
@@ -91,12 +97,12 @@ pub async fn root_did_candidates(
             let did_suffix = doc.get_str(MONGO_FILTER_DID_SUFFIX).unwrap();
             // TODO: test vs mainnet needs handling here:
             let did = get_did_from_suffix(did_suffix, ION_TEST_METHOD);
-            let tx_locator = locate_transaction(&did, rpc_client).await;
+            let tx_locator = locate_transaction(&did, rpc_client, config).await;
             if tx_locator.is_err() {
                 return None;
             }
             let (block_hash, tx_index) = tx_locator.unwrap();
-            let tx = transaction(&block_hash, tx_index, Some(rpc_client));
+            let tx = transaction(&block_hash, tx_index, Some(rpc_client), config);
             if tx.is_err() {
                 return None;
             }
@@ -120,13 +126,18 @@ pub async fn root_did_candidates(
 
 #[cfg(test)]
 mod tests {
+    use trustchain_core::utils::init;
+
     use super::*;
+    use crate::config::ion_config;
 
     #[tokio::test]
     #[ignore = "Integration test requires Bitcoin & MongoDB"]
     async fn test_root_did_candidates() {
+        init();
+        let config = ion_config();
         let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = root_did_candidates(date).await.unwrap();
+        let result = root_did_candidates(date, &config).await.unwrap();
 
         // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
         // The block height range on that date is (2377360, 2377519).

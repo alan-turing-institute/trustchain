@@ -253,6 +253,7 @@ mod tests {
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
+    use trustchain_ion::config::ion_config;
     use trustchain_ion::get_ion_resolver;
     use trustchain_ion::verifier::IONVerifier;
 
@@ -298,7 +299,7 @@ mod tests {
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &IONVerifier::new(resolver, ion_config()),
             &mut context_loader,
         )
         .await;
@@ -313,7 +314,7 @@ mod tests {
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &IONVerifier::new(resolver, ion_config()),
             &mut context_loader,
         )
         .await;
@@ -392,7 +393,7 @@ mod tests {
             &presentation,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &IONVerifier::new(resolver, ion_config()),
             &mut context_loader,
         )
         .await;
@@ -423,7 +424,7 @@ mod tests {
                 &presentation,
                 None,
                 ROOT_EVENT_TIME_1,
-                &IONVerifier::new(resolver),
+                &IONVerifier::new(resolver, ion_config()),
                 &mut ContextLoader::default()
             )
             .await,

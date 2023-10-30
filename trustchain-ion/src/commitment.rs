@@ -628,10 +628,14 @@ mod tests {
     use bitcoin::BlockHash;
     use ipfs_api_backend_hyper::IpfsClient;
     use std::str::FromStr;
-    use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
+    use trustchain_core::{
+        data::TEST_ROOT_DOCUMENT,
+        utils::{init, json_contains},
+    };
 
     use super::*;
     use crate::{
+        config::ion_config,
         data::TEST_BLOCK_HEADER_HEX,
         utils::{block_header, merkle_proof, query_ipfs, transaction},
     };
@@ -738,12 +742,13 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_tx_commitment() {
+        init();
         let target = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
 
         // Get the Bitcoin transaction.
         let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-        let tx = transaction(&block_hash, 3, None).unwrap();
+        let tx = transaction(&block_hash, 3, None, ion_config()).unwrap();
 
         // We expect to find the IPFS CID for the ION core index file in the OP_RETURN data.
         let cid_str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
@@ -778,6 +783,7 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_merkle_root_commitment() {
+        init();
         // The commitment target is the Merkle root from the block header.
         // For the testnet block at height 2377445, the Merkle root is:
         let target = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
@@ -791,10 +797,10 @@ mod tests {
         // Get the Bitcoin transaction.
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
         let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, None).unwrap();
+        let tx = transaction(&block_hash, tx_index, None, ion_config()).unwrap();
 
         // The candidate data is a serialized Merkle proof.
-        let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
+        let candidate_data_ = merkle_proof(&tx, &block_hash, None, ion_config()).unwrap();
         let candidate_data = candidate_data_.clone();
 
         let commitment = MerkleRootCommitment::<Complete>::new(candidate_data, expected_data);
@@ -823,6 +829,7 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_block_hash_commitment() {
+        init();
         // The commitment target is the block hash.
         let target = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(target).unwrap();
@@ -833,7 +840,7 @@ mod tests {
         let expected_data = json!(merkle_root_str);
 
         // The candidate data is the serialized block header.
-        let block_header = block_header(&block_hash, None).unwrap();
+        let block_header = block_header(&block_hash, None, ion_config()).unwrap();
         let candidate_data = bitcoin::consensus::serialize(&block_header);
         let commitment =
             BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
@@ -880,6 +887,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires IPFS and Bitcoin Core"]
     async fn test_ion_commitment() {
+        init();
         let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 
         let ipfs_client = IpfsClient::default();
@@ -896,12 +904,12 @@ mod tests {
         let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
         let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, None).unwrap();
+        let tx = transaction(&block_hash, tx_index, None, ion_config()).unwrap();
         let transaction = Serialize::serialize(&tx);
 
-        let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
+        let merkle_proof = merkle_proof(&tx, &block_hash, None, ion_config()).unwrap();
 
-        let block_header = block_header(&block_hash, None).unwrap();
+        let block_header = block_header(&block_hash, None, ion_config()).unwrap();
         let block_header = bitcoin::consensus::serialize(&block_header);
 
         let commitment = IONCommitment::new(

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use toml;
 use trustchain_core::TRUSTCHAIN_CONFIG;
-use trustchain_ion::Endpoint;
+use trustchain_ion::{config::IONConfig, Endpoint};
 
 lazy_static! {
     /// Lazy static reference to cli configuration loaded from `trustchain_config.toml`.
@@ -31,6 +31,7 @@ pub struct CLIConfig {
     /// Root event unix time for first Trustchain root on testnet.
     pub root_event_time: u32,
     pub ion_endpoint: Endpoint,
+    pub ion_config: IONConfig,
 }
 
 /// Wrapper struct for parsing the `cli` table.
@@ -52,7 +53,15 @@ mod tests {
         ion_endpoint.host = "http://127.0.0.1"
         ion_endpoint.port = 3000
 
-        [non_core]
+        [cli.ion_config]
+        mongo_connection_string = "mongodb://localhost:27017/"
+        mongo_database_ion_core = "ion-testnet-core"
+
+        bitcoin_connection_string = "http://localhost:18332"
+        bitcoin_rpc_username = "admin"
+        bitcoin_rpc_password = "bitcoin_rpc_password"
+
+        [non_cli]
         key = "value"
         "#;
 
@@ -62,7 +71,14 @@ mod tests {
             config,
             CLIConfig {
                 root_event_time: 1666971942,
-                ion_endpoint: Endpoint::new("http://127.0.0.1".to_string(), 3000)
+                ion_endpoint: Endpoint::new("http://127.0.0.1".to_string(), 3000),
+                ion_config: IONConfig {
+                    mongo_connection_string: "mongodb://localhost:27017/".to_string(),
+                    mongo_database_ion_core: "ion-testnet-core".to_string(),
+                    bitcoin_connection_string: "http://localhost:18332".to_string(),
+                    bitcoin_rpc_username: "admin".to_string(),
+                    bitcoin_rpc_password: "bitcoin_rpc_password".to_string()
+                }
             }
         );
     }

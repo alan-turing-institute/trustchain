@@ -1,5 +1,6 @@
-use trustchain_core::utils::type_of;
+use trustchain_core::utils::{init, type_of};
 use trustchain_core::verifier::{Timestamp, Verifier};
+use trustchain_ion::config::ion_config;
 use trustchain_ion::get_ion_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
@@ -9,6 +10,8 @@ const ROOT_EVENT_TIME_1: u64 = 1666265405;
 #[tokio::test]
 #[ignore = "requires a running Sidetree node listening on http://localhost:3000."]
 async fn trustchain_verification() {
+    init();
+
     // Integration test of the Trustchain resolution pipeline.
     // root - root-plus-1 - root-plus-2
     let dids = vec![
@@ -19,7 +22,7 @@ async fn trustchain_verification() {
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
     let resolver = get_ion_resolver("http://localhost:3000/");
-    let verifier = IONVerifier::new(resolver);
+    let verifier = IONVerifier::new(resolver, ion_config());
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_1).await;
         assert!(result.is_ok());
@@ -29,8 +32,9 @@ async fn trustchain_verification() {
 #[tokio::test]
 #[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
 async fn test_verifiable_timestamp() {
+    init();
     let resolver = get_ion_resolver("http://localhost:3000/");
-    let target = IONVerifier::new(resolver);
+    let target = IONVerifier::new(resolver, ion_config());
     let timestamp: Timestamp = 1666265405;
 
     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";

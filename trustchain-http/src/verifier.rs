@@ -183,20 +183,24 @@ impl TrustchainVerifierHTTPHandler {
 mod tests {
     use super::*;
     use crate::{
-        config::HTTPConfig, errors::TrustchainHTTPError, server::TrustchainRouter, state::AppState,
+        config::{http_config_owned, HTTPConfig},
+        errors::TrustchainHTTPError,
+        server::TrustchainRouter,
+        state::AppState,
     };
     use axum_test_helper::TestClient;
     use hyper::StatusCode;
     use lazy_static::lazy_static;
     use serde_json::json;
     use std::{collections::HashMap, sync::Arc};
+    use trustchain_core::utils::init;
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
             server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
             root_event_time: Some(1666265405),
-            ..Default::default()
+            ..http_config_owned()
         };
     }
 
@@ -316,6 +320,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_get_verifier_request() {
+        init();
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             HashMap::new(),
@@ -352,6 +357,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_verifier_credential() {
+        init();
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             HashMap::new(),
@@ -372,6 +378,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_verifier_presentation() {
+        init();
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             HashMap::new(),

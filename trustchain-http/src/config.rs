@@ -8,6 +8,7 @@ use std::{
 use toml;
 use trustchain_core::verifier::Timestamp;
 use trustchain_core::TRUSTCHAIN_CONFIG;
+use trustchain_ion::config::IONConfig;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8081;
@@ -39,6 +40,8 @@ pub struct HTTPConfig {
     pub verifiable_endpoints: Option<bool>,
     /// Root event time for verifier.
     pub root_event_time: Option<Timestamp>,
+    /// ION config, including Mongo database config and Bitcoin RPC client config.
+    pub ion_config: IONConfig,
 }
 
 impl std::fmt::Display for HTTPConfig {
@@ -60,6 +63,7 @@ impl Default for HTTPConfig {
             https_path: None,
             verifiable_endpoints: None,
             root_event_time: None,
+            ion_config: IONConfig::default(),
         }
     }
 }
@@ -104,6 +108,11 @@ pub fn http_config() -> &'static HTTP_CONFIG {
     &HTTP_CONFIG
 }
 
+/// Gets owned `trustchain-http` configuration variables.
+pub fn http_config_owned() -> HTTPConfig {
+    (*http_config()).to_owned()
+}
+
 /// Wrapper struct for parsing the `http` config table.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Config {
@@ -126,6 +135,14 @@ mod tests {
         ion_port = 3000
         server_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
         https = false
+
+        [http.ion_config]
+        mongo_connection_string = "mongodb://localhost:27017/"
+        mongo_database_ion_core = "ion-testnet-core"
+
+        bitcoin_connection_string = "http://localhost:18332"
+        bitcoin_rpc_username = "admin"
+        bitcoin_rpc_password = "bitcoin_rpc_password"
 
         [non_http]
         key = "value"

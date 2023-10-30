@@ -25,7 +25,7 @@ pub fn ion_config() -> &'static ION_CONFIG {
 }
 
 /// Configuration variables for `trustchain-ion` crate.
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Eq)]
 pub struct IONConfig {
     /// MongoDB endpoint.
     pub mongo_connection_string: String,
@@ -37,6 +37,18 @@ pub struct IONConfig {
     pub bitcoin_rpc_username: String,
     /// Bitcoin Core RPC password.
     pub bitcoin_rpc_password: String,
+}
+
+impl Default for IONConfig {
+    fn default() -> Self {
+        Self {
+            mongo_connection_string: "mongodb://localhost:27017/".to_string(),
+            mongo_database_ion_core: "ion-testnet-core".to_string(),
+            bitcoin_connection_string: "http://localhost:18332".to_string(),
+            bitcoin_rpc_username: "admin".to_string(),
+            bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
+        }
+    }
 }
 
 /// Wrapper struct for parsing the `ion` table.
@@ -67,15 +79,6 @@ mod tests {
 
         let config: IONConfig = parse_toml(config_string);
 
-        assert_eq!(
-            config,
-            IONConfig {
-                mongo_connection_string: "mongodb://localhost:27017/".to_string(),
-                mongo_database_ion_core: "ion-testnet-core".to_string(),
-                bitcoin_connection_string: "http://localhost:18332".to_string(),
-                bitcoin_rpc_username: "admin".to_string(),
-                bitcoin_rpc_password: "bitcoin_rpc_password".to_string(),
-            }
-        );
+        assert_eq!(config, IONConfig::default());
     }
 }

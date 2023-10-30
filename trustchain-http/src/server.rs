@@ -1,4 +1,3 @@
-use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{
     config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
@@ -123,9 +122,9 @@ pub fn http_server(config: HTTPConfig) -> axum::Server<AddrIncoming, IntoMakeSer
 /// Spawns a Trustchain server given `HTTPConfig` with https.
 pub async fn https_server(config: HTTPConfig) -> std::io::Result<()> {
     let addr = config.to_socket_address();
+    let tls_config = rustls_config(config.https_path.as_ref().unwrap()).await;
     let shared_state = Arc::new(AppState::new(config));
     let app = TrustchainRouter::from(shared_state).into_router();
-    let tls_config = rustls_config(http_config().https_path.as_ref().unwrap()).await;
     axum_server::bind_rustls(addr, tls_config)
         .serve(app.into_make_service())
         .await

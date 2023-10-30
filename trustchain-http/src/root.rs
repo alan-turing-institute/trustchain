@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use trustchain_core::verifier::Timestamp;
+use trustchain_ion::config::IONConfig;
 use trustchain_ion::root::{root_did_candidates, RootCandidate, TrustchainRootError};
 use trustchain_ion::utils::time_at_block_height;
 
@@ -22,9 +23,13 @@ pub trait TrustchainRootHTTP {
     async fn root_candidates(
         date: NaiveDate,
         root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
+        config: &IONConfig,
     ) -> Result<RootCandidatesResult, TrustchainHTTPError>;
     /// Gets a unix timestamp for a given Bitcoin transaction ID.
-    async fn block_timestamp(height: u64) -> Result<TimestampResult, TrustchainHTTPError>;
+    async fn block_timestamp(
+        height: u64,
+        config: &IONConfig,
+    ) -> Result<TimestampResult, TrustchainHTTPError>;
 }
 
 /// Type for implementing the TrustchainIssuerHTTP trait that will contain additional handler methods.
@@ -35,6 +40,7 @@ impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
     async fn root_candidates(
         date: NaiveDate,
         root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
+        config: &IONConfig,
     ) -> Result<RootCandidatesResult, TrustchainHTTPError> {
         debug!("Getting root candidates for {0}", date);
         {
@@ -44,7 +50,7 @@ impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
                 return Ok(read_guard.get(&date).cloned().unwrap());
             }
         }
-        let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
+        let result = RootCandidatesResult::new(date, root_did_candidates(date, config).await?);
         debug!("Got root candidates: {:?}", &result);
 
         // Add the result to the cache.
@@ -55,10 +61,13 @@ impl TrustchainRootHTTP for TrustchainRootHTTPHandler {
         Ok(result)
     }
 
-    async fn block_timestamp(height: u64) -> Result<TimestampResult, TrustchainHTTPError> {
+    async fn block_timestamp(
+        height: u64,
+        config: &IONConfig,
+    ) -> Result<TimestampResult, TrustchainHTTPError> {
         debug!("Getting unix timestamp for block height: {0}", height);
 
-        let timestamp = time_at_block_height(height, None)
+        let timestamp = time_at_block_height(height, None, config)
             .map_err(|err| TrustchainRootError::FailedToParseBlockHeight(err.to_string()))?;
         debug!("Got block timestamp: {:?}", &timestamp);
         Ok(TimestampResult { timestamp })
@@ -102,13 +111,20 @@ impl TrustchainRootHTTPHandler {
                 TrustchainRootError::InvalidDate(year.year, month.month, day.day),
             ));
         }
-        TrustchainRootHTTPHandler::root_candidates(date.unwrap(), &app_state.root_candidates)
-            .await
-            .map(|vec| (StatusCode::OK, Json(vec)))
+        TrustchainRootHTTPHandler::root_candidates(
+            date.unwrap(),
+            &app_state.root_candidates,
+            &app_state.config.ion_config,
+        )
+        .await
+        .map(|vec| (StatusCode::OK, Json(vec)))
     }
 
     /// Handles a GET request for a transaction timestamp.
-    pub async fn get_block_timestamp(Path(height): Path<String>) -> impl IntoResponse {
+    pub async fn get_block_timestamp(
+        Path(height): Path<String>,
+        State(app_state): State<Arc<AppState>>,
+    ) -> impl IntoResponse {
         debug!("Received block height for timestamp: {:?}", height.as_str());
         let block_height = height.parse::<u64>();
 
@@ -118,9 +134,12 @@ impl TrustchainRootHTTPHandler {
             ));
         }
 
-        TrustchainRootHTTPHandler::block_timestamp(block_height.unwrap())
-            .await
-            .map(|result| (StatusCode::OK, Json(result)))
+        TrustchainRootHTTPHandler::block_timestamp(
+            block_height.unwrap(),
+            &app_state.config.ion_config,
+        )
+        .await
+        .map(|result| (StatusCode::OK, Json(result)))
     }
 }
 
@@ -151,13 +170,15 @@ pub struct TimestampResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{config::HTTPConfig, server::TrustchainRouter};
+    use crate::{config::http_config_owned, server::TrustchainRouter};
     use axum_test_helper::TestClient;
+    use trustchain_core::utils::init;
 
     #[tokio::test]
     #[ignore = "requires MongoDB and Bitcoin RPC"]
     async fn test_root_candidates() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let client = TestClient::new(app);
 
         // Invalid date in request:
@@ -191,7 +212,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires MongoDB and Bitcoin RPC"]
     async fn test_block_timestamp() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let client = TestClient::new(app);
 
         // Invalid block height in request:

@@ -1,6 +1,6 @@
 //! Implementation of `Verifier` API for ION DID method.
 use crate::commitment::{BlockTimestampCommitment, IONCommitment};
-use crate::config::ion_config;
+use crate::config::IONConfig;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
@@ -91,6 +91,7 @@ where
     ipfs_client: Option<IpfsClient>,
     bundles: Mutex<HashMap<String, Arc<VerificationBundle>>>,
     endpoint: Option<URL>,
+    config: Option<IONConfig>,
     _marker: PhantomData<U>,
 }
 
@@ -100,13 +101,15 @@ where
 {
     /// Constructs a new IONVerifier.
     // TODO: refactor to use config struct over direct config file lookup
-    pub fn new(resolver: Resolver<T>) -> Self {
+    pub fn new(resolver: Resolver<T>, config: &IONConfig) -> Self {
+        let config = config.to_owned();
+
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
         let rpc_client = bitcoincore_rpc::Client::new(
-            &ion_config().bitcoin_connection_string,
+            &config.bitcoin_connection_string,
             bitcoincore_rpc::Auth::UserPass(
-                ion_config().bitcoin_rpc_username.clone(),
-                ion_config().bitcoin_rpc_password.clone(),
+                config.bitcoin_rpc_username.clone(),
+                config.bitcoin_rpc_password.clone(),
             ),
         )
         // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
@@ -125,6 +128,7 @@ where
             ipfs_client: Some(ipfs_client),
             bundles,
             endpoint: None,
+            config: Some(config),
             _marker: PhantomData,
         }
     }
@@ -139,12 +143,18 @@ where
         self.ipfs_client.as_ref().unwrap()
     }
 
+    /// Gets ION config.
+    fn config(&self) -> &IONConfig {
+        self.config.as_ref().unwrap()
+    }
+
     /// Fetches the data needed to verify the DID's timestamp and stores it as a verification bundle.
     // TODO: offline functionality will require interfacing with a persistent cache instead of the
     // in-memory verifier HashMap.
     pub async fn fetch_bundle(&self, did: &str) -> Result<(), VerifierError> {
         let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
-        let (block_hash, tx_index) = locate_transaction(did, self.rpc_client()).await?;
+        let (block_hash, tx_index) =
+            locate_transaction(did, self.rpc_client(), self.config()).await?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
         let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
         let cid = self.op_return_cid(&tx)?;
@@ -177,7 +187,7 @@ where
         block_hash: &BlockHash,
         tx_index: u32,
     ) -> Result<Transaction, VerifierError> {
-        transaction(block_hash, tx_index, Some(self.rpc_client())).map_err(|e| {
+        transaction(block_hash, tx_index, Some(self.rpc_client()), self.config()).map_err(|e| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to fetch transaction.".to_string(),
                 e.into(),
@@ -275,7 +285,7 @@ where
     }
 
     fn fetch_block_header(&self, block_hash: &BlockHash) -> Result<Vec<u8>, VerifierError> {
-        block_header(block_hash, Some(self.rpc_client()))
+        block_header(block_hash, Some(self.rpc_client()), self.config())
             .map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(
                     "Failed to fetch Bitcoin block header via RPC.".to_string(),
@@ -309,6 +319,7 @@ where
             ipfs_client: None,
             bundles: Mutex::new(HashMap::new()),
             endpoint: Some(endpoint),
+            config: None,
             _marker: PhantomData,
         }
     }
@@ -423,7 +434,7 @@ where
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError> {
         let block_hash = BlockHash::from_str(hash)
             .map_err(|_| VerifierError::InvalidProofOfWorkHash(hash.to_string()))?;
-        let _block_header = block_header(&block_hash, Some(self.rpc_client()))
+        let _block_header = block_header(&block_hash, Some(self.rpc_client()), self.config())
             .map_err(|_| VerifierError::FailureToGetBlockHeader(hash.to_string()))?;
         Ok(())
     }
@@ -567,6 +578,7 @@ impl VerifiableTimestamp for IONTimestamp {
 mod tests {
     use super::*;
     use crate::{
+        config::ion_config,
         data::{
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
@@ -629,7 +641,7 @@ mod tests {
     #[ignore = "Integration test requires Bitcoin RPC"]
     fn test_op_return_cid() {
         let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
 
         // The transaction, including OP_RETURN data, can be found on-chain:
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
@@ -640,7 +652,13 @@ mod tests {
             BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
                 .unwrap();
         let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, Some(target.rpc_client())).unwrap();
+        let tx = transaction(
+            &block_hash,
+            tx_index,
+            Some(target.rpc_client()),
+            target.config(),
+        )
+        .unwrap();
 
         let actual = target.op_return_cid(&tx).unwrap();
         assert_eq!(expected, actual);
@@ -651,7 +669,7 @@ mod tests {
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
         assert!(result.is_ok());
@@ -661,7 +679,7 @@ mod tests {
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_chunk_file() {
         let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
@@ -683,7 +701,7 @@ mod tests {
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_core_index_file() {
         let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let result = target.fetch_core_index_file(cid).await;
@@ -708,7 +726,7 @@ mod tests {
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
 
         assert!(target.bundles.lock().unwrap().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -724,7 +742,7 @@ mod tests {
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let target = IONVerifier::new(resolver, ion_config());
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 

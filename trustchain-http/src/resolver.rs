@@ -169,12 +169,15 @@ impl DIDChainResolutionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{config::HTTPConfig, server::TrustchainRouter};
+    use crate::{
+        config::{http_config_owned, HTTPConfig},
+        server::TrustchainRouter,
+    };
     use axum_test_helper::TestClient;
     use hyper::Server;
     use std::net::TcpListener;
     use tower::make::Shared;
-    use trustchain_core::utils::canonicalize_str;
+    use trustchain_core::utils::{canonicalize_str, init};
     use trustchain_ion::get_ion_resolver;
     const TEST_ROOT_PLUS_2_RESOLVED: &str = r##"{"@context":"https://w3id.org/did-resolution/v1","didDocument":{"@context":["https://www.w3.org/ns/did/v1",{"@base":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"}],"assertionMethod":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"authentication":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityDelegation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityInvocation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"controller":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","id":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","keyAgreement":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"service":[{"id":"#TrustchainID","serviceEndpoint":"https://identity.foundation/ion/trustchain-root-plus-2","type":"Identity"}],"verificationMethod":[{"controller":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","id":"#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI","publicKeyJwk":{"crv":"secp256k1","kty":"EC","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY"},"type":"JsonWebSignature2020"}]},"didDocumentMetadata":{"canonicalId":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","method":{"published":true,"recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA","updateCommitment":"EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg"},"proof":{"id":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","proofValue":"eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw","type":"JsonWebSignature2020"}}}"##;
     const TEST_ROOT_PLUS_2_CHAIN: &str = r##"{"didChain":[{"@context":"https://w3id.org/did-resolution/v1","didDocument":{"@context":["https://www.w3.org/ns/did/v1",{"@base":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"}],"id":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg","verificationMethod":[{"id":"#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es","type":"JsonWebSignature2020","controller":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg","publicKeyJwk":{"kty":"EC","crv":"secp256k1","x":"7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso","y":"kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"}}],"authentication":["#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"],"assertionMethod":["#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"],"keyAgreement":["#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"],"capabilityInvocation":["#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"],"capabilityDelegation":["#9CMTR3dvGvwm6KOyaXEEIOK8EOTtek-n7BV9SVBr2Es"],"service":[{"id":"#TrustchainID","type":"Identity","serviceEndpoint":"https://identity.foundation/ion/trustchain-root"}]},"didDocumentMetadata":{"method":{"published":true,"recoveryCommitment":"EiCymv17OGBAs7eLmm4BIXDCQBVhdOUAX5QdpIrN4SDE5w","updateCommitment":"EiDVRETvZD9iSUnou-HUAz5Ymk_F3tpyzg7FG1jdRG-ZRg"},"canonicalId":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"}},{"@context":"https://w3id.org/did-resolution/v1","didDocument":{"@context":["https://www.w3.org/ns/did/v1",{"@base":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"}],"id":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","controller":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg","verificationMethod":[{"id":"#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ","type":"JsonWebSignature2020","controller":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","publicKeyJwk":{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0"}}],"authentication":["#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"],"assertionMethod":["#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"],"keyAgreement":["#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"],"capabilityInvocation":["#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"],"capabilityDelegation":["#kjqrr3CTkmlzJZVo0uukxNs8vrK5OEsk_OcoBO4SeMQ"],"service":[{"id":"#TrustchainID","type":"Identity","serviceEndpoint":"https://identity.foundation/ion/trustchain-root-plus-1"}]},"didDocumentMetadata":{"method":{"updateCommitment":"EiA0-GpdeoAa4v0-K4YCHoNTjAPsoroDy7pleDIc4a3_QQ","recoveryCommitment":"EiClOaWycGv1m-QejUjB0L18G6DVFVeTQCZCuTRrmzCBQg","published":true},"canonicalId":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","proof":{"id":"did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg","type":"JsonWebSignature2020","proofValue":"eyJhbGciOiJFUzI1NksifQ.IkVpQXM5dkx2SmdaNkFHMk5XbUFmTnBrbl9EMlNSSUFSa2tCWE9kajZpMk84Umci.awNd-_O1N1ycZ6i_BxeLGV14ok51Ii2x9f1FBBCflyAWw773sqiHvQRGHIMBebKMnzbxVybFu2qUEPWUuRAC9g"}}},{"@context":"https://w3id.org/did-resolution/v1","didDocument":{"@context":["https://www.w3.org/ns/did/v1",{"@base":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"}],"id":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","controller":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A","verificationMethod":[{"id":"#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI","type":"JsonWebSignature2020","controller":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q","publicKeyJwk":{"kty":"EC","crv":"secp256k1","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY"}}],"authentication":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"assertionMethod":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"keyAgreement":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityInvocation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"capabilityDelegation":["#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI"],"service":[{"id":"#TrustchainID","type":"Identity","serviceEndpoint":"https://identity.foundation/ion/trustchain-root-plus-2"}]},"didDocumentMetadata":{"proof":{"proofValue":"eyJhbGciOiJFUzI1NksifQ.IkVpQTNtT25QRklDbTdyc2ljVjRIaFMtNjhrT21xMndqa2tlMEtkRnkzQWlWZlEi.Fxlbm8osH2O5KOQ9sS21bypT_WoWxVD8toCU4baBnLk_gOxiOy_n3cMFMVANJ8usPrKAfRFeC27ATTkWBYZzuw","type":"JsonWebSignature2020","id":"did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"},"method":{"updateCommitment":"EiAsmJrz7BysD9na9SMGyZ9RjpKIVweh_AFG_2Bs-2Okkg","recoveryCommitment":"EiCy4pW16uB7H-ijA6V6jO6ddWfGCwqNcDSJpdv_USzoRA","published":true},"canonicalId":"did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"}}]}"##;
@@ -183,7 +186,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires TRUSTCHAIN_DATA and TRUSTCHAIN_CONFIG environment variables"]
     async fn test_not_found() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let uri = "/nonexistent-path".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -193,7 +197,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_did() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
@@ -216,7 +221,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let root_event_time = 1666265405;
         let uri = format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={root_event_time}");
         let client = TestClient::new(app);
@@ -248,7 +254,8 @@ mod tests {
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_get_bundle() {
-        let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+        init();
+        let app = TrustchainRouter::from(http_config_owned()).into_router();
         let uri =
             "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let client = TestClient::new(app);
@@ -274,13 +281,14 @@ mod tests {
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_fetch_bundle() {
+        init();
         // Using internals of the `TestClient` to make address available in test
         let listener = TcpListener::bind("127.0.0.1:0").expect("Could not bind ephemeral socket");
         let addr = listener.local_addr().unwrap();
         let port = addr.port();
         let http_config = HTTPConfig {
             port,
-            ..Default::default()
+            ..http_config_owned()
         };
         assert_eq!(http_config.host.to_string(), addr.ip().to_string());
 

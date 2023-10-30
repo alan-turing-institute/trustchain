@@ -1,6 +1,7 @@
 //! Core utilities.
 use crate::key_manager::KeyManager;
 use crate::key_manager::KeyType;
+use crate::TRUSTCHAIN_CONFIG;
 use crate::TRUSTCHAIN_DATA;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -30,6 +31,7 @@ pub fn init() {
         // initialization code here
         let tempdir = tempfile::tempdir().unwrap();
         std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+        std::env::set_var(TRUSTCHAIN_CONFIG, Path::new(&std::env::var("CARGO_WORKSPACE_DIR").unwrap()).join(".cargo/test_trustchain_config.toml"));
         // Manually drop here so additional writes in the init call are not removed
         drop(tempdir);
         // Include test signing keys for two resolvable DIDs

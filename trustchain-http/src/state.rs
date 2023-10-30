@@ -20,7 +20,10 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(config: HTTPConfig) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = IONVerifier::new(
+            Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)),
+            &config.ion_config,
+        );
         let path = std::env::var(TRUSTCHAIN_DATA).expect("TRUSTCHAIN_DATA env not set.");
         let credentials: HashMap<String, Credential> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("credentials/offers/cache.json"))
@@ -28,7 +31,8 @@ impl AppState {
                 .unwrap_or_default()
                 .as_slice(),
         )
-        .expect("Credential cache could not be deserialized.");
+        // TODO: confirm using empty cache
+        .unwrap_or_default();
         let root_candidates = RwLock::new(HashMap::new());
         let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
@@ -36,7 +40,8 @@ impl AppState {
                 .unwrap_or_default()
                 .as_slice(),
         )
-        .expect("Presentation cache could not be deserialized.");
+        // TODO: confirm using empty cache
+        .unwrap_or_default();
         Self {
             config,
             verifier,
@@ -50,7 +55,10 @@ impl AppState {
         credentials: HashMap<String, Credential>,
         presentation_requests: HashMap<String, PresentationRequest>,
     ) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = IONVerifier::new(
+            Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)),
+            &config.ion_config,
+        );
         let root_candidates = RwLock::new(HashMap::new());
         Self {
             config,
