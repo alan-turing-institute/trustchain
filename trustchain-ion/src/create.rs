@@ -283,7 +283,6 @@ mod test {
         for path in paths {
             if let Ok(path_buf) = path {
                 let operation_string = std::fs::read_to_string(path_buf)?;
-                println!("{}", operation_string);
                 let _operation: Operation = serde_json::from_str(&operation_string)?;
                 operation_count += 1;
             } else {
