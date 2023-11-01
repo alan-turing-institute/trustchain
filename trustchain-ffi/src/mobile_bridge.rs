@@ -105,6 +105,84 @@ fn wire_vp_issue_presentation_impl(
         },
     )
 }
+fn wire_spv_initialize_impl(
+    port_: MessagePort,
+    path: impl Wire2Api<String> + UnwindSafe,
+    testnet: impl Wire2Api<bool> + UnwindSafe,
+    log_level: impl Wire2Api<Option<String>> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "spv_initialize",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_path = path.wire2api();
+            let api_testnet = testnet.wire2api();
+            let api_log_level = log_level.wire2api();
+            move |task_callback| spv_initialize(api_path, api_testnet, api_log_level)
+        },
+    )
+}
+fn wire_spv_shutdown_impl(
+    port_: MessagePort,
+    path: impl Wire2Api<String> + UnwindSafe,
+    testnet: impl Wire2Api<bool> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "spv_shutdown",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_path = path.wire2api();
+            let api_testnet = testnet.wire2api();
+            move |task_callback| spv_shutdown(api_path, api_testnet)
+        },
+    )
+}
+fn wire_spv_get_tip_impl(
+    port_: MessagePort,
+    path: impl Wire2Api<String> + UnwindSafe,
+    testnet: impl Wire2Api<bool> + UnwindSafe,
+    timeout_millis: impl Wire2Api<Option<u32>> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "spv_get_tip",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_path = path.wire2api();
+            let api_testnet = testnet.wire2api();
+            let api_timeout_millis = timeout_millis.wire2api();
+            move |task_callback| spv_get_tip(api_path, api_testnet, api_timeout_millis)
+        },
+    )
+}
+fn wire_spv_get_block_header_impl(
+    port_: MessagePort,
+    hash: impl Wire2Api<String> + UnwindSafe,
+    path: impl Wire2Api<String> + UnwindSafe,
+    testnet: impl Wire2Api<bool> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "spv_get_block_header",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_hash = hash.wire2api();
+            let api_path = path.wire2api();
+            let api_testnet = testnet.wire2api();
+            move |task_callback| spv_get_block_header(api_hash, api_path, api_testnet)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks
@@ -128,6 +206,17 @@ where
     }
 }
 
+impl Wire2Api<bool> for bool {
+    fn wire2api(self) -> bool {
+        self
+    }
+}
+
+impl Wire2Api<u32> for u32 {
+    fn wire2api(self) -> u32 {
+        self
+    }
+}
 impl Wire2Api<u8> for u8 {
     fn wire2api(self) -> u8 {
         self

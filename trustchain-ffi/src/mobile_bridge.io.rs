@@ -43,7 +43,47 @@ pub extern "C" fn wire_vp_issue_presentation(
     wire_vp_issue_presentation_impl(port_, presentation, opts, jwk_json)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_spv_initialize(
+    port_: i64,
+    path: *mut wire_uint_8_list,
+    testnet: bool,
+    log_level: *mut wire_uint_8_list,
+) {
+    wire_spv_initialize_impl(port_, path, testnet, log_level)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_spv_shutdown(port_: i64, path: *mut wire_uint_8_list, testnet: bool) {
+    wire_spv_shutdown_impl(port_, path, testnet)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_spv_get_tip(
+    port_: i64,
+    path: *mut wire_uint_8_list,
+    testnet: bool,
+    timeout_millis: *mut u32,
+) {
+    wire_spv_get_tip_impl(port_, path, testnet, timeout_millis)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_spv_get_block_header(
+    port_: i64,
+    hash: *mut wire_uint_8_list,
+    path: *mut wire_uint_8_list,
+    testnet: bool,
+) {
+    wire_spv_get_block_header_impl(port_, hash, path, testnet)
+}
+
 // Section: allocate functions
+
+#[no_mangle]
+pub extern "C" fn new_box_autoadd_u32_0(value: u32) -> *mut u32 {
+    support::new_leak_box_ptr(value)
+}
 
 #[no_mangle]
 pub extern "C" fn new_uint_8_list_0(len: i32) -> *mut wire_uint_8_list {
@@ -62,6 +102,12 @@ impl Wire2Api<String> for *mut wire_uint_8_list {
     fn wire2api(self) -> String {
         let vec: Vec<u8> = self.wire2api();
         String::from_utf8_lossy(&vec).into_owned()
+    }
+}
+
+impl Wire2Api<u32> for *mut u32 {
+    fn wire2api(self) -> u32 {
+        unsafe { *support::box_from_leak_ptr(self) }
     }
 }
 
