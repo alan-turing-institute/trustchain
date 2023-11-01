@@ -21,7 +21,6 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -163,13 +162,17 @@ pub trait TrustchainVPAPI {
             .await?)
     }
     /// Verifies a verifiable presentation.
-    async fn verify_presentation<T: DIDResolver + Send + Sync>(
+    async fn verify_presentation<T, U>(
         presentation: &Presentation,
         ldp_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<(), PresentationError> {
+    ) -> Result<(), PresentationError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
         // Check credentials are present in presentation
         let credentials = presentation
             .verifiable_credential
