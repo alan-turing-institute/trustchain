@@ -44,6 +44,15 @@ pub extern "C" fn wire_vp_issue_presentation(
 }
 
 #[no_mangle]
+pub extern "C" fn wire_vp_verify_presentation(
+    port_: i64,
+    presentation: *mut wire_uint_8_list,
+    opts: *mut wire_uint_8_list,
+) {
+    wire_vp_verify_presentation_impl(port_, presentation, opts)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_create_operation_mnemonic(port_: i64, mnemonic: *mut wire_uint_8_list) {
     wire_create_operation_mnemonic_impl(port_, mnemonic)
 }
