@@ -2,6 +2,8 @@
 use crate::config::FFIConfig;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use did_ion::sidetree::Operation;
+use serde::{Deserialize, Serialize};
 use ssi::{
     jsonld::ContextLoader,
     jwk::JWK,
@@ -18,7 +20,11 @@ use trustchain_api::{
 use trustchain_core::{
     resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+use trustchain_ion::{
+    create::{mnemonic_to_create_and_keys, OperationDID},
+    get_ion_resolver,
+    verifier::IONVerifier,
+};
 
 /// A speicfic error for FFI mobile making handling easier.
 #[derive(Error, Debug)]
@@ -41,6 +47,8 @@ pub enum FFIMobileError {
     FutureProofCreatedTime(DateTime<Utc>, DateTime<Utc>),
     #[error("Failed to issue presentation error: {0}.")]
     FailedToIssuePresentation(PresentationError),
+    #[error("Failed to make create operation from mnemonic: {0}.")]
+    FailedCreateOperation(String),
 }
 
 /// Example greet function.
@@ -173,9 +181,31 @@ pub fn vp_issue_presentation(
 //     todo!()
 // }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateOperationAndDID {
+    create_operation: Operation,
+    did: String,
+}
+
+/// Makes a new ION DID from a mnemonic.
+// TODO: consider optional index in API
+pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
+    // Generate create operation from mnemonic
+    let (create_operation, _) = mnemonic_to_create_and_keys(&mnemonic, None)
+        .map_err(|err| FFIMobileError::FailedCreateOperation(err.to_string()))?;
+
+    // Return DID and create operation as JSON
+    Ok(serde_json::to_string_pretty(&CreateOperationAndDID {
+        did: create_operation.to_did(),
+        create_operation: Operation::Create(create_operation),
+    })?)
+}
+
 #[cfg(test)]
 mod tests {
     use ssi::vc::CredentialOrJWT;
+    use trustchain_core::utils::canonicalize_str;
 
     use crate::config::parse_toml;
 
@@ -218,6 +248,46 @@ mod tests {
         }
     }
     "#;
+
+    const TEST_ION_CREATE_OPERATION: &str = r#"
+    {
+        "createOperation": {
+          "delta": {
+            "patches": [
+              {
+                "action": "replace",
+                "document": {
+                  "publicKeys": [
+                    {
+                      "id": "CIMzmuW8XaQoc2DyccLwMZ35GyLhPj4yG2k38JNw5P4",
+                      "publicKeyJwk": {
+                        "crv": "Ed25519",
+                        "kty": "OKP",
+                        "x": "jil0ZZqW_cldlxq2a0Ezw59IgEIULSj9E3NOD6YQCHo"
+                      },
+                      "purposes": [
+                        "assertionMethod",
+                        "authentication",
+                        "keyAgreement",
+                        "capabilityInvocation",
+                        "capabilityDelegation"
+                      ],
+                      "type": "JsonWebSignature2020"
+                    }
+                  ]
+                }
+              }
+            ],
+            "updateCommitment": "EiA2gSveT83s4DD4kJp6tLJuPfy_M3m_m6NtRJzjwtrlDg"
+          },
+          "suffixData": {
+            "deltaHash": "EiBtaFhQ3mbpKXwOXD2wr7so32FvbZDGvRyGJ-yOfforGQ",
+            "recoveryCommitment": "EiDKEn4lG5ETCoQpQxAsMVahzuerhlk0rtqtuoHPYKEEog"
+          },
+          "type": "create"
+        },
+        "did": "did:ion:test:EiA1dZD7jVkS5ZP7JJO01t6HgTU3eeLpbKEV1voOFWJV0g"
+    }"#;
 
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
@@ -288,4 +358,15 @@ mod tests {
     // // TODO: implement once verifiable presentations are included in API
     // #[test]
     // fn test_vc_verify_presentation() {}
+
+    #[test]
+    fn test_ion_create_operation() {
+        let mnemonic =
+            "state draft moral repeat knife trend animal pretty delay collect fall adjust";
+        let create_op_and_did = create_operation_mnemonic(mnemonic.to_string()).unwrap();
+        assert_eq!(
+            canonicalize_str::<CreateOperationAndDID>(&create_op_and_did).unwrap(),
+            canonicalize_str::<CreateOperationAndDID>(TEST_ION_CREATE_OPERATION).unwrap()
+        );
+    }
 }

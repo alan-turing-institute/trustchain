@@ -3,7 +3,7 @@ use crate::middleware::validate_did;
 use crate::{
     config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
 };
-use axum::routing::IntoMakeService;
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;
@@ -94,6 +94,13 @@ impl TrustchainRouter {
                 .route(
                     "/root/timestamp/:height",
                     get(root::TrustchainRootHTTPHandler::get_block_timestamp),
+                )
+                .route(
+                    "/operations",
+                    post({
+                        let state = shared_state.clone();
+                        move |operation| crate::ion::post_operation(operation, state)
+                    }),
                 )
                 .with_state(shared_state),
         }

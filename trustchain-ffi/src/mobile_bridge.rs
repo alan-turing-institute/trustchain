@@ -105,6 +105,22 @@ fn wire_vp_issue_presentation_impl(
         },
     )
 }
+fn wire_create_operation_mnemonic_impl(
+    port_: MessagePort,
+    mnemonic: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "create_operation_mnemonic",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_mnemonic = mnemonic.wire2api();
+            move |task_callback| create_operation_mnemonic(api_mnemonic)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks

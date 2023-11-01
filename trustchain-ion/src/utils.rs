@@ -6,7 +6,7 @@ use bitcoin::{BlockHash, BlockHeader, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
-use futures::{StreamExt, TryStreamExt};
+use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
@@ -387,18 +387,15 @@ pub fn block_height_range_on_date(
 
 #[cfg(test)]
 mod tests {
-    use core::panic;
-    use std::io::Read;
-    use std::str::FromStr;
-
     use super::*;
     use crate::sidetree::CoreIndexFile;
     use flate2::read::GzDecoder;
-
+    use futures::StreamExt;
     use ssi::{
         did::{Document, ServiceEndpoint},
         jwk::Params,
     };
+    use std::str::FromStr;
     use trustchain_core::{
         data::{
             TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIDETREE_DOCUMENT_SERVICE_AND_PROOF,

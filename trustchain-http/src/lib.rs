@@ -1,5 +1,6 @@
 pub mod config;
 pub mod errors;
+pub mod ion;
 pub mod issuer;
 pub mod middleware;
 pub mod qrcode;
