@@ -112,40 +112,40 @@ struct UE {
 /// A type for downstream entity?
 struct DE;
 
-pub trait CRStateIO {
-    // read() returns any struct that implements the CRState trait (eg. Step2Claim)
-    // (the Box<> is needed because the different structs that could be returned will likely have
-    // different sizes)
-    fn read(&self) -> Box<dyn CRState>;
-    fn write(&self, payload: &str);
-}
+// pub trait CRStateIO {
+//     // read() returns any struct that implements the CRState trait (eg. Step2Claim)
+//     // (the Box<> is needed because the different structs that could be returned will likely have
+//     // different sizes)
+//     fn read(&self) -> Box<dyn CRState>;
+//     fn write(&self, payload: &str);
+// }
 
 // An empty trait implimented by all data types, eg. Step2Claim?
-trait CRState {
-    fn status(&self) {
-        println!("Ok");
-    }
-}
+// trait CRState {
+//     fn status(&self) {
+//         println!("Ok");
+//     }
+// }
 
 /// A type for a nonce
 struct Nonce(String);
 
-// Data type to be read/written to file?
-struct Step2Claim {
-    nonce: Nonce,
-    temp_pub_key: Jwk,
-}
-impl CRState for Step2Claim {}
+// // Data type to be read/written to file?
+// struct Step2Claim {
+//     nonce: Nonce,
+//     temp_pub_key: Jwk,
+// }
+// impl CRState for Step2Claim {}
 
-// Give the ability to DE to read and write CRState data files
-impl CRStateIO for DE {
-    fn read(&self) -> Box<dyn CRState> {
-        todo!()
-    }
-    fn write(&self, payload: &str) {
-        todo!()
-    }
-}
+// // Give the ability to DE to read and write CRState data files
+// impl CRStateIO for DE {
+//     fn read(&self) -> Box<dyn CRState> {
+//         todo!()
+//     }
+//     fn write(&self, payload: &str) {
+//         todo!()
+//     }
+// }
 
 // TODO: own type for nonce
 

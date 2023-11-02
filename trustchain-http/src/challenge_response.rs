@@ -1,3 +1,4 @@
+use crate::attestation_utils::attestation_request_path;
 use josekit::jwe::{JweHeader, ECDH_ES};
 use josekit::jwk::Jwk;
 use josekit::jws::{JwsHeader, ES256K};
@@ -8,12 +9,14 @@ use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty as to_json, Value};
 use serde_with::skip_serializing_none;
-use ssi::did::{Document, VerificationMethod};
+use ssi::did::{Document, Service, ServiceEndpoint, VerificationMethod};
 use ssi::jwk::JWK;
+use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
+use trustchain_core::utils::generate_key;
 
 use is_empty::IsEmpty;
 use std::path::PathBuf;
@@ -57,6 +60,21 @@ pub enum TrustchainCRError {
     /// Path for CR does not exist.
     #[error("Path does not exist. No challenge-response record for this temporary key id.")]
     CRPathNotFound,
+    /// Failed to generate key.
+    #[error("Failed to generate key.")]
+    FailedToGenerateKey,
+    /// Reqwest error.
+    #[error("Network request failed.")]
+    Reqwest(reqwest::Error),
+    /// Invalid service endpoint.
+    #[error("Invalid service endpoint.")]
+    InvalidServiceEndpoint,
+    /// CR initiation failed
+    #[error("Failed to initiate challenge-response.")]
+    FailedToInitiateCR,
+    /// Failed attestation request
+    #[error("Failed attestation request.")]
+    FailedAttestationRequest,
 }
 
 #[derive(Debug, PartialEq)]
@@ -855,9 +873,84 @@ fn extract_key_ids_and_jwk(document: &Document) -> Result<HashMap<String, Jwk>, 
     Ok(my_map)
 }
 
+/// Initiates the identity challenge-response process by sending a POST request to the upstream endpoint.
+///
+/// This function generates a temporary key to use as an identifier throughout the challenge-response process.
+/// It prompts the user to provide the organization name and operator name, which are included in the POST request
+/// to the endpoint specified in the upstream's DID document.
+pub async fn initiate_identity_challenge(
+    org_name: String,
+    op_name: String,
+    services: &Vec<Service>,
+) -> Result<(), TrustchainCRError> {
+    // generate temp key
+    let temp_s_key_ssi = generate_key();
+    let temp_s_key =
+        ssi_to_josekit_jwk(&temp_s_key_ssi).map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
+
+    // make identity_cr_initiation struct
+    let requester = RequesterDetails {
+        requester_org: org_name,
+        operator_name: op_name,
+    };
+    let identity_cr_initiation = IdentityCRInitiation {
+        temp_p_key: temp_s_key.to_public_key().ok(),
+        requester_details: Some(requester),
+    };
+    // extract URI from service endpoint
+    println!("Services: {:?}", services);
+    let uri = matching_endpoint(services, "Trustchain").unwrap(); // this is just to make current example work
+                                                                  // let uri = matching_endpoint(services, "identity-cr").unwrap(); // TODO: use this one once we have example published
+
+    // make POST request to endpoint
+    let client = reqwest::Client::new();
+    let result = client
+        .post(uri)
+        .json(&identity_cr_initiation)
+        .send()
+        .await
+        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+
+    if result.status() != 200 {
+        println!("Status code: {}", result.status());
+        return Err(TrustchainCRError::FailedToInitiateCR);
+    }
+    // create new directory
+    let directory = attestation_request_path(&temp_s_key_ssi.to_public())?;
+    std::fs::create_dir_all(&directory).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+
+    // serialise identity_cr_initiation
+    identity_cr_initiation.elementwise_serialize(&directory)?;
+    println!("Successfully initiated attestation request.");
+    println!("You will receive more information on the challenge-response process via alternative communication channel.");
+    Ok(())
+}
+
+/// Returns endpoint that contains the given fragment from the given list of service endpoints.
+/// Throws error if no or more than one matching endpoint is found.
+fn matching_endpoint(services: &Vec<Service>, fragment: &str) -> Result<String, TrustchainCRError> {
+    let mut endpoints = Vec::new();
+    for service in services {
+        if service.id.contains(fragment) {
+            match &service.service_endpoint {
+                Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {
+                    endpoints.push(uri.to_string());
+                }
+
+                _ => return Err(TrustchainCRError::InvalidServiceEndpoint),
+            }
+        }
+    }
+    if endpoints.len() != 1 {
+        return Err(TrustchainCRError::InvalidServiceEndpoint);
+    }
+    return Ok(endpoints[0].clone());
+}
+
 #[cfg(test)]
 mod tests {
 
+    // use ssi::vc::URI;
     use tempfile::tempdir;
 
     use std::str;
@@ -1386,5 +1479,53 @@ mod tests {
         });
         let result = cr_state.check_cr_status();
         assert_eq!(result.unwrap(), CurrentCRState::NotStarted);
+    }
+
+    #[test]
+    fn test_matching_endpoint() {
+        let services = vec![
+            Service {
+                id: String::from("did:example:123456789abcdefghi#service-1"),
+                service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
+                    "https://example.com/endpoint-1",
+                )))),
+                type_: ssi::one_or_many::OneOrMany::One("Service1".to_string()),
+                property_set: None,
+            },
+            Service {
+                id: String::from("did:example:123456789abcdefghi#service-2"),
+                service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
+                    "https://example.com/endpoint-2",
+                )))),
+                type_: ssi::one_or_many::OneOrMany::One("Service2".to_string()),
+                property_set: None,
+            },
+        ];
+        let result = matching_endpoint(&services, "service-1");
+        assert_eq!(result.unwrap(), "https://example.com/endpoint-1");
+    }
+
+    #[test]
+    fn test_matching_endpoint_multiple_endpoints_found() {
+        let services = vec![
+            Service {
+                id: String::from("did:example:123456789abcdefghi#service-1"),
+                service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
+                    "https://example.com/endpoint-1",
+                )))),
+                type_: ssi::one_or_many::OneOrMany::One("Service1".to_string()),
+                property_set: None,
+            },
+            Service {
+                id: String::from("did:example:123456789abcdefghi#service-1"),
+                service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
+                    "https://example.com/endpoint-2",
+                )))),
+                type_: ssi::one_or_many::OneOrMany::One("Service1".to_string()),
+                property_set: None,
+            },
+        ];
+        let result = matching_endpoint(&services, "service-1");
+        assert!(result.is_err());
     }
 }

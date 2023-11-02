@@ -12,6 +12,8 @@ path = "src/bin/main.rs"
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
+trustchain-http = { path = "../trustchain-http" }
+
 
 clap = { version = "4.0.32", features=["derive", "cargo"] }
 did-ion = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}

@@ -1,10 +1,11 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
+use core::panic;
 use serde_json::to_string_pretty;
 use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
-    io::{stdin, BufReader},
+    io::{self, stdin, BufReader},
 };
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
@@ -12,6 +13,7 @@ use trustchain_api::{
 };
 use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
+use trustchain_http::challenge_response::initiate_identity_challenge;
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
 };
@@ -79,6 +81,26 @@ fn cli() -> Command {
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
+        .subcommand( // Pam: change this
+            Command::new("cr")
+                // .about("Challenge-response functionality: initiate, present, respond.")
+                .about("Challenge-response functionality for identity challenge-response and content challenge-response.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .allow_external_subcommands(true)
+                .subcommand(
+                    Command::new("identity")
+                        .about("Identity challenge-response functionality: initiate, present, respond.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-f --file_path <FILE_PATH>).required(false))
+                        .subcommand(
+                            Command::new("initiate")
+                            .about("Initiates a new identity challenge-response process.")
+                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                            .arg(arg!(-d --did <DID>).required(true))
+                        )
+                )
+            )
 }
 
 #[tokio::main]
@@ -267,6 +289,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => panic!("Unrecognised VC subcommand."),
             }
         }
+        Some(("cr", sub_matches)) => match sub_matches.subcommand() {
+            Some(("identity", sub_matches)) => match sub_matches.subcommand() {
+                Some(("initiate", sub_matches)) => {
+                    // resolve DID and extract endpoint
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    // let endpoints = doc.unwrap().get_endpoints().unwrap(); // TODO: this is a vec => which endpoint?
+                    let services = doc.unwrap().service;
+
+                    // user promt for org name and operator name
+                    println!("Please enter your organisation name: ");
+                    let mut org_name = String::new();
+                    io::stdin()
+                        .read_line(&mut org_name)
+                        .expect("Failed to read line");
+
+                    let mut op_name = String::new();
+                    println!("Please enter your operator name: ");
+                    io::stdin()
+                        .read_line(&mut op_name)
+                        .expect("Failed to read line");
+
+                    println!("Organisation name: {}", org_name);
+                    println!("Operator name: {}", op_name);
+                    // initiate identity challenge
+                    initiate_identity_challenge(
+                        org_name.trim().to_string(),
+                        op_name.trim().to_string(),
+                        &services.unwrap(),
+                    )
+                    .await?;
+                }
+                _ => panic!("Unrecognised CR subcommand."),
+            },
+            _ => panic!("Unrecognised CR subcommand."),
+        },
+
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())

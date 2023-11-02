@@ -1,3 +1,4 @@
+pub mod attestation_utils;
 pub mod attestor;
 pub mod challenge_response;
 pub mod config;
