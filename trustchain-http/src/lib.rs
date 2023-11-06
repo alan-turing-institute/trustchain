@@ -1,6 +1,6 @@
+pub mod attestation_encryption_utils;
 pub mod attestation_utils;
 pub mod attestor;
-pub mod challenge_response;
 pub mod config;
 pub mod data;
 pub mod encryption;
@@ -8,6 +8,7 @@ pub mod errors;
 pub mod issuer;
 pub mod middleware;
 pub mod qrcode;
+pub mod requester;
 pub mod resolver;
 pub mod root;
 pub mod server;

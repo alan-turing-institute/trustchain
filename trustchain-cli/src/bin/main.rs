@@ -13,7 +13,7 @@ use trustchain_api::{
 };
 use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
-use trustchain_http::challenge_response::initiate_identity_challenge;
+use trustchain_http::requester::initiate_identity_challenge;
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
 };
