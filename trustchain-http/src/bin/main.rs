@@ -1,5 +1,5 @@
 use log::info;
-use trustchain_http::config::HTTP_CONFIG;
+use trustchain_http::config::{http_config, HTTP_CONFIG};
 use trustchain_http::server;
 
 #[tokio::main]
@@ -12,13 +12,12 @@ async fn main() -> std::io::Result<()> {
 
     // Print config
     info!("{}", config);
-    let addr = config.to_address();
 
-    // Init server
-    server::server(config).await.unwrap();
-
-    // Logging
-    tracing::debug!("listening on {}", addr);
+    // Run server
+    match http_config().https {
+        false => server::http_server(config).await.unwrap(),
+        true => server::https_server(config).await.unwrap(),
+    }
 
     Ok(())
 }

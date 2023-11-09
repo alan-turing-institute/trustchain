@@ -2,16 +2,113 @@
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
 use crate::ion::IONTest as ION;
-use did_ion::sidetree::DIDStatePatch;
+use crate::mnemonic::IONKeys;
+use bip39::Mnemonic;
+use did_ion::sidetree::{CreateOperation, DIDStatePatch};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
 use did_ion::sidetree::{Operation, Sidetree, SidetreeDID, SidetreeOperation};
 use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
+use trustchain_core::controller::Controller;
 use trustchain_core::utils::{generate_key, get_operations_path};
 
-/// Makes a new DID subject to be controlled with correspondong create operation written to file.
+/// Collection of methods to return DID information from an operation.
+pub trait OperationDID {
+    /// Associated type for DID method specification such as `ION` for `Sidetree<T>`.
+    type T;
+    /// Returns the DID suffix.
+    fn to_did_suffix(&self) -> String;
+    /// Returns the short-form DID.
+    fn to_did(&self) -> String;
+    /// Returns the long-form DID.
+    fn to_did_long(&self) -> String;
+}
+
+impl OperationDID for CreateOperation {
+    type T = ION;
+    fn to_did_suffix(&self) -> String {
+        Self::T::serialize_suffix_data(&self.suffix_data)
+            .unwrap()
+            .to_string()
+    }
+    fn to_did(&self) -> String {
+        self.to_did_long().rsplit_once(':').unwrap().0.to_string()
+    }
+    fn to_did_long(&self) -> String {
+        SidetreeDID::<Self::T>::from_create_operation(self)
+            .unwrap()
+            .to_string()
+    }
+}
+
+/// Writes attestor, controller and create operation.
+fn write_create_operation(
+    create_operation: CreateOperation,
+    signing_key: Option<JWK>,
+    update_key: JWK,
+    recovery_key: JWK,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Get DID
+    let controlled_did = create_operation.to_did();
+
+    // Make attestor
+    if let Some(signing_key) = signing_key {
+        IONAttestor::try_from(AttestorData::new(
+            controlled_did.to_string(),
+            OneOrMany::One(signing_key),
+        ))?;
+    }
+
+    // Write controller data: DID is arbitrarily set to contolled_did in creation
+    let controller = IONController::try_from(ControllerData::new(
+        controlled_did.to_string(),
+        controlled_did.to_string(),
+        update_key,
+        recovery_key,
+    ))
+    .unwrap();
+
+    // Write create operation to push to ION server
+    let path = get_operations_path().unwrap();
+    let filename = format!(
+        "create_operation_{}.json",
+        controller.controlled_did_suffix()
+    );
+    std::fs::write(
+        path.join(&filename),
+        to_json(&Operation::Create(create_operation)).unwrap(),
+    )?;
+    Ok(filename)
+}
+
+/// Makes a new DID given public signing, update and recovery keys.
+fn create_operation_from_keys(
+    signing_public_key: &PublicKeyEntry,
+    update_public_key: &PublicKeyJwk,
+    recovery_public_key: &PublicKeyJwk,
+) -> Result<CreateOperation, Box<dyn std::error::Error>> {
+    // Create operation: Make the create patch from scratch or passed file
+    let document_state = DocumentState {
+        public_keys: Some(vec![signing_public_key.to_owned()]),
+        services: None,
+    };
+    let patches = vec![DIDStatePatch::Replace {
+        document: document_state,
+    }];
+    // Make the create operation from patches
+    let operation = ION::create_existing(update_public_key, recovery_public_key, patches).unwrap();
+    // Verify operation
+    operation.clone().partial_verify::<ION>()?;
+    let create_operation = match operation.clone() {
+        Operation::Create(x) => x,
+        _ => panic!(),
+    };
+    Ok(create_operation)
+}
+
+/// Makes a new DID subject to be controlled with corresponding create operation written to file.
 pub fn create_operation(
     document_state: Option<DocumentState>,
     verbose: bool,
@@ -49,69 +146,81 @@ pub fn create_operation(
         )
     };
 
+    // Construct patches
     let patches = vec![DIDStatePatch::Replace {
         document: document_state,
     }];
 
     // Make the create operation from patches
-    let operation = ION::create_existing(&update_pk, &recovery_pk, patches).unwrap();
+    let operation = ION::create_existing(&update_pk, &recovery_pk, patches)?;
 
-    // Verify operation
-    let partially_verified_create_operation = operation.clone().partial_verify::<ION>();
-    if verbose {
-        println!(
-            "Partially verified create: {}",
-            partially_verified_create_operation.is_ok()
-        );
-    }
+    // Partially verify operation
+    operation.clone().partial_verify::<ION>()?;
 
-    let create_operation = match operation.clone() {
-        Operation::Create(x) => Some(x),
-        _ => None,
+    // Extract data from operation
+    let create_operation = match operation {
+        Operation::Create(x) => x,
+        _ => panic!("Operation is not expected 'Create' type."),
     };
 
+    // Get DID information
+    let controlled_did_suffix = create_operation.to_did_suffix();
+    let controlled_did_long = create_operation.to_did_long();
+    let controlled_did = create_operation.to_did();
+
+    // Verbose output
     if verbose {
         println!("Create operation:");
         println!("{}", to_json(&create_operation).unwrap());
-    }
-
-    // Get DID information
-    let controlled_did_suffix =
-        ION::serialize_suffix_data(&create_operation.clone().unwrap().suffix_data)
-            .unwrap()
-            .to_string();
-    let controlled_did_long = SidetreeDID::<ION>::from_create_operation(&create_operation.unwrap())
-        .unwrap()
-        .to_string();
-    let controlled_did = controlled_did_long.rsplit_once(':').unwrap().0;
-    if verbose {
         println!("Controlled DID suffix: {:?}", controlled_did_suffix);
         println!("Controlled DID (short-form): {:?}", controlled_did);
         println!("Controlled DID (long-form) : {:?}", controlled_did_long);
     }
-
-    // If a signing key has been generated, IONAttestor needs to be saved
-    if let Some(signing_key) = generated_signing_key {
-        IONAttestor::try_from(AttestorData::new(
-            controlled_did.to_string(),
-            OneOrMany::One(signing_key),
-        ))?;
-    }
-
-    // Write controller data: DID is arbitrarily set to contolled_did in creation
-    IONController::try_from(ControllerData::new(
-        controlled_did.to_string(),
-        controlled_did.to_string(),
+    // Write operation and keys
+    write_create_operation(
+        create_operation,
+        generated_signing_key,
         update_key,
         recovery_key,
-    ))?;
+    )
+}
 
-    // Write create operation to push to ION server
-    let path = get_operations_path()?;
-    let filename = format!("create_operation_{}.json", controlled_did_suffix);
-    std::fs::write(path.join(&filename), to_json(&operation).unwrap())?;
+/// Generates a create operation and corresponding keys from a mnemonic.
+pub fn mnemonic_to_create_and_keys(
+    mnemonic: &str,
+    index: Option<u32>,
+) -> Result<(CreateOperation, IONKeys), Box<dyn std::error::Error>> {
+    let ion_keys = crate::mnemonic::generate_keys(&Mnemonic::parse(mnemonic)?, index)?;
+    let signing_public_key = PublicKeyEntry::try_from(ion_keys.signing_key.clone())?;
+    let update_public_key = PublicKeyJwk::try_from(ion_keys.update_key.to_public())?;
+    let recovery_public_key = PublicKeyJwk::try_from(ion_keys.recovery_key.to_public())?;
 
-    Ok(filename)
+    // Construct create operation
+    let create_operation = create_operation_from_keys(
+        &signing_public_key,
+        &update_public_key,
+        &recovery_public_key,
+    )
+    .map_err(|err| err.to_string())?;
+    Ok((create_operation, ion_keys))
+}
+
+/// Makes a new DID subject to be controlled with corresponding create operation written to file
+/// from a mnemonic.
+pub fn create_operation_mnemonic(
+    mnemonic: &str,
+    index: Option<u32>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Generate operation and keys
+    let (create_operation, ion_keys) = mnemonic_to_create_and_keys(mnemonic, index)?;
+
+    // Write create operation
+    write_create_operation(
+        create_operation,
+        Some(ion_keys.signing_key),
+        ion_keys.update_key,
+        ion_keys.recovery_key,
+    )
 }
 
 #[cfg(test)]
@@ -121,7 +230,7 @@ mod test {
     use trustchain_core::utils::init;
 
     // Test document state for making a create operation from
-    const TEST_DOC_STATE: &str = r##"{
+    const TEST_DOC_STATE: &str = r#"{
         "publicKeys": [
         {
             "id": "Mz94EfSCueClM5qv62SXxtLWRj4Ti7rR2wLWmW37aCs",
@@ -151,10 +260,10 @@ mod test {
             }
         }
         ]
-    }"##;
+    }"#;
 
     #[test]
-    fn test_main_create() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_create() -> Result<(), Box<dyn std::error::Error>> {
         init();
 
         // 1. Run create with no document state passed
@@ -164,7 +273,7 @@ mod test {
         let doc_state: DocumentState = serde_json::from_reader(TEST_DOC_STATE.as_bytes())?;
         create_operation(Some(doc_state), false)?;
 
-        // Try to read outputted create operations and  check they deserialize
+        // Try to read outputted create operations and check they deserialize
         let path = get_operations_path()?;
         let pattern = path.join("create_operation_*.json");
         let pattern = pattern.into_os_string().into_string().unwrap();

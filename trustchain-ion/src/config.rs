@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn test_deserialize() {
-        let config_string = r##"
+        let config_string = r#"
         [non_ion]
         key = "value"
 
@@ -63,7 +63,7 @@ mod tests {
         bitcoin_connection_string = "http://localhost:18332"
         bitcoin_rpc_username = "admin"
         bitcoin_rpc_password = "bitcoin_rpc_password"
-        "##;
+        "#;
 
         let config: IONConfig = parse_toml(config_string);
 

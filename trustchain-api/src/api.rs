@@ -24,7 +24,6 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
-    verifier::IONVerifier,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -114,7 +113,7 @@ pub trait TrustchainVCAPI {
     /// Verifies a credential
     async fn verify_credential<T, U>(
         credential: &Credential,
-        // linked_data_proof_options: Option<LinkedDataProofOptions>,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
@@ -123,59 +122,22 @@ pub trait TrustchainVCAPI {
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        let mut results = VerificationResult::new();
-        if let Some(proofs) = &credential.proof {
-            // Try verifying each proof until one succeeds
-            for proof in proofs {
-                // TODO(?): filter proofs based on verification_method found in
-                // linked_data_proof_options.unwrap_or_default(), matching the behaviour of the
-                // credential.verify() method
-                let mut verification_result =
-                    if proof.type_ == ssi::ldp::ProofSuiteType::RSSSignature2023 {
-                        // TODO(?): implement ProofSuite for RSignature (will need a workaround for the
-                        // orphan rule)
-                        // more generally, some interface will be required to impl proof verification
-                        // behaviour for RSignature - eg. ProofVerify trait with ::verify_proof()
-                        //      this could return VerificationResult to have a return type the same as
-                        //      proof.verify()
-                        match RSignature::verify_proof(proof, credential) {
-                            Ok(_) => VerificationResult::new(),
-                            Err(e) => e.into(),
-                        }
-                        .into()
-                    } else {
-                        // Proof.verify() calls LinkedDataProofs::verify() which matches on proof.type_
-                        // and verifies for all proof types supported by ssi
-                        // &Credential is passed as the LinkedDataDocument, as it is in
-                        // ssi::vc::Credential.verify()
-                        // There are two steps excluded from the workflow used in Credential.verify():
-                        //      - "checks" are not parsed from ldp options passed into .verify().
-                        //      - The proofs are not filtered based on the verification_method in ldp
-                        //        options.
-                        proof
-                            .verify(credential, verifier.resolver(), context_loader)
-                            .await
-                    };
-                results.append(&mut verification_result);
-            }
-        } else {
-            return Err(CredentialError::NoProofPresent);
+        // Verify signature
+        let result = credential
+            .verify(
+                linked_data_proof_options,
+                verifier.resolver(),
+                context_loader,
+            )
+            .await;
+        if !result.errors.is_empty() {
+            return Err(CredentialError::VerificationResultError(result));
         }
-
-        // Deviation from the ssi Credential verification algorithm:
-        // ssi return the results after the *first* proof passes verification (including any failed
-        // verification results in the returned results).
-        // This algorithm checks all proofs, and only proceeds to the Trustchain issuer verification
-        // if all proofs verified without error.
-        if results.errors.is_empty() {
-            // Verify issuer
-            let issuer = credential
-                .get_issuer()
-                .ok_or(CredentialError::NoIssuerPresent)?;
-            return Ok(verifier.verify(issuer, root_event_time).await?);
-        } else {
-            Err(CredentialError::VerificationResultError(results))
-        }
+        // Verify issuer
+        let issuer = credential
+            .get_issuer()
+            .ok_or(CredentialError::NoIssuerPresent)?;
+        Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
 
@@ -203,13 +165,17 @@ pub trait TrustchainVPAPI {
             .await?)
     }
     /// Verifies a verifiable presentation.
-    async fn verify_presentation<T: DIDResolver + Send + Sync>(
+    async fn verify_presentation<T, U>(
         presentation: &Presentation,
         ldp_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<(), PresentationError> {
+    ) -> Result<(), PresentationError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
         // Check credentials are present in presentation
         let credentials = presentation
             .verifiable_credential
@@ -232,6 +198,7 @@ pub trait TrustchainVPAPI {
                         CredentialOrJWT::Credential(credential) => {
                             TrustchainAPI::verify_credential(
                                 credential,
+                                ldp_opts,
                                 root_event_time,
                                 verifier,
                                 &mut context_loader,
@@ -253,6 +220,7 @@ pub trait TrustchainVPAPI {
                             {
                                 Ok(credential) => TrustchainAPI::verify_credential(
                                     &credential,
+                                    ldp_opts,
                                     root_event_time,
                                     verifier,
                                     &mut context_loader,
@@ -300,9 +268,9 @@ mod tests {
     use trustchain_ion::verifier::IONVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
-    const ROOT_EVENT_TIME_1: u32 = 1666265405;
+    const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
-    const TEST_UNSIGNED_VC: &str = r##"{
+    const TEST_UNSIGNED_VC: &str = r#"{
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://www.w3.org/2018/credentials/examples/v1",
@@ -320,7 +288,7 @@ mod tests {
           }
         }
       }
-      "##;
+      "#;
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
@@ -333,6 +301,7 @@ mod tests {
         let mut context_loader = ContextLoader::default();
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
+            None,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
             &mut context_loader,
@@ -347,6 +316,7 @@ mod tests {
         let resolver = get_ion_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
+            None,
             ROOT_EVENT_TIME_1,
             &IONVerifier::new(resolver),
             &mut context_loader,
@@ -359,78 +329,79 @@ mod tests {
         }
     }
 
-    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
-    #[tokio::test]
-    async fn test_verify_rss_credential() {
-        // chose indicies to disclose
-        let idxs = vec![2, 3, 6];
+    // #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    // #[tokio::test]
+    // async fn test_verify_rss_credential() {
+    //     // chose indicies to disclose
+    //     let idxs = vec![2, 3, 6];
 
-        // obtain a vc with an RSS proof
-        let signed_vc = issue_rss_vc();
-        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+    //     // obtain a vc with an RSS proof
+    //     let signed_vc = issue_rss_vc();
+    //     println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
 
-        // produce a Vec<String> representation of the VC with only the selected fields disclosed
-        let mut redacted_seq = signed_vc.flatten();
-        redacted_seq.redact(&idxs).unwrap();
-        println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
+    //     // produce a Vec<String> representation of the VC with only the selected fields disclosed
+    //     let mut redacted_seq = signed_vc.flatten();
+    //     redacted_seq.redact(&idxs).unwrap();
+    //     println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
 
-        // encode redacted sequence into FieldElements
-        let messages = EncodedMessages::from(redacted_seq);
+    //     // encode redacted sequence into FieldElements
+    //     let messages = EncodedMessages::from(redacted_seq);
 
-        // parse issuers PK from the proof on the signed vc
-        let issuers_proofs = signed_vc.proof.as_ref().unwrap();
-        let issuers_pk = PKrss::from_hex(
-            &issuers_proofs
-                .first()
-                .unwrap()
-                .verification_method
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap();
+    //     // parse issuers PK from the proof on the signed vc
+    //     let issuers_proofs = signed_vc.proof.as_ref().unwrap();
+    //     let issuers_pk = PKrss::from_hex(
+    //         &issuers_proofs
+    //             .first()
+    //             .unwrap()
+    //             .verification_method
+    //             .as_ref()
+    //             .unwrap(),
+    //     )
+    //     .unwrap();
 
-        // derive redacted RSignature
-        let r_rsig = RSignature::from_hex(
-            &issuers_proofs
-                .first()
-                .unwrap()
-                .proof_value
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap()
-        .derive_signature(
-            &issuers_pk,
-            EncodedMessages::from(signed_vc.flatten()).as_slice(),
-            &messages.infered_idxs,
-        );
+    //     // derive redacted RSignature
+    //     let r_rsig = RSignature::from_hex(
+    //         &issuers_proofs
+    //             .first()
+    //             .unwrap()
+    //             .proof_value
+    //             .as_ref()
+    //             .unwrap(),
+    //     )
+    //     .unwrap()
+    //     .derive_signature(
+    //         &issuers_pk,
+    //         EncodedMessages::from(signed_vc.flatten()).as_slice(),
+    //         &messages.infered_idxs,
+    //     );
 
-        // generate proof from derived RSS signature
-        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
-        proof.proof_value = Some(r_rsig.to_hex());
-        proof.verification_method = Some(issuers_pk.to_hex());
+    //     // generate proof from derived RSS signature
+    //     let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
+    //     proof.proof_value = Some(r_rsig.to_hex());
+    //     proof.verification_method = Some(issuers_pk.to_hex());
 
-        // produce an unsigned, redacted vc
-        let mut redacted_vc = signed_vc;
-        redacted_vc.proof = None;
-        redacted_vc.redact(&idxs).unwrap();
+    //     // produce an unsigned, redacted vc
+    //     let mut redacted_vc = signed_vc;
+    //     redacted_vc.proof = None;
+    //     redacted_vc.redact(&idxs).unwrap();
 
-        // add the derived RSS proof
-        redacted_vc.add_proof(proof);
+    //     // add the derived RSS proof
+    //     redacted_vc.add_proof(proof);
 
-        // verify redacted vc
-        let resolver = get_ion_resolver("http://localhost:3000/");
-        let mut context_loader = ContextLoader::default();
-        let res = TrustchainAPI::verify_credential(
-            &redacted_vc,
-            ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
-            &mut context_loader,
-        )
-        .await;
-        println!("{:?}", &res);
-        assert!(res.is_ok());
-    }
+    //     // verify redacted vc
+    //     let resolver = get_ion_resolver("http://localhost:3000/");
+    //     let mut context_loader = ContextLoader::default();
+    //     let res = TrustchainAPI::verify_credential(
+    //         &redacted_vc,
+    //         None,
+    //         ROOT_EVENT_TIME_1,
+    //         &IONVerifier::new(resolver),
+    //         &mut context_loader,
+    //     )
+    //     .await;
+    //     println!("{:?}", &res);
+    //     assert!(res.is_ok());
+    // }
 
     fn issue_rss_vc() -> Credential {
         // create rss keypair

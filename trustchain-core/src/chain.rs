@@ -309,7 +309,7 @@ mod tests {
         TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
 
-    const ROOT_SIGNING_KEYS: &str = r##"
+    const ROOT_SIGNING_KEYS: &str = r#"
     [
         {
             "kty": "EC",
@@ -318,7 +318,7 @@ mod tests {
             "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
         }
     ]
-    "##;
+    "#;
 
     #[test]
     fn test_get_proof() -> Result<(), Box<dyn std::error::Error>> {

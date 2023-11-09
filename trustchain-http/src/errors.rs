@@ -3,9 +3,10 @@ use hyper::StatusCode;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError,
-    verifier::VerifierError,
+    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError, vc::CredentialError,
+    verifier::VerifierError, vp::PresentationError,
 };
+use trustchain_ion::root::TrustchainRootError;
 
 // TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
@@ -20,10 +21,26 @@ pub enum TrustchainHTTPError {
     ResolverError(ResolverError),
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
+    #[error("Trustchain root error: {0}")]
+    RootError(TrustchainRootError),
+    #[error("Trustchain presentation error: {0}")]
+    PresentationError(PresentationError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
     NoCredentialIssuer,
+    #[error("Wrapped reqwest error: {0}")]
+    ReqwestError(reqwest::Error),
+    #[error("Failed to verify credential.")]
+    FailedToVerifyCredential,
+    #[error("Invalid signature.")]
+    InvalidSignature,
+    #[error("Request does not exist.")]
+    RequestDoesNotExist,
+    #[error("Could not deserialize data: {0}")]
+    FailedToDeserialize(serde_json::Error),
+    #[error("Root event time not configured for verification.")]
+    RootEventTimeNotSet,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -43,9 +60,22 @@ impl From<VerifierError> for TrustchainHTTPError {
         TrustchainHTTPError::VerifierError(err)
     }
 }
+
 impl From<IssuerError> for TrustchainHTTPError {
     fn from(err: IssuerError) -> Self {
         TrustchainHTTPError::IssuerError(err)
+    }
+}
+
+impl From<TrustchainRootError> for TrustchainHTTPError {
+    fn from(err: TrustchainRootError) -> Self {
+        TrustchainHTTPError::RootError(err)
+    }
+}
+
+impl From<PresentationError> for TrustchainHTTPError {
+    fn from(err: PresentationError) -> Self {
+        TrustchainHTTPError::PresentationError(err)
     }
 }
 
@@ -59,10 +89,8 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_)) => {
-                (StatusCode::OK, err.to_string())
-            }
-            err @ TrustchainHTTPError::VerifierError(VerifierError::CommitmentFailure(_)) => {
+            err @ TrustchainHTTPError::VerifierError(VerifierError::InvalidRoot(_))
+            | err @ TrustchainHTTPError::VerifierError(VerifierError::CommitmentFailure(_)) => {
                 (StatusCode::OK, err.to_string())
             }
             err @ TrustchainHTTPError::VerifierError(_) => {
@@ -77,11 +105,51 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::ResolverError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
+            err @ TrustchainHTTPError::PresentationError(PresentationError::CredentialError(
+                CredentialError::VerifierError(VerifierError::CommitmentFailure(_)),
+            ))
+            | err @ TrustchainHTTPError::PresentationError(PresentationError::CredentialError(
+                CredentialError::VerifierError(VerifierError::InvalidRoot(_)),
+            )) => (StatusCode::OK, err.to_string()),
+            err @ TrustchainHTTPError::PresentationError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
             err @ TrustchainHTTPError::CredentialDoesNotExist => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            TrustchainHTTPError::ReqwestError(err) => (
+                err.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                err.to_string(),
+            ),
+            ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
+                TrustchainRootError::NoUniqueRootEvent(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::InvalidDate(_, _, _) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                TrustchainRootError::FailedToParseBlockHeight(_) => {
+                    (StatusCode::BAD_REQUEST, err.to_string())
+                }
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            },
+            err @ TrustchainHTTPError::FailedToVerifyCredential => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::InvalidSignature => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::RequestDoesNotExist => {
+                (StatusCode::BAD_REQUEST, err.to_string())
+            }
+            err @ TrustchainHTTPError::FailedToDeserialize(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::RootEventTimeNotSet => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };
         let body = Json(json!({ "error": err_message }));

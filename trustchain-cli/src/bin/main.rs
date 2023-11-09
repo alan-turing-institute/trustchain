@@ -13,7 +13,10 @@ use trustchain_api::{
 use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier};
 use trustchain_ion::{
-    attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
+    attest::attest_operation,
+    create::{create_operation, create_operation_mnemonic},
+    get_ion_resolver,
+    verifier::IONVerifier,
 };
 
 fn cli() -> Command {
@@ -34,6 +37,7 @@ fn cli() -> Command {
                     Command::new("create")
                         .about("Creates a new controlled DID from a document state.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false)),
                 )
                 .subcommand(
@@ -94,16 +98,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-
-                    // Read doc state from file path
-                    let doc_state = if let Some(file_path) = file_path {
-                        Some(serde_json::from_reader(File::open(file_path)?)?)
+                    let mnemonic = matches!(sub_matches.get_one::<bool>("mnemonic"), Some(true));
+                    if mnemonic && file_path.is_some() {
+                        panic!("Please use only one of '--file_path' and '--mnemonic'.")
+                    }
+                    if !mnemonic {
+                        // Read doc state from file path
+                        let doc_state = if let Some(file_path) = file_path {
+                            Some(serde_json::from_reader(File::open(file_path)?)?)
+                        } else {
+                            None
+                        };
+                        create_operation(doc_state, verbose)?;
                     } else {
-                        None
-                    };
-
-                    // Read from the file path to a "Reader"
-                    create_operation(doc_state, verbose)?;
+                        let mut mnemonic = String::new();
+                        println!("Enter a mnemonic:");
+                        std::io::stdin().read_line(&mut mnemonic).unwrap();
+                        create_operation_mnemonic(&mnemonic, None)?;
+                    }
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -115,6 +127,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // TODO: pass optional key_id
                     attest_operation(did, controlled_did, verbose).await?;
                 }
+                // TODO: add a flag for update operation with a mnemonic to add a
+                // key generated on mobile to the DID.
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
@@ -148,7 +162,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u32>().unwrap(),
                         None => cli_config().root_event_time,
                     };
-                    let did_chain = TrustchainAPI::verify(did, root_event_time, &verifier).await?;
+                    let did_chain =
+                        TrustchainAPI::verify(did, root_event_time.into(), &verifier).await?;
                     println!("{did_chain}");
                 }
                 _ => panic!("Unrecognised DID subcommand."),
@@ -186,8 +201,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
                     let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
-                        Some(time) => time.parse::<u32>().unwrap(),
-                        None => cli_config().root_event_time,
+                        Some(time) => time.parse::<u64>().unwrap(),
+                        None => cli_config().root_event_time.into(),
                     };
                     // Deserialize
                     let credential: Credential =
@@ -200,6 +215,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Verify credential
                     let verify_result = TrustchainAPI::verify_credential(
                         &credential,
+                        None,
                         root_event_time,
                         &verifier,
                         &mut context_loader,

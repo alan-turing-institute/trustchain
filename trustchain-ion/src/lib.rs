@@ -7,6 +7,8 @@ pub mod controller;
 pub mod create;
 pub mod data;
 pub mod ion;
+pub mod mnemonic;
+pub mod root;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
@@ -80,6 +82,12 @@ pub enum TrustchainMongodbError {
     ErrorCreatingClient(mongodb::error::Error),
 }
 
+impl From<mongodb::error::Error> for TrustchainMongodbError {
+    fn from(err: mongodb::error::Error) -> Self {
+        TrustchainMongodbError::QueryReturnedError(err)
+    }
+}
+
 impl From<io::Error> for TrustchainIpfsError {
     fn from(err: io::Error) -> Self {
         TrustchainIpfsError::DataDecodingError(err)
@@ -127,13 +135,26 @@ pub enum TrustchainBitcoinError {
     /// Wrapped bitcoincore_rpc error
     #[error("Bitcoin core RPC error: {0}")]
     BitcoinCoreRPCError(bitcoincore_rpc::Error),
+    /// Failed to get block time at height.
+    #[error("Block time was None at height: {0}")]
+    BlockTimeAtHeightError(u64),
+    /// Target date precedes start block timestamp or succeeds end block timestamp.
+    #[error("Target date out of range of block timestamps.")]
+    TargetDateOutOfRange,
 }
+
+// ION
+pub const ION_METHOD: &str = "ion";
+pub const ION_TEST_METHOD: &str = "ion:test";
 
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";
 pub const MONGO_FILTER_TYPE: &str = "type";
 pub const MONGO_CREATE_OPERATION: &str = "create";
 pub const MONGO_FILTER_DID_SUFFIX: &str = "didSuffix";
+pub const MONGO_FILTER_TXN_TIME: &str = "txnTime";
+pub const MONGO_FILTER_TXN_NUMBER: &str = "txnNumber";
+pub const MONGO_FILTER_OP_INDEX: &str = "opIndex";
 
 // Bitcoin
 // TODO: consider structs for deserialization similar to trustchain_ion::sidetree module
@@ -148,3 +169,8 @@ pub const NONCE_KEY: &str = "nonce";
 // Minimum number of zeros for PoW block hash of root
 // TODO: set differently for mainnet and testnet with features
 pub const MIN_POW_ZEROS: usize = 14;
+
+// BIP32
+pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";
+pub const UPDATE_KEY_DERIVATION_PATH: &str = "m/1h";
+pub const RECOVERY_KEY_DERIVATION_PATH: &str = "m/2h";
