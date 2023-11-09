@@ -207,7 +207,7 @@ pub struct IdentityCRInitiation {
 }
 
 impl IdentityCRInitiation {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             temp_p_key: None,
             requester_details: None,

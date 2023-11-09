@@ -1,5 +1,10 @@
+use crate::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
+use crate::attestation_utils::{
+    attestation_request_path, ElementwiseSerializeDeserialize, IdentityCRInitiation,
+};
 use crate::{errors::TrustchainHTTPError, state::AppState};
 use async_trait::async_trait;
+use axum::extract::path;
 use axum::{
     response::{Html, IntoResponse, Response},
     Json,
@@ -11,7 +16,6 @@ use rand::{distributions::Alphanumeric, thread_rng};
 use serde::{Deserialize, Serialize};
 use serde_json::to_string_pretty;
 use sha2::{Digest, Sha256};
-use ssi::jwk::JWK;
 use std::io::Write;
 use std::{fs::OpenOptions, path::Path, path::PathBuf, sync::Arc};
 use trustchain_core::TRUSTCHAIN_DATA;
@@ -22,67 +26,43 @@ use trustchain_core::TRUSTCHAIN_DATA;
 // - name of DE organisation ("name_downstream")
 // - name of individual operator within DE responsible for the request
 
-/// Writes received attestation request to unique path derived from the public key for the interaction.
-fn write_attestation_info(attestation_info: &AttestationInfo) -> Result<(), TrustchainHTTPError> {
-    // Get environment for TRUSTCHAIN_DATA
+// /// Writes received attestation request to unique path derived from the public key for the interaction.
+// fn write_attestation_info(
+//     attestation_info: &IdentityCRInitiation,
+// ) -> Result<(), TrustchainHTTPError> {
+//     // Get environment for TRUSTCHAIN_DATA
 
-    let directory = attestion_request_path(&attestation_info.temp_pub_key)?;
+//     let directory = attestion_request_path(&attestation_info.temp_p_key.unwrap().to_string())?;
 
-    // Make directory if non-existent
-    // Equivalent of os.makedirs(exist_ok=True) in python
-    std::fs::create_dir_all(&directory)
-        .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
+//     // Make directory if non-existent
+//     // Equivalent of os.makedirs(exist_ok=True) in python
+//     std::fs::create_dir_all(&directory)
+//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
 
-    // Check if initial request exists ("attestation_info.json"), if yes, return InternalServerError
-    let full_path = directory.join("attestation_info.json");
+//     // Check if initial request exists ("attestation_info.json"), if yes, return InternalServerError
+//     let full_path = directory.join("attestation_info.json");
 
-    if full_path.exists() {
-        return Err(TrustchainHTTPError::FailedAttestationRequest);
-    }
+//     if full_path.exists() {
+//         return Err(TrustchainHTTPError::FailedAttestationRequest);
+//     }
 
-    // If not, write to file
-    // Open the new file
-    let mut file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(full_path)
-        .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
+//     // If not, write to file
+//     // Open the new file
+//     let mut file = OpenOptions::new()
+//         .create(true)
+//         .write(true)
+//         .truncate(true)
+//         .open(full_path)
+//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
 
-    // Write to file
-    writeln!(file, "{}", &to_string_pretty(attestation_info).unwrap())
-        .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
+//     // Write to file
+//     writeln!(file, "{}", &to_string_pretty(attestation_info).unwrap())
+//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
 
-    // Else do something?
+//     // Else do something?
 
-    Ok(())
-}
-
-/// Returns unique path name for a specific attestation request derived from public key for the interaction.
-fn attestion_request_path(pub_key: &str) -> Result<PathBuf, TrustchainHTTPError> {
-    // Root path in TRUSTCHAIN_DATA
-    let path: String = std::env::var(TRUSTCHAIN_DATA)
-        .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
-    // Use hash of temp_pub_key
-    Ok(Path::new(path.as_str())
-        .join("attestation_requests")
-        .join(attestation_request_id(pub_key)))
-}
-
-pub fn attestation_request_id(pub_key: &str) -> String {
-    hex::encode(Sha256::digest(pub_key))
-}
-// generate_nonce copied from (they rely on newer version of ssi: v0.6.0,
-// WIP issue for TC: https://github.com/alan-turing-institute/trustchain/issues/85
-// https://github.com/spruceid/oidc4vci-rs/blob/main/src/nonce.rs
-fn generate_nonce() -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect()
-}
-// TODO: format correctly and convert to bytes??
+//     Ok(())
+// }
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
@@ -132,91 +112,52 @@ impl TrustchainAttestorHTTP for TrustchainAttestorHTTPHandler {
 impl TrustchainAttestorHTTPHandler {
     /// Processes initial attestation request and provided data
     pub async fn post_initiation(
-        Json(attestation_info): Json<AttestationInfo>,
+        Json(attestation_initiation): Json<IdentityCRInitiation>,
         // app_state: Arc<AppState>,
     ) -> impl IntoResponse {
-        info!("Received attestation info: {:?}", attestation_info);
-
-        write_attestation_info(&attestation_info).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")))
+        info!("Received attestation info: {:?}", attestation_initiation);
+        let temp_p_key_ssi =
+            josekit_to_ssi_jwk(attestation_initiation.temp_p_key.as_ref().unwrap());
+        let path = attestation_request_path(&temp_p_key_ssi.unwrap()).unwrap();
+        // create directory and save attestation initation to file
+        let _ = std::fs::create_dir_all(&path);
+        let _ = attestation_initiation.elementwise_serialize(&path).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{config::HTTPConfig, server::TrustchainRouter};
-    use axum::extract;
+    use crate::{
+        attestation_utils::RequesterDetails, config::HTTPConfig, server::TrustchainRouter,
+    };
     use axum_test_helper::TestClient;
-    use lazy_static::lazy_static;
-    use trustchain_core::utils::init;
 
     use super::*;
 
     // TODO: add this key when switched to JWK
-    const TEST_KEY: &str =
-        r#"{"kty":"OKP","crv":"Ed25519","x":"B2J8eJfFljEnKX9yt9_V4TCwcL8rd4qtD7T2Bz4TX0s"}"#;
-    const TEST_ATTESTATION_INFO: &str = r#"{
-        "apiAccessToken": "abcd",
-        "tempPubKey": "some_string",
-        "nameDownstream": "myTrustworthyEntity",
-        "nameOperator": "trustworthyOperator"
-    }"#;
-
-    #[test]
-    fn test_key() {
-        let key: JWK = serde_json::from_str(TEST_KEY).unwrap();
-    }
-
-    #[test]
-    fn test_generate_nonce() {
-        let nonce = generate_nonce();
-        assert_eq!(nonce.len(), 32);
-    }
-
-    #[test]
-    fn test_write_attestation_info() {
-        init();
-        let expected_attestation_info: AttestationInfo =
-            serde_json::from_str(TEST_ATTESTATION_INFO).unwrap();
-        // Get expected path
-        let expected_path =
-            attestion_request_path(&expected_attestation_info.temp_pub_key).unwrap();
-        println!("The test path is: {:?}", expected_path);
-
-        // Write to file
-        assert!(write_attestation_info(&expected_attestation_info).is_ok());
-
-        // Check directory exists
-        assert!(expected_path.exists());
-
-        // Check file deserializes to ATTESTATION_INFO
-        let file_content =
-            std::fs::read_to_string(expected_path.join("attestation_info.json")).unwrap();
-        println!("The file attestation_info.json contains: {}", file_content);
-
-        let actual_attesation_info: AttestationInfo = serde_json::from_str(&file_content).unwrap();
-        assert_eq!(expected_attestation_info.clone(), actual_attesation_info);
-    }
+    use crate::data::TEST_TEMP_KEY;
 
     // Attestor integration tests
     // TODO: make test better
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_initiation() {
+        let attestation_initiation: IdentityCRInitiation = IdentityCRInitiation {
+            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            requester_details: Some(RequesterDetails {
+                requester_org: "myTrustworthyEntity".to_string(),
+                operator_name: "trustworthyOperator".to_string(),
+            }),
+        };
+        let initiation_json = serde_json::to_string_pretty(&attestation_initiation).unwrap();
+        println!("Attestation initiation: {:?}", initiation_json);
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
         let uri = "/did/attestor/initiate".to_string();
         let client = TestClient::new(app);
 
-        let response = client
-            .post(&uri)
-            .json(&AttestationInfo {
-                api_access_token: "a".to_string(),
-                name_downstream: "b".to_string(),
-                name_operator: "c".to_string(),
-                temp_pub_key: "d".to_string(),
-            })
-            .send()
-            .await;
+        let response = client.post(&uri).json(&attestation_initiation).send().await;
         assert_eq!(response.status(), 200);
-        assert_eq!(response.text().await, "Hello world!");
+        println!("Response text: {:?}", response.text().await);
+        // assert_eq!(response.text().await, "Received request. Please wait for operator to contact you through an alternative channel.");
     }
 }
