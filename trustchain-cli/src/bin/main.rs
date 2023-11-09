@@ -2,18 +2,24 @@
 use clap::{arg, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
+    path::{Path, PathBuf},
 };
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier};
-use trustchain_http::requester::initiate_identity_challenge;
+use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA};
+use trustchain_http::{
+    attestation_utils::{
+        Nonce, ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError
+    },
+    requester::initiate_identity_challenge,
+};
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
 };
@@ -99,7 +105,14 @@ fn cli() -> Command {
                             .arg(arg!(-v - -verbose).action(ArgAction::Count))
                             .arg(arg!(-d --did <DID>).required(true))
                         )
+                        .subcommand(
+                            Command::new("present")
+                            .about("Produce challenges to be presented to requestor.")
+                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                            .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
+                        )
                 )
+                
             )
 }
 
@@ -320,6 +333,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &services.unwrap(),
                     )
                     .await?;
+                }
+                Some(("present", sub_matches)) => {
+                    // get attestation request path from provided input
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    if !path.exists() {
+                        panic!("Provided attestation request not found. Path does not exist."); 
+                    }
+                    let identity_initiation = IdentityCRInitiation::new()
+                        .elementwise_deserialize(&path)
+                        .unwrap();
+                    // Show requester information to user and ask for confirmation to proceed 
+                    println!("---------------------------------");
+                    println!("Requester information: {:?}", identity_initiation.unwrap().requester_details.unwrap());
+                    println!("---------------------------------");
+                    println!("Recognise this attestation request and want to proceed? (y/n)");
+                    let mut prompt = String::new();
+                    io::stdin()
+                        .read_line(&mut prompt)
+                        .expect("Failed to read line");
+                    let prompt = prompt.trim();
+                    if prompt != "y" && prompt != "yes" {
+                        println!("Aborting attestation request.");
+                        return Ok(());
+                        
+                    }
+                    let nonce = Nonce::new();
+                        println!("---------------------------------");
+                        println!("Identity challenge-response nonce: {:?}", nonce.to_string());
+                        // TODO: update commitment
+                        // TODO: endpoint to send response to
+                        // TODO: Print to terminal and instruct to send via alternative channels
+                        println!("Please send the above nonce, update commitment and endpoint to the requester via alternative channels.");
+                    
                 }
                 _ => panic!("Unrecognised CR subcommand."),
             },
