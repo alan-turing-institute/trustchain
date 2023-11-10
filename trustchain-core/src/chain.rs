@@ -1,6 +1,6 @@
 //! Chain API and `DIDChain` type with default implementation.
 use crate::display::PrettyDID;
-use crate::resolver::Resolver;
+use crate::resolver::{Resolver, TrustchainResolver};
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;

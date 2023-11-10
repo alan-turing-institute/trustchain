@@ -27,7 +27,7 @@ use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
-use trustchain_core::resolver::{Resolver, ResolverError};
+use trustchain_core::resolver::{Resolver, ResolverError, TrustchainResolver};
 
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 

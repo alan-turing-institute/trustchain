@@ -11,7 +11,7 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier};
+use trustchain_core::{vc::CredentialError, verifier::Verifier, resolver::TrustchainResolver};
 use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},

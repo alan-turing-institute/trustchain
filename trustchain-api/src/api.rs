@@ -14,7 +14,7 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{Resolver, ResolverResult},
+    resolver::{Resolver, ResolverResult, TrustchainResolver},
     vc::CredentialError,
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,

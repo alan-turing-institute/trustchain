@@ -14,7 +14,7 @@ use ssi::{
 };
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::resolver::Resolver;
+use trustchain_core::resolver::{Resolver, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
 
