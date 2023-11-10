@@ -21,14 +21,14 @@ use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 
+use crate::resolver::Resolver;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
-use trustchain_core::resolver::{Resolver, ResolverError, TrustchainResolver};
-
+use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Data bundle for DID timestamp verification.
@@ -433,7 +433,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 
@@ -494,7 +494,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 

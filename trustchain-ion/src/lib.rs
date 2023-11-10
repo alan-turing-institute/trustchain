@@ -15,12 +15,13 @@ pub mod utils;
 pub mod verifier;
 
 use crate::ion::IONTest as ION;
+use crate::resolver::{DIDMethodWrapper, Resolver};
 use did_ion::sidetree::SidetreeClient;
 use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
+// TODO: remove this type alias
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 

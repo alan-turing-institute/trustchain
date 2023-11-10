@@ -14,13 +14,14 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{Resolver, ResolverResult, TrustchainResolver},
+    resolver::{ResolverResult, TrustchainResolver},
     vc::CredentialError,
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,
 };
 use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
+    resolver::Resolver,
 };
 
 /// API for Trustchain CLI DID functionality.

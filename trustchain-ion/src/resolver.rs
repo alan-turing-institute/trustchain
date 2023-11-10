@@ -1,19 +1,9 @@
 //! DID resolution and `DIDResolver` implementation.
-use crate::utils::HasEndpoints;
-use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 use async_trait::async_trait;
 use did_method_key::DIDKey;
-use serde_json::Value;
-use ssi::did::{DIDMethod, Document, Service, ServiceEndpoint};
-use ssi::did_resolve::{
-    DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
-};
-use ssi::one_or_many::OneOrMany;
-use std::collections::HashMap;
-use thiserror::Error;
-
+use ssi::did_resolve::DocumentMetadata;
 use ssi::{
-    did::DIDMethod,
+    did::{DIDMethod, Document},
     did_resolve::{DIDResolver, ResolutionInputMetadata, ResolutionMetadata},
 };
 use trustchain_core::resolver::TrustchainResolver;

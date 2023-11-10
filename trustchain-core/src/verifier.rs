@@ -200,10 +200,9 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         &self,
         did: &str,
         root_timestamp: Timestamp,
-        resolver: &dyn TrustchainResolver,
     ) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
-        // let resolver = self.resolver();
+        let resolver = self.resolver();
         let chain = DIDChain::new(did, resolver).await?;
 
         // Verify the proofs in the chain.
