@@ -1,4 +1,6 @@
 //! DID resolution and `DIDResolver` implementation.
+use crate::utils::HasEndpoints;
+use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 use async_trait::async_trait;
 use did_method_key::DIDKey;
 use serde_json::Value;
@@ -9,8 +11,6 @@ use ssi::did_resolve::{
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
-use crate::utils::HasEndpoints;
 
 /// An error relating to Trustchain resolution.
 #[derive(Error, Debug)]
@@ -51,92 +51,16 @@ pub type ResolverResult = Result<
     ResolverError,
 >;
 
-// Newtype pattern (workaround for lack of trait upcasting coercion).
-// Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
-// The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
-// See https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types.
-pub struct DIDMethodWrapper<S: DIDMethod>(pub S);
-
-#[async_trait]
-impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
-    async fn resolve(&self, did: &str, input_metadata: &ResolutionInputMetadata,
-    ) -> (
-                                ResolutionMetadata,
-                                Option<Document>,
-                                Option<DocumentMetadata>,
-                            ){
-        self.0.to_resolver().resolve(did, input_metadata).await
-    }
-}
-
 // pub trait CASClient {
 //     fn client() -> Option<fn(String) -> String> {
 //         None
 //     }
 // }
 
-/// Struct for performing resolution from a sidetree server to generate
-/// Trustchain DID document and DID document metadata.
-pub struct Resolver <T: DIDResolver + Sync + Send> {
-    pub wrapped_resolver: T
-}
-
-impl<T: DIDResolver + Sync + Send> Resolver<T> {
-    /// Constructs a Trustchain resolver.
-    pub fn new(resolver: T) -> Self {
-        Self {
-            wrapped_resolver: resolver,
-        }
-    }
-    /// Constructs a Trustchain resolver from a DIDMethod.
-    pub fn from<S: DIDMethod>(method: S) -> Resolver<DIDMethodWrapper<S>> {
-        // Wrap the DIDMethod.
-        Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
-    }
-}
-
-impl <T> TrustchainResolver for Resolver<T> where T: DIDResolver + Sync + Send {
-    // use default impls on the trait def
-    // (grants .transform method)
-}
-
-#[async_trait]
-impl <T> DIDResolver for Resolver<T> where T: DIDResolver + Sync + Send{
-async fn resolve(
-        &self,
-        did: &str,
-        input_metadata: &ResolutionInputMetadata,
-    ) -> (
-        ResolutionMetadata,
-        Option<Document>,
-        Option<DocumentMetadata>,
-    ) {
-        // TODO: remove upon handling with DIDMethods
-        if did.starts_with("did:key:") {
-            let did_key_resolver = DIDKey;
-            return did_key_resolver
-                .resolve(did, &ResolutionInputMetadata::default())
-                .await;
-        }
-        // let ion_resolver = self.wrapped_resolver;
-        // let resolved = ion_resolver.resolve(did, input_metadata).await;
-        
-        let resolved = self.wrapped_resolver.resolve(did, input_metadata).await;
-
-        // Consider using ResolutionInputMetadata to optionally not perform transform.
-        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
-        self.transform(resolved)
-    }
-}
-
-
 /// Adds the controller property to a resolved DID document, using the
 /// value passed in the controller_did argument. This must be the DID of
 /// the subject (id property) found in the upstream DID document.
-fn add_controller(
-    mut doc: Document,
-    controller_did: &str,
-) -> Result<Document, ResolverError> {
+fn add_controller(mut doc: Document, controller_did: &str) -> Result<Document, ResolverError> {
     // Check controller is empty and if not throw error.
     if doc.controller.is_some() {
         return Err(ResolverError::ControllerAlreadyPresent);
@@ -154,8 +78,7 @@ fn get_proof_idx(doc: &Document) -> Result<usize, ResolverError> {
     let mut idxs: Vec<usize> = Vec::new();
     let fragment = TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
     for (idx, service) in doc.service.iter().flatten().enumerate() {
-        if let [service_fragment, _] =
-            service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
+        if let [service_fragment, _] = service.id.rsplitn(2, '#').collect::<Vec<&str>>().as_slice()
         {
             if service_fragment == &fragment {
                 idxs.push(idx);
@@ -180,10 +103,7 @@ fn get_proof_service(doc: &Document) -> Result<&Service, ResolverError> {
 }
 
 /// Gets the value of a key in a Trustchain proof service.
-fn get_from_proof_service<'a>(
-    proof_service: &'a Service,
-    key: &str,
-) -> Option<&'a String> {
+fn get_from_proof_service<'a>(proof_service: &'a Service, key: &str) -> Option<&'a String> {
     // Destructure nested enums and extract controller from a proof service
     let value: Option<&String> = match proof_service.service_endpoint.as_ref() {
         Some(OneOrMany::One(ServiceEndpoint::Map(Value::Object(v)))) => match &v[key] {
@@ -261,27 +181,56 @@ fn transform_doc(doc: &Document, controller_did: &str) -> Document {
     // let doc_clone = self.remove_proof_service(doc_clone);
 
     // Add controller
-    let doc_clone = add_controller(doc_clone, controller_did)
-        .expect("Controller already present in document.");
+    let doc_clone =
+        add_controller(doc_clone, controller_did).expect("Controller already present in document.");
 
     // Remove the proof service from the document.
     remove_proof_service(doc_clone)
 }
 
 /// Converts DID Document Metadata from a resolved DID to the Trustchain resolved format.
-fn transform_doc_metadata(
-    doc: &Document,
-    doc_meta: DocumentMetadata,
-) -> DocumentMetadata {
+fn transform_doc_metadata(doc: &Document, doc_meta: DocumentMetadata) -> DocumentMetadata {
     // Add proof property to the DID Document Metadata (if it exists).
     add_proof(doc, doc_meta)
 }
 
-//___________________
+/// Converts DID Document + Metadata to the Trustchain resolved format.
+fn transform_as_result(
+    sidetree_res_meta: ResolutionMetadata,
+    sidetree_doc: Document,
+    sidetree_doc_meta: DocumentMetadata,
+) -> Result<(ResolutionMetadata, Document, DocumentMetadata), ResolverError> {
+    // Get controller DID
+    let service = get_proof_service(&sidetree_doc);
+
+    // Return immediately multiple proof services present
+    if let Err(ResolverError::MultipleTrustchainProofService) = service {
+        return Err(ResolverError::MultipleTrustchainProofService);
+    };
+
+    if let Ok(service) = service {
+        let controller_did = get_from_proof_service(service, "controller");
+
+        // Convert doc
+        let doc = transform_doc(&sidetree_doc, controller_did.unwrap().as_str());
+
+        // Convert metadata
+        let doc_meta = transform_doc_metadata(&sidetree_doc, sidetree_doc_meta);
+
+        // Convert resolution metadata
+        let res_meta = sidetree_res_meta;
+
+        // Return tuple
+        Ok((res_meta, doc, doc_meta))
+    } else {
+        // TODO: If proof service is not present or multiple, just return Ok for now.
+        Ok((sidetree_res_meta, sidetree_doc, sidetree_doc_meta))
+    }
+}
 
 /// Trait for performing Trustchain resolution.
 #[async_trait]
-pub trait TrustchainResolver : DIDResolver {
+pub trait TrustchainResolver: DIDResolver {
     // async fn resolve(
     //     &self,
     //     did: &str,
@@ -320,7 +269,7 @@ pub trait TrustchainResolver : DIDResolver {
         // If a document and document metadata are returned, try to convert
         if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
             // Convert to trustchain versions
-            let tc_result = self.transform_as_result(res_meta, did_doc, did_doc_meta);
+            let tc_result = transform_as_result(res_meta, did_doc, did_doc_meta);
             match tc_result {
                 // Map the tuple of non-option types to have tuple with optional document
                 // document metadata
@@ -357,7 +306,7 @@ pub trait TrustchainResolver : DIDResolver {
         }
     }
 
-        /// Sync Trustchain resolve function returning resolution metadata,
+    /// Sync Trustchain resolve function returning resolution metadata,
     /// DID document and DID document metadata from a passed DID as a `Result` type.
     async fn resolve_as_result(&self, did: &str) -> ResolverResult {
         // sidetree resolved resolution metadata, document and document metadata
@@ -394,41 +343,6 @@ pub trait TrustchainResolver : DIDResolver {
             Ok((did_res_meta, did_doc, did_doc_meta))
         }
     }
-
-    /// Converts DID Document + Metadata to the Trustchain resolved format.
-    fn transform_as_result(
-        &self,
-        sidetree_res_meta: ResolutionMetadata,
-        sidetree_doc: Document,
-        sidetree_doc_meta: DocumentMetadata,
-    ) -> Result<(ResolutionMetadata, Document, DocumentMetadata), ResolverError> {
-        // Get controller DID
-        let service = get_proof_service(&sidetree_doc);
-
-        // Return immediately multiple proof services present
-        if let Err(ResolverError::MultipleTrustchainProofService) = service {
-            return Err(ResolverError::MultipleTrustchainProofService);
-        };
-
-        if let Ok(service) = service {
-            let controller_did = get_from_proof_service(service, "controller");
-
-            // Convert doc
-            let doc = transform_doc(&sidetree_doc, controller_did.unwrap().as_str());
-
-            // Convert metadata
-            let doc_meta = transform_doc_metadata(&sidetree_doc, sidetree_doc_meta);
-
-            // Convert resolution metadata
-            let res_meta = sidetree_res_meta;
-
-            // Return tuple
-            Ok((res_meta, doc, doc_meta))
-        } else {
-            // TODO: If proof service is not present or multiple, just return Ok for now.
-            Ok((sidetree_res_meta, sidetree_doc, sidetree_doc_meta))
-        }
-    }
 }
 
 #[cfg(test)]
@@ -462,12 +376,9 @@ mod tests {
         // Check there is no controller in the DID document.
         assert!(did_doc.controller.is_none());
 
-        // Construct a Resolver instance.
-        let resolver = Resolver::new(get_http_resolver());
-
         // Call add_controller on the Resolver to get the result.
-        let result = add_controller(did_doc, controller_did)
-            .expect("Different Controller already present.");
+        let result =
+            add_controller(did_doc, controller_did).expect("Different Controller already present.");
 
         // Check there *is* a controller field in the resulting DID document.
         assert!(result.controller.is_some());
@@ -499,7 +410,7 @@ mod tests {
         assert!(did_doc.controller.is_some());
 
         // Construct a Resolver instance.
-        let resolver = Resolver::new(get_http_resolver());
+        // let resolver = Resolver::new(get_http_resolver());
 
         // Attempt to add the controller.
         let result = add_controller(did_doc, controller_did);
@@ -645,8 +556,7 @@ mod tests {
         let service = get_proof_service(&did_doc).unwrap();
 
         // Get the controller DID from the proof service.
-        let controller = get_from_proof_service(service, "controller")
-            .unwrap();
+        let controller = get_from_proof_service(service, "controller").unwrap();
 
         // Check the controller DID matches the expected value.
         assert_eq!(
@@ -719,9 +629,7 @@ mod tests {
 
         // Get the controller from the proof service property in the Sidetree-resolved DID document.
         let proof_service = get_proof_service(&did_doc).unwrap();
-        let controller = 
-            get_from_proof_service(proof_service, "controller")
-            .unwrap();
+        let controller = get_from_proof_service(proof_service, "controller").unwrap();
 
         // Transform the DID document by resolving into Trustchain format.
         let actual = transform_doc(&did_doc, controller.as_str());
@@ -762,11 +670,8 @@ mod tests {
             property_set: None,
         };
 
-        // Construct a Resolver instance.
-        let resolver = Resolver::new(get_http_resolver());
-
         // Call function and get output result type
-        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
+        let output = transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Result should be Ok variant with returned data
         if let Ok((actual_output_res_meta, actual_output_doc, actual_output_doc_meta)) = output {
@@ -805,11 +710,8 @@ mod tests {
             property_set: None,
         };
 
-        // Construct a Resolver instance.
-        let resolver = Resolver::new(get_http_resolver());
-
         // Call the resolve function and get output Result type.
-        let output = resolver.transform_as_result(input_res_meta, input_doc, input_doc_meta);
+        let output = transform_as_result(input_res_meta, input_doc, input_doc_meta);
 
         // Check for the correct error.
         assert!(matches!(

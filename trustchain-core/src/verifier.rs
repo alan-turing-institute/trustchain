@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
-use crate::resolver::{Resolver, ResolverError};
+use crate::resolver::{ResolverError, TrustchainResolver};
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
@@ -200,9 +200,10 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
         &self,
         did: &str,
         root_timestamp: Timestamp,
+        resolver: &dyn TrustchainResolver,
     ) -> Result<DIDChain, VerifierError> {
         // Build a chain from the given DID to the root.
-        let resolver = self.resolver();
+        // let resolver = self.resolver();
         let chain = DIDChain::new(did, resolver).await?;
 
         // Verify the proofs in the chain.
@@ -247,7 +248,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
 
     /// Gets the resolver used for DID verification.
-    fn resolver(&self) -> &Resolver<T>;
+    fn resolver(&self) -> &dyn TrustchainResolver;
 }
 
 #[cfg(test)]

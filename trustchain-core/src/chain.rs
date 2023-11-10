@@ -1,6 +1,6 @@
 //! Chain API and `DIDChain` type with default implementation.
 use crate::display::PrettyDID;
-use crate::resolver::{Resolver, TrustchainResolver};
+use crate::resolver::TrustchainResolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;
@@ -127,7 +127,7 @@ impl DIDChain {
     // Public constructor.
     pub async fn new<T: DIDResolver + Sync + Send>(
         did: &str,
-        resolver: &Resolver<T>,
+        resolver: &dyn TrustchainResolver,
     ) -> Result<Self, ChainError> {
         // Construct an empty chain.
         let mut chain = DIDChain::empty();

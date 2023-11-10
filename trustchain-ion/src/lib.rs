@@ -8,6 +8,7 @@ pub mod create;
 pub mod data;
 pub mod ion;
 pub mod mnemonic;
+pub mod resolver;
 pub mod root;
 pub mod sidetree;
 pub mod utils;
