@@ -10,7 +10,7 @@ use ssi::jwk::JWK;
 
 use crate::attestation_utils::TrustchainCRError;
 
-struct Entity {}
+pub struct Entity {}
 
 impl SignEncrypt for Entity {}
 

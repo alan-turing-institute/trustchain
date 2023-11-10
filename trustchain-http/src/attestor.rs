@@ -1,6 +1,9 @@
-use crate::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
+use crate::attestation_encryption_utils::{
+    josekit_to_ssi_jwk, ssi_to_josekit_jwk, Entity, SignEncrypt,
+};
 use crate::attestation_utils::{
-    attestation_request_path, ElementwiseSerializeDeserialize, IdentityCRInitiation,
+    attestation_request_path, CRIdentityChallenge, ElementwiseSerializeDeserialize,
+    IdentityCRInitiation, Nonce, TrustchainCRError,
 };
 use crate::{errors::TrustchainHTTPError, state::AppState};
 use async_trait::async_trait;
@@ -10,6 +13,8 @@ use axum::{
     Json,
 };
 use hyper::StatusCode;
+use josekit::jwk::Jwk;
+use josekit::jwt::JwtPayload;
 use log::{debug, info, log};
 use rand::Rng;
 use rand::{distributions::Alphanumeric, thread_rng};
@@ -18,7 +23,11 @@ use serde_json::to_string_pretty;
 use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::{fs::OpenOptions, path::Path, path::PathBuf, sync::Arc};
+use trustchain_core::key_manager::AttestorKeyManager;
+use trustchain_core::subject::Subject;
+use trustchain_core::utils::generate_key;
 use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_ion::attestor::IONAttestor;
 
 // Fields:
 // - API access token
@@ -125,12 +134,54 @@ impl TrustchainAttestorHTTPHandler {
     }
 }
 
+pub fn present_identity_challenge(
+    did: &str,
+    temp_p_key: &Jwk,
+) -> Result<CRIdentityChallenge, TrustchainCRError> {
+    // generate nonce and update key
+    let nonce = Nonce::new();
+    let update_s_key_ssi = generate_key();
+    let update_p_key_ssi = update_s_key_ssi.to_public();
+    let update_s_key = ssi_to_josekit_jwk(&update_s_key_ssi)
+        .map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
+    let update_p_key = ssi_to_josekit_jwk(&update_p_key_ssi)
+        .map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
+    // let update_p_key_string = serde_json::to_string_pretty(&update_p_key)?;
+
+    let mut identity_challenge = CRIdentityChallenge {
+        update_p_key: Some(update_p_key),
+        update_s_key: Some(update_s_key),
+        identity_nonce: Some(nonce),
+        identity_challenge_signature: None,
+        identity_response_signature: None,
+    };
+
+    // make payload
+    let payload = JwtPayload::try_from(&identity_challenge).unwrap();
+
+    // get signing key from ION attestor
+    let ion_attestor = IONAttestor::new(did);
+    let signing_keys = ion_attestor.signing_keys().unwrap();
+    let signing_key_ssi = signing_keys.first().unwrap();
+    let signing_key =
+        ssi_to_josekit_jwk(&signing_key_ssi).map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
+
+    // sign (with pub key) and encrypt (with temp_p_key) payload
+    let attestor = Entity {};
+    let signed_encrypted_challenge =
+        attestor.sign_and_encrypt_claim(&payload, &signing_key, &temp_p_key);
+    identity_challenge.identity_challenge_signature = Some(signed_encrypted_challenge?);
+
+    Ok(identity_challenge)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         attestation_utils::RequesterDetails, config::HTTPConfig, server::TrustchainRouter,
     };
     use axum_test_helper::TestClient;
+    use ssi::jwk::JWK;
 
     use super::*;
 
@@ -142,8 +193,11 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_initiation() {
+        let temp_s_key_ssi: JWK = serde_json::from_str(TEST_TEMP_KEY).unwrap();
+        let temp_p_key_ssi = temp_s_key_ssi.to_public();
         let attestation_initiation: IdentityCRInitiation = IdentityCRInitiation {
-            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            temp_s_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            temp_p_key: Some(ssi_to_josekit_jwk(&temp_p_key_ssi).unwrap()),
             requester_details: Some(RequesterDetails {
                 requester_org: "myTrustworthyEntity".to_string(),
                 operator_name: "trustworthyOperator".to_string(),

@@ -2,7 +2,7 @@
 use clap::{arg, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential, ucan::Payload};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
@@ -13,12 +13,12 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA};
+use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA, utils::generate_key};
 use trustchain_http::{
     attestation_utils::{
-        Nonce, ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError
+        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError, CRIdentityChallenge
     },
-    requester::initiate_identity_challenge,
+    requester::initiate_identity_challenge,  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
 };
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
@@ -338,6 +338,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // get attestation request path from provided input
                     let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                    let did = sub_matches.get_one::<String>("did").unwrap();
                     let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
                     if !path.exists() {
                         panic!("Provided attestation request not found. Path does not exist."); 
@@ -347,7 +348,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .unwrap();
                     // Show requester information to user and ask for confirmation to proceed 
                     println!("---------------------------------");
-                    println!("Requester information: {:?}", identity_initiation.unwrap().requester_details.unwrap());
+                    println!("Requester information: {:?}", identity_initiation.as_ref().and_then(|i| i.requester_details.as_ref()));
                     println!("---------------------------------");
                     println!("Recognise this attestation request and want to proceed? (y/n)");
                     let mut prompt = String::new();
@@ -360,14 +361,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return Ok(());
                         
                     }
-                    let nonce = Nonce::new();
-                        println!("---------------------------------");
-                        println!("Identity challenge-response nonce: {:?}", nonce.to_string());
-                        // TODO: update commitment
-                        // TODO: endpoint to send response to
-                        // TODO: Print to terminal and instruct to send via alternative channels
-                        println!("Please send the above nonce, update commitment and endpoint to the requester via alternative channels.");
-                    
+                    let temp_p_key = identity_initiation.unwrap().temp_p_key.unwrap();
+
+                    // call function to present challenge
+                    let identity_challenge = present_identity_challenge(&did, &temp_p_key)?;
+
+                    // print signed and encrypted payload to terminal
+                    let payload = identity_challenge.identity_challenge_signature.as_ref().unwrap();
+                    println!("---------------------------------");
+                    println!("Payload: {:?}", payload); 
+                    println!("---------------------------------");
+                    println!("Please send the above payload and subdirectory to the requester via alternative channels.");
+
+                    // TODO: print subdirectory for response (will be appended to endpoint in did)
+
+                    // serialise struct
+                    identity_challenge.elementwise_serialize(&path)?;
                 }
                 _ => panic!("Unrecognised CR subcommand."),
             },
