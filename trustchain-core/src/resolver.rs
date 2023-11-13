@@ -228,28 +228,7 @@ fn transform_as_result(
 
 /// Trait for performing Trustchain resolution.
 #[async_trait]
-pub trait TrustchainResolver: DIDResolver {
-    // async fn resolve(
-    //     &self,
-    //     did: &str,
-    //     input_metadata: &ResolutionInputMetadata,
-    // ) -> (
-    //     ResolutionMetadata,
-    //     Option<Document>,
-    //     Option<DocumentMetadata>,
-    // ) {
-    //     // TODO: remove upon handling with DIDMethods
-    //     if did.starts_with("did:key:") {
-    //         let did_key_resolver = DIDKey;
-    //         return did_key_resolver
-    //             .resolve(did, &ResolutionInputMetadata::default())
-    //             .await;
-    //     }
-    //     // Consider using ResolutionInputMetadata to optionally not perform transform.
-    //     // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
-    //     self.transform(self.resolve(did, input_metadata).await)
-    // }
-
+pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
     /// Transforms the result of a DID resolution into the Trustchain format.
     fn transform(
         &self,
@@ -343,6 +322,17 @@ pub trait TrustchainResolver: DIDResolver {
     }
 }
 
+// To facilitate trait upcasting: https://stackoverflow.com/a/28664881
+pub trait AsDIDResolver {
+    fn as_did_resolver(&self) -> &dyn DIDResolver;
+}
+
+impl<T: DIDResolver> AsDIDResolver for T {
+    fn as_did_resolver(&self) -> &dyn DIDResolver {
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,14 +342,7 @@ mod tests {
         TEST_SIDETREE_DOCUMENT_SERVICE_NOT_PROOF, TEST_SIDETREE_DOCUMENT_WITH_CONTROLLER,
         TEST_TRUSTCHAIN_DOCUMENT, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
     };
-
     use crate::utils::canonicalize;
-    use ssi::did_resolve::HTTPDIDResolver;
-
-    // General function for generating a HTTP resolver for tests only
-    fn get_http_resolver() -> HTTPDIDResolver {
-        HTTPDIDResolver::new("http://localhost:3000/")
-    }
 
     #[test]
     fn test_add_controller() {

@@ -51,7 +51,11 @@ pub trait TrustchainVerifierHTTP {
         verifier: &IONVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
         let verify_credential_result = credential
-            .verify(None, verifier.resolver(), &mut ContextLoader::default())
+            .verify(
+                None,
+                verifier.resolver().as_did_resolver(),
+                &mut ContextLoader::default(),
+            )
             .await;
         if !verify_credential_result.errors.is_empty() {
             return Err(TrustchainHTTPError::InvalidSignature);
