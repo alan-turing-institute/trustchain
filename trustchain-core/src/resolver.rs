@@ -50,12 +50,6 @@ pub type ResolverResult = Result<
     ResolverError,
 >;
 
-// pub trait CASClient {
-//     fn client() -> Option<fn(String) -> String> {
-//         None
-//     }
-// }
-
 /// Adds the controller property to a resolved DID document, using the
 /// value passed in the controller_did argument. This must be the DID of
 /// the subject (id property) found in the upstream DID document.
@@ -350,12 +344,12 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
         // Consider using ResolutionInputMetadata to optionally not perform transform.
         // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
         let transformed = self.transform(resolved);
-        self.extended_transform(transformed)
+        self.extended_transform(transformed).await
     }
 
     /// Provides implementors of this trait with a mechanism to perform additional transformations
     /// when resolving DIDs. By default this is the identity map (no transformations).
-    fn extended_transform(
+    async fn extended_transform(
         &self,
         (res_meta, doc, doc_meta): (
             ResolutionMetadata,

@@ -176,3 +176,6 @@ pub const MIN_POW_ZEROS: usize = 14;
 pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";
 pub const UPDATE_KEY_DERIVATION_PATH: &str = "m/1h";
 pub const RECOVERY_KEY_DERIVATION_PATH: &str = "m/2h";
+
+// IPFS KEY
+pub const SERVICE_TYPE_IPFS_KEY: &str = "IPFSKey";
