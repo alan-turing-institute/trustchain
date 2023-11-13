@@ -78,32 +78,28 @@ where
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // Iterate over any endpoints of type IPFSKey
-
-        // let endpoints = doc.unwrap().get_endpoints().unwrap();
-        // TODO: fix refs
-        // let ipfs_key_endpoints: Vec<String> = doc
-        //     .unwrap()
-        //     .service
-        //     .unwrap()
-        //     .iter()
-        //     .filter(|s| s.type_.to_single().is_some())
-        //     .filter_map(|s| {
-        //         if s.type_
-        //             .to_single()
-        //             .as_deref()
-        //             .unwrap()
-        //             .eq(SERVICE_TYPE_IPFS_KEY)
-        //         {
-        //             match s.service_endpoint {
-        //                 Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => Some(uri),
-        //                 _ => None,
-        //             }
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .collect();
+        let ipfs_key_endpoints: Vec<String> = doc
+            .unwrap()
+            .service
+            .unwrap()
+            .iter()
+            .filter(|s| s.type_.to_single().is_some())
+            .filter_map(|ref s| {
+                if s.type_
+                    .to_single()
+                    .as_deref()
+                    .unwrap()
+                    .eq(SERVICE_TYPE_IPFS_KEY)
+                {
+                    match s.service_endpoint {
+                        Some(OneOrMany::One(ServiceEndpoint::URI(ref uri))) => Some(uri.to_owned()),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         // TODO: move to Resolver struct.
         // let ipfs_client = IpfsClient::default();
@@ -120,7 +116,8 @@ where
         // // Check if the Trustchain proof service alreday exists in the document.
         // let doc_clone = self.remove_proof_service(doc_clone);
 
-        (res_meta, doc, doc_meta)
+        // TODO.
+        (res_meta, None, doc_meta)
     }
 }
 
