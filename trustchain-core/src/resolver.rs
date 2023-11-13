@@ -1,6 +1,7 @@
 //! DID resolution and `DIDResolver` implementation.
 use crate::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 use async_trait::async_trait;
+use did_method_key::DIDKey;
 use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
@@ -229,6 +230,10 @@ fn transform_as_result(
 /// Trait for performing Trustchain resolution.
 #[async_trait]
 pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
+    /// Provides the wrapped resolver of the implementing type.
+    // fn wrapped_resolver<T: DIDResolver + Sync + Send>(&self) -> &T;
+    fn wrapped_resolver(&self) -> &dyn DIDResolver;
+
     /// Transforms the result of a DID resolution into the Trustchain format.
     fn transform(
         &self,
@@ -319,6 +324,50 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
         } else {
             Ok((did_res_meta, did_doc, did_doc_meta))
         }
+    }
+
+    async fn trustchain_resolve(
+        &self,
+        did: &str,
+        input_metadata: &ResolutionInputMetadata,
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        // TODO: remove upon handling with DIDMethods
+        if did.starts_with("did:key:") {
+            let did_key_resolver = DIDKey;
+            return did_key_resolver
+                .resolve(did, &ResolutionInputMetadata::default())
+                .await;
+        }
+        // let ion_resolver = self.wrapped_resolver;
+        // let resolved = ion_resolver.resolve(did, input_metadata).await;
+
+        let resolved = self.wrapped_resolver().resolve(did, input_metadata).await;
+
+        // Consider using ResolutionInputMetadata to optionally not perform transform.
+        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
+        let transformed = self.transform(resolved);
+        self.extended_transform(transformed)
+    }
+
+    /// Provides implementors of this trait with a mechanism to perform additional transformations
+    /// when resolving DIDs. By default this is the identity map (no transformations).
+    fn extended_transform(
+        &self,
+        (res_meta, doc, doc_meta): (
+            ResolutionMetadata,
+            Option<Document>,
+            Option<DocumentMetadata>,
+        ),
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        (res_meta, doc, doc_meta)
     }
 }
 

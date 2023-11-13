@@ -1,6 +1,5 @@
 //! DID resolution and `DIDResolver` implementation.
 use async_trait::async_trait;
-use did_method_key::DIDKey;
 use ssi::did_resolve::DocumentMetadata;
 use ssi::{
     did::{DIDMethod, Document},
@@ -53,8 +52,11 @@ impl<T> TrustchainResolver for Resolver<T>
 where
     T: DIDResolver + Sync + Send,
 {
-    // use default impls on the trait def
-    // (grants .transform method)
+    fn wrapped_resolver(&self) -> &dyn DIDResolver {
+        &self.wrapped_resolver
+    }
+
+    // fn extended_transform() {}
 }
 
 #[async_trait]
@@ -71,20 +73,6 @@ where
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // TODO: remove upon handling with DIDMethods
-        if did.starts_with("did:key:") {
-            let did_key_resolver = DIDKey;
-            return did_key_resolver
-                .resolve(did, &ResolutionInputMetadata::default())
-                .await;
-        }
-        // let ion_resolver = self.wrapped_resolver;
-        // let resolved = ion_resolver.resolve(did, input_metadata).await;
-
-        let resolved = self.wrapped_resolver.resolve(did, input_metadata).await;
-
-        // Consider using ResolutionInputMetadata to optionally not perform transform.
-        // Resolve with the wrapped DIDResolver and then transform to Trustchain format.
-        self.transform(resolved)
+        self.trustchain_resolve(did, input_metadata).await
     }
 }
