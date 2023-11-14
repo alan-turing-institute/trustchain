@@ -11,6 +11,7 @@ use std::convert::TryFrom;
 use trustchain_core::holder::{Holder, HolderError};
 use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
@@ -144,12 +145,12 @@ impl Attestor for IONAttestor {
 #[async_trait]
 impl Issuer for IONAttestor {
     // Attests to a given credential returning the credential with proof. The `@context` of the credential has linked-data fields strictly checked as part of proof generation.
-    async fn sign<T: DIDResolver>(
+    async fn sign(
         &self,
         credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         // Get the signing key.
@@ -160,7 +161,7 @@ impl Issuer for IONAttestor {
             .generate_proof(
                 &signing_key,
                 &linked_data_proof_options.unwrap_or(LinkedDataProofOptions::default()),
-                resolver,
+                resolver.as_did_resolver(),
                 context_loader,
             )
             .await?;

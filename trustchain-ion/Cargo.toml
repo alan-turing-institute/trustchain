@@ -16,6 +16,7 @@ bitcoincore-rpc = "0.16.0"
 canonical_json = "0.4.0"
 chrono = "0.4"
 clap = { version = "^4.1", features=["derive", "cargo"] }
+did-method-key = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}
 did-ion = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}
 ed25519-dalek-bip32 = "0.3.0"
 flate2 = "1.0.24"

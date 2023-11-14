@@ -8,18 +8,20 @@ pub mod create;
 pub mod data;
 pub mod ion;
 pub mod mnemonic;
+pub mod resolver;
 pub mod root;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
 
 use crate::ion::IONTest as ION;
+use crate::resolver::{DIDMethodWrapper, Resolver};
 use did_ion::sidetree::SidetreeClient;
 use serde::{Deserialize, Serialize};
 use std::{io, num::ParseIntError};
 use thiserror::Error;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
+// TODO: remove this type alias
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
@@ -174,3 +176,6 @@ pub const MIN_POW_ZEROS: usize = 14;
 pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";
 pub const UPDATE_KEY_DERIVATION_PATH: &str = "m/1h";
 pub const RECOVERY_KEY_DERIVATION_PATH: &str = "m/2h";
+
+// IPFS KEY
+pub const SERVICE_TYPE_IPFS_KEY: &str = "IPFSKey";

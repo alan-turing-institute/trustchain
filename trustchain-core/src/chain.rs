@@ -1,14 +1,10 @@
 //! Chain API and `DIDChain` type with default implementation.
 use crate::display::PrettyDID;
-use crate::resolver::{Resolver, TrustchainResolver};
+use crate::resolver::TrustchainResolver;
 use crate::utils::{canonicalize, decode, decode_verify, extract_keys, hash};
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::Metadata;
-use ssi::{
-    did::Document,
-    did_resolve::{DIDResolver, DocumentMetadata},
-    one_or_many::OneOrMany,
-};
+use ssi::{did::Document, did_resolve::DocumentMetadata, one_or_many::OneOrMany};
 use std::collections::HashMap;
 use std::fmt;
 use thiserror::Error;
@@ -125,10 +121,7 @@ impl fmt::Display for DIDChain {
 
 impl DIDChain {
     // Public constructor.
-    pub async fn new<T: DIDResolver + Sync + Send>(
-        did: &str,
-        resolver: &Resolver<T>,
-    ) -> Result<Self, ChainError> {
+    pub async fn new(did: &str, resolver: &dyn TrustchainResolver) -> Result<Self, ChainError> {
         // Construct an empty chain.
         let mut chain = DIDChain::empty();
 
