@@ -165,10 +165,6 @@ fn transform_doc(doc: &Document, controller_did: &str) -> Document {
     // Clone the passed DID document.
     let doc_clone = doc.clone();
 
-    // // TODO: CAS keys
-    // // Add any keys from IPFS
-    // let doc_clone = self.add_cas_keys(doc_clone);
-
     // Duplication?
     // // Check if the Trustchain proof service alreday exists in the document.
     // let doc_clone = self.remove_proof_service(doc_clone);
