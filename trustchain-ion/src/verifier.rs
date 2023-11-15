@@ -200,7 +200,7 @@ where
         &self,
         core_index_file: &[u8],
     ) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(core_index_file).map_err(|e| {
+        let content = decode_ipfs_content(core_index_file, true).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
                 e
@@ -222,7 +222,7 @@ where
     }
 
     async fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
+        let content = decode_ipfs_content(prov_index_file, true).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
                 err.into(),

@@ -18,6 +18,7 @@ use crate::ion::IONTest as ION;
 use crate::resolver::{DIDMethodWrapper, Resolver};
 use did_ion::sidetree::SidetreeClient;
 use serde::{Deserialize, Serialize};
+use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
 use thiserror::Error;
 
@@ -109,6 +110,9 @@ pub enum TrustchainIpfsError {
     #[error("Failed to decode IPFS data.")]
     DataDecodingError(io::Error),
     /// Failed to decode IPFS data.
+    #[error("Failed to decode UTF-8 string.")]
+    Utf8DecodingError(FromUtf8Error),
+    /// Failed to decode IPFS data.
     #[error("Failed to deserialize IPFS content to JSON")]
     DeserializeError(serde_json::Error),
 }
@@ -144,6 +148,9 @@ pub enum TrustchainBitcoinError {
     #[error("Target date out of range of block timestamps.")]
     TargetDateOutOfRange,
 }
+
+// DID
+pub const CONTROLLER_KEY: &str = "controller";
 
 // ION
 pub const ION_METHOD: &str = "ion";

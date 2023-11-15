@@ -83,11 +83,17 @@ pub fn tx_to_op_return_cid(tx: &Transaction) -> Result<String, VerifierError> {
 }
 
 /// Decodes an IPFS file.
-pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsError> {
-    // Decompress the content and deserialize to JSON.
-    let mut decoder = GzDecoder::new(ipfs_file);
-    let mut ipfs_content_str = String::new();
-    decoder.read_to_string(&mut ipfs_content_str)?;
+pub fn decode_ipfs_content(ipfs_file: &[u8], gunzip: bool) -> Result<Value, TrustchainIpfsError> {
+    let mut ipfs_content_str;
+    if gunzip {
+        // Decompress the content and deserialize to JSON.
+        let mut decoder = GzDecoder::new(ipfs_file);
+        ipfs_content_str = String::new();
+        decoder.read_to_string(&mut ipfs_content_str)?;
+    } else {
+        ipfs_content_str = String::from_utf8(ipfs_file.to_vec())
+            .map_err(|err| TrustchainIpfsError::Utf8DecodingError(err))?;
+    }
     Ok(serde_json::from_str(&ipfs_content_str)?)
 }
 

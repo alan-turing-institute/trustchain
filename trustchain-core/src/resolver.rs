@@ -17,9 +17,9 @@ pub enum ResolverError {
     /// Controller is already present in DID document.
     #[error("Controller is already present in DID document.")]
     ControllerAlreadyPresent,
-    /// Failed to convert to Truschain document and metadata.
-    #[error("Failed to convert to Truschain document and metadata.")]
-    FailedToConvertToTrustchain,
+    /// Failed to convert to Trustchain document and metadata.
+    #[error("Failed to convert to Trustchain document and metadata: {0}")]
+    FailedToConvertToTrustchain(String),
     /// Multiple Trustchain proof service entries are present.
     #[error("Multiple Trustchain proof service entries are present.")]
     MultipleTrustchainProofService,
@@ -237,23 +237,19 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
         Option<Document>,
         Option<DocumentMetadata>,
     ) {
-        // Transform
-        // If a document and document metadata are returned, try to convert
+        // If a document and document metadata are returned, try to convert.
         if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
-            // Convert to trustchain versions
+            // Convert to trustchain versions.
             let tc_result = transform_as_result(res_meta, did_doc, did_doc_meta);
             match tc_result {
-                // Map the tuple of non-option types to have tuple with optional document
-                // document metadata
+                // Map the tuple of non-option types to have tuple with optional document metadata
                 Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
                     (tc_res_meta, Some(tc_doc), Some(tc_doc_meta))
                 }
                 // If cannot convert, return the relevant error
-                Err(ResolverError::FailedToConvertToTrustchain) => {
+                Err(ResolverError::FailedToConvertToTrustchain(err)) => {
                     let res_meta = ResolutionMetadata {
-                        error: Some(
-                            "Failed to convert to Truschain document and metadata.".to_string(),
-                        ),
+                        error: Some(err.to_string()),
                         content_type: None,
                         property_set: None,
                     };
@@ -261,16 +257,20 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
                 }
                 Err(ResolverError::MultipleTrustchainProofService) => {
                     let res_meta = ResolutionMetadata {
-                        error: Some(
-                            "Multiple Trustchain proof service entries are present.".to_string(),
-                        ),
+                        error: Some("Found multiple Trustchain proof service entries.".to_string()),
                         content_type: None,
                         property_set: None,
                     };
                     (res_meta, None, None)
                 }
-                // If not defined error, panic!()
-                _ => panic!(),
+                Err(err) => {
+                    let res_meta = ResolutionMetadata {
+                        error: Some(err.to_string()),
+                        content_type: None,
+                        property_set: None,
+                    };
+                    (res_meta, None, None)
+                }
             }
         } else {
             // If doc or doc_meta None, return sidetree resolution as is
@@ -295,9 +295,15 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
                 Err(ResolverError::NonExistentDID(did.to_string()))
             } else if did_res_meta_error == "notFound" {
                 Err(ResolverError::DIDNotFound(did.to_string()))
-            } else if did_res_meta_error == "Failed to convert to Truschain document and metadata."
-            {
-                Err(ResolverError::FailedToConvertToTrustchain)
+            } else if did_res_meta_error.contains("Failed to convert to Trustchain") {
+                Err(ResolverError::FailedToConvertToTrustchain(
+                    did_res_meta_error
+                        .to_owned()
+                        .rsplit(":")
+                        .next()
+                        .unwrap_or("")
+                        .to_owned(),
+                ))
             } else if did_res_meta_error == "Multiple Trustchain proof service entries are present."
             {
                 Err(ResolverError::MultipleTrustchainProofService)
