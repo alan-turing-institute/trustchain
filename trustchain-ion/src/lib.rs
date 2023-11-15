@@ -8,18 +8,21 @@ pub mod create;
 pub mod data;
 pub mod ion;
 pub mod mnemonic;
+pub mod resolver;
 pub mod root;
 pub mod sidetree;
 pub mod utils;
 pub mod verifier;
 
 use crate::ion::IONTest as ION;
+use crate::resolver::{DIDMethodWrapper, Resolver};
 use did_ion::sidetree::SidetreeClient;
 use serde::{Deserialize, Serialize};
+use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
 use thiserror::Error;
-use trustchain_core::resolver::{DIDMethodWrapper, Resolver};
 
+// TODO: remove this type alias
 /// Type alias
 pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
 
@@ -107,6 +110,9 @@ pub enum TrustchainIpfsError {
     #[error("Failed to decode IPFS data.")]
     DataDecodingError(io::Error),
     /// Failed to decode IPFS data.
+    #[error("Failed to decode UTF-8 string.")]
+    Utf8DecodingError(FromUtf8Error),
+    /// Failed to decode IPFS data.
     #[error("Failed to deserialize IPFS content to JSON")]
     DeserializeError(serde_json::Error),
 }
@@ -143,6 +149,9 @@ pub enum TrustchainBitcoinError {
     TargetDateOutOfRange,
 }
 
+// DID
+pub const CONTROLLER_KEY: &str = "controller";
+
 // ION
 pub const ION_METHOD: &str = "ion";
 pub const ION_TEST_METHOD: &str = "ion:test";
@@ -174,3 +183,6 @@ pub const MIN_POW_ZEROS: usize = 14;
 pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";
 pub const UPDATE_KEY_DERIVATION_PATH: &str = "m/1h";
 pub const RECOVERY_KEY_DERIVATION_PATH: &str = "m/2h";
+
+// IPFS KEY
+pub const SERVICE_TYPE_IPFS_KEY: &str = "IPFSKey";

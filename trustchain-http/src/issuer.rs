@@ -10,14 +10,13 @@ use axum::Json;
 use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
-use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
 use std::sync::Arc;
 use trustchain_core::issuer::Issuer;
-use trustchain_core::resolver::Resolver;
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::verifier::Verifier;
 use trustchain_ion::attestor::IONAttestor;
 
@@ -66,11 +65,11 @@ pub trait TrustchainIssuerHTTP {
         issuer_did: &str,
     ) -> CredentialOffer;
     /// Issues a verifiable credential (should it return `Credential` or `String`)
-    async fn issue_credential<T: DIDResolver + Send + Sync>(
+    async fn issue_credential(
         credential: &Credential,
         subject_id: Option<&str>,
         issuer_did: &str,
-        resolver: &Resolver<T>,
+        resolver: &dyn TrustchainResolver,
     ) -> Result<Credential, TrustchainHTTPError>;
 }
 
@@ -91,11 +90,11 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         CredentialOffer::generate(&credential, id)
     }
 
-    async fn issue_credential<T: DIDResolver + Send + Sync>(
+    async fn issue_credential(
         credential: &Credential,
         subject_id: Option<&str>,
         issuer_did: &str,
-        resolver: &Resolver<T>,
+        resolver: &dyn TrustchainResolver,
     ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
@@ -332,7 +331,11 @@ mod tests {
         // Test signature
         let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
         let verify_credential_result = credential
-            .verify(None, verifier.resolver(), &mut ContextLoader::default())
+            .verify(
+                None,
+                verifier.resolver().as_did_resolver(),
+                &mut ContextLoader::default(),
+            )
             .await;
         assert!(verify_credential_result.errors.is_empty());
 

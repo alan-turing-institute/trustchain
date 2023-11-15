@@ -21,14 +21,14 @@ use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 
+use crate::resolver::Resolver;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
-use trustchain_core::resolver::{Resolver, ResolverError};
-
+use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Data bundle for DID timestamp verification.
@@ -200,7 +200,7 @@ where
         &self,
         core_index_file: &[u8],
     ) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(core_index_file).map_err(|e| {
+        let content = decode_ipfs_content(core_index_file, true).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
                 e
@@ -222,7 +222,7 @@ where
     }
 
     async fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
+        let content = decode_ipfs_content(prov_index_file, true).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
                 err.into(),
@@ -433,7 +433,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 
@@ -494,7 +494,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 

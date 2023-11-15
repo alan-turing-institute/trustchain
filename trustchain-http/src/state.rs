@@ -4,7 +4,8 @@ use chrono::NaiveDate;
 use ssi::vc::Credential;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use trustchain_core::{resolver::Resolver, TRUSTCHAIN_DATA};
+use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_ion::resolver::Resolver;
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
 
 const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
