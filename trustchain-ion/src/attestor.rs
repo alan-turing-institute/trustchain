@@ -52,6 +52,9 @@ impl IONAttestor {
                         return Ok(key_in_loop);
                     }
                 }
+                if key_in_loop.thumbprint()? == key_id {
+                    return Ok(key_in_loop);
+                }
             }
             // If none of the keys has a matching key_id, the required key does not exist.
             Err(KeyManagerError::FailedToLoadKey)
@@ -435,8 +438,31 @@ mod tests {
 
         // With a non-matching key_id, expect KeyManagerError::FailedToLoadKey
         let actual_key_res = target.signing_key(Some("1"));
-        let expected_res: Result<JWK, KeyManagerError> = Err(KeyManagerError::FailedToLoadKey);
-        assert_eq!(actual_key_res, expected_res);
+        assert!(matches!(
+            actual_key_res,
+            Err(KeyManagerError::FailedToLoadKey)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn test_signing_key_with_thumbprint() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
+        let did = "did:example:test_signing_with_thumbrint_key";
+
+        // Load keys
+        let keys: Vec<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+        let expected_key = keys.last().unwrap().clone();
+
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
+
+        // With thumbprint passed, expect correct key returned.
+        let actual_key = target.signing_key(Some(&expected_key.thumbprint().unwrap()))?;
+        assert_eq!(expected_key, actual_key);
 
         Ok(())
     }
