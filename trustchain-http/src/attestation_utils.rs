@@ -71,6 +71,15 @@ pub enum TrustchainCRError {
     /// Failed attestation request
     #[error("Failed attestation request.")]
     FailedAttestationRequest,
+    /// Field of struct not found
+    #[error("Field not found.")]
+    FieldNotFound,
+    /// Field to respond
+    #[error("Response to challenge failed.")]
+    FailedToRespond,
+    // Failed to verify nonce
+    #[error("Failed to verify nonce.")]
+    FailedToVerifyNonce,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -282,7 +291,7 @@ pub struct CRIdentityChallenge {
 }
 
 impl CRIdentityChallenge {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             update_p_key: None,
             update_s_key: None,
