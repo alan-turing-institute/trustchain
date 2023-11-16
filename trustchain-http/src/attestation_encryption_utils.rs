@@ -53,7 +53,7 @@ pub trait SignEncrypt {
     }
 }
 /// Interface for decrypting and then verifying data.
-trait DecryptVerify {
+pub trait DecryptVerify {
     /// Decrypts a payload with a secret key.
     fn decrypt(&self, value: &Value, secret_key: &Jwk) -> Result<JwtPayload, TrustchainCRError> {
         let decrypter = ECDH_ES.decrypter_from_jwk(&secret_key)?;
