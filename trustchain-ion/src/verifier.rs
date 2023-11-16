@@ -296,6 +296,18 @@ where
         }
         Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
     }
+    /// Resolves the given DID to obtain the DID Document and Document Metadata.
+    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
+        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
+            Ok((doc, doc_meta))
+        } else {
+            Err(VerifierError::DIDResolutionError(
+                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
+                ResolverError::FailureWithMetadata(res_meta).into(),
+            ))
+        }
+    }
 }
 impl<T> IONVerifier<T, LightClient>
 where
@@ -368,19 +380,6 @@ impl<T, U> IONVerifier<T, U>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Resolves the given DID to obtain the DID Document and Document Metadata.
-    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
-        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
-            Ok((doc, doc_meta))
-        } else {
-            Err(VerifierError::DIDResolutionError(
-                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
-                ResolverError::FailureWithMetadata(res_meta).into(),
-            ))
-        }
-    }
-
     /// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_op_return_cid(tx)
