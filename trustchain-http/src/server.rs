@@ -97,9 +97,17 @@ impl TrustchainRouter {
                     get(root::TrustchainRootHTTPHandler::get_block_timestamp),
                 )
                 .route(
-                    "/did/attestor/initiate",
+                    "/did/attestor/identity/initiate",
                     post(attestor::TrustchainAttestorHTTPHandler::post_initiation),
                 )
+                .route(
+                    "/did/attestor/identity/respond/:did/:key_id",
+                    post(attestor::TrustchainAttestorHTTPHandler::post_response),
+                )
+                // .route(
+                //     "/did/attestor/content/:key_id",
+                //     post(attestor::TrustchainAttestorHTTPHandler::post_initiation),
+                // )
                 .with_state(shared_state),
         }
     }
