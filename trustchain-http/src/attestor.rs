@@ -1,30 +1,29 @@
 use crate::attestation_encryption_utils::{
-    josekit_to_ssi_jwk, ssi_to_josekit_jwk, Entity, SignEncrypt,
+    josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
 };
 use crate::attestation_utils::{
     attestation_request_path, CRIdentityChallenge, ElementwiseSerializeDeserialize,
     IdentityCRInitiation, Nonce, TrustchainCRError,
 };
-use crate::{errors::TrustchainHTTPError, state::AppState};
+
 use async_trait::async_trait;
-use axum::extract::path;
+use axum::extract::Path;
 use axum::{
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse},
     Json,
 };
 use hyper::StatusCode;
 use josekit::jwk::Jwk;
 use josekit::jwt::JwtPayload;
-use log::{debug, info, log};
-use rand::Rng;
-use rand::{distributions::Alphanumeric, thread_rng};
+use log::info;
+
 use serde::{Deserialize, Serialize};
-use serde_json::to_string_pretty;
-use sha2::{Digest, Sha256};
-use std::io::Write;
-use std::{fs::OpenOptions, path::Path, path::PathBuf, sync::Arc};
-use trustchain_core::key_manager::AttestorKeyManager;
-use trustchain_core::subject::Subject;
+
+use std::fs::File;
+use std::io::BufReader;
+use std::path::PathBuf;
+use std::result;
+
 use trustchain_core::utils::generate_key;
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_ion::attestor::IONAttestor;
@@ -75,17 +74,10 @@ use trustchain_ion::attestor::IONAttestor;
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct AttestationInfo {
-    // api_access_token: JWT,
-    // temp_pub_key: JWK,
-    api_access_token: String,
-    temp_pub_key: String,
-    // TODO: change temp_pub_key
-    // temp_pub_key: JWK,
-    name_downstream: String,
-    name_operator: String,
+#[derive(Serialize)]
+struct CustomResponse {
+    message: String,
+    path: Option<String>,
 }
 
 #[async_trait]
@@ -132,6 +124,66 @@ impl TrustchainAttestorHTTPHandler {
         let _ = std::fs::create_dir_all(&path);
         let _ = attestation_initiation.elementwise_serialize(&path).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")));
     }
+
+    pub async fn post_response(
+        Path((did, key_id)): Path<(String, String)>,
+        Json(response): Json<String>,
+    ) -> impl IntoResponse {
+        // get keys (attestor secret key, temp public key)
+        let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).unwrap();
+        let path = PathBuf::new()
+            .join(trustchain_dir)
+            .join("attestation_requests")
+            .join(&key_id);
+        if !path.exists() {
+            panic!("Provided attestation request not found. Path does not exist.");
+        }
+        // deserialise
+        let mut identity_challenge = CRIdentityChallenge::new()
+            .elementwise_deserialize(&path)
+            .unwrap()
+            .unwrap();
+        // get signing key from ION attestor
+        let ion_attestor = IONAttestor::new(&did);
+        let signing_keys = ion_attestor.signing_keys().unwrap();
+        let signing_key_ssi = signing_keys.first().unwrap();
+        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi);
+        // get temp public key
+        info!("Path: {:?}", path);
+        let temp_key_path = path.join("temp_p_key.json");
+        let file = File::open(&temp_key_path).unwrap();
+        let reader = BufReader::new(file);
+        let temp_p_key_ssi = serde_json::from_reader(reader)
+            .map_err(|_| TrustchainCRError::FailedToDeserialize)
+            .unwrap();
+        let temp_p_key = ssi_to_josekit_jwk(&temp_p_key_ssi).unwrap();
+
+        // decrypt and verify
+        let attestor = Entity {};
+        let payload = attestor
+            .decrypt_and_verify(response.clone(), &signing_key.unwrap(), &temp_p_key)
+            .unwrap();
+
+        let result = verify_nonce(payload, &path);
+        match result {
+            Ok(_) => {
+                identity_challenge.identity_response_signature = Some(response.clone());
+                identity_challenge.elementwise_serialize(&path).unwrap();
+                let respone = CustomResponse {
+                    message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
+                    path:Some(format!("/did/attestor/content/initiate/{}", &key_id)),
+                };
+                (StatusCode::OK, Json(respone));
+            }
+            Err(_) => {
+                let respone = CustomResponse {
+                    message: "Verification failed. Please try again.".to_string(),
+                    path: None,
+                };
+                (StatusCode::BAD_REQUEST, Json(respone));
+            }
+        }
+    }
 }
 
 pub fn present_identity_challenge(
@@ -175,13 +227,31 @@ pub fn present_identity_challenge(
     Ok(identity_challenge)
 }
 
+fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRError> {
+    // get nonce from payload
+    let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
+    // deserialise expected nonce
+    let nonce_path = path.join("identity_nonce.json");
+    let file = File::open(&nonce_path).unwrap();
+    let reader = BufReader::new(file);
+    let expected_nonce: String =
+        serde_json::from_reader(reader).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+
+    if nonce != expected_nonce {
+        return Err(TrustchainCRError::FailedToVerifyNonce);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::data::TEST_UPDATE_KEY;
     use crate::{
         attestation_utils::RequesterDetails, config::HTTPConfig, server::TrustchainRouter,
     };
     use axum_test_helper::TestClient;
     use ssi::jwk::JWK;
+    use tempfile::tempdir;
 
     use super::*;
 
@@ -213,5 +283,25 @@ mod tests {
         assert_eq!(response.status(), 200);
         println!("Response text: {:?}", response.text().await);
         // assert_eq!(response.text().await, "Received request. Please wait for operator to contact you through an alternative channel.");
+    }
+
+    #[test]
+    fn test_verify_nonce() {
+        let temp_path = tempdir().unwrap().into_path();
+        let expected_nonce = Nonce::from(String::from("test_nonce"));
+        let identity_challenge = CRIdentityChallenge {
+            update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),
+            update_s_key: None,
+            identity_nonce: Some(expected_nonce.clone()),
+            identity_challenge_signature: None,
+            identity_response_signature: None,
+        };
+        identity_challenge
+            .elementwise_serialize(&temp_path)
+            .unwrap();
+        // make payload
+        let payload = JwtPayload::try_from(&identity_challenge).unwrap();
+        let result = verify_nonce(payload, &temp_path);
+        assert!(result.is_ok());
     }
 }
