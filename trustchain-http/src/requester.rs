@@ -1,14 +1,21 @@
-use josekit::jwt::JwtPayload;
-use ssi::did::Service;
+use std::{fs::File, io::BufReader, path::PathBuf};
+
+use josekit::jwk::Jwk;
+use ssi::{
+    did::{Service, ServiceEndpoint},
+    vc::OneOrMany,
+};
 use trustchain_core::utils::generate_key;
 
 use crate::{
-    attestation_encryption_utils::{ssi_to_josekit_jwk, Entity},
-    attestation_utils::TrustchainCRError,
+    attestation_encryption_utils::{
+        josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
+    },
     attestation_utils::{
         attestation_request_path, matching_endpoint, CRIdentityChallenge,
         ElementwiseSerializeDeserialize, IdentityCRInitiation, RequesterDetails,
     },
+    attestation_utils::{Nonce, TrustchainCRError},
 };
 
 /// Initiates the identity challenge-response process by sending a POST request to the upstream endpoint.
@@ -40,16 +47,9 @@ pub async fn initiate_identity_challenge(
         requester_details: Some(requester.clone()),
     };
 
-    // let identity_cr_initiation_attestor = IdentityCRInitiation {
-    //     temp_p_key: Some(temp_p_key),
-    //     temp_s_key: None,
-    //     requester_details: Some(requester),
-    // };
-
     // extract URI from service endpoint
-    println!("Services: {:?}", services);
-    let uri = matching_endpoint(services, "Trustchain").unwrap(); // this is just to make current example work
-                                                                  // let uri = matching_endpoint(services, "identity-cr").unwrap(); // TODO: use this one once we have example published
+    // TODO: this is just to make current example work
+    let uri = matching_endpoint(services, "Trustchain").unwrap();
 
     // make POST request to endpoint
     let client = reqwest::Client::new();
@@ -76,19 +76,72 @@ pub async fn initiate_identity_challenge(
     Ok(())
 }
 
-pub fn identity_response(
-    challenge_payload: JwtPayload,
-    identity_initiation: IdentityCRInitiation,
-    endpoint: String,
-    upstream_p_key: String,
+pub async fn identity_response(
+    path: PathBuf,
+    services: Vec<Service>,
+    url_path: String,
+    attestor_p_key: Jwk,
 ) -> Result<(), TrustchainCRError> {
-    // TODO: get all required keys: temp_s_key and public key upstream
-    // TODO: decrypt and verify challenge
+    // deserialise challenge struct from file
+    let result = CRIdentityChallenge::new().elementwise_deserialize(&path);
+    let mut identity_challenge = result.unwrap().unwrap();
+    let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(&path);
+    let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
+    let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key).unwrap();
+
+    // decrypt and verify challenge
     let requester = Entity {};
-    // let decrypted_verified_challenge = requester
-    //     .decrypt_and_verify(challenge_payload, &temp_s_key, &upstream_p_key)
-    //     .unwrap();
-    // TODO: sign and encrypt response
-    // TODO: send response to endpoint
-    todo!("Implement identity response")
+    let decrypted_verified_payload = requester
+        .decrypt_and_verify(
+            identity_challenge
+                .identity_challenge_signature
+                .clone()
+                .unwrap(),
+            &temp_s_key,
+            &attestor_p_key,
+        )
+        .unwrap();
+    // sign and encrypt response
+    let signed_encrypted_response = requester
+        .sign_and_encrypt_claim(&decrypted_verified_payload, &temp_s_key, &attestor_p_key)
+        .unwrap();
+    println!(
+        "Signed and encrypted response: {:?}",
+        signed_encrypted_response
+    );
+    let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
+    // get uri for POST request response
+    let endpoint = &services.first().unwrap().service_endpoint;
+    let endpoint = match endpoint {
+        Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => uri,
+
+        _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
+    };
+    let uri = format!("{}{}{}", endpoint, url_path, key_id);
+    // POST response
+    let client = reqwest::Client::new();
+    let result = client
+        .post(uri)
+        .json(&signed_encrypted_response)
+        .send()
+        .await
+        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+    if result.status() != 200 {
+        println!("Status code: {}", result.status());
+        return Err(TrustchainCRError::FailedToRespond);
+    }
+    // extract nonce
+    let nonce_str = decrypted_verified_payload
+        .claim("identity_nonce")
+        .unwrap()
+        .as_str()
+        .unwrap();
+    let nonce = Nonce::from(String::from(nonce_str));
+    // update struct
+    identity_challenge.update_p_key = Some(attestor_p_key);
+    identity_challenge.identity_nonce = Some(nonce);
+    identity_challenge.identity_response_signature = Some(signed_encrypted_response);
+    // serialise
+    identity_challenge.elementwise_serialize(&path)?;
+    Ok(())
 }
