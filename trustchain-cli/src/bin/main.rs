@@ -2,23 +2,23 @@
 use clap::{arg, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential, ucan::Payload};
+use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA, utils::generate_key};
+use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA, utils:: extract_keys};
 use trustchain_http::{
     attestation_utils::{
-        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError, CRIdentityChallenge
+        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError
     },
-    requester::initiate_identity_challenge,  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
+    requester::{initiate_identity_challenge, identity_response},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
 };
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
@@ -103,13 +103,21 @@ fn cli() -> Command {
                             Command::new("initiate")
                             .about("Initiates a new identity challenge-response process.")
                             .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                            .arg(arg!(-d --did <DID>).required(true))
+                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
                         )
                         .subcommand(
                             Command::new("present")
-                            .about("Produce challenges to be presented to requestor.")
+                            .about("Produce challenge for identity CR to be presented to requestor.")
                             .arg(arg!(-v - -verbose).action(ArgAction::Count))
                             .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
+                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
+                        )
+                        .subcommand(
+                            Command::new("respond")
+                            .about("Produce response for identity challenge to be posted to attestor.")
+                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                            .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
+                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
                         )
                 )
                 
@@ -308,9 +316,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // resolve DID and extract endpoint
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
-                    // let endpoints = doc.unwrap().get_endpoints().unwrap(); // TODO: this is a vec => which endpoint?
                     let services = doc.unwrap().service;
-
+                    
                     // user promt for org name and operator name
                     println!("Please enter your organisation name: ");
                     let mut org_name = String::new();
@@ -348,7 +355,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .unwrap();
                     // Show requester information to user and ask for confirmation to proceed 
                     println!("---------------------------------");
-                    println!("Requester information: {:?}", identity_initiation.as_ref().and_then(|i| i.requester_details.as_ref()));
+                    println!("Requester information: ");
+                    println!("{:?}", identity_initiation.as_ref().unwrap().requester_details.as_ref().unwrap());
                     println!("---------------------------------");
                     println!("Recognise this attestation request and want to proceed? (y/n)");
                     let mut prompt = String::new();
@@ -361,6 +369,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return Ok(());
                         
                     }
+                    
                     let temp_p_key = identity_initiation.unwrap().temp_p_key.unwrap();
 
                     // call function to present challenge
@@ -369,14 +378,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // print signed and encrypted payload to terminal
                     let payload = identity_challenge.identity_challenge_signature.as_ref().unwrap();
                     println!("---------------------------------");
-                    println!("Payload: {:?}", payload); 
+                    println!("Payload:"); 
+                    println!("{:?}", payload); 
+                    println!("Path: /did/attestor/identity/respond/<key_id>");
                     println!("---------------------------------");
-                    println!("Please send the above payload and subdirectory to the requester via alternative channels.");
-
-                    // TODO: print subdirectory for response (will be appended to endpoint in did)
+                    println!("Please send the above payload and path to the requester via alternative channels.");
+                    println!("To respond, the requester posts it to the provided path, which has to be appended to the attestor endpoint.");
+                    println!("<key_id> has to be replaced by the key_id of the temporary public key provided in the initial request.");
 
                     // serialise struct
                     identity_challenge.elementwise_serialize(&path)?;
+                }
+                Some(("respond", sub_matches)) => {
+                    // get attestation request path from provided input
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    if !path.exists() {
+                        panic!("Provided attestation request not found. Path does not exist."); 
+                    }
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let doc = doc.unwrap();
+                    // extract attestor public key from did document
+                    let public_keys = extract_keys(&doc);
+                    let attestor_public_key_ssi = public_keys.first().unwrap();
+                    let public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
+                    // url path and service endpoint
+                    let url_path = String::from("/did/attestor/identity/respond/");
+                    let services = doc.service.unwrap();
+                    println!("Path: {:?}", path);
+                    identity_response(path, services, url_path, public_key).await?;
                 }
                 _ => panic!("Unrecognised CR subcommand."),
             },
