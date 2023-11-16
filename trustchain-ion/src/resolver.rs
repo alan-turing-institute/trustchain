@@ -177,14 +177,14 @@ async fn transform_doc(
         let mut new_vm_map: VerificationMethodMap = serde_json::from_str(&json.to_string())
             .map_err(|err| ResolverError::FailedToConvertToTrustchain(err.to_string()))?;
 
-        // Transform public key id into thumbprint format.
+        // Transform public key id into RelativeDIDURL format.
         if !new_vm_map.id.starts_with("#") {
             new_vm_map.id.insert_str(0, "#");
         }
-        // Create thumbprint verification method
-        let thumbprint: &str = new_vm_map.id.as_ref();
-        let thumbprint_vm = VerificationMethod::RelativeDIDURL(
-            RelativeDIDURL::from_str(thumbprint)
+        // Create RelativeDIDURL verification method
+        let relative_did_url: &str = new_vm_map.id.as_ref();
+        let relative_did_url_vm = VerificationMethod::RelativeDIDURL(
+            RelativeDIDURL::from_str(relative_did_url)
                 .map_err(|err| ResolverError::FailedToConvertToTrustchain(err.to_string()))?,
         );
 
@@ -202,46 +202,46 @@ async fn transform_doc(
                 if purposes_vec.contains(&Value::String("authentication".to_string())) {
                     if let Some(authentication) = &doc.authentication {
                         let mut new_authentication = authentication.to_owned();
-                        new_authentication.push(thumbprint_vm.clone());
+                        new_authentication.push(relative_did_url_vm.clone());
                         doc_clone.authentication = Some(new_authentication);
                     } else {
-                        doc_clone.authentication = Some(vec![thumbprint_vm.clone()])
+                        doc_clone.authentication = Some(vec![relative_did_url_vm.clone()])
                     }
                 }
                 if purposes_vec.contains(&Value::String("assertionMethod".to_string())) {
                     if let Some(assertion_method) = &doc.assertion_method {
                         let mut new_assertion_method = assertion_method.to_owned();
-                        new_assertion_method.push(thumbprint_vm.clone());
+                        new_assertion_method.push(relative_did_url_vm.clone());
                         doc_clone.assertion_method = Some(new_assertion_method);
                     } else {
-                        doc_clone.assertion_method = Some(vec![thumbprint_vm.clone()])
+                        doc_clone.assertion_method = Some(vec![relative_did_url_vm.clone()])
                     }
                 }
                 if purposes_vec.contains(&Value::String("keyAgreement".to_string())) {
                     if let Some(key_agreement) = &doc.key_agreement {
                         let mut new_key_agreement = key_agreement.to_owned();
-                        new_key_agreement.push(thumbprint_vm.clone());
+                        new_key_agreement.push(relative_did_url_vm.clone());
                         doc_clone.key_agreement = Some(new_key_agreement);
                     } else {
-                        doc_clone.key_agreement = Some(vec![thumbprint_vm.clone()])
+                        doc_clone.key_agreement = Some(vec![relative_did_url_vm.clone()])
                     }
                 }
                 if purposes_vec.contains(&Value::String("capabilityInvocation".to_string())) {
                     if let Some(capability_invocation) = &doc.capability_invocation {
                         let mut new_capability_invocation = capability_invocation.to_owned();
-                        new_capability_invocation.push(thumbprint_vm.clone());
+                        new_capability_invocation.push(relative_did_url_vm.clone());
                         doc_clone.capability_invocation = Some(new_capability_invocation);
                     } else {
-                        doc_clone.capability_invocation = Some(vec![thumbprint_vm.clone()])
+                        doc_clone.capability_invocation = Some(vec![relative_did_url_vm.clone()])
                     }
                 }
                 if purposes_vec.contains(&Value::String("capabilityDelegation".to_string())) {
                     if let Some(capability_delegation) = &doc.capability_delegation {
                         let mut new_capability_delegation = capability_delegation.to_owned();
-                        new_capability_delegation.push(thumbprint_vm.clone());
+                        new_capability_delegation.push(relative_did_url_vm.clone());
                         doc_clone.capability_delegation = Some(new_capability_delegation);
                     } else {
-                        doc_clone.capability_delegation = Some(vec![thumbprint_vm.clone()])
+                        doc_clone.capability_delegation = Some(vec![relative_did_url_vm.clone()])
                     }
                 }
             }
