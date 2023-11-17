@@ -9,7 +9,6 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// An error relating to Trustchain key management.
-// #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Error, Debug)]
 pub enum KeyManagerError {
     /// Key does not exist.
