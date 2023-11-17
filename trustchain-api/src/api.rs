@@ -2,8 +2,6 @@ use crate::TrustchainAPI;
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
-use ps_sig::rsssig::RSignature;
-use ssi::vc::VerificationResult;
 use ssi::{
     did_resolve::DIDResolver,
     jsonld::ContextLoader,
@@ -12,7 +10,6 @@ use ssi::{
     vc::{LinkedDataProofOptions, Presentation},
 };
 use std::error::Error;
-use trustchain_core::vc::ProofVerify;
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
@@ -251,17 +248,13 @@ pub trait TrustchainVPAPI {
 mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
-    use ps_sig::keys::{rsskeygen, PKrss, Params};
-    use ps_sig::message_structure::message_encode::EncodedMessages;
-    use ps_sig::rsssig::RSignature;
+    use did_ion::sidetree::PublicKeyEntry;
     use ssi::jsonld::ContextLoader;
-    use ssi::ldp::{now_ns, Proof};
+    use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
+    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime};
     use trustchain_core::utils::init;
     use trustchain_core::vc::CredentialError;
-    use trustchain_core::vc_encoding::CanonicalFlatten;
-    use trustchain_core::vc_encoding::RedactValues;
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
@@ -290,6 +283,33 @@ mod tests {
         }
       }
       "#;
+
+    const UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://w3id.org/vdl/v1"
+        ],
+        "type": [
+          "VerifiableCredential",
+          "Iso18013DriversLicense"
+        ],
+        "issuer": "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q",
+        "issuanceDate": "2020-08-19T21:41:50Z",
+        "credentialSubject": {
+          "id": "did:example:12347abcd",
+          "Iso18013DriversLicense": {
+            "height": 1.8,
+            "weight": 70,
+            "nationality": "France",
+            "given_name": "Test",
+            "family_name": "A",
+            "issuing_country": "US",
+            "birth_date": "1958-07-17",
+            "age_in_years": 30,
+            "age_birth_year": 1958
+          }
+        }
+      }"###;
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
@@ -330,91 +350,69 @@ mod tests {
         }
     }
 
-    // #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
-    // #[tokio::test]
-    // async fn test_verify_rss_credential() {
-    //     // chose indicies to disclose
-    //     let idxs = vec![2, 3, 6];
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
+    async fn test_verify_rss_credential() {
+        // **NOT** using init(), because the chain written to a temp dir in init() does not have any
+        // RSS keys.
+        // init();
 
-    //     // obtain a vc with an RSS proof
-    //     let signed_vc = issue_rss_vc();
-    //     println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        // DID with RSS verification method
+        let issuer_did_suffix = "EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q";
+        let resolver = get_ion_resolver("http://localhost:3000/");
+        let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
+        let attestor = IONAttestor::new(issuer_did_suffix);
 
-    //     // produce a Vec<String> representation of the VC with only the selected fields disclosed
-    //     let mut redacted_seq = signed_vc.flatten();
-    //     redacted_seq.redact(&idxs).unwrap();
-    //     println!("{}", serde_json::to_string_pretty(&redacted_seq).unwrap());
+        let mut signed_vc = attestor
+            .sign(
+                &vc,
+                None,
+                Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34"),
+                &resolver,
+                &mut ContextLoader::default(),
+            )
+            .await
+            .unwrap();
+        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
 
-    //     // encode redacted sequence into FieldElements
-    //     let messages = EncodedMessages::from(redacted_seq);
+        // derive redacted RSignature
+        let masked_cred_sub: CredentialSubject = serde_json::from_str(
+            r###"{
+              "id": "did:example:12347abcd",
+              "Iso18013DriversLicense": {
+                "height": null,
+                "weight": null,
+                "nationality": null,
+                "given_name": null,
+                "family_name": null,
+                "issuing_country": "US",
+                "birth_date": null,
+                "age_in_years": 30,
+                "age_birth_year": null
+              }
+            }"###,
+        )
+        .unwrap();
+        let mut masked_copy = signed_vc.clone();
+        masked_copy.credential_subject = OneOrMany::One(masked_cred_sub);
 
-    //     // parse issuers PK from the proof on the signed vc
-    //     let issuers_proofs = signed_vc.proof.as_ref().unwrap();
-    //     let issuers_pk = PKrss::from_hex(
-    //         &issuers_proofs
-    //             .first()
-    //             .unwrap()
-    //             .verification_method
-    //             .as_ref()
-    //             .unwrap(),
-    //     )
-    //     .unwrap();
+        // produce redacted vc from redacted json
+        let mut context_loader = ContextLoader::default();
+        signed_vc
+            .rss_redact(masked_copy, &resolver, &mut context_loader)
+            .await
+            .unwrap();
 
-    //     // derive redacted RSignature
-    //     let r_rsig = RSignature::from_hex(
-    //         &issuers_proofs
-    //             .first()
-    //             .unwrap()
-    //             .proof_value
-    //             .as_ref()
-    //             .unwrap(),
-    //     )
-    //     .unwrap()
-    //     .derive_signature(
-    //         &issuers_pk,
-    //         EncodedMessages::from(signed_vc.flatten()).as_slice(),
-    //         &messages.infered_idxs,
-    //     );
-
-    //     // generate proof from derived RSS signature
-    //     let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
-    //     proof.proof_value = Some(r_rsig.to_hex());
-    //     proof.verification_method = Some(issuers_pk.to_hex());
-
-    //     // produce an unsigned, redacted vc
-    //     let mut redacted_vc = signed_vc;
-    //     redacted_vc.proof = None;
-    //     redacted_vc.redact(&idxs).unwrap();
-
-    //     // add the derived RSS proof
-    //     redacted_vc.add_proof(proof);
-
-    //     // verify redacted vc
-    //     let resolver = get_ion_resolver("http://localhost:3000/");
-    //     let mut context_loader = ContextLoader::default();
-    //     let res = TrustchainAPI::verify_credential(
-    //         &redacted_vc,
-    //         None,
-    //         ROOT_EVENT_TIME_1,
-    //         &IONVerifier::new(resolver),
-    //         &mut context_loader,
-    //     )
-    //     .await;
-    //     println!("{:?}", &res);
-    //     assert!(res.is_ok());
-    // }
-
-    fn issue_rss_vc() -> Credential {
-        // create rss keypair
-        let (sk, pk) = rsskeygen(10, &Params::new("test".as_bytes()));
-        // load complete (unredacted) vc
-        let mut vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
-        let rsig = RSignature::new(EncodedMessages::from(vc.flatten()).as_slice(), &sk);
-        let mut proof = Proof::new(ssi::ldp::ProofSuiteType::RSSSignature2023);
-        proof.proof_value = Some(rsig.to_hex());
-        proof.verification_method = Some(pk.to_hex());
-        vc.add_proof(proof);
-        vc
+        let res = TrustchainAPI::verify_credential(
+            &signed_vc,
+            None,
+            1697213008,
+            &IONVerifier::new(resolver),
+            &mut context_loader,
+        )
+        .await;
+        // println!("{:?}", &res);
+        assert!(res.is_ok());
     }
 
     #[tokio::test]
@@ -531,5 +529,17 @@ mod tests {
             .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
             .await
             .unwrap()
+    }
+
+    #[test]
+    fn get_key_entry() {
+        use ps_sig::keys::Params;
+        use ssi::jwk::rss::generate_keys_jwk;
+        use ssi::jwk::JWK;
+
+        let key: JWK = generate_keys_jwk(64, &Params::new("test".to_string().as_bytes())).unwrap();
+        println!("{}", serde_json::to_string_pretty(&key).unwrap());
+        let entry: PublicKeyEntry = key.try_into().unwrap();
+        println!("{}", serde_json::to_string_pretty(&entry).unwrap());
     }
 }
