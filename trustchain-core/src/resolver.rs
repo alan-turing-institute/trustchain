@@ -163,7 +163,6 @@ fn transform_doc(doc: &Document, controller_did: &str) -> Document {
     // Clone the passed DID document.
     let doc_clone = doc.clone();
 
-
     // Add controller
     let doc_clone =
         add_controller(doc_clone, controller_did).expect("Controller already present in document.");
@@ -294,7 +293,7 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
                 Err(ResolverError::FailedToConvertToTrustchain(
                     did_res_meta_error
                         .to_owned()
-                        .rsplit(":")
+                        .rsplit(':')
                         .next()
                         .unwrap_or("")
                         .to_owned(),

@@ -163,7 +163,7 @@ impl Issuer for IONAttestor {
         let proof = credential
             .generate_proof(
                 &signing_key,
-                &linked_data_proof_options.unwrap_or(LinkedDataProofOptions::default()),
+                &linked_data_proof_options.unwrap_or_default(),
                 resolver.as_did_resolver(),
                 context_loader,
             )
