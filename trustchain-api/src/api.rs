@@ -14,7 +14,7 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{Resolver, ResolverResult},
+    resolver::{ResolverResult, TrustchainResolver},
     vc::CredentialError,
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,
@@ -42,10 +42,7 @@ pub trait TrustchainDIDAPI {
         attest_operation(did, controlled_did, verbose).await
     }
     /// Resolves a given DID using given endpoint.
-    async fn resolve<T>(did: &str, resolver: &Resolver<T>) -> ResolverResult
-    where
-        T: DIDResolver + Send + Sync,
-    {
+    async fn resolve(did: &str, resolver: &dyn TrustchainResolver) -> ResolverResult {
         // Result metadata, Document, Document metadata
         resolver.resolve_as_result(did).await
     }
@@ -86,12 +83,12 @@ pub trait TrustchainDIDAPI {
 #[async_trait]
 pub trait TrustchainVCAPI {
     /// Signs a credential.
-    async fn sign<T: DIDResolver>(
+    async fn sign(
         mut credential: Credential,
         did: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
@@ -123,7 +120,7 @@ pub trait TrustchainVCAPI {
         let result = credential
             .verify(
                 linked_data_proof_options,
-                verifier.resolver(),
+                verifier.resolver().as_did_resolver(),
                 context_loader,
             )
             .await;
@@ -208,7 +205,7 @@ pub trait TrustchainVPAPI {
                             match Credential::decode_verify_jwt(
                                 jwt,
                                 ldp_opts.clone(),
-                                verifier.resolver(),
+                                verifier.resolver().as_did_resolver(),
                                 &mut context_loader,
                             )
                             .await
@@ -234,7 +231,11 @@ pub trait TrustchainVPAPI {
 
         // Verify signature by holder to authenticate
         let result = presentation
-            .verify(ldp_options.clone(), verifier.resolver(), context_loader)
+            .verify(
+                ldp_options.clone(),
+                verifier.resolver().as_did_resolver(),
+                context_loader,
+            )
             .await;
         if !result.errors.is_empty() {
             return Err(PresentationError::VerifiedHolderUnauthenticated(result));

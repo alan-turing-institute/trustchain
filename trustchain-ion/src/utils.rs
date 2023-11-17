@@ -10,8 +10,8 @@ use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::io::Read;
+use std::{cmp::Ordering, collections::HashMap};
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
@@ -83,11 +83,17 @@ pub fn tx_to_op_return_cid(tx: &Transaction) -> Result<String, VerifierError> {
 }
 
 /// Decodes an IPFS file.
-pub fn decode_ipfs_content(ipfs_file: &[u8]) -> Result<Value, TrustchainIpfsError> {
-    // Decompress the content and deserialize to JSON.
-    let mut decoder = GzDecoder::new(ipfs_file);
-    let mut ipfs_content_str = String::new();
-    decoder.read_to_string(&mut ipfs_content_str)?;
+pub fn decode_ipfs_content(ipfs_file: &[u8], gunzip: bool) -> Result<Value, TrustchainIpfsError> {
+    let mut ipfs_content_str;
+    if gunzip {
+        // Decompress the content and deserialize to JSON.
+        let mut decoder = GzDecoder::new(ipfs_file);
+        ipfs_content_str = String::new();
+        decoder.read_to_string(&mut ipfs_content_str)?;
+    } else {
+        ipfs_content_str = String::from_utf8(ipfs_file.to_vec())
+            .map_err(TrustchainIpfsError::Utf8DecodingError)?;
+    }
     Ok(serde_json::from_str(&ipfs_content_str)?)
 }
 
@@ -362,13 +368,15 @@ pub fn last_block_height_before(
         let current_height = (start_height + end_height) / 2; // Rounds down.
         let current_unixtime = time_at_block_height(current_height, Some(client))?;
 
-        if current_unixtime as i64 > target_unixtime {
-            end_height = current_height; // TODO CHECK: original script has: current_height - 1;
-        } else if (current_unixtime as i64) < target_unixtime {
-            start_height = current_height; // TODO CHECK: original script has: current_height + 1;
+        match (current_unixtime as i64).cmp(&target_unixtime) {
+            // TODO CHECK: original script has: current_height - 1
+            Ordering::Greater => end_height = current_height,
+            // TODO CHECK: original script has: current_height + 1;
+            Ordering::Less => start_height = current_height,
+            // TODO: WHAT IF current_unixtime == target_unixtime?
+            // (does the loop exit and is start_height the right result in that case?)
+            Ordering::Equal => unimplemented!(),
         }
-        // TODO: WHAT IF current_unixtime == target_unixtime?
-        // (does the loop exit and is start_height the right result in that case?)
     }
     Ok(start_height)
 }

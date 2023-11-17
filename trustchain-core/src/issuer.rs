@@ -1,8 +1,8 @@
 //! DID issuer API.
 use crate::key_manager::KeyManagerError;
+use crate::resolver::TrustchainResolver;
 use crate::subject::Subject;
 use async_trait::async_trait;
-use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions};
 use thiserror::Error;
@@ -43,12 +43,12 @@ impl From<KeyManagerError> for IssuerError {
 #[async_trait]
 pub trait Issuer: Subject {
     /// Signs a credential. An issuer attests to a credential by signing the credential with one of their private signing keys.
-    async fn sign<T: DIDResolver>(
+    async fn sign(
         &self,
         credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError>;
 }

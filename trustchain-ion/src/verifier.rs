@@ -21,14 +21,14 @@ use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
 
+use crate::resolver::Resolver;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
-use trustchain_core::resolver::{Resolver, ResolverError};
-
+use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
 
 /// Data bundle for DID timestamp verification.
@@ -200,7 +200,7 @@ where
         &self,
         core_index_file: &[u8],
     ) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(core_index_file).map_err(|e| {
+        let content = decode_ipfs_content(core_index_file, true).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
                 e
@@ -222,7 +222,7 @@ where
     }
 
     async fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
+        let content = decode_ipfs_content(prov_index_file, true).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
                 err.into(),
@@ -296,6 +296,18 @@ where
         }
         Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
     }
+    /// Resolves the given DID to obtain the DID Document and Document Metadata.
+    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
+        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
+            Ok((doc, doc_meta))
+        } else {
+            Err(VerifierError::DIDResolutionError(
+                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
+                ResolverError::FailureWithMetadata(res_meta).into(),
+            ))
+        }
+    }
 }
 impl<T> IONVerifier<T, LightClient>
 where
@@ -368,19 +380,6 @@ impl<T, U> IONVerifier<T, U>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Resolves the given DID to obtain the DID Document and Document Metadata.
-    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
-        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
-            Ok((doc, doc_meta))
-        } else {
-            Err(VerifierError::DIDResolutionError(
-                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
-                ResolverError::FailureWithMetadata(res_meta).into(),
-            ))
-        }
-    }
-
     /// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_op_return_cid(tx)
@@ -433,7 +432,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 
@@ -494,7 +493,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 

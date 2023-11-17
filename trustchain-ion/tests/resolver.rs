@@ -2,6 +2,7 @@ use core::panic;
 
 use ssi::did_resolve::Metadata;
 use ssi::one_or_many::OneOrMany;
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_ion::get_ion_resolver;
 
 #[tokio::test]
