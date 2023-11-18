@@ -9,6 +9,7 @@ use ssi::{
     did::{DIDMethod, Document},
     did_resolve::{DIDResolver, ResolutionInputMetadata, ResolutionMetadata},
 };
+use std::collections::HashSet;
 use std::str::FromStr;
 use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 
@@ -152,6 +153,12 @@ async fn transform_doc(
         None => vec![],
     };
 
+    // Create set of verification method ids to check if candidates are already present
+    let verification_methods_ids: HashSet<String> = verification_methods
+        .iter()
+        .map(|vm| vm.get_id(&doc.id))
+        .collect();
+
     // Add any public keys found on IPFS.
     for endpoint in endpoints {
         // Download the content of the corresponding CID
@@ -187,6 +194,11 @@ async fn transform_doc(
             RelativeDIDURL::from_str(relative_did_url)
                 .map_err(|err| ResolverError::FailedToConvertToTrustchain(err.to_string()))?,
         );
+
+        // Continue if verification method is already present
+        if verification_methods_ids.contains(&relative_did_url_vm.get_id(&doc.id)) {
+            continue;
+        }
 
         // Extract the verification method purposes
         if let Some(extra_properties) = new_vm_map.property_set.as_mut() {
