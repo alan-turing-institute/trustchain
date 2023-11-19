@@ -1,6 +1,6 @@
 use trustchain_core::utils::type_of;
 use trustchain_core::verifier::{Timestamp, Verifier};
-use trustchain_ion::get_ion_resolver;
+use trustchain_ion::trustchain_resolver;
 use trustchain_ion::verifier::IONVerifier;
 
 // The root event time of DID documents in `data.rs` used for unit tests and the test below.
@@ -18,7 +18,7 @@ async fn trustchain_verification() {
     ];
 
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = get_ion_resolver("http://localhost:3000/");
+    let resolver = trustchain_resolver("http://localhost:3000/");
     let verifier = IONVerifier::new(resolver);
     for did in dids {
         let result = verifier.verify(did, ROOT_EVENT_TIME_1).await;
@@ -29,7 +29,7 @@ async fn trustchain_verification() {
 #[tokio::test]
 #[ignore = "Integration test requires ION, Bitcoin RPC & IPFS"]
 async fn test_verifiable_timestamp() {
-    let resolver = get_ion_resolver("http://localhost:3000/");
+    let resolver = trustchain_resolver("http://localhost:3000/");
     let target = IONVerifier::new(resolver);
     let timestamp: Timestamp = 1666265405;
 

@@ -6,61 +6,53 @@ use ssi::did::{RelativeDIDURL, ServiceEndpoint, VerificationMethod, Verification
 use ssi::did_resolve::DocumentMetadata;
 use ssi::one_or_many::OneOrMany;
 use ssi::{
-    did::{DIDMethod, Document},
+    did::Document,
     did_resolve::{DIDResolver, ResolutionInputMetadata, ResolutionMetadata},
 };
 use std::collections::HashSet;
+use std::marker::PhantomData;
 use std::str::FromStr;
 use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 
 use crate::utils::{decode_ipfs_content, query_ipfs};
+use crate::{FullClient, LightClient};
 use crate::{CONTROLLER_KEY, SERVICE_TYPE_IPFS_KEY};
-
-// Newtype pattern (workaround for lack of trait upcasting coercion).
-// Specifically, the DIDMethod method to_resolver() returns a reference but we want ownership.
-// The workaround is to define a wrapper for DIDMethod that implements DIDResolver.
-// See https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-the-newtype-pattern-to-implement-external-traits-on-external-types.
-pub struct DIDMethodWrapper<S: DIDMethod>(pub S);
-
-#[async_trait]
-impl<S: DIDMethod> DIDResolver for DIDMethodWrapper<S> {
-    async fn resolve(
-        &self,
-        did: &str,
-        input_metadata: &ResolutionInputMetadata,
-    ) -> (
-        ResolutionMetadata,
-        Option<Document>,
-        Option<DocumentMetadata>,
-    ) {
-        self.0.to_resolver().resolve(did, input_metadata).await
-    }
-}
 
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
-pub struct Resolver<T: DIDResolver + Sync + Send> {
+pub struct Resolver<T: DIDResolver + Sync + Send, U = FullClient> {
     pub wrapped_resolver: T,
-    pub ipfs_client: IpfsClient,
+    pub ipfs_client: Option<IpfsClient>,
+    _marker: PhantomData<U>,
 }
 
-impl<T: DIDResolver + Sync + Send> Resolver<T> {
+impl<T: DIDResolver + Sync + Send> Resolver<T, FullClient> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
         Self {
             wrapped_resolver: resolver,
-            ipfs_client: IpfsClient::default(),
+            ipfs_client: Some(IpfsClient::default()),
+            _marker: PhantomData,
         }
     }
-    /// Constructs a Trustchain resolver from a DIDMethod.
-    pub fn from<S: DIDMethod>(method: S) -> Resolver<DIDMethodWrapper<S>> {
-        // Wrap the DIDMethod.
-        Resolver::<DIDMethodWrapper<S>>::new(DIDMethodWrapper::<S>(method))
+    fn ipfs_client(&self) -> &IpfsClient {
+        self.ipfs_client.as_ref().unwrap()
+    }
+}
+
+impl<T: DIDResolver + Sync + Send> Resolver<T, LightClient> {
+    /// Constructs a Trustchain resolver.
+    pub fn new(resolver: T) -> Self {
+        Self {
+            wrapped_resolver: resolver,
+            ipfs_client: None,
+            _marker: PhantomData,
+        }
     }
 }
 
 #[async_trait]
-impl<T> DIDResolver for Resolver<T>
+impl<T> DIDResolver for Resolver<T, FullClient>
 where
     T: DIDResolver + Sync + Send,
 {
@@ -78,7 +70,25 @@ where
 }
 
 #[async_trait]
-impl<T> TrustchainResolver for Resolver<T>
+impl<T> DIDResolver for Resolver<T, LightClient>
+where
+    T: DIDResolver + Sync + Send,
+{
+    async fn resolve(
+        &self,
+        did: &str,
+        input_metadata: &ResolutionInputMetadata,
+    ) -> (
+        ResolutionMetadata,
+        Option<Document>,
+        Option<DocumentMetadata>,
+    ) {
+        self.trustchain_resolve(did, input_metadata).await
+    }
+}
+
+#[async_trait]
+impl<T> TrustchainResolver for Resolver<T, FullClient>
 where
     T: DIDResolver + Sync + Send,
 {
@@ -102,7 +112,7 @@ where
         if let (Some(did_doc), Some(did_doc_meta)) = (doc, doc_meta) {
             // Convert to trustchain-ion version.
             let tc_result =
-                transform_as_result(res_meta, did_doc, did_doc_meta, &self.ipfs_client).await;
+                transform_as_result(res_meta, did_doc, did_doc_meta, self.ipfs_client()).await;
             match tc_result {
                 // Map the tuple of non-option types to have tuple with optional document metadata.
                 Ok((tc_res_meta, tc_doc, tc_doc_meta)) => {
@@ -122,6 +132,16 @@ where
             // If doc or doc_meta None, return sidetree resolution as is.
             (res_meta, None, None)
         }
+    }
+}
+
+#[async_trait]
+impl<T> TrustchainResolver for Resolver<T, LightClient>
+where
+    T: DIDResolver + Sync + Send,
+{
+    fn wrapped_resolver(&self) -> &dyn DIDResolver {
+        &self.wrapped_resolver
     }
 }
 

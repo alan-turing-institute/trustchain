@@ -6,7 +6,7 @@ use crate::utils::{
     block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
     tx_to_op_return_cid,
 };
-use crate::URL;
+use crate::{FullClient, LightClient, URL};
 use async_trait::async_trait;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -76,16 +76,12 @@ impl VerificationBundle {
     }
 }
 
-/// Full client zero sized type for marker in `IONVerifier`.
-pub struct FullClient;
-/// Light client zero sized type for marker in `IONVerifier`.
-pub struct LightClient;
-
 /// Trustchain Verifier implementation via the ION DID method.
 pub struct IONVerifier<T, U = FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
+    // TODO: consider replacing resolver with single generic over TrustchainResolver
     resolver: Resolver<T>,
     rpc_client: Option<bitcoincore_rpc::Client>,
     ipfs_client: Option<IpfsClient>,
@@ -570,25 +566,19 @@ mod tests {
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        get_ion_resolver,
+        trustchain_resolver,
     };
     use bitcoin::{BlockHeader, MerkleBlock};
     use flate2::read::GzDecoder;
-    use ssi::did_resolve::HTTPDIDResolver;
     use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
 
-    // Helper function for generating a placeholder HTTP resolver for tests only.
-    // Note that this resolver will *not* succeed at resolving DIDs. For that, a
-    // SidetreeClient is needed.
-    fn get_http_resolver() -> HTTPDIDResolver {
-        HTTPDIDResolver::new("http://localhost:3000/")
-    }
+    const ENDPOINT: &str = "http://localhost:3000/";
 
     // #[tokio::test]
     // #[ignore = "Integration test requires MongoDB"]
     // async fn test_locate_transaction() {
-    //     let resolver = Resolver::new(get_http_resolver());
+    //     let resolver = get_http_resolver();
     //     let target = IONVerifier::new(resolver);
 
     //     let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
@@ -627,7 +617,7 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin RPC"]
     fn test_op_return_cid() {
-        let resolver = Resolver::new(get_http_resolver());
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
 
         // The transaction, including OP_RETURN data, can be found on-chain:
@@ -649,7 +639,7 @@ mod tests {
     #[ignore = "Integration test requires ION"]
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
@@ -659,7 +649,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_chunk_file() {
-        let resolver = Resolver::new(get_http_resolver());
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
@@ -681,7 +671,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_core_index_file() {
-        let resolver = Resolver::new(get_http_resolver());
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
@@ -706,7 +696,7 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
 
         assert!(target.bundles.lock().unwrap().is_empty());
@@ -722,7 +712,7 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver(ENDPOINT);
         let target = IONVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";

@@ -13,7 +13,7 @@ use trustchain_core::utils::get_operations_path;
 use trustchain_core::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
 use crate::controller::IONController;
-use crate::get_ion_resolver;
+use crate::trustchain_resolver;
 
 // Function to resolve a controlled DID, attest to its contents and perform an update
 // operation on the controlled DID to add the attestation proof within a service endpoint.
@@ -32,7 +32,7 @@ pub async fn attest_operation(
 
     // 1.2. Resolve controlled_did document with Trustchain resolver
     // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
-    let resolver = get_ion_resolver("http://localhost:3000/");
+    let resolver = trustchain_resolver("http://localhost:3000/");
 
     // Extract resolution items
     let (_, doc, doc_meta) = match resolver.resolve_as_result(controlled_did).await {

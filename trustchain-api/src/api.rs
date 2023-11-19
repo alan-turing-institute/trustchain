@@ -20,7 +20,7 @@ use trustchain_core::{
     vp::PresentationError,
 };
 use trustchain_ion::{
-    attest::attest_operation, attestor::IONAttestor, create::create_operation, get_ion_resolver,
+    attest::attest_operation, attestor::IONAttestor, create::create_operation, trustchain_resolver,
 };
 
 /// API for Trustchain CLI DID functionality.
@@ -146,7 +146,7 @@ pub trait TrustchainVPAPI {
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         context_loader: &mut ContextLoader,
     ) -> Result<Presentation, PresentationError> {
-        let resolver = get_ion_resolver(endpoint);
+        let resolver = trustchain_resolver(endpoint);
         let attestor = IONAttestor::new(did);
         Ok(attestor
             .sign_presentation(
@@ -257,7 +257,7 @@ mod tests {
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
-    use trustchain_ion::get_ion_resolver;
+    use trustchain_ion::trustchain_resolver;
     use trustchain_ion::verifier::IONVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
@@ -296,7 +296,7 @@ mod tests {
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let mut context_loader = ContextLoader::default();
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
@@ -312,7 +312,7 @@ mod tests {
         vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
 
         // Verify: expect no warnings and a signature error as VC has changed
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             None,
@@ -339,7 +339,7 @@ mod tests {
         let holder = IONAttestor::new(holder_did);
 
         let vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let mut context_loader = ContextLoader::default();
 
         // let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
@@ -413,7 +413,7 @@ mod tests {
         let issuer = IONAttestor::new(issuer_did);
 
         let vc_with_proof = signed_credential(issuer).await;
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let presentation = Presentation {
             verifiable_credential: Some(OneOrMany::Many(vec![CredentialOrJWT::Credential(
                 vc_with_proof,
@@ -437,7 +437,7 @@ mod tests {
 
     // Helper function to create a signed credential given an attesor.
     async fn signed_credential(attestor: IONAttestor) -> Credential {
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
         attestor
             .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
