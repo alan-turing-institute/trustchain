@@ -15,7 +15,7 @@ pub mod utils;
 pub mod verifier;
 
 use crate::ion::IONTest as ION;
-use crate::resolver::Resolver;
+use crate::resolver::HTTPTrustchainResolver;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
@@ -54,20 +54,22 @@ impl Endpoint {
 }
 
 /// ION DID resolver.
-pub fn ion_resolver(endpoint: &str) -> HTTPSidetreeDIDResolver<ION> {
+pub fn http_resolver(endpoint: &str) -> HTTPSidetreeDIDResolver<ION> {
     HTTPSidetreeDIDResolver::new(endpoint)
 }
 
 /// Trustchain ION DID resolver for full client.
-pub fn trustchain_resolver(endpoint: &str) -> Resolver<HTTPSidetreeDIDResolver<ION>> {
-    Resolver::<_, FullClient>::new(ion_resolver(endpoint))
+pub fn trustchain_resolver(
+    ion_endpoint: &str,
+) -> HTTPTrustchainResolver<HTTPSidetreeDIDResolver<ION>> {
+    HTTPTrustchainResolver::<_, FullClient>::new(http_resolver(ion_endpoint))
 }
 
-/// Trustchain ION DID resolver for full client.
+/// Trustchain ION DID resolver for light client.
 pub fn trustchain_resolver_light_client(
-    endpoint: &str,
-) -> Resolver<HTTPSidetreeDIDResolver<ION>, LightClient> {
-    Resolver::<_, LightClient>::new(ion_resolver(endpoint))
+    trustchain_endpoint: &str,
+) -> HTTPTrustchainResolver<HTTPSidetreeDIDResolver<ION>, LightClient> {
+    HTTPTrustchainResolver::<_, LightClient>::new(http_resolver(trustchain_endpoint))
 }
 
 /// An error relating for Trustchain-ion crate.

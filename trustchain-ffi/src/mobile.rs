@@ -23,7 +23,7 @@ use trustchain_core::{
 use trustchain_ion::{
     create::{mnemonic_to_create_and_keys, OperationDID},
     trustchain_resolver_light_client,
-    verifier::IONVerifier,
+    verifier::TrustchainVerifier,
 };
 
 /// A speicfic error for FFI mobile making handling easier.
@@ -102,7 +102,7 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
     let root_event_time = trustchain_opts.root_event_time;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let verifier = IONVerifier::with_endpoint(
+        let verifier = TrustchainVerifier::with_endpoint(
             trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );
@@ -124,7 +124,7 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     let credential: Credential = serde_json::from_str(&credential)?;
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let verifier = IONVerifier::with_endpoint(
+        let verifier = TrustchainVerifier::with_endpoint(
             trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );
@@ -207,7 +207,7 @@ pub fn vp_verify_presentation(presentation: String, opts: String) -> Result<()> 
     // Verify presentation
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let verifier = IONVerifier::with_endpoint(
+        let verifier = TrustchainVerifier::with_endpoint(
             trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );

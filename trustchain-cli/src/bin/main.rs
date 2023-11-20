@@ -16,7 +16,7 @@ use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},
     trustchain_resolver,
-    verifier::IONVerifier,
+    verifier::TrustchainVerifier,
 };
 
 fn cli() -> Command {
@@ -89,7 +89,7 @@ fn cli() -> Command {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
     let endpoint = cli_config().ion_endpoint.to_address();
-    let verifier = IONVerifier::new(trustchain_resolver(&endpoint));
+    let verifier = TrustchainVerifier::new(trustchain_resolver(&endpoint));
     let resolver = verifier.resolver();
     let mut context_loader = ContextLoader::default();
     match matches.subcommand() {
@@ -170,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Some(("vc", sub_matches)) => {
-            let verifier = IONVerifier::new(trustchain_resolver(&endpoint));
+            let verifier = TrustchainVerifier::new(trustchain_resolver(&endpoint));
             let resolver = verifier.resolver();
             match sub_matches.subcommand() {
                 Some(("sign", sub_matches)) => {

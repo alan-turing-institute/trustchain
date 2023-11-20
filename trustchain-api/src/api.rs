@@ -258,7 +258,7 @@ mod tests {
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::trustchain_resolver;
-    use trustchain_ion::verifier::IONVerifier;
+    use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
     const ROOT_EVENT_TIME_1: u64 = 1666265405;
@@ -302,7 +302,7 @@ mod tests {
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
         .await;
@@ -317,7 +317,7 @@ mod tests {
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
         .await;
@@ -396,7 +396,7 @@ mod tests {
             &presentation,
             None,
             ROOT_EVENT_TIME_1,
-            &IONVerifier::new(resolver),
+            &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
         .await;
@@ -427,7 +427,7 @@ mod tests {
                 &presentation,
                 None,
                 ROOT_EVENT_TIME_1,
-                &IONVerifier::new(resolver),
+                &TrustchainVerifier::new(resolver),
                 &mut ContextLoader::default()
             )
             .await,

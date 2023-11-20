@@ -20,13 +20,13 @@ use crate::{CONTROLLER_KEY, SERVICE_TYPE_IPFS_KEY};
 
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.
-pub struct Resolver<T: DIDResolver + Sync + Send, U = FullClient> {
+pub struct HTTPTrustchainResolver<T: DIDResolver + Sync + Send, U = FullClient> {
     pub wrapped_resolver: T,
     pub ipfs_client: Option<IpfsClient>,
     _marker: PhantomData<U>,
 }
 
-impl<T: DIDResolver + Sync + Send> Resolver<T, FullClient> {
+impl<T: DIDResolver + Sync + Send> HTTPTrustchainResolver<T, FullClient> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
         Self {
@@ -40,7 +40,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T, FullClient> {
     }
 }
 
-impl<T: DIDResolver + Sync + Send> Resolver<T, LightClient> {
+impl<T: DIDResolver + Sync + Send> HTTPTrustchainResolver<T, LightClient> {
     /// Constructs a Trustchain resolver.
     pub fn new(resolver: T) -> Self {
         Self {
@@ -52,7 +52,7 @@ impl<T: DIDResolver + Sync + Send> Resolver<T, LightClient> {
 }
 
 #[async_trait]
-impl<T> DIDResolver for Resolver<T, FullClient>
+impl<T> DIDResolver for HTTPTrustchainResolver<T, FullClient>
 where
     T: DIDResolver + Sync + Send,
 {
@@ -70,7 +70,7 @@ where
 }
 
 #[async_trait]
-impl<T> DIDResolver for Resolver<T, LightClient>
+impl<T> DIDResolver for HTTPTrustchainResolver<T, LightClient>
 where
     T: DIDResolver + Sync + Send,
 {
@@ -88,7 +88,7 @@ where
 }
 
 #[async_trait]
-impl<T> TrustchainResolver for Resolver<T, FullClient>
+impl<T> TrustchainResolver for HTTPTrustchainResolver<T, FullClient>
 where
     T: DIDResolver + Sync + Send,
 {
@@ -136,7 +136,7 @@ where
 }
 
 #[async_trait]
-impl<T> TrustchainResolver for Resolver<T, LightClient>
+impl<T> TrustchainResolver for HTTPTrustchainResolver<T, LightClient>
 where
     T: DIDResolver + Sync + Send,
 {

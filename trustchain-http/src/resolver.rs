@@ -16,7 +16,7 @@ use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
-use trustchain_ion::verifier::{IONVerifier, VerificationBundle};
+use trustchain_ion::verifier::{TrustchainVerifier, VerificationBundle};
 
 /// A HTTP API for resolving DID documents, chains, and verification bundles.
 #[async_trait]
@@ -30,14 +30,14 @@ pub trait TrustchainHTTP {
     /// Resolves a DID chain.
     async fn resolve_chain<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError>;
 
     /// Resolves a DID verification bundle.
     async fn resolve_bundle<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<VerificationBundle, TrustchainHTTPError>;
 }
 
@@ -63,7 +63,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 
     async fn resolve_chain<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
         root_event_time: Timestamp,
     ) -> Result<DIDChainResolutionResult, TrustchainHTTPError> {
         debug!("Verifying...");
@@ -81,7 +81,7 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
 
     async fn resolve_bundle<T: DIDResolver + Send + Sync>(
         did: &str,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<VerificationBundle, TrustchainHTTPError> {
         let bundle = verifier.verification_bundle(did).await?;
         Ok((*bundle).clone())
@@ -294,7 +294,7 @@ mod tests {
 
         // Make a verifier instance and fetch bundle from server bundle endpoint
         let trustchain_endpoint = format!("http://127.0.0.1:{}/", port);
-        let verifier = IONVerifier::with_endpoint(
+        let verifier = TrustchainVerifier::with_endpoint(
             trustchain_resolver_light_client(&trustchain_endpoint),
             trustchain_endpoint,
         );

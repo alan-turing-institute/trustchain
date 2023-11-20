@@ -1,7 +1,7 @@
 //! Implementation of `Verifier` API for ION DID method.
 use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
-use crate::resolver::Resolver;
+use crate::resolver::HTTPTrustchainResolver;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
@@ -76,12 +76,12 @@ impl VerificationBundle {
 }
 
 /// Trustchain Verifier implementation via the ION DID method.
-pub struct IONVerifier<T, U = FullClient>
+pub struct TrustchainVerifier<T, U = FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
     // TODO: consider replacing resolver with single generic over TrustchainResolver
-    resolver: Resolver<T, U>,
+    resolver: HTTPTrustchainResolver<T, U>,
     rpc_client: Option<bitcoincore_rpc::Client>,
     ipfs_client: Option<IpfsClient>,
     bundles: Mutex<HashMap<String, Arc<VerificationBundle>>>,
@@ -89,13 +89,13 @@ where
     _marker: PhantomData<U>,
 }
 
-impl<T> IONVerifier<T, FullClient>
+impl<T> TrustchainVerifier<T, FullClient>
 where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
     // TODO: refactor to use config struct over direct config file lookup
-    pub fn new(resolver: Resolver<T>) -> Self {
+    pub fn new(resolver: HTTPTrustchainResolver<T>) -> Self {
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
         let rpc_client = bitcoincore_rpc::Client::new(
             &ion_config().bitcoin_connection_string,
@@ -304,12 +304,12 @@ where
         }
     }
 }
-impl<T> IONVerifier<T, LightClient>
+impl<T> TrustchainVerifier<T, LightClient>
 where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
-    pub fn with_endpoint(resolver: Resolver<T, LightClient>, endpoint: URL) -> Self {
+    pub fn with_endpoint(resolver: HTTPTrustchainResolver<T, LightClient>, endpoint: URL) -> Self {
         Self {
             resolver,
             rpc_client: None,
@@ -371,7 +371,7 @@ where
     }
 }
 
-impl<T, U> IONVerifier<T, U>
+impl<T, U> TrustchainVerifier<T, U>
 where
     T: Send + Sync + DIDResolver,
 {
@@ -410,7 +410,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
 
 // TODO: consider whether duplication can be avoided in the LightClient impl
 #[async_trait]
-impl<T> Verifier<T> for IONVerifier<T, FullClient>
+impl<T> Verifier<T> for TrustchainVerifier<T, FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -460,7 +460,7 @@ where
 }
 
 #[async_trait]
-impl<T> Verifier<T> for IONVerifier<T, LightClient>
+impl<T> Verifier<T> for TrustchainVerifier<T, LightClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -617,7 +617,7 @@ mod tests {
     #[ignore = "Integration test requires Bitcoin RPC"]
     fn test_op_return_cid() {
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
 
         // The transaction, including OP_RETURN data, can be found on-chain:
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
@@ -639,7 +639,7 @@ mod tests {
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
         assert!(result.is_ok());
@@ -649,7 +649,7 @@ mod tests {
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_chunk_file() {
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
@@ -671,7 +671,7 @@ mod tests {
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_core_index_file() {
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let result = target.fetch_core_index_file(cid).await;
@@ -696,7 +696,7 @@ mod tests {
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
 
         assert!(target.bundles.lock().unwrap().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -712,7 +712,7 @@ mod tests {
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = trustchain_resolver(ENDPOINT);
-        let target = IONVerifier::new(resolver);
+        let target = TrustchainVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
