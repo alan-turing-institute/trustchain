@@ -309,6 +309,7 @@ where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
+    // TODO: consider refactor to remove resolver from API
     pub fn with_endpoint(resolver: HTTPTrustchainResolver<T, LightClient>, endpoint: URL) -> Self {
         Self {
             resolver,
@@ -573,45 +574,6 @@ mod tests {
     use trustchain_core::commitment::TrivialCommitment;
 
     const ENDPOINT: &str = "http://localhost:3000/";
-
-    // #[tokio::test]
-    // #[ignore = "Integration test requires MongoDB"]
-    // async fn test_locate_transaction() {
-    //     let resolver = get_http_resolver();
-    //     let target = IONVerifier::new(resolver);
-
-    //     let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-    //     // Block 1902377
-    //     let expected_block_hash =
-    //         BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
-    //             .unwrap();
-    //     assert_eq!(block_hash, expected_block_hash);
-    //     assert_eq!(transaction_index, 118);
-
-    //     let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-    //     // Block 2377445
-    //     let expected_block_hash =
-    //         BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-    //             .unwrap();
-    //     assert_eq!(block_hash, expected_block_hash);
-    //     assert_eq!(transaction_index, 3);
-
-    //     let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
-    //     let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-    //     // Block 2377339
-    //     let expected_block_hash =
-    //         BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
-    //             .unwrap();
-    //     assert_eq!(block_hash, expected_block_hash);
-    //     assert_eq!(transaction_index, 10);
-
-    //     // Invalid DID
-    //     let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-    //     let result = target.locate_transaction(invalid_did).await;
-    //     assert!(result.is_err());
-    // }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin RPC"]

@@ -27,7 +27,7 @@ pub struct HTTPTrustchainResolver<T: DIDResolver + Sync + Send, U = FullClient> 
 }
 
 impl<T: DIDResolver + Sync + Send> HTTPTrustchainResolver<T, FullClient> {
-    /// Constructs a Trustchain resolver.
+    /// Constructs a full client Trustchain resolver.
     pub fn new(resolver: T) -> Self {
         Self {
             wrapped_resolver: resolver,
@@ -41,7 +41,7 @@ impl<T: DIDResolver + Sync + Send> HTTPTrustchainResolver<T, FullClient> {
 }
 
 impl<T: DIDResolver + Sync + Send> HTTPTrustchainResolver<T, LightClient> {
-    /// Constructs a Trustchain resolver.
+    /// Constructs a light client Trustchain resolver.
     pub fn new(resolver: T) -> Self {
         Self {
             wrapped_resolver: resolver,
