@@ -1,19 +1,25 @@
 use crate::root::RootCandidatesResult;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
 use chrono::NaiveDate;
+use did_ion::sidetree::HTTPSidetreeDIDResolver;
+use ssi::did_resolve::DIDResolver;
 use ssi::vc::Credential;
 use std::collections::HashMap;
 use std::sync::RwLock;
 use trustchain_core::TRUSTCHAIN_DATA;
-use trustchain_ion::resolver::Resolver;
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier, IONResolver};
+use trustchain_ion::ion::IONTest as ION;
+use trustchain_ion::trustchain_resolver;
+use trustchain_ion::verifier::TrustchainVerifier;
 
 const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
 
 /// A shared app state for handlers.
-pub struct AppState {
+pub struct AppState<T = HTTPSidetreeDIDResolver<ION>>
+where
+    T: DIDResolver + Send + Sync,
+{
     pub config: HTTPConfig,
-    pub verifier: IONVerifier<IONResolver>,
+    pub verifier: TrustchainVerifier<T>,
     pub credentials: HashMap<String, Credential>,
     pub root_candidates: RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
     pub presentation_requests: HashMap<String, PresentationRequest>,
@@ -21,7 +27,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(config: HTTPConfig) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = TrustchainVerifier::new(trustchain_resolver(DEFAULT_VERIFIER_ENDPOINT));
         let path = std::env::var(TRUSTCHAIN_DATA).expect("TRUSTCHAIN_DATA env not set.");
         let credentials: HashMap<String, Credential> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("credentials/offers/cache.json"))
@@ -51,7 +57,7 @@ impl AppState {
         credentials: HashMap<String, Credential>,
         presentation_requests: HashMap<String, PresentationRequest>,
     ) -> Self {
-        let verifier = IONVerifier::new(Resolver::new(get_ion_resolver(DEFAULT_VERIFIER_ENDPOINT)));
+        let verifier = TrustchainVerifier::new(trustchain_resolver(DEFAULT_VERIFIER_ENDPOINT));
         let root_candidates = RwLock::new(HashMap::new());
         Self {
             config,

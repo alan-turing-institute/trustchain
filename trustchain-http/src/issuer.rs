@@ -216,7 +216,7 @@ mod tests {
     };
     use std::{collections::HashMap, sync::Arc};
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
-    use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+    use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
@@ -329,7 +329,7 @@ mod tests {
         }
 
         // Test signature
-        let verifier = IONVerifier::new(get_ion_resolver("http://localhost:3000/"));
+        let verifier = TrustchainVerifier::new(trustchain_resolver("http://localhost:3000/"));
         let verify_credential_result = credential
             .verify(
                 None,

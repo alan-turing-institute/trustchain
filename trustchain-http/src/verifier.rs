@@ -18,7 +18,7 @@ use std::sync::Arc;
 use trustchain_api::api::TrustchainVPAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::verifier::{Timestamp, Verifier};
-use trustchain_ion::verifier::IONVerifier;
+use trustchain_ion::verifier::TrustchainVerifier;
 
 /// A type for presentation requests. See [VP request spec](https://w3c-ccg.github.io/vp-request-spec/)
 /// for further details.
@@ -32,7 +32,7 @@ pub trait TrustchainVerifierHTTP {
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
         Ok(TrustchainAPI::verify_presentation(
             presentation,
@@ -48,7 +48,7 @@ pub trait TrustchainVerifierHTTP {
     async fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
         let verify_credential_result = credential
             .verify(

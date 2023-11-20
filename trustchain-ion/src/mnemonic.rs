@@ -1,8 +1,8 @@
+use crate::ion::IONTest as ION;
 use bip39::Mnemonic;
 use bitcoin::secp256k1::Secp256k1;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use did_ion::sidetree::Sidetree;
-use did_ion::ION;
 use ed25519_dalek_bip32::derivation_path::DerivationPath as Ed25519DerivationPath;
 use ed25519_dalek_bip32::derivation_path::DerivationPathParseError;
 use ed25519_dalek_bip32::ExtendedSigningKey;

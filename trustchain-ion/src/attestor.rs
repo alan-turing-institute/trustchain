@@ -227,7 +227,7 @@ impl Holder for IONAttestor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::get_ion_resolver;
+    use crate::trustchain_resolver;
     use ssi::did::Document;
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
@@ -304,7 +304,7 @@ mod tests {
         init();
 
         // Resolver
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
 
         // Set-up keys and attestor
         let did = "did:example:test_attest_credential";
@@ -337,7 +337,7 @@ mod tests {
         let did = "did:ion:test:EiDMe2SFfJ_7eXVW7RF1ZHOkeu2M-Bre0ak2cXNBH0P-TQ";
 
         // Make resolver
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
 
         // 2. Load Attestor
         // Attestor
@@ -373,7 +373,7 @@ mod tests {
     #[tokio::test]
     async fn test_attest_presentation() {
         init();
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
         let issuer = IONAttestor::new(issuer_did);

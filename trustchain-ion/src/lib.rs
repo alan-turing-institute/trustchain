@@ -15,21 +15,22 @@ pub mod utils;
 pub mod verifier;
 
 use crate::ion::IONTest as ION;
-use crate::resolver::{DIDMethodWrapper, Resolver};
-use did_ion::sidetree::SidetreeClient;
+use crate::resolver::HTTPTrustchainResolver;
+use did_ion::sidetree::HTTPSidetreeDIDResolver;
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
 use thiserror::Error;
 
-// TODO: remove this type alias
-/// Type alias
-pub type IONResolver = Resolver<DIDMethodWrapper<SidetreeClient<ION>>>;
-
 /// Type alias for URL
 // TODO [#126]: remove in favour of new type pattern (e.g. URL(String)) or use https://crates.io/crates/url
 // for better handling of URLs.
 pub type URL = String;
+
+/// Full client zero sized type for marker in `IONVerifier`.
+pub struct FullClient;
+/// Light client zero sized type for marker in `IONVerifier`.
+pub struct LightClient;
 
 /// Type for representing an endpoint as a base URL and port.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -52,9 +53,23 @@ impl Endpoint {
     }
 }
 
-/// Test resolver
-pub fn get_ion_resolver(endpoint: &str) -> IONResolver {
-    IONResolver::from(SidetreeClient::<ION>::new(Some(String::from(endpoint))))
+/// ION DID resolver.
+pub fn http_resolver(endpoint: &str) -> HTTPSidetreeDIDResolver<ION> {
+    HTTPSidetreeDIDResolver::new(endpoint)
+}
+
+/// Trustchain ION DID resolver for full client.
+pub fn trustchain_resolver(
+    ion_endpoint: &str,
+) -> HTTPTrustchainResolver<HTTPSidetreeDIDResolver<ION>> {
+    HTTPTrustchainResolver::<_, FullClient>::new(http_resolver(ion_endpoint))
+}
+
+/// Trustchain ION DID resolver for light client.
+pub fn trustchain_resolver_light_client(
+    trustchain_endpoint: &str,
+) -> HTTPTrustchainResolver<HTTPSidetreeDIDResolver<ION>, LightClient> {
+    HTTPTrustchainResolver::<_, LightClient>::new(http_resolver(trustchain_endpoint))
 }
 
 /// An error relating for Trustchain-ion crate.
