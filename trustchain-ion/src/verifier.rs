@@ -1,6 +1,7 @@
 //! Implementation of `Verifier` API for ION DID method.
 use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
+use crate::resolver::Resolver;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
     block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
@@ -20,8 +21,6 @@ use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
-
-use crate::resolver::Resolver;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -82,7 +81,7 @@ where
     T: Sync + Send + DIDResolver,
 {
     // TODO: consider replacing resolver with single generic over TrustchainResolver
-    resolver: Resolver<T>,
+    resolver: Resolver<T, U>,
     rpc_client: Option<bitcoincore_rpc::Client>,
     ipfs_client: Option<IpfsClient>,
     bundles: Mutex<HashMap<String, Arc<VerificationBundle>>>,
@@ -310,7 +309,7 @@ where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
-    pub fn with_endpoint(resolver: Resolver<T>, endpoint: URL) -> Self {
+    pub fn with_endpoint(resolver: Resolver<T, LightClient>, endpoint: URL) -> Self {
         Self {
             resolver,
             rpc_client: None,

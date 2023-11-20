@@ -22,7 +22,7 @@ use trustchain_core::{
 };
 use trustchain_ion::{
     create::{mnemonic_to_create_and_keys, OperationDID},
-    trustchain_resolver,
+    trustchain_resolver_light_client,
     verifier::IONVerifier,
 };
 
@@ -81,7 +81,8 @@ pub fn greet() -> String {
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
     let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
-    let resolver = trustchain_resolver(&endpoint_opts.trustchain_endpoint().to_address());
+    let resolver =
+        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         Ok(TrustchainAPI::resolve(&did, &resolver)
@@ -102,7 +103,7 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = IONVerifier::with_endpoint(
-            trustchain_resolver(&endpoint_opts.trustchain_endpoint().to_address()),
+            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );
         Ok(TrustchainAPI::verify(&did, root_event_time, &verifier)
@@ -124,7 +125,7 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = IONVerifier::with_endpoint(
-            trustchain_resolver(&endpoint_opts.trustchain_endpoint().to_address()),
+            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );
         let root_event_time = trustchain_opts.root_event_time;
@@ -172,7 +173,8 @@ pub fn vp_issue_presentation(
     let mut presentation: Presentation =
         serde_json::from_str(&presentation).map_err(FFIMobileError::FailedToDeserialize)?;
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
-    let resolver = trustchain_resolver(&endpoint_opts.trustchain_endpoint().to_address());
+    let resolver =
+        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     let proof = rt
         .block_on(async {
@@ -206,7 +208,7 @@ pub fn vp_verify_presentation(presentation: String, opts: String) -> Result<()> 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = IONVerifier::with_endpoint(
-            trustchain_resolver(&endpoint_opts.trustchain_endpoint().to_address()),
+            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
             endpoint_opts.trustchain_endpoint().to_address(),
         );
         let root_event_time = trustchain_opts.root_event_time;

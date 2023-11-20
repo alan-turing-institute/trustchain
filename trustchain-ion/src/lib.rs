@@ -63,6 +63,13 @@ pub fn trustchain_resolver(endpoint: &str) -> Resolver<HTTPSidetreeDIDResolver<I
     Resolver::<_, FullClient>::new(ion_resolver(endpoint))
 }
 
+/// Trustchain ION DID resolver for full client.
+pub fn trustchain_resolver_light_client(
+    endpoint: &str,
+) -> Resolver<HTTPSidetreeDIDResolver<ION>, LightClient> {
+    Resolver::<_, LightClient>::new(ion_resolver(endpoint))
+}
+
 /// An error relating for Trustchain-ion crate.
 #[derive(Error, Debug)]
 pub enum TrustchainIONError {
