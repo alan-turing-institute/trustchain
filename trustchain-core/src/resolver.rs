@@ -110,8 +110,6 @@ fn get_from_proof_service<'a>(proof_service: &'a Service, key: &str) -> Option<&
 
 /// Adds a proof from a DID Document to DocumentMetadata.
 fn add_proof(doc: &Document, mut doc_meta: DocumentMetadata) -> DocumentMetadata {
-    // Check if the Trustchain proof service exists in document
-
     // Get proof service
     let proof_service = get_proof_service(doc);
 
@@ -165,10 +163,6 @@ fn transform_doc(doc: &Document, controller_did: &str) -> Document {
     // Clone the passed DID document.
     let doc_clone = doc.clone();
 
-    // Duplication?
-    // // Check if the Trustchain proof service alreday exists in the document.
-    // let doc_clone = self.remove_proof_service(doc_clone);
-
     // Add controller
     let doc_clone =
         add_controller(doc_clone, controller_did).expect("Controller already present in document.");
@@ -212,7 +206,7 @@ fn transform_as_result(
         // Return tuple
         Ok((res_meta, doc, doc_meta))
     } else {
-        // TODO: If proof service is not present or multiple, just return Ok for now.
+        // If proof service is not present, return Ok.
         Ok((sidetree_res_meta, sidetree_doc, sidetree_doc_meta))
     }
 }
@@ -299,7 +293,7 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
                 Err(ResolverError::FailedToConvertToTrustchain(
                     did_res_meta_error
                         .to_owned()
-                        .rsplit(":")
+                        .rsplit(':')
                         .next()
                         .unwrap_or("")
                         .to_owned(),
@@ -338,8 +332,6 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
                 .resolve(did, &ResolutionInputMetadata::default())
                 .await;
         }
-        // let ion_resolver = self.wrapped_resolver;
-        // let resolved = ion_resolver.resolve(did, input_metadata).await;
 
         let resolved = self.wrapped_resolver().resolve(did, input_metadata).await;
 
@@ -436,7 +428,6 @@ mod tests {
         assert!(did_doc.controller.is_some());
 
         // Construct a Resolver instance.
-        // let resolver = Resolver::new(get_http_resolver());
 
         // Attempt to add the controller.
         let result = add_controller(did_doc, controller_did);

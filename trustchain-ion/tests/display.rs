@@ -1,12 +1,12 @@
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::graph::TrustchainGraph;
-use trustchain_ion::get_ion_resolver;
+use trustchain_ion::trustchain_resolver;
 
 #[tokio::test]
 #[ignore] // Requires a running Sidetree node listening on http://localhost:3000.
 async fn trustchain_graph() {
     // Example DIDs for ROOT_EVENT_TIME_2378493
-    let resolver = get_ion_resolver("http://localhost:3000/");
+    let resolver = trustchain_resolver("http://localhost:3000/");
     let new_dids = vec![
         "did:ion:test:EiC9KEQyCzGFs_dJ2Iy1lgah3nTuy0ns8ZxXa9ZPZILBpQ",
         "did:ion:test:EiBwr2eTfupemVBq28VyIb8po0r_jpuHMUMFzw25Flnmrg",
