@@ -70,6 +70,7 @@ pub trait TrustchainIssuerHTTP {
         subject_id: Option<&str>,
         issuer_did: &str,
         resolver: &dyn TrustchainResolver,
+        rss: bool,
     ) -> Result<Credential, TrustchainHTTPError>;
 }
 
@@ -95,6 +96,7 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         subject_id: Option<&str>,
         issuer_did: &str,
         resolver: &dyn TrustchainResolver,
+        rss: bool,
     ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
@@ -108,11 +110,16 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
             }
         }
         let issuer = IONAttestor::new(issuer_did);
+        let key_id = if rss {
+            Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34")
+        } else {
+            None
+        };
         Ok(issuer
             .sign(
                 &credential,
                 None,
-                None,
+                key_id,
                 resolver,
                 // TODO: add context loader to app_state
                 &mut ContextLoader::default(),
@@ -137,6 +144,29 @@ impl TrustchainIssuerHTTPHandler {
         } else {
             format!(
                 "{}://{}:{}/vc/issuer/{id}",
+                http_config().http_scheme(),
+                app_state.config.host_display,
+                app_state.config.port
+            )
+        };
+        // Respond with the QR code as a png embedded in html
+        Ok(Html(str_to_qr_code_html(&qr_code_str, "Issuer")))
+    }
+
+    pub async fn get_issuer_qrcode_rss(
+        State(app_state): State<Arc<AppState>>,
+        Path(id): Path<String>,
+    ) -> Result<Html<String>, TrustchainHTTPError> {
+        let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+            serde_json::to_string(&DIDQRCode {
+                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                route: "/vc_rss/issuer/".to_string(),
+                id,
+            })
+            .unwrap()
+        } else {
+            format!(
+                "{}://{}:{}/vc_rss/issuer/{id}",
                 http_config().http_scheme(),
                 app_state.config.host_display,
                 app_state.config.port
@@ -176,6 +206,7 @@ impl TrustchainIssuerHTTPHandler {
     pub async fn post_issuer(
         (Path(credential_id), Json(vc_info)): (Path<String>, Json<VcInfo>),
         app_state: Arc<AppState>,
+        rss: bool,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
         let issuer_did = app_state
@@ -190,6 +221,7 @@ impl TrustchainIssuerHTTPHandler {
                     Some(&vc_info.subject_id),
                     issuer_did,
                     app_state.verifier.resolver(),
+                    rss,
                 )
                 .await?;
                 Ok((StatusCode::OK, Json(credential_signed)))
