@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::chain::{Chain, ChainError, DIDChain};
 use crate::commitment::{CommitmentError, DIDCommitment, TimestampCommitment};
-use crate::resolver::{Resolver, ResolverError};
+use crate::resolver::{ResolverError, TrustchainResolver};
 use async_trait::async_trait;
 use ssi::did_resolve::DIDResolver;
 use thiserror::Error;
@@ -133,13 +133,13 @@ pub enum VerifierError {
     #[error("A commitment error during verification: {0}")]
     CommitmentFailure(CommitmentError),
     /// Wrapped resolver error.
-    #[error("A resolver error during verification.")]
+    #[error("A resolver error during verification: {0}")]
     ResolverFailure(ResolverError),
     /// Wrapped chain error.
-    #[error("A chain error during verification.")]
+    #[error("A chain error during verification: {0}")]
     ChainFailure(ChainError),
     /// Wrapped serde JSON deserialization error.
-    #[error("Failed to deserialize.")]
+    #[error("Failed to deserialize: {0}")]
     FailedToDeserialize(serde_json::Error),
 }
 
@@ -168,7 +168,7 @@ impl From<serde_json::Error> for VerifierError {
 }
 
 /// A Unix timestamp.
-pub type Timestamp = u32;
+pub type Timestamp = u64;
 
 /// A verifiably-timestamped DID.
 pub trait VerifiableTimestamp {
@@ -247,7 +247,7 @@ pub trait Verifier<T: Sync + Send + DIDResolver> {
     fn validate_pow_hash(&self, hash: &str) -> Result<(), VerifierError>;
 
     /// Gets the resolver used for DID verification.
-    fn resolver(&self) -> &Resolver<T>;
+    fn resolver(&self) -> &dyn TrustchainResolver;
 }
 
 #[cfg(test)]

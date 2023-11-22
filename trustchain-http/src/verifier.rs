@@ -1,6 +1,6 @@
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::str_to_qr_code_html;
+use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
@@ -11,13 +11,14 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ssi::did_resolve::DIDResolver;
+use ssi::jsonld::ContextLoader;
 use ssi::ldp::LinkedDataDocument;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
 use trustchain_api::api::TrustchainVPAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::verifier::{Timestamp, Verifier};
-use trustchain_ion::verifier::IONVerifier;
+use trustchain_ion::verifier::TrustchainVerifier;
 
 /// A type for presentation requests. See [VP request spec](https://w3c-ccg.github.io/vp-request-spec/)
 /// for further details.
@@ -27,29 +28,35 @@ pub struct PresentationRequest(Value);
 /// An API for a Trustchain verifier server.
 #[async_trait]
 pub trait TrustchainVerifierHTTP {
-    /// Constructs a presentation request (given some `presentiation_id`) to send to a credential
-    /// holder from request wallet by ID.
-    fn generate_presentation_request(_presentation_id: &str) -> PresentationRequest {
-        todo!()
-    }
     /// Verifies verifiable presentation.
     async fn verify_presentation<T: DIDResolver + Send + Sync>(
         presentation: &Presentation,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        Ok(
-            TrustchainAPI::verify_presentation(presentation, None, root_event_time, verifier)
-                .await?,
+        Ok(TrustchainAPI::verify_presentation(
+            presentation,
+            None,
+            root_event_time,
+            verifier,
+            // TODO [#128]: move into API upon context loader added to app_state
+            &mut ContextLoader::default(),
         )
+        .await?)
     }
     /// Verifies verifiable credential.
     async fn verify_credential<T: DIDResolver + Send + Sync>(
         credential: &Credential,
         root_event_time: Timestamp,
-        verifier: &IONVerifier<T>,
+        verifier: &TrustchainVerifier<T>,
     ) -> Result<(), TrustchainHTTPError> {
-        let verify_credential_result = credential.verify(None, verifier.resolver()).await;
+        let verify_credential_result = credential
+            .verify(
+                None,
+                verifier.resolver().as_did_resolver(),
+                &mut ContextLoader::default(),
+            )
+            .await;
         if !verify_credential_result.errors.is_empty() {
             return Err(TrustchainHTTPError::InvalidSignature);
         }
@@ -70,6 +77,7 @@ impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
 #[serde(rename_all = "camelCase")]
 pub struct PostVerifier {
     pub presentation_or_credential: PresentationOrCredential,
+    // TODO [#130]: update field upon root event time changing to date and confirmation code.
     pub root_event_time: Timestamp,
 }
 
@@ -84,12 +92,12 @@ pub enum PresentationOrCredential {
 impl TrustchainVerifierHTTPHandler {
     /// API endpoint taking the UUID of a presentation request.
     pub async fn get_verifier(
-        Path(request_id): Path<String>,
+        Path(id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
         app_state
             .presentation_requests
-            .get(&request_id)
+            .get(&id)
             .ok_or(TrustchainHTTPError::RequestDoesNotExist)
             .map(|request| (StatusCode::OK, Json(request.to_owned())))
     }
@@ -106,7 +114,10 @@ impl TrustchainVerifierHTTPHandler {
             PresentationOrCredential::Presentation(ref presentation) => {
                 TrustchainVerifierHTTPHandler::verify_presentation(
                     presentation,
-                    verification_info.root_event_time,
+                    app_state
+                        .config
+                        .root_event_time
+                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
                     &app_state.verifier,
                 )
                 .await
@@ -122,7 +133,10 @@ impl TrustchainVerifierHTTPHandler {
             PresentationOrCredential::Credential(ref credential) => {
                 TrustchainVerifierHTTPHandler::verify_credential(
                     credential,
-                    verification_info.root_event_time,
+                    app_state
+                        .config
+                        .root_event_time
+                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
                     &app_state.verifier,
                 )
                 .await
@@ -146,18 +160,24 @@ impl TrustchainVerifierHTTPHandler {
             .next()
             .ok_or(TrustchainHTTPError::RequestDoesNotExist)
             .map(|(uid, _)| {
-                let http_str = if !http_config().https {
-                    "http"
+                let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+                    serde_json::to_string(&DIDQRCode {
+                        did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                        route: "/vc/verifier/".to_string(),
+                        id: uid.to_owned(),
+                    })
+                    .unwrap()
                 } else {
-                    "https"
+                    format!(
+                        "{}://{}:{}/vc/verifier/{uid}",
+                        http_config().http_scheme(),
+                        app_state.config.host_display,
+                        app_state.config.port
+                    )
                 };
-                let address_str = format!(
-                    "{}://{}:{}/vc/verifier/{}",
-                    http_str, app_state.config.host_reference, app_state.config.port, uid
-                );
                 (
                     StatusCode::OK,
-                    Html(str_to_qr_code_html(&address_str, "Verifier")),
+                    Html(str_to_qr_code_html(&qr_code_str, "Verifier")),
                 )
             })
     }
@@ -178,7 +198,8 @@ mod tests {
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            issuer_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            root_event_time: Some(1666265405),
             ..Default::default()
         };
     }
@@ -306,25 +327,25 @@ mod tests {
         ));
         // Test response for request in cache
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
 
         // Test response is OK
         assert_eq!(response.status(), StatusCode::OK);
 
         // Test response json same as cache
-        let expected_request = state.presentation_requests.get(uid).unwrap();
+        let expected_request = state.presentation_requests.get(id).unwrap();
         let actual_request = response.json::<PresentationRequest>().await;
         assert_eq!(&actual_request, expected_request);
 
         // Test response for non-existent request
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "dd2f6d68-35c5-11ee-98c7-d317dc01648b";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "dd2f6d68-35c5-11ee-98c7-d317dc01648b";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let response = client.get(&uri).send().await;
+        let response = client.get(&path).send().await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         assert_eq!(
             response.text().await,
@@ -342,27 +363,14 @@ mod tests {
         ));
         // Test post of credential to verifier
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
         let post_verifier: PostVerifier =
             serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
-        let response = client.post(&uri).json(&post_verifier).send().await;
+        let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Credential received and verified!", response.text().await);
-
-        // Test post of credential to verifier with bad root event time
-        let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
-        let client = TestClient::new(app);
-        let mut post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
-        post_verifier.root_event_time = 1666265406;
-        let response = client.post(&uri).json(&post_verifier).send().await;
-        assert_eq!(response.status(), StatusCode::OK);
-        // TODO: consider refining error returned
-        assert_eq!(response.text().await, r#"{"error":"Trustchain Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 
     #[tokio::test]
@@ -375,26 +383,13 @@ mod tests {
         ));
         // Test post of presentation to verifier
         let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
+        let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
+        let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
         let post_verifier: PostVerifier =
             serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
-        let response = client.post(&uri).json(&post_verifier).send().await;
+        let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Presentation received and verified!", response.text().await);
-
-        // Test post of presentation to verifier with bad root event time
-        let app = TrustchainRouter::from(state.clone()).into_router();
-        let uid = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
-        let uri = format!("/vc/verifier/{uid}");
-        let client = TestClient::new(app);
-        let mut post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
-        post_verifier.root_event_time = 1666265406;
-        let response = client.post(&uri).json(&post_verifier).send().await;
-        assert_eq!(response.status(), StatusCode::OK);
-        // TODO: consider refining error returned
-        assert_eq!(response.text().await, r#"{"error":"Trustchain presentation error: A wrapped Credential error: A wrapped Verifier error: A commitment error during verification: Failed content verification. Expected data 1666265406 not found in candidate: 1666265405."}"#.to_string());
     }
 }

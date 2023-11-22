@@ -1,11 +1,13 @@
 //! Implementation of `Verifier` API for ION DID method.
 use crate::commitment::{BlockTimestampCommitment, IONCommitment};
 use crate::config::ion_config;
+use crate::resolver::HTTPTrustchainResolver;
 use crate::sidetree::{ChunkFile, ChunkFileUri, CoreIndexFile, ProvisionalIndexFile};
 use crate::utils::{
-    block_header, decode_ipfs_content, query_ipfs, query_mongodb, transaction, tx_to_op_return_cid,
+    block_header, decode_ipfs_content, locate_transaction, query_ipfs, transaction,
+    tx_to_op_return_cid,
 };
-use crate::URL;
+use crate::{FullClient, LightClient, URL};
 use async_trait::async_trait;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hash_types::BlockHash;
@@ -19,20 +21,14 @@ use serde_json::Value;
 use ssi::did::Document;
 use ssi::did_resolve::{DIDResolver, DocumentMetadata};
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use trustchain_core::commitment::{
     CommitmentChain, CommitmentError, DIDCommitment, TimestampCommitment,
 };
-use trustchain_core::resolver::{Resolver, ResolverError};
-use trustchain_core::utils::get_did_suffix;
+use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, VerifiableTimestamp, Verifier, VerifierError};
-
-/// Locator for a transaction on the PoW ledger, given by the pair:
-/// (block_hash, tx_index_within_block).
-type TransactionLocator = (BlockHash, u32);
 
 /// Data bundle for DID timestamp verification.
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -79,17 +75,13 @@ impl VerificationBundle {
     }
 }
 
-/// Full client zero sized type for marker in `IONVerifier`.
-pub struct FullClient;
-/// Light client zero sized type for marker in `IONVerifier`.
-pub struct LightClient;
-
 /// Trustchain Verifier implementation via the ION DID method.
-pub struct IONVerifier<T, U = FullClient>
+pub struct TrustchainVerifier<T, U = FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
-    resolver: Resolver<T>,
+    // TODO: consider replacing resolver with single generic over TrustchainResolver
+    resolver: HTTPTrustchainResolver<T, U>,
     rpc_client: Option<bitcoincore_rpc::Client>,
     ipfs_client: Option<IpfsClient>,
     bundles: Mutex<HashMap<String, Arc<VerificationBundle>>>,
@@ -97,13 +89,13 @@ where
     _marker: PhantomData<U>,
 }
 
-impl<T> IONVerifier<T, FullClient>
+impl<T> TrustchainVerifier<T, FullClient>
 where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
     // TODO: refactor to use config struct over direct config file lookup
-    pub fn new(resolver: Resolver<T>) -> Self {
+    pub fn new(resolver: HTTPTrustchainResolver<T>) -> Self {
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
         let rpc_client = bitcoincore_rpc::Client::new(
             &ion_config().bitcoin_connection_string,
@@ -147,7 +139,7 @@ where
     // in-memory verifier HashMap.
     pub async fn fetch_bundle(&self, did: &str) -> Result<(), VerifierError> {
         let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
-        let (block_hash, tx_index) = self.locate_transaction(did).await?;
+        let (block_hash, tx_index) = locate_transaction(did, self.rpc_client()).await?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
         let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
         let cid = self.op_return_cid(&tx)?;
@@ -203,7 +195,7 @@ where
         &self,
         core_index_file: &[u8],
     ) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(core_index_file).map_err(|e| {
+        let content = decode_ipfs_content(core_index_file, true).map_err(|e| {
             VerifierError::FailureToFetchVerificationMaterial(format!(
                 "Failed to decode ION core index file: {}",
                 e
@@ -225,7 +217,7 @@ where
     }
 
     async fn fetch_chunk_file(&self, prov_index_file: &[u8]) -> Result<Vec<u8>, VerifierError> {
-        let content = decode_ipfs_content(prov_index_file).map_err(|err| {
+        let content = decode_ipfs_content(prov_index_file, true).map_err(|err| {
             VerifierError::ErrorFetchingVerificationMaterial(
                 "Failed to decode ION provisional index file".to_string(),
                 err.into(),
@@ -288,54 +280,6 @@ where
             .map(|block_header| bitcoin::consensus::serialize(&block_header))
     }
 
-    /// Returns the location on the ledger of the transaction embedding
-    /// the most recent ION operation for the given DID.
-    async fn locate_transaction(&self, did: &str) -> Result<TransactionLocator, VerifierError> {
-        let suffix = get_did_suffix(did);
-
-        // Query the database for a bson::Document.
-        let doc = query_mongodb(suffix, None).await.map_err(|e| {
-            VerifierError::ErrorFetchingVerificationMaterial(
-                "Error querying MongoDB".to_string(),
-                e.into(),
-            )
-        })?;
-
-        // Extract the block height.
-        let block_height: i64 = doc
-            .get_i32("txnTime")
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-            .into();
-
-        // Convert to block height u32
-        let block_height: u32 = block_height
-            .try_into()
-            .map_err(|_| VerifierError::InvalidBlockHeight(block_height))?;
-
-        // Extract the index of the transaction inside the block.
-        let tx_index = doc
-            .get_i64("txnNumber")
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?
-            .to_string()
-            .strip_prefix(&block_height.to_string())
-            .ok_or(VerifierError::FailureToGetDIDOperation(did.to_owned()))?
-            .parse::<u32>()
-            .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
-
-        // If call to get_network_info fails, return error
-        self.rpc_client()
-            .get_network_info()
-            .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
-
-        // Convert the block height to a block hash.
-        let block_hash = self
-            .rpc_client()
-            .get_block_hash(u64::from(block_height))
-            .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
-
-        Ok((block_hash, tx_index))
-    }
-
     /// Gets a DID verification bundle, including a fetch if not initially cached.
     pub async fn verification_bundle(
         &self,
@@ -347,13 +291,26 @@ where
         }
         Ok(self.bundles.lock().unwrap().get(did).cloned().unwrap())
     }
+    /// Resolves the given DID to obtain the DID Document and Document Metadata.
+    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
+        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
+        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
+            Ok((doc, doc_meta))
+        } else {
+            Err(VerifierError::DIDResolutionError(
+                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
+                ResolverError::FailureWithMetadata(res_meta).into(),
+            ))
+        }
+    }
 }
-impl<T> IONVerifier<T, LightClient>
+impl<T> TrustchainVerifier<T, LightClient>
 where
     T: Send + Sync + DIDResolver,
 {
     /// Constructs a new IONVerifier.
-    pub fn with_endpoint(resolver: Resolver<T>, endpoint: URL) -> Self {
+    // TODO: consider refactor to remove resolver from API
+    pub fn with_endpoint(resolver: HTTPTrustchainResolver<T, LightClient>, endpoint: URL) -> Self {
         Self {
             resolver,
             rpc_client: None,
@@ -372,7 +329,7 @@ where
     // in-memory verifier HashMap.
     // If running on a Trustchain light client, make an API call to a full node to request the bundle.
     pub async fn fetch_bundle(&self, did: &str) -> Result<(), VerifierError> {
-        let response = reqwest::get(format!("{}{did}", self.endpoint()))
+        let response = reqwest::get(format!("{}did/bundle/{did}", self.endpoint()))
             .await
             .map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(
@@ -415,23 +372,10 @@ where
     }
 }
 
-impl<T, U> IONVerifier<T, U>
+impl<T, U> TrustchainVerifier<T, U>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Resolves the given DID to obtain the DID Document and Document Metadata.
-    async fn resolve_did(&self, did: &str) -> Result<(Document, DocumentMetadata), VerifierError> {
-        let (res_meta, doc, doc_meta) = self.resolver.resolve_as_result(did).await?;
-        if let (Some(doc), Some(doc_meta)) = (doc, doc_meta) {
-            Ok((doc, doc_meta))
-        } else {
-            Err(VerifierError::DIDResolutionError(
-                format!("Missing Document and/or DocumentMetadata for DID: {}", did),
-                ResolverError::FailureWithMetadata(res_meta).into(),
-            ))
-        }
-    }
-
     /// Extracts the IPFS content identifier from the ION OP_RETURN data inside a Bitcoin transaction.
     fn op_return_cid(&self, tx: &Transaction) -> Result<String, VerifierError> {
         tx_to_op_return_cid(tx)
@@ -467,7 +411,7 @@ pub fn content_deltas(chunk_file_json: &Value) -> Result<Vec<Delta>, VerifierErr
 
 // TODO: consider whether duplication can be avoided in the LightClient impl
 #[async_trait]
-impl<T> Verifier<T> for IONVerifier<T, FullClient>
+impl<T> Verifier<T> for TrustchainVerifier<T, FullClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -484,7 +428,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 
@@ -517,7 +461,7 @@ where
 }
 
 #[async_trait]
-impl<T> Verifier<T> for IONVerifier<T, LightClient>
+impl<T> Verifier<T> for TrustchainVerifier<T, LightClient>
 where
     T: Sync + Send + DIDResolver,
 {
@@ -545,7 +489,7 @@ where
         Ok(construct_commitment(bundle).map(Box::new)?)
     }
 
-    fn resolver(&self) -> &Resolver<T> {
+    fn resolver(&self) -> &dyn TrustchainResolver {
         &self.resolver
     }
 
@@ -622,65 +566,20 @@ mod tests {
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
             TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
         },
-        get_ion_resolver,
+        trustchain_resolver,
     };
     use bitcoin::{BlockHeader, MerkleBlock};
     use flate2::read::GzDecoder;
-    use ssi::did_resolve::HTTPDIDResolver;
     use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
 
-    // Helper function for generating a placeholder HTTP resolver for tests only.
-    // Note that this resolver will *not* succeed at resolving DIDs. For that, a
-    // SidetreeClient is needed.
-    fn get_http_resolver() -> HTTPDIDResolver {
-        HTTPDIDResolver::new("http://localhost:3000/")
-    }
-
-    #[tokio::test]
-    #[ignore = "Integration test requires MongoDB"]
-    async fn test_locate_transaction() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
-
-        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 1902377
-        let expected_block_hash =
-            BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 118);
-
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 2377445
-        let expected_block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 3);
-
-        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
-        let (block_hash, transaction_index) = target.locate_transaction(did).await.unwrap();
-        // Block 2377339
-        let expected_block_hash =
-            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
-                .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 10);
-
-        // Invalid DID
-        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-        let result = target.locate_transaction(invalid_did).await;
-        assert!(result.is_err());
-    }
+    const ENDPOINT: &str = "http://localhost:3000/";
 
     #[test]
     #[ignore = "Integration test requires Bitcoin RPC"]
     fn test_op_return_cid() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
 
         // The transaction, including OP_RETURN data, can be found on-chain:
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
@@ -701,8 +600,8 @@ mod tests {
     #[ignore = "Integration test requires ION"]
     async fn test_resolve_did() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
         let result = target.resolve_did(did).await;
         assert!(result.is_ok());
@@ -711,8 +610,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_chunk_file() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
 
         let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
@@ -733,8 +632,8 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_core_index_file() {
-        let resolver = Resolver::new(get_http_resolver());
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
 
         let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let result = target.fetch_core_index_file(cid).await;
@@ -758,8 +657,8 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_fetch_bundle() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
 
         assert!(target.bundles.lock().unwrap().is_empty());
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
@@ -774,8 +673,8 @@ mod tests {
     #[ignore = "Integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_commitment() {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
-        let resolver = get_ion_resolver("http://localhost:3000/");
-        let target = IONVerifier::new(resolver);
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
 
         let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 

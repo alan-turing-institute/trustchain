@@ -2,9 +2,11 @@ use anyhow::anyhow;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use ssi::vc::LinkedDataProofOptions;
-use std::fs;
-use trustchain_core::TRUSTCHAIN_CONFIG;
+use std::{fs, str::FromStr};
+use trustchain_core::{verifier::Timestamp, TRUSTCHAIN_CONFIG};
 use trustchain_ion::{Endpoint, URL};
+
+use crate::mobile::FFIMobileError;
 
 lazy_static! {
     /// Lazy static reference to ION configuration loaded from `trustchain_config.toml`.
@@ -14,7 +16,7 @@ lazy_static! {
 }
 
 /// Parses and maps ION subfields to a new type.
-fn parse_toml(toml_str: &str) -> FFIConfig {
+pub(crate) fn parse_toml(toml_str: &str) -> FFIConfig {
     toml::from_str::<Config>(toml_str)
         .expect("Error parsing trustchain_config.toml")
         .ffi
@@ -35,26 +37,19 @@ struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointOptions {
-    pub ion_endpoint: Endpoint,
-    pub trustchain_endpoint: Option<Endpoint>,
+    pub trustchain_endpoint: Endpoint,
 }
 
 impl EndpointOptions {
-    pub fn ion_endpoint(&self) -> &Endpoint {
-        &self.ion_endpoint
-    }
-    pub fn trustchain_endpoint(&self) -> anyhow::Result<&Endpoint> {
-        self.trustchain_endpoint
-            .as_ref()
-            .ok_or_else(|| anyhow!("Expected trustchain endpoint."))
+    pub fn trustchain_endpoint(&self) -> &Endpoint {
+        &self.trustchain_endpoint
     }
 }
 
 impl Default for EndpointOptions {
     fn default() -> Self {
         Self {
-            ion_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 3000),
-            trustchain_endpoint: Some(Endpoint::new(URL::from("http://127.0.0.1"), 8081)),
+            trustchain_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 8081),
         }
     }
 }
@@ -63,7 +58,7 @@ impl Default for EndpointOptions {
 #[serde(rename_all = "camelCase")]
 pub struct TrustchainOptions {
     pub signature_only: bool,
-    pub root_event_time: u32,
+    pub root_event_time: Timestamp,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -76,19 +71,33 @@ pub struct FFIConfig {
 
 impl FFIConfig {
     pub fn endpoint(&self) -> anyhow::Result<&EndpointOptions> {
-        self.endpoint_options
+        Ok(self
+            .endpoint_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected endpoint options."))
+            .ok_or(anyhow!("Expected endpoint options."))
+            .map_err(FFIMobileError::NoConfig)?)
     }
     pub fn trustchain(&self) -> anyhow::Result<&TrustchainOptions> {
-        self.trustchain_options
+        Ok(self
+            .trustchain_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected trustchain options."))
+            .ok_or(anyhow!("Expected trustchain options."))
+            .map_err(FFIMobileError::NoConfig)?)
     }
     pub fn linked_data_proof(&self) -> anyhow::Result<&LinkedDataProofOptions> {
-        self.linked_data_proof_options
+        Ok(self
+            .linked_data_proof_options
             .as_ref()
-            .ok_or_else(|| anyhow!("Expected linked data proof options."))
+            .ok_or(anyhow!("Expected linked data proof options."))
+            .map_err(FFIMobileError::NoConfig)?)
+    }
+}
+
+impl FromStr for FFIConfig {
+    type Err = FFIMobileError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s).map_err(FFIMobileError::FailedToDeserialize)
     }
 }
 
@@ -100,10 +109,6 @@ mod tests {
 
     const TEST_ENDPOINT_OPTIONS: &str = r#"
         {
-            "ionEndpoint": {
-                "host": "http://127.0.0.1",
-                "port": 3000
-            },
             "trustchainEndpoint": {
                 "host": "http://127.0.0.1",
                 "port": 8081
@@ -126,9 +131,6 @@ mod tests {
     "#;
 
     const TEST_FFI_OPTIONS: &str = r#"
-    [ffi.endpointOptions.ionEndpoint]
-    host="http://127.0.0.1"
-    port=3000
     [ffi.endpointOptions.trustchainEndpoint]
     host="http://127.0.0.1"
     port=8081
@@ -160,29 +162,27 @@ mod tests {
         let test_mobile_options: String = format!(
             r#"
             {{
-                "endpointOptions": {},
-                "trustchainOptions": {},
-                "linkedDataProofOptions": {}
+                "endpointOptions": {TEST_ENDPOINT_OPTIONS},
+                "trustchainOptions": {TEST_TRUSTCHAIN_OPTIONS},
+                "linkedDataProofOptions": {TEST_LINKED_DATA_PROOF_OPTIONS}
             }}
         "#,
-            TEST_ENDPOINT_OPTIONS, TEST_TRUSTCHAIN_OPTIONS, TEST_LINKED_DATA_PROOF_OPTIONS
         );
         serde_json::from_str::<FFIConfig>(&test_mobile_options).unwrap();
     }
     #[test]
     fn test_ffi_options_from_toml() {
-        println!("{:?}", parse_toml(&TEST_FFI_OPTIONS));
+        println!("{:?}", parse_toml(TEST_FFI_OPTIONS));
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
-                .unwrap()
                 .port,
             8081
         );
         assert_eq!(
-            parse_toml(&TEST_FFI_OPTIONS)
+            parse_toml(TEST_FFI_OPTIONS)
                 .linked_data_proof()
                 .unwrap()
                 .proof_purpose

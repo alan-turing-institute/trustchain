@@ -8,6 +8,7 @@ use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethod
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
+
 use std::sync::Once;
 
 /// Gets the type of an object as a String. For diagnostic purposes (debugging) only.
@@ -99,6 +100,11 @@ pub fn get_did_suffix(did: &str) -> &str {
     did.split(':').last().unwrap()
 }
 
+/// Converts a short-form DID into a complete DID.
+pub fn get_did_from_suffix(did_suffix: &str, method_and_network: &str) -> String {
+    format!("did:{method_and_network}:{did_suffix}")
+}
+
 /// [`JSON_CANONICALIZATION_SCHEME`](https://identity.foundation/sidetree/spec/v1.0.0/#json-canonicalization-scheme)
 pub fn canonicalize<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     serde_jcs::to_string(value)
@@ -134,12 +140,12 @@ pub fn hash(data: &str) -> String {
 }
 
 /// Extracts payload from JWT and verifies signature.
-pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::error::Error> {
+pub fn decode_verify(jwt: &str, key: &JWK) -> Result<String, ssi::jws::Error> {
     ssi::jwt::decode_verify(jwt, key)
 }
 
 /// Extracts and decodes the payload from the JWT.
-pub fn decode(jwt: &str) -> Result<String, ssi::error::Error> {
+pub fn decode(jwt: &str) -> Result<String, ssi::jws::Error> {
     ssi::jwt::decode_unverified(jwt)
 }
 
@@ -303,6 +309,24 @@ mod tests {
     use ssi::did::Document;
 
     #[test]
+    fn test_get_did_from_suffix() {
+        let did_suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        let mut method_and_network = "ion";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+
+        method_and_network = "ion:test";
+        let result = get_did_from_suffix(did_suffix, method_and_network);
+        assert_eq!(
+            result,
+            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+        );
+    }
+
+    #[test]
     fn test_generate_key() {
         let result = generate_key();
 
@@ -456,12 +480,12 @@ mod tests {
         assert!(!json_contains(&candidate, &expected));
 
         // Entire expected object nested:
-        let exp_str = r##"{"publicKeyJwk" : {
+        let exp_str = r#"{"publicKeyJwk" : {
         "crv": "secp256k1",
         "kty": "EC",
         "x": "7ReQHHysGxbyuKEQmspQOjL7oQUqDTldTHuc9V3-yso",
         "y": "kWvmS7ZOvDUhF8syO08PBzEpEk3BZMuukkvEJOKSjqE"
-    }}"##;
+    }}"#;
 
         let expected: serde_json::Value = serde_json::from_str(exp_str).unwrap();
         assert!(json_contains(&candidate, &expected));

@@ -1,7 +1,9 @@
 use crate::config::http_config;
 use crate::middleware::validate_did;
-use crate::{config::HTTPConfig, issuer, resolver, state::AppState, static_handlers, verifier};
-use axum::routing::IntoMakeService;
+use crate::{
+    config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
+};
+use axum::routing::{post, IntoMakeService};
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;
@@ -83,13 +85,38 @@ impl TrustchainRouter {
                     get(resolver::TrustchainHTTPHandler::get_did_resolution)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
+                // Duplicate `did` and `identifier` routes as the resolver expects a
+                // `SidetreeClient` that can resolve at route `<ENDPOINT>/identifiers/<DID>`:
+                // See [here](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#1392-1400).
+                .route(
+                    "/identifiers/:id",
+                    get(resolver::TrustchainHTTPHandler::get_did_resolution)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
+                )
                 .route(
                     "/did/chain/:id",
-                    get(resolver::TrustchainHTTPHandler::get_chain_resolution),
+                    get(resolver::TrustchainHTTPHandler::get_chain_resolution)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
                     "/did/bundle/:id",
-                    get(resolver::TrustchainHTTPHandler::get_verification_bundle),
+                    get(resolver::TrustchainHTTPHandler::get_verification_bundle)
+                        .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
+                )
+                .route(
+                    "/root",
+                    get(root::TrustchainRootHTTPHandler::get_root_candidates),
+                )
+                .route(
+                    "/root/timestamp/:height",
+                    get(root::TrustchainRootHTTPHandler::get_block_timestamp),
+                )
+                .route(
+                    "/operations",
+                    post({
+                        let state = shared_state.clone();
+                        move |operation| crate::ion::post_operation(operation, state)
+                    }),
                 )
                 .with_state(shared_state),
         }
@@ -120,7 +147,8 @@ pub async fn https_server(config: HTTPConfig) -> std::io::Result<()> {
         .await
 }
 
-/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs)
+/// Generates a `RustlsConfig` for https servers given a path with certificate and key. Based on
+/// axum [example](https://github.com/tokio-rs/axum/blob/d30375925dd22cc44aeaae2871f8ead1630fadf8/examples/tls-rustls/src/main.rs).
 async fn rustls_config(path: &str) -> RustlsConfig {
     // Configure certificate and private key used by https
     let path = shellexpand::tilde(path);

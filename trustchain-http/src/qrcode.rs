@@ -3,6 +3,19 @@ use base64::write::EncoderWriter;
 use image::Luma;
 use image::{DynamicImage, ImageOutputFormat};
 use qrcode::QrCode;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+/// QR code JSON type of verifiable content.
+pub(crate) struct DIDQRCode {
+    /// DID for issuance and/or verifier endpoint resolution.
+    pub did: String,
+    /// HTTP route for making issuer or verifer requests.
+    pub route: String,
+    /// ID for identifying credential offer or presentation request.
+    pub id: String,
+}
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {
     let mut buf = Vec::new();
