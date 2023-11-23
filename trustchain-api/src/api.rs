@@ -294,7 +294,7 @@ mod tests {
           "Iso18013DriversLicense"
         ],
         "issuer": "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q",
-        "issuanceDate": "2020-08-19T21:41:50Z",
+        "issuanceDate": "2023-11-23T11:43:26.806224Z",
         "credentialSubject": {
           "id": "did:example:12347abcd",
           "Iso18013DriversLicense": {
@@ -363,7 +363,7 @@ mod tests {
         let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
         let attestor = IONAttestor::new(issuer_did_suffix);
 
-        let mut signed_vc = attestor
+        let signed_vc = attestor
             .sign(
                 &vc,
                 None,
@@ -373,47 +373,88 @@ mod tests {
             )
             .await
             .unwrap();
-        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
-
-        // derive redacted RSignature
-        let masked_cred_sub: CredentialSubject = serde_json::from_str(
-            r###"{
-              "id": "did:example:12347abcd",
-              "Iso18013DriversLicense": {
-                "height": null,
-                "weight": null,
-                "nationality": null,
-                "given_name": null,
-                "family_name": null,
-                "issuing_country": "US",
-                "birth_date": null,
-                "age_in_years": 30,
-                "age_birth_year": null
-              }
-            }"###,
-        )
-        .unwrap();
-        let mut masked_copy = signed_vc.clone();
-        masked_copy.credential_subject = OneOrMany::One(masked_cred_sub);
-
-        // produce redacted vc from redacted json
+        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
         let mut context_loader = ContextLoader::default();
-        signed_vc
-            .rss_redact(masked_copy, &resolver, &mut context_loader)
-            .await
-            .unwrap();
-
+        let verifier = TrustchainVerifier::new(resolver);
         let res = TrustchainAPI::verify_credential(
             &signed_vc,
             None,
             1697213008,
-            &TrustchainVerifier::new(resolver),
+            &verifier,
             &mut context_loader,
         )
         .await;
         // println!("{:?}", &res);
         assert!(res.is_ok());
     }
+
+    // #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    // #[tokio::test]
+    // async fn test_redact_verify_rss_credential() {
+    //     // **NOT** using init(), because the chain written to a temp dir in init() does not have any
+    //     // RSS keys.
+    //     // init();
+
+    //     // DID with RSS verification method
+    //     let issuer_did_suffix = "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q";
+    //     let resolver = trustchain_resolver("http://localhost:3000/");
+    //     let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
+    //     let attestor = IONAttestor::new(issuer_did_suffix);
+
+    //     let mut signed_vc = attestor
+    //         .sign(
+    //             &vc,
+    //             None,
+    //             Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34"),
+    //             &resolver,
+    //             &mut ContextLoader::default(),
+    //         )
+    //         .await
+    //         .unwrap();
+    //     // derive redacted RSignature
+    //     let masked_cred_sub: CredentialSubject = serde_json::from_str(
+    //         r###"{
+    //           "id": "did:example:12347abcd",
+    //           "Iso18013DriversLicense": {
+    //             "height": null,
+    //             "weight": null,
+    //             "nationality": null,
+    //             "given_name": null,
+    //             "family_name": null,
+    //             "issuing_country": "US",
+    //             "birth_date": null,
+    //             "age_in_years": 30,
+    //             "age_birth_year": null
+    //           }
+    //         }"###,
+    //     )
+    //     .unwrap();
+    //     let mut masked_copy = signed_vc.clone();
+    //     masked_copy.credential_subject = OneOrMany::One(masked_cred_sub);
+
+    //     // produce redacted vc from redacted json
+    //     let mut context_loader = ContextLoader::default();
+    //     let verifier = TrustchainVerifier::new(resolver);
+    //     signed_vc
+    //         .rss_redact(
+    //             masked_copy,
+    //             &trustchain_resolver("http://localhost:3000/"),
+    //             &mut context_loader,
+    //         )
+    //         .await
+    //         .unwrap();
+
+    //     let res = TrustchainAPI::verify_credential(
+    //         &signed_vc,
+    //         None,
+    //         1697213008,
+    //         &verifier,
+    //         &mut context_loader,
+    //     )
+    //     .await;
+    //     println!("{:?}", &res);
+    //     assert!(res.is_ok());
+    // }
 
     #[tokio::test]
     async fn test_verify_presentation() {
