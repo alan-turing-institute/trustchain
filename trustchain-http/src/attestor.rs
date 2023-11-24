@@ -38,7 +38,6 @@ use trustchain_ion::attestor::IONAttestor;
 #[derive(Serialize)]
 struct CustomResponse {
     message: String,
-    path: Option<String>,
     data: Option<String>,
 }
 
@@ -83,7 +82,23 @@ impl TrustchainAttestorHTTPHandler {
         let path = attestation_request_path(&temp_p_key_ssi.unwrap()).unwrap();
         // create directory and save attestation initation to file
         let _ = std::fs::create_dir_all(&path);
-        let _ = attestation_initiation.elementwise_serialize(&path).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")));
+        let result = attestation_initiation.elementwise_serialize(&path);
+        match result {
+            Ok(_) => {
+                let response = CustomResponse {
+                    message: "Received attestation request. Please wait for operator to contact you through an alternative channel.".to_string(),
+                    data: None,
+                };
+                (StatusCode::OK, Json(response))
+            }
+            Err(_) => {
+                let response = CustomResponse {
+                    message: "Attestation request failed.".to_string(),
+                    data: None,
+                };
+                (StatusCode::BAD_REQUEST, Json(response))
+            }
+        }
     }
 
     /// Processes response to identity challenge.
@@ -130,7 +145,6 @@ impl TrustchainAttestorHTTPHandler {
                 identity_challenge.elementwise_serialize(&path).unwrap();
                 let respone = CustomResponse {
                     message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
-                    path: Some(format!("/did/attestor/content/initiate/{}", &key_id)),
                     data: None
                 };
                 (StatusCode::OK, respone);
@@ -138,7 +152,6 @@ impl TrustchainAttestorHTTPHandler {
             Err(_) => {
                 let response = CustomResponse {
                     message: "Verification failed. Please try again.".to_string(),
-                    path: None,
                     data: None,
                 };
                 (StatusCode::BAD_REQUEST, response);
@@ -159,7 +172,6 @@ impl TrustchainAttestorHTTPHandler {
             Err(_) => {
                 let respone = CustomResponse {
                     message: "Resolution of candidate DID failed.".to_string(),
-                    path: None,
                     data: None,
                 };
                 return (StatusCode::BAD_REQUEST, Json(respone));
@@ -226,7 +238,6 @@ impl TrustchainAttestorHTTPHandler {
                 content_challenge.elementwise_serialize(&path).unwrap();
                 let response = CustomResponse {
                     message: "Challenges generated successfully.".to_string(),
-                    path: None,
                     data: Some(signed_encrypted_challenges),
                 };
                 (StatusCode::OK, Json(response))
@@ -234,7 +245,6 @@ impl TrustchainAttestorHTTPHandler {
             Err(_) => {
                 let response = CustomResponse {
                     message: "Failed to generate challenges.".to_string(),
-                    path: None,
                     data: None,
                 };
                 (StatusCode::BAD_REQUEST, Json(response))
@@ -284,7 +294,6 @@ impl TrustchainAttestorHTTPHandler {
             content_challenge.elementwise_serialize(&path).unwrap();
             let response = CustomResponse {
                 message: "Attestation request successful.".to_string(),
-                path: None,
                 data: None,
             };
             return (StatusCode::OK, Json(response));
@@ -292,7 +301,6 @@ impl TrustchainAttestorHTTPHandler {
 
         let response = CustomResponse {
             message: "Verification failed. Attestation request unsuccessful.".to_string(),
-            path: None,
             data: None,
         };
         (StatusCode::BAD_REQUEST, Json(response))

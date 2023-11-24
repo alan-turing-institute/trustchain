@@ -30,7 +30,7 @@ pub async fn initiate_identity_challenge(
     org_name: String,
     op_name: String,
     services: &Vec<Service>,
-    url_path: &String,
+    url_path: &str,
 ) -> Result<(), TrustchainCRError> {
     // generate temp key
     let temp_s_key_ssi = generate_key();
@@ -71,8 +71,8 @@ pub async fn initiate_identity_challenge(
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
 
+    println!("Status code: {}", result.status());
     if result.status() != 200 {
-        println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToInitiateCR);
     }
     // create new directory
@@ -95,7 +95,7 @@ pub async fn initiate_identity_challenge(
 pub async fn identity_response(
     path: PathBuf,
     services: Vec<Service>,
-    url_path: String,
+    url_path: &str,
     attestor_p_key: Jwk,
 ) -> Result<(), TrustchainCRError> {
     // deserialise challenge struct from file
@@ -133,7 +133,7 @@ pub async fn identity_response(
 
         _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
     };
-    let uri = format!("{}{}{}", endpoint, url_path, key_id);
+    let uri = format!("{}{}/{}", endpoint, url_path, key_id);
     // POST response
     let client = reqwest::Client::new();
     let result = client
@@ -142,8 +142,8 @@ pub async fn identity_response(
         .send()
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
+    println!("Status code: {}", result.status());
     if result.status() != 200 {
-        println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToRespond);
     }
     // extract nonce
@@ -170,7 +170,7 @@ pub async fn initiate_content_challenge(
     path: PathBuf,
     ddid: &String,
     services: &Vec<Service>,
-    url_path: &String,
+    url_path: &str,
 ) -> Result<(), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
@@ -222,7 +222,7 @@ pub async fn initiate_content_challenge(
 pub async fn content_response(
     path: PathBuf,
     services: Vec<Service>,
-    url_path: &String,
+    url_path: &str,
     attestor_p_key: Jwk,
     ddid: &String,
 ) -> Result<(), TrustchainCRError> {
@@ -246,7 +246,7 @@ pub async fn content_response(
 
         _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
     };
-    let uri = format!("{}{}{}", endpoint, url_path, key_id);
+    let uri = format!("{}{}/{}", endpoint, url_path, key_id);
 
     // decrypt and verify payload
     let requester = Entity {};

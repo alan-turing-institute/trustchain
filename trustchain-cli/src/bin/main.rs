@@ -103,7 +103,6 @@ fn cli() -> Command {
                             .about("Initiates a new identity challenge-response process.")
                             .arg(arg!(-v - -verbose).action(ArgAction::Count))
                             .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
-                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_INITIATION>).required(true))
                         )
                         .subcommand(
                             Command::new("present")
@@ -132,7 +131,6 @@ fn cli() -> Command {
                             .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
                             .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
                             .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
-                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_INITIATION>).required(true))
                         )
                         .subcommand(
                             Command::new("respond")
@@ -141,7 +139,6 @@ fn cli() -> Command {
                             .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
                             .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
                             .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
-                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_RESPONSE>).required(true))
                         ))
                 .subcommand(
                     Command::new("complete")
@@ -343,7 +340,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(("identity", sub_matches)) => match sub_matches.subcommand() {
                 Some(("initiate", sub_matches)) => {
                     // resolve DID and extract endpoint
-                    let url_path = sub_matches.get_one::<String>("url_path").unwrap();
+                    let url_path = "/did/attestor/identity/initiate";
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let services = doc.unwrap().service;
@@ -438,7 +435,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let attestor_public_key_ssi = public_keys.first().unwrap();
                     let public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
                     // url path and service endpoint
-                    let url_path = String::from("/did/attestor/identity/respond/");
+                    let url_path = "/did/attestor/identity/respond";
                     let services = doc.service.unwrap();
                     println!("Path: {:?}", path);
                     identity_response(path, services, url_path, public_key).await?;
@@ -450,7 +447,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let ddid = sub_matches.get_one::<String>("ddid").unwrap();
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                    let url_path = sub_matches.get_one::<String>("urlpath").unwrap();
+                    let url_path = "/did/attestor/content/initiate";
                    
                     // check attestation request path
                     let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
@@ -474,7 +471,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !path.exists() {
                         panic!("Provided attestation request not found. Path does not exist."); 
                     }
-                    let url_path = sub_matches.get_one::<String>("url_path").unwrap();
+                    let url_path = "/did/attestor/content/respond";
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let ddid = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
