@@ -1,11 +1,12 @@
 use crate::attestation_encryption_utils::{
-    josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
+    extract_key_ids_and_jwk, josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity,
+    SignEncrypt,
 };
 use crate::attestation_utils::{
-    attestation_request_path, CRIdentityChallenge, ElementwiseSerializeDeserialize,
-    IdentityCRInitiation, Nonce, TrustchainCRError,
+    attestation_request_path, CRContentChallenge, CRIdentityChallenge,
+    ElementwiseSerializeDeserialize, IdentityCRInitiation, Nonce, TrustchainCRError,
 };
-
+use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::Path;
 use axum::{
@@ -17,60 +18,20 @@ use josekit::jwk::Jwk;
 use josekit::jwt::JwtPayload;
 use log::info;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use trustchain_api::api::TrustchainDIDAPI;
+use trustchain_api::TrustchainAPI;
+use trustchain_core::verifier::Verifier;
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::result;
+use std::sync::Arc;
 
 use trustchain_core::utils::generate_key;
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_ion::attestor::IONAttestor;
-
-// Fields:
-// - API access token
-// - temporary public key
-// - name of DE organisation ("name_downstream")
-// - name of individual operator within DE responsible for the request
-
-// /// Writes received attestation request to unique path derived from the public key for the interaction.
-// fn write_attestation_info(
-//     attestation_info: &IdentityCRInitiation,
-// ) -> Result<(), TrustchainHTTPError> {
-//     // Get environment for TRUSTCHAIN_DATA
-
-//     let directory = attestion_request_path(&attestation_info.temp_p_key.unwrap().to_string())?;
-
-//     // Make directory if non-existent
-//     // Equivalent of os.makedirs(exist_ok=True) in python
-//     std::fs::create_dir_all(&directory)
-//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
-
-//     // Check if initial request exists ("attestation_info.json"), if yes, return InternalServerError
-//     let full_path = directory.join("attestation_info.json");
-
-//     if full_path.exists() {
-//         return Err(TrustchainHTTPError::FailedAttestationRequest);
-//     }
-
-//     // If not, write to file
-//     // Open the new file
-//     let mut file = OpenOptions::new()
-//         .create(true)
-//         .write(true)
-//         .truncate(true)
-//         .open(full_path)
-//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
-
-//     // Write to file
-//     writeln!(file, "{}", &to_string_pretty(attestation_info).unwrap())
-//         .map_err(|_| TrustchainHTTPError::FailedAttestationRequest)?;
-
-//     // Else do something?
-
-//     Ok(())
-// }
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
@@ -78,6 +39,7 @@ use trustchain_ion::attestor::IONAttestor;
 struct CustomResponse {
     message: String,
     path: Option<String>,
+    data: Option<String>,
 }
 
 #[async_trait]
@@ -111,10 +73,9 @@ impl TrustchainAttestorHTTP for TrustchainAttestorHTTPHandler {
 }
 
 impl TrustchainAttestorHTTPHandler {
-    /// Processes initial attestation request and provided data
-    pub async fn post_initiation(
+    /// Processes initial attestation request and provided data.
+    pub async fn post_identity_initiation(
         Json(attestation_initiation): Json<IdentityCRInitiation>,
-        // app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         info!("Received attestation info: {:?}", attestation_initiation);
         let temp_p_key_ssi =
@@ -125,11 +86,11 @@ impl TrustchainAttestorHTTPHandler {
         let _ = attestation_initiation.elementwise_serialize(&path).map(|_| (StatusCode::OK, Html("Received request. Please wait for operator to contact you through an alternative channel.")));
     }
 
-    pub async fn post_response(
-        Path((did, key_id)): Path<(String, String)>,
-        Json(response): Json<String>,
+    /// Processes response to identity challenge.
+    pub async fn post_identity_response(
+        (Path(key_id), Json(response)): (Path<String>, Json<String>),
+        app_state: Arc<AppState>,
     ) -> impl IntoResponse {
-        // get keys (attestor secret key, temp public key)
         let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).unwrap();
         let path = PathBuf::new()
             .join(trustchain_dir)
@@ -138,18 +99,17 @@ impl TrustchainAttestorHTTPHandler {
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
-        // deserialise
         let mut identity_challenge = CRIdentityChallenge::new()
             .elementwise_deserialize(&path)
             .unwrap()
             .unwrap();
         // get signing key from ION attestor
+        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys().unwrap();
         let signing_key_ssi = signing_keys.first().unwrap();
         let signing_key = ssi_to_josekit_jwk(&signing_key_ssi);
         // get temp public key
-        info!("Path: {:?}", path);
         let temp_key_path = path.join("temp_p_key.json");
         let file = File::open(&temp_key_path).unwrap();
         let reader = BufReader::new(file);
@@ -158,12 +118,11 @@ impl TrustchainAttestorHTTPHandler {
             .unwrap();
         let temp_p_key = ssi_to_josekit_jwk(&temp_p_key_ssi).unwrap();
 
-        // decrypt and verify
+        // verify response
         let attestor = Entity {};
         let payload = attestor
             .decrypt_and_verify(response.clone(), &signing_key.unwrap(), &temp_p_key)
             .unwrap();
-
         let result = verify_nonce(payload, &path);
         match result {
             Ok(_) => {
@@ -171,21 +130,176 @@ impl TrustchainAttestorHTTPHandler {
                 identity_challenge.elementwise_serialize(&path).unwrap();
                 let respone = CustomResponse {
                     message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
-                    path:Some(format!("/did/attestor/content/initiate/{}", &key_id)),
+                    path: Some(format!("/did/attestor/content/initiate/{}", &key_id)),
+                    data: None
                 };
-                (StatusCode::OK, Json(respone));
+                (StatusCode::OK, respone);
             }
             Err(_) => {
-                let respone = CustomResponse {
+                let response = CustomResponse {
                     message: "Verification failed. Please try again.".to_string(),
                     path: None,
+                    data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(respone));
+                (StatusCode::BAD_REQUEST, response);
             }
         }
     }
+
+    /// Processes initiation of second part of attestation request (content challenge-response).
+    pub async fn post_content_initiation(
+        (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
+        app_state: Arc<AppState>,
+    ) -> impl IntoResponse {
+        // TODO: Do this properly (get endpoint from config).
+        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
+        let candidate_doc = match result {
+            Ok((_, doc, _)) => doc.unwrap(),
+            Err(_) => {
+                let respone = CustomResponse {
+                    message: "Resolution of candidate DID failed.".to_string(),
+                    path: None,
+                    data: None,
+                };
+                return (StatusCode::BAD_REQUEST, Json(respone));
+            }
+        };
+
+        // extract map of keys from candidate document and generate a nonce per key
+        let requester_keys = extract_key_ids_and_jwk(&candidate_doc).unwrap();
+        let attestor = Entity {};
+        let nonces: HashMap<String, Nonce> =
+            requester_keys
+                .iter()
+                .fold(HashMap::new(), |mut acc, (key_id, _)| {
+                    acc.insert(String::from(key_id), Nonce::new());
+                    acc
+                });
+
+        // sign and encrypt nonces to generate challenges
+        let challenges = nonces
+            .iter()
+            .fold(HashMap::new(), |mut acc, (key_id, nonce)| {
+                acc.insert(
+                    String::from(key_id),
+                    attestor
+                        .encrypt(
+                            &JwtPayload::try_from(nonce).unwrap(),
+                            &requester_keys.get(key_id).unwrap(),
+                        )
+                        .unwrap(),
+                );
+                acc
+            });
+        // get public and secret keys
+        let path = PathBuf::new()
+            .join(std::env::var(TRUSTCHAIN_DATA).unwrap())
+            .join("attestation_requests")
+            .join(&key_id);
+        let identity_cr_initiation = IdentityCRInitiation::new()
+            .elementwise_deserialize(&path)
+            .unwrap()
+            .unwrap();
+        let ion_attestor = IONAttestor::new(&did);
+        let signing_keys = ion_attestor.signing_keys().unwrap();
+        let signing_key_ssi = signing_keys.first().unwrap();
+        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
+
+        // sign and encrypt challenges
+        let value: serde_json::Value = serde_json::to_value(challenges).unwrap();
+        let mut payload = JwtPayload::new();
+        payload.set_claim("challenges", Some(value)).unwrap();
+        let signed_encrypted_challenges = attestor.sign_and_encrypt_claim(
+            &payload,
+            &signing_key,
+            &identity_cr_initiation.temp_p_key.unwrap(),
+        );
+
+        match signed_encrypted_challenges {
+            Ok(signed_encrypted_challenges) => {
+                let content_challenge = CRContentChallenge {
+                    content_nonce: Some(nonces),
+                    content_challenge_signature: Some(signed_encrypted_challenges.clone()),
+                    content_response_signature: None,
+                };
+                content_challenge.elementwise_serialize(&path).unwrap();
+                let response = CustomResponse {
+                    message: "Challenges generated successfully.".to_string(),
+                    path: None,
+                    data: Some(signed_encrypted_challenges),
+                };
+                (StatusCode::OK, Json(response))
+            }
+            Err(_) => {
+                let response = CustomResponse {
+                    message: "Failed to generate challenges.".to_string(),
+                    path: None,
+                    data: None,
+                };
+                (StatusCode::BAD_REQUEST, Json(response))
+            }
+        }
+    }
+    /// Processes response to second part of attestation request (content challenge-response).
+    pub async fn post_content_response(
+        (Path(key_id), Json(response)): (Path<String>, Json<String>),
+        app_state: Arc<AppState>,
+    ) -> impl IntoResponse {
+        // deserialise expected nonce map
+        let path = PathBuf::new()
+            .join(std::env::var(TRUSTCHAIN_DATA).unwrap())
+            .join("attestation_requests")
+            .join(&key_id);
+        let identity_cr_initiation = IdentityCRInitiation::new()
+            .elementwise_deserialize(&path)
+            .unwrap()
+            .unwrap();
+        let mut content_challenge = CRContentChallenge::new()
+            .elementwise_deserialize(&path)
+            .unwrap()
+            .unwrap();
+        let expected_nonce = content_challenge.content_nonce.clone().unwrap();
+        // get signing key from ION attestor
+        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let ion_attestor = IONAttestor::new(&did);
+        let signing_keys = ion_attestor.signing_keys().unwrap();
+        let signing_key_ssi = signing_keys.first().unwrap();
+        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
+
+        // decrypt and verify response => nonces map
+        let attestor = Entity {};
+        let payload = attestor
+            .decrypt_and_verify(
+                response.clone(),
+                &signing_key,
+                &identity_cr_initiation.temp_p_key.unwrap(),
+            )
+            .unwrap();
+        let nonces_map: HashMap<String, Nonce> =
+            serde_json::from_value(payload.claim("nonces").unwrap().clone()).unwrap();
+        // verify nonces
+        if nonces_map.eq(&expected_nonce) {
+            content_challenge.content_response_signature = Some(response.clone());
+            content_challenge.elementwise_serialize(&path).unwrap();
+            let response = CustomResponse {
+                message: "Attestation request successful.".to_string(),
+                path: None,
+                data: None,
+            };
+            return (StatusCode::OK, Json(response));
+        }
+
+        let response = CustomResponse {
+            message: "Verification failed. Attestation request unsuccessful.".to_string(),
+            path: None,
+            data: None,
+        };
+        (StatusCode::BAD_REQUEST, Json(response))
+    }
 }
 
+/// Generates challenge for first part of attestation request (identity challenge-response).
 pub fn present_identity_challenge(
     did: &str,
     temp_p_key: &Jwk,
@@ -227,6 +341,7 @@ pub fn present_identity_challenge(
     Ok(identity_challenge)
 }
 
+/// Verifies nonce for challenge-response.
 fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRError> {
     // get nonce from payload
     let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
@@ -255,7 +370,6 @@ mod tests {
 
     use super::*;
 
-    // TODO: add this key when switched to JWK
     use crate::data::TEST_TEMP_KEY;
 
     // Attestor integration tests
@@ -282,7 +396,6 @@ mod tests {
         let response = client.post(&uri).json(&attestation_initiation).send().await;
         assert_eq!(response.status(), 200);
         println!("Response text: {:?}", response.text().await);
-        // assert_eq!(response.text().await, "Received request. Please wait for operator to contact you through an alternative channel.");
     }
 
     #[test]

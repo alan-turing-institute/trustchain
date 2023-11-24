@@ -3,7 +3,6 @@ pub mod attestation_utils;
 pub mod attestor;
 pub mod config;
 pub mod data;
-pub mod encryption;
 pub mod errors;
 pub mod issuer;
 pub mod middleware;
