@@ -16,9 +16,9 @@ use trustchain_cli::config::cli_config;
 use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA, utils:: extract_keys};
 use trustchain_http::{
     attestation_utils::{
-        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError
+        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError, CRState
     },
-    requester::{initiate_identity_challenge, identity_response},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
+    requester::{initiate_identity_challenge, identity_response, initiate_content_challenge, content_response},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
 };
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
@@ -84,13 +84,12 @@ fn cli() -> Command {
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
-                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
-        .subcommand( // Pam: change this
+        .subcommand( 
             Command::new("cr")
-                // .about("Challenge-response functionality: initiate, present, respond.")
-                .about("Challenge-response functionality for identity challenge-response and content challenge-response.")
+                .about("Challenge-response functionality for attestation challenge response process (identity and content challenge-response).")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
@@ -104,6 +103,7 @@ fn cli() -> Command {
                             .about("Initiates a new identity challenge-response process.")
                             .arg(arg!(-v - -verbose).action(ArgAction::Count))
                             .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
+                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_INITIATION>).required(true))
                         )
                         .subcommand(
                             Command::new("present")
@@ -119,6 +119,35 @@ fn cli() -> Command {
                             .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
                             .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
                         )
+                )
+                .subcommand(
+                    Command::new("content")
+                        .about("Content challenge-response functionality: initiate, respond.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-f --file_path <FILE_PATH>).required(false))
+                        .subcommand(
+                            Command::new("initiate")
+                            .about("Initiates the content challenge-response process.")
+                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
+                            .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
+                            .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
+                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_INITIATION>).required(true))
+                        )
+                        .subcommand(
+                            Command::new("respond")
+                            .about("Respond to content challenge.")
+                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
+                            .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
+                            .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
+                            .arg(arg!(-p --urlpath <URL_PATH_CONTENT_RESPONSE>).required(true))
+                        ))
+                .subcommand(
+                    Command::new("complete")
+                        .about("Check if challenge-response for attestation request has been completed.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
                 )
                 
             )
@@ -314,9 +343,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(("identity", sub_matches)) => match sub_matches.subcommand() {
                 Some(("initiate", sub_matches)) => {
                     // resolve DID and extract endpoint
+                    let url_path = sub_matches.get_one::<String>("url_path").unwrap();
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let services = doc.unwrap().service;
+                    println!("Services: {:?}", services);
                     
                     // user promt for org name and operator name
                     println!("Please enter your organisation name: ");
@@ -334,12 +365,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Organisation name: {}", org_name);
                     println!("Operator name: {}", op_name);
                     // initiate identity challenge
-                    initiate_identity_challenge(
+                    let result = initiate_identity_challenge(
                         org_name.trim().to_string(),
                         op_name.trim().to_string(),
                         &services.unwrap(),
+                        url_path
                     )
                     .await?;
+                    println!("Result: {:?}", result);
                 }
                 Some(("present", sub_matches)) => {
                     // get attestation request path from provided input
@@ -410,11 +443,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Path: {:?}", path);
                     identity_response(path, services, url_path, public_key).await?;
                 }
-                _ => panic!("Unrecognised CR subcommand."),
+                _ => panic!("Unrecognised CR identity subcommand."),
+            },
+            Some(("content", sub_matches)) => match sub_matches.subcommand() {
+                Some(("initiate", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let ddid = sub_matches.get_one::<String>("ddid").unwrap();
+                    let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                    let url_path = sub_matches.get_one::<String>("urlpath").unwrap();
+                   
+                    // check attestation request path
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    if !path.exists() {
+                        panic!("Provided attestation request not found. Path does not exist."); 
+                    }
+                    
+                    // resolve DID and generate challenge
+                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let doc = doc.unwrap();
+                    let services = doc.service.unwrap();
+                    let result = initiate_content_challenge(path, ddid, &services, url_path).await?;
+                    println!("Result: {:?}", result);
+                }
+                Some(("respond", sub_matches)) => {
+                    // get provided input arguments
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    if !path.exists() {
+                        panic!("Provided attestation request not found. Path does not exist."); 
+                    }
+                    let url_path = sub_matches.get_one::<String>("url_path").unwrap();
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let ddid = sub_matches.get_one::<String>("did").unwrap();
+                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let doc = doc.unwrap();
+                    // extract attestor public key from did document
+                    let public_keys = extract_keys(&doc);
+                    let attestor_public_key_ssi = public_keys.first().unwrap();
+                    let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
+                    // service endpoint
+                    let services = doc.service.unwrap();
+                    let result = content_response(path, services, url_path, attestor_public_key, ddid).await?;
+                    println!("Result: {:?}", result);
+                }
+                _ => panic!("Unrecognised CR content subcommand."),},
+            Some(("complete", sub_matches)) => {
+                let path_to_check = sub_matches.get_one::<String>("path").unwrap();
+                let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?; 
+                let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                let cr_state = CRState::new().elementwise_deserialize(&path).unwrap().unwrap();
+                let current_state = cr_state.check_cr_status().unwrap();
+                
+                println!("State of attestation challenge-response process: {:?}", current_state);
             },
             _ => panic!("Unrecognised CR subcommand."),
-        },
-
+        } 
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
