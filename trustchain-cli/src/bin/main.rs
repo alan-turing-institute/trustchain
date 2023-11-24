@@ -340,7 +340,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(("identity", sub_matches)) => match sub_matches.subcommand() {
                 Some(("initiate", sub_matches)) => {
                     // resolve DID and extract endpoint
-                    let url_path = "/did/attestor/identity/initiate";
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let services = doc.unwrap().service;
@@ -366,7 +365,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         org_name.trim().to_string(),
                         op_name.trim().to_string(),
                         &services.unwrap(),
-                        url_path
                     )
                     .await?;
                     println!("Result: {:?}", result);
@@ -434,11 +432,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let public_keys = extract_keys(&doc);
                     let attestor_public_key_ssi = public_keys.first().unwrap();
                     let public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
-                    // url path and service endpoint
-                    let url_path = "/did/attestor/identity/respond";
+                    // service endpoint
                     let services = doc.service.unwrap();
                     println!("Path: {:?}", path);
-                    identity_response(path, services, url_path, public_key).await?;
+                    identity_response(path, services, public_key).await?;
                 }
                 _ => panic!("Unrecognised CR identity subcommand."),
             },
@@ -447,7 +444,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let ddid = sub_matches.get_one::<String>("ddid").unwrap();
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                    let url_path = "/did/attestor/content/initiate";
                    
                     // check attestation request path
                     let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
@@ -460,7 +456,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let doc = doc.unwrap();
                     let services = doc.service.unwrap();
-                    let result = initiate_content_challenge(path, ddid, &services, url_path).await?;
+                    let result = initiate_content_challenge(path, ddid, &services).await?;
                     println!("Result: {:?}", result);
                 }
                 Some(("respond", sub_matches)) => {
@@ -471,7 +467,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !path.exists() {
                         panic!("Provided attestation request not found. Path does not exist."); 
                     }
-                    let url_path = "/did/attestor/content/respond";
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let ddid = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
@@ -482,7 +477,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
                     // service endpoint
                     let services = doc.service.unwrap();
-                    let result = content_response(path, services, url_path, attestor_public_key, ddid).await?;
+                    let result = content_response(path, services, attestor_public_key, ddid).await?;
                     println!("Result: {:?}", result);
                 }
                 _ => panic!("Unrecognised CR content subcommand."),},

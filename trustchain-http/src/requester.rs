@@ -30,7 +30,6 @@ pub async fn initiate_identity_challenge(
     org_name: String,
     op_name: String,
     services: &Vec<Service>,
-    url_path: &str,
 ) -> Result<(), TrustchainCRError> {
     // generate temp key
     let temp_s_key_ssi = generate_key();
@@ -51,15 +50,9 @@ pub async fn initiate_identity_challenge(
         requester_details: Some(requester.clone()),
     };
 
-    // get endpoint and uir
-    // TODO: this is just to make current example work
-    // let uri = matching_endpoint(services, "Trustchain").unwrap();
-    let endpoint = &services.first().unwrap().service_endpoint;
-    let endpoint = match endpoint {
-        Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => uri,
-
-        _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
-    };
+    // get endpoint and uri
+    let url_path = "/did/attestor/identity/initiate";
+    let endpoint = matching_endpoint(services, "AttestationEndpoint").unwrap();
     let uri = format!("{}{}", endpoint, url_path);
 
     // make POST request to endpoint
@@ -95,7 +88,6 @@ pub async fn initiate_identity_challenge(
 pub async fn identity_response(
     path: PathBuf,
     services: Vec<Service>,
-    url_path: &str,
     attestor_p_key: Jwk,
 ) -> Result<(), TrustchainCRError> {
     // deserialise challenge struct from file
@@ -133,6 +125,7 @@ pub async fn identity_response(
 
         _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
     };
+    let url_path = "/did/attestor/identity/respond";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
     // POST response
     let client = reqwest::Client::new();
@@ -170,7 +163,6 @@ pub async fn initiate_content_challenge(
     path: PathBuf,
     ddid: &String,
     services: &Vec<Service>,
-    url_path: &str,
 ) -> Result<(), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
@@ -191,6 +183,7 @@ pub async fn initiate_content_challenge(
 
         _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
     };
+    let url_path = "/did/attestor/content/initiate";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
     println!("URI: {}", uri);
     // make POST request to endpoint
@@ -222,7 +215,6 @@ pub async fn initiate_content_challenge(
 pub async fn content_response(
     path: PathBuf,
     services: Vec<Service>,
-    url_path: &str,
     attestor_p_key: Jwk,
     ddid: &String,
 ) -> Result<(), TrustchainCRError> {
@@ -246,6 +238,7 @@ pub async fn content_response(
 
         _ => Err(TrustchainCRError::InvalidServiceEndpoint)?,
     };
+    let url_path = "/did/attestor/content/respond";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
 
     // decrypt and verify payload
