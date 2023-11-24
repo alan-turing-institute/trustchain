@@ -89,7 +89,7 @@ impl From<JoseError> for TrustchainCRError {
 }
 
 #[derive(Debug, PartialEq)]
-enum CurrentCRState {
+pub enum CurrentCRState {
     NotStarted,
     IdentityCRInitiated,
     IdentityChallengeComplete,
@@ -421,21 +421,19 @@ impl TryFrom<&JwtPayload> for CRIdentityChallenge {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, IsEmpty)]
-struct ContentCRInitiation {
-    temp_p_key: Option<Jwk>,
-    requester_did: Option<String>,
+pub struct ContentCRInitiation {
+    pub requester_did: Option<String>,
 }
 
 impl ContentCRInitiation {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            temp_p_key: None,
             requester_did: None,
         }
     }
 
     fn is_complete(&self) -> bool {
-        return self.temp_p_key.is_some() && self.requester_did.is_some();
+        return self.requester_did.is_some();
     }
 }
 
@@ -445,17 +443,6 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
         mut self,
         path: &PathBuf,
     ) -> Result<Option<ContentCRInitiation>, TrustchainCRError> {
-        let temp_p_key_path = path.join("temp_p_key.json");
-        self.temp_p_key = match File::open(&temp_p_key_path) {
-            Ok(file) => {
-                let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-                Some(deserialized)
-            }
-            Err(_) => None,
-        };
-
         let requester_details_path = path.join("requester_did.json");
         self.requester_did = match File::open(&requester_details_path) {
             Ok(file) => {
@@ -467,7 +454,10 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
             Err(_) => None,
         };
 
-        if self.temp_p_key.is_none() && self.requester_did.is_none() {
+        // if self.temp_p_key.is_none() && self.requester_did.is_none() {
+        //     return Ok(None);
+        // }
+        if self.requester_did.is_none() {
             return Ok(None);
         }
 
@@ -476,14 +466,14 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
 }
 
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
-struct CRContentChallenge {
-    content_nonce: Option<HashMap<String, Nonce>>,
-    content_challenge_signature: Option<String>,
-    content_response_signature: Option<String>,
+pub struct CRContentChallenge {
+    pub content_nonce: Option<HashMap<String, Nonce>>,
+    pub content_challenge_signature: Option<String>,
+    pub content_response_signature: Option<String>,
 }
 
 impl CRContentChallenge {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             content_nonce: None,
             content_challenge_signature: None,
@@ -554,15 +544,15 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
-struct CRState {
-    identity_cr_initiation: Option<IdentityCRInitiation>,
-    identity_challenge_response: Option<CRIdentityChallenge>,
-    content_cr_initiation: Option<ContentCRInitiation>,
-    content_challenge_response: Option<CRContentChallenge>,
+pub struct CRState {
+    pub identity_cr_initiation: Option<IdentityCRInitiation>,
+    pub identity_challenge_response: Option<CRIdentityChallenge>,
+    pub content_cr_initiation: Option<ContentCRInitiation>,
+    pub content_challenge_response: Option<CRContentChallenge>,
 }
 
 impl CRState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             identity_cr_initiation: None,
             identity_challenge_response: None,
@@ -571,7 +561,7 @@ impl CRState {
         }
     }
     /// Returns true if all fields have a non-null value.
-    fn is_complete(&self) -> bool {
+    pub fn is_complete(&self) -> bool {
         if self.identity_cr_initiation.is_some()
             && self.identity_challenge_response.is_some()
             && self.content_cr_initiation.is_some()
@@ -582,7 +572,7 @@ impl CRState {
         return false;
     }
     /// Determines current status of the challenge response process and accordingly prints messages to the console.
-    fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
+    pub fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
         println!("Checking current challenge-response status...");
         println!(" ");
         let mut current_state = CurrentCRState::NotStarted;
@@ -765,10 +755,7 @@ pub fn attestation_request_path(key: &JWK) -> Result<PathBuf, TrustchainCRError>
 #[cfg(test)]
 mod tests {
     use crate::attestation_encryption_utils::extract_key_ids_and_jwk;
-    use crate::data::{
-        TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
-        TEST_TEMP_KEY, TEST_UPDATE_KEY, TEST_UPSTREAM_KEY,
-    };
+    use crate::data::{TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_TEMP_KEY, TEST_UPDATE_KEY};
     use ssi::did::Document;
     use tempfile::tempdir;
 
@@ -798,7 +785,7 @@ mod tests {
 
         // ==========| Content CR | ==============
         let content_initiation = ContentCRInitiation {
-            temp_p_key: Some(temp_s_key.to_public_key().unwrap()),
+            // temp_p_key: Some(temp_s_key.to_public_key().unwrap()),
             requester_did: Some("did:example:123456789abcdefghi".to_string()),
         };
         // get signing keys for DE from did document
@@ -982,7 +969,7 @@ mod tests {
         let _ = identity_challenge.elementwise_serialize(&path);
 
         let content_cr_initiation = ContentCRInitiation {
-            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            // temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
             requester_did: Some("did:example:123456789abcdefghi".to_string()),
         };
         let _ = content_cr_initiation.elementwise_serialize(&path);
@@ -1055,77 +1042,84 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // #[test]
-    // fn test_check_cr_status() {
-    //     let mut cr_state = CRState::new();
-    //     // Test case 1: CR State is empty
-    //     let result = cr_state.check_cr_status().unwrap();
-    //     assert_eq!(result, CurrentCRState::NotStarted);
+    #[test]
+    fn test_check_cr_status() {
+        let mut cr_state = CRState::new();
+        // Test case 1: CR State is empty
+        let result = cr_state.check_cr_status().unwrap();
+        assert_eq!(result, CurrentCRState::NotStarted);
 
-    //     // Test case 2: some, but not all, initation information exists
-    //     cr_state.identity_cr_initiation = Some(IdentityCRInitiation {
-    //         temp_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
-    //         requester_details: None,
-    //     });
-    //     let result = cr_state.check_cr_status();
-    //     assert_eq!(result.unwrap(), CurrentCRState::NotStarted);
+        // Test case 2: some, but not all, initation information exists
+        cr_state.identity_cr_initiation = Some(IdentityCRInitiation {
+            // Same key used here for testing purposes
+            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            temp_s_key: None,
+            requester_details: None,
+        });
+        let result = cr_state.check_cr_status();
+        assert_eq!(result.unwrap(), CurrentCRState::NotStarted);
 
-    //     // Test case 3: identity initiation completed, identity challenge presented
-    //     cr_state.identity_cr_initiation = Some(IdentityCRInitiation {
-    //         temp_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
-    //         requester_details: Some(RequesterDetails {
-    //             requester_org: String::from("My Org"),
-    //             operator_name: String::from("John Doe"),
-    //         }),
-    //     });
-    //     cr_state.identity_challenge_response = Some(CRIdentityChallenge {
-    //         update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
-    //         identity_nonce: Some(Nonce::new()),
-    //         identity_challenge_signature: Some(String::from("some challenge signature string")),
-    //         identity_response_signature: None,
-    //     });
-    //     let result = cr_state.check_cr_status();
-    //     assert_eq!(result.unwrap(), CurrentCRState::IdentityChallengeComplete);
+        // Test case 3: identity initiation completed, identity challenge presented
+        cr_state.identity_cr_initiation = Some(IdentityCRInitiation {
+            // Same key used here for testing purposes
+            temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
+            temp_s_key: None,
+            requester_details: Some(RequesterDetails {
+                requester_org: String::from("My Org"),
+                operator_name: String::from("John Doe"),
+            }),
+        });
+        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+            update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
+            update_s_key: None,
+            identity_nonce: Some(Nonce::new()),
+            identity_challenge_signature: Some(String::from("some challenge signature string")),
+            identity_response_signature: None,
+        });
+        let result = cr_state.check_cr_status();
+        assert_eq!(result.unwrap(), CurrentCRState::IdentityChallengeComplete);
 
-    //     // Test case 4: Identity challenge response complete, content challenge initiated
-    //     cr_state.identity_challenge_response = Some(CRIdentityChallenge {
-    //         update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
-    //         identity_nonce: Some(Nonce::new()),
-    //         identity_challenge_signature: Some(String::from("some challenge signature string")),
-    //         identity_response_signature: Some(String::from("some response signature string")),
-    //     });
-    //     cr_state.content_cr_initiation = {
-    //         Some(ContentCRInitiation {
-    //             temp_p_key: Some(serde_json::from_str(TEST_TEMP_KEY).unwrap()),
-    //             requester_did: Some("did:example:123456789abcdefghi".to_string()),
-    //         })
-    //     };
-    //     let result = cr_state.check_cr_status();
-    //     assert_eq!(result.unwrap(), CurrentCRState::ContentCRInitiated);
+        // Test case 4: Identity challenge response complete, content challenge initiated
+        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+            // Same key used here for testing purposes
+            update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
+            update_s_key: None,
+            identity_nonce: Some(Nonce::new()),
+            identity_challenge_signature: Some(String::from("some challenge signature string")),
+            identity_response_signature: Some(String::from("some response signature string")),
+        });
+        cr_state.content_cr_initiation = {
+            Some(ContentCRInitiation {
+                requester_did: Some("did:example:123456789abcdefghi".to_string()),
+            })
+        };
+        let result = cr_state.check_cr_status();
+        assert_eq!(result.unwrap(), CurrentCRState::ContentCRInitiated);
 
-    //     // Test case 5: Content challenge-response complete
-    //     cr_state.content_challenge_response = Some(CRContentChallenge {
-    //         content_nonce: Some(HashMap::new()),
-    //         content_challenge_signature: Some(String::from(
-    //             "some content challenge signature string",
-    //         )),
-    //         content_response_signature: Some(String::from(
-    //             "some content response signature string",
-    //         )),
-    //     });
-    //     let result = cr_state.check_cr_status();
-    //     assert_eq!(result.unwrap(), CurrentCRState::ContentResponseComplete);
-    // }
-    // #[test]
-    // fn test_check_cr_status_inconsistent_order() {
-    //     let mut cr_state = CRState::new();
-    //     cr_state.identity_challenge_response = Some(CRIdentityChallenge {
-    //         update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
-    //         identity_nonce: Some(Nonce::new()),
-    //         identity_challenge_signature: Some(String::from("some challenge signature string")),
-    //         identity_response_signature: Some(String::from("some response signature string")),
-    //     });
-    //     let result = cr_state.check_cr_status();
-    //     assert_eq!(result.unwrap(), CurrentCRState::NotStarted);
-    // }
+        // Test case 5: Content challenge-response complete
+        cr_state.content_challenge_response = Some(CRContentChallenge {
+            content_nonce: Some(HashMap::new()),
+            content_challenge_signature: Some(String::from(
+                "some content challenge signature string",
+            )),
+            content_response_signature: Some(String::from(
+                "some content response signature string",
+            )),
+        });
+        let result = cr_state.check_cr_status();
+        assert_eq!(result.unwrap(), CurrentCRState::ContentResponseComplete);
+    }
+    #[test]
+    fn test_check_cr_status_inconsistent_order() {
+        let mut cr_state = CRState::new();
+        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+            update_s_key: None,
+            update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
+            identity_nonce: Some(Nonce::new()),
+            identity_challenge_signature: Some(String::from("some challenge signature string")),
+            identity_response_signature: Some(String::from("some response signature string")),
+        });
+        let result = cr_state.check_cr_status();
+        assert_eq!(result.unwrap(), CurrentCRState::NotStarted);
+    }
 }
