@@ -14,3 +14,6 @@ pub mod server;
 pub mod state;
 pub mod static_handlers;
 pub mod verifier;
+
+/// Fragment for service ID of Trustchain attestion
+pub(crate) const ATTESTATION_FRAGMENT: &str = "#TrustchainAttestation";

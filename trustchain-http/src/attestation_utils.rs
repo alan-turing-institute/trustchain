@@ -5,10 +5,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// use axum::response::Response;
 use is_empty::IsEmpty;
 use josekit::JoseError;
 use josekit::{jwk::Jwk, jwt::JwtPayload};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use reqwest::Response;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty as to_json, Value};
 use serde_with::skip_serializing_none;
@@ -76,7 +78,7 @@ pub enum TrustchainCRError {
     FieldNotFound,
     /// Field to respond
     #[error("Response to challenge failed.")]
-    FailedToRespond,
+    FailedToRespond(reqwest::Response),
     // Failed to verify nonce
     #[error("Failed to verify nonce.")]
     FailedToVerifyNonce,
@@ -719,13 +721,13 @@ fn get_status_message(current_state: &CurrentCRState) -> String {
 /// Returns endpoint that contains the given fragment from the given list of service endpoints.
 /// Throws error if no or more than one matching endpoint is found.
 pub fn matching_endpoint(
-    services: &Vec<Service>,
+    services: &[Service],
     fragment: &str,
 ) -> Result<String, TrustchainCRError> {
     let mut endpoints = Vec::new();
     for service in services {
         println!("service id: {}", service.id);
-        if service.id.contains(fragment) {
+        if service.id.eq(fragment) {
             match &service.service_endpoint {
                 Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {
                     endpoints.push(uri.to_string());

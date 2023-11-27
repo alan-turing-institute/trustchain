@@ -2,9 +2,10 @@ use axum::http::request;
 use rand::rngs::mock;
 use trustchain_core::verifier::Verifier;
 use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_http::attestation_encryption_utils::ssi_to_josekit_jwk;
 use trustchain_http::attestation_utils::{ElementwiseSerializeDeserialize, IdentityCRInitiation};
 use trustchain_http::attestor::present_identity_challenge;
-use trustchain_http::requester::initiate_identity_challenge;
+use trustchain_http::requester::{identity_response, initiate_identity_challenge};
 /// Integration test for attestation challenge-response process.
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
 
@@ -17,7 +18,7 @@ use std::fs;
 use std::sync::Once;
 use std::{net::TcpListener, path::PathBuf};
 use tower::make::Shared;
-use trustchain_core::utils::init;
+use trustchain_core::utils::{extract_keys, init};
 use trustchain_http::{config::HTTPConfig, server::TrustchainRouter};
 
 #[automock]
@@ -30,39 +31,34 @@ pub trait AttestationUtils {
 // lazy_static! {
 //     static ref HANDLE =
 // }
-// pub fn init_http() {
-//     INIT_HTTP.call_once(|| {
-//         init();
-//         let listener =
-//             TcpListener::bind("127.0.0.1:8082").expect("Could not bind ephemeral socket");
-//         let addr = listener.local_addr().unwrap();
-//         let port = addr.port();
-//         let http_config = HTTPConfig {
-//             port,
-//             server_did: Some(
-//                 "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string(),
-//             ),
-//             root_event_time: Some(ROOT_EVENT_TIME_1),
-//             ..Default::default()
-//         };
-//         // Run server
-//         tokio::spawn(async move {
-//             let server = Server::from_tcp(listener).unwrap().serve(Shared::new(
-//                 TrustchainRouter::from(http_config).into_router(),
-//             ));
-//             server.await.expect("server error");
-//         });
-//     });
-// }
+
+async fn start_server() {
+    let listener = TcpListener::bind("127.0.0.1:8081").expect("Could not bind ephemeral socket");
+    let addr = listener.local_addr().unwrap();
+    let port = addr.port();
+    let http_config = HTTPConfig {
+        port,
+        server_did: Some("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()),
+        root_event_time: Some(ROOT_EVENT_TIME_1),
+        ..Default::default()
+    };
+    // Run server
+    tokio::spawn(async move {
+        let server = Server::from_tcp(listener).unwrap().serve(Shared::new(
+            TrustchainRouter::from(http_config).into_router(),
+        ));
+        server.await.expect("server error");
+    });
+}
 
 #[tokio::test]
 #[ignore]
 async fn attestation_challenge_response() {
-    // Set-up
+    // Set-up: init test paths, get upstream info
 
     // init_http();
     init();
-
+    start_server().await;
     // |------------| requester |------------|
     // Use ROOT_PLUS_1 as attestor. Run server on localhost:8081.
     let attestor_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
@@ -77,9 +73,9 @@ async fn attestation_challenge_response() {
     let result = resolver.resolve_as_result(attestor_did).await;
     assert!(result.is_ok());
     // Get services from did document.
-    let (_, doc, _) = result.unwrap();
-    let doc = doc.unwrap();
-    let services = doc.service.unwrap();
+    let (_, attestor_doc, _) = result.unwrap();
+    let attestor_doc = attestor_doc.as_ref().unwrap();
+    let services = attestor_doc.service.as_ref().unwrap();
     println!("services: {:?}", services);
 
     // Part 1.1: Initiate attestation request (identity initiation).
@@ -95,6 +91,7 @@ async fn attestation_challenge_response() {
     // by the upstream in deployment using `trustchain-cli`
     let path = std::env::var(TRUSTCHAIN_DATA).unwrap();
     let attestation_requests_path = PathBuf::from(path).join("attestation_requests");
+
     // For the test, there should be only one attestation request (subdirectory).
     let paths = fs::read_dir(attestation_requests_path).unwrap();
     let request_path: PathBuf = paths.map(|path| path.unwrap().path()).collect();
@@ -119,16 +116,38 @@ async fn attestation_challenge_response() {
     assert_eq!(expected_operator_name, operator_name);
     // Present identity challenge payload.
     let temp_p_key = identity_initiation.clone().temp_p_key.unwrap();
-    let identity_challenge = present_identity_challenge(&attestor_did, &temp_p_key).unwrap();
-    let payload = identity_challenge
+    let identity_challenge_attestor =
+        present_identity_challenge(&attestor_did, &temp_p_key).unwrap();
+    let payload = identity_challenge_attestor
         .identity_challenge_signature
         .as_ref()
         .unwrap();
 
-    // Check update key as expected
-    // identity_challenge
-    // Check none nonce as expected
-    // assert!(identity_challenge_nonce.is_some());
+    // // Write payload
+    // std::fs::write(
+    //     request_path.join("identity_challenge_signature.json"),
+    //     payload,
+    // )
+    // .unwrap();
+
+    // TODO: remove as  only need payload
+    // Write payload as downstream (this step would done manually or by GUI) for use in subsequent
+    // response. However, as secret key for decrypting response in part 1.3 is required, serialise
+    // full struct instead.
+    identity_challenge_attestor
+        .elementwise_serialize(&request_path)
+        .unwrap();
+
+    // println!("result: {:?}", result);
+
+    // Part 1.3: Downstream responds to challenge
     // |------------| requester |------------|
-    // TODO: identity response.
+    let public_keys = extract_keys(&attestor_doc);
+    let attestor_public_key_ssi = public_keys.first().unwrap();
+    let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
+
+    // Check nonce component is captured with the response being Ok
+    let result = identity_response(&request_path, services, attestor_public_key).await;
+    println!("result: {:?}", result);
+    // Pat
 }

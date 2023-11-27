@@ -437,7 +437,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // service endpoint
                     let services = doc.service.unwrap();
                     println!("Path: {:?}", path);
-                    identity_response(path, services, public_key).await?;
+                    let identity_challenge_response = identity_response(&path, &services, public_key).await?;
+                    // serialise struct
+                    identity_challenge_response.elementwise_serialize(&path)?;
                 }
                 _ => panic!("Unrecognised CR identity subcommand."),
             },
