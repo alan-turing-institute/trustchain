@@ -53,3 +53,4 @@ is_empty = "*"
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"
+mockall = "0.11.4"

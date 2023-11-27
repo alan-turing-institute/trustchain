@@ -723,6 +723,7 @@ pub fn matching_endpoint(
 ) -> Result<String, TrustchainCRError> {
     let mut endpoints = Vec::new();
     for service in services {
+        println!("service id: {}", service.id);
         if service.id.contains(fragment) {
             match &service.service_endpoint {
                 Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {

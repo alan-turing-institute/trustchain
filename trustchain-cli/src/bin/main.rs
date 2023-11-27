@@ -154,6 +154,7 @@ fn cli() -> Command {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
     let endpoint = cli_config().ion_endpoint.to_address();
+    let root_event_time: u32 = cli_config().root_event_time;
     let verifier = IONVerifier::new(get_ion_resolver(&endpoint));
     let resolver = verifier.resolver();
     let mut context_loader = ContextLoader::default();
@@ -339,8 +340,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(("cr", sub_matches)) => match sub_matches.subcommand() {
             Some(("identity", sub_matches)) => match sub_matches.subcommand() {
                 Some(("initiate", sub_matches)) => {
-                    // resolve DID and extract endpoint
+                    // verify DID before resolving and extracting endpoint
                     let did = sub_matches.get_one::<String>("did").unwrap();
+                    let _result = verifier.verify(did, root_event_time.into()).await?;
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let services = doc.unwrap().service;
                     println!("Services: {:?}", services);
@@ -451,6 +453,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !path.exists() {
                         panic!("Provided attestation request not found. Path does not exist."); 
                     }
+
                     
                     // resolve DID and generate challenge
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;

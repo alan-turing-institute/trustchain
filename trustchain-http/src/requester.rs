@@ -52,8 +52,9 @@ pub async fn initiate_identity_challenge(
 
     // get endpoint and uri
     let url_path = "/did/attestor/identity/initiate";
-    let endpoint = matching_endpoint(services, "AttestationEndpoint").unwrap();
+    let endpoint = matching_endpoint(services, "TrustchainAttestation").unwrap();
     let uri = format!("{}{}", endpoint, url_path);
+    println!("URI: {}", uri);
 
     // make POST request to endpoint
     let client = reqwest::Client::new();

@@ -97,7 +97,7 @@ impl TrustchainRouter {
                     get(root::TrustchainRootHTTPHandler::get_block_timestamp),
                 )
                 .route(
-                    "/did/attestor/identity/initiate/",
+                    "/did/attestor/identity/initiate",
                     post(attestor::TrustchainAttestorHTTPHandler::post_identity_initiation),
                 )
                 .route(
