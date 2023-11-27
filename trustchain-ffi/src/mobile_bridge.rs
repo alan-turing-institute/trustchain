@@ -85,6 +85,32 @@ fn wire_vc_verify_credential_impl(
         },
     )
 }
+fn wire_vc_redact_impl(
+    port_: MessagePort,
+    original_credential: impl Wire2Api<String> + UnwindSafe,
+    credential_subject_mask: impl Wire2Api<String> + UnwindSafe,
+    opts: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "vc_redact",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_original_credential = original_credential.wire2api();
+            let api_credential_subject_mask = credential_subject_mask.wire2api();
+            let api_opts = opts.wire2api();
+            move |task_callback| {
+                vc_redact(
+                    api_original_credential,
+                    api_credential_subject_mask,
+                    api_opts,
+                )
+            }
+        },
+    )
+}
 fn wire_vp_issue_presentation_impl(
     port_: MessagePort,
     presentation: impl Wire2Api<String> + UnwindSafe,
