@@ -27,8 +27,8 @@ use crate::{
 /// It prompts the user to provide the organization name and operator name, which are included in the POST request
 /// to the endpoint specified in the attestor's DID document.
 pub async fn initiate_identity_challenge(
-    org_name: String,
-    op_name: String,
+    org_name: &str,
+    op_name: &str,
     services: &Vec<Service>,
 ) -> Result<(), TrustchainCRError> {
     // generate temp key
@@ -41,8 +41,8 @@ pub async fn initiate_identity_challenge(
 
     // make identity_cr_initiation struct
     let requester = RequesterDetails {
-        requester_org: org_name,
-        operator_name: op_name,
+        requester_org: org_name.to_owned(),
+        operator_name: op_name.to_owned(),
     };
     let mut identity_cr_initiation = IdentityCRInitiation {
         temp_s_key: None,

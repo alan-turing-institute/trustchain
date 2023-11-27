@@ -364,8 +364,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Operator name: {}", op_name);
                     // initiate identity challenge
                     let result = initiate_identity_challenge(
-                        org_name.trim().to_string(),
-                        op_name.trim().to_string(),
+                        org_name.trim(),
+                        op_name.trim(),
                         &services.unwrap(),
                     )
                     .await?;

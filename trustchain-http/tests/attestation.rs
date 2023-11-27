@@ -3,6 +3,7 @@ use rand::rngs::mock;
 use trustchain_core::verifier::Verifier;
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_http::attestation_utils::{ElementwiseSerializeDeserialize, IdentityCRInitiation};
+use trustchain_http::attestor::present_identity_challenge;
 use trustchain_http::requester::initiate_identity_challenge;
 /// Integration test for attestation challenge-response process.
 use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
@@ -57,8 +58,11 @@ pub trait AttestationUtils {
 #[tokio::test]
 #[ignore]
 async fn attestation_challenge_response() {
+    // Set-up
+
     // init_http();
     init();
+
     // |------------| requester |------------|
     // Use ROOT_PLUS_1 as attestor. Run server on localhost:8081.
     let attestor_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
@@ -82,12 +86,8 @@ async fn attestation_challenge_response() {
     let expected_org_name = String::from("My Org");
     let expected_operator_name = String::from("Some Operator");
 
-    let result = initiate_identity_challenge(
-        expected_org_name.clone(),
-        expected_operator_name.clone(),
-        &services,
-    )
-    .await;
+    let result =
+        initiate_identity_challenge(&expected_org_name, &expected_operator_name, &services).await;
     assert!(result.is_ok());
 
     // |------------| attestor |------------|
@@ -115,9 +115,20 @@ async fn attestation_challenge_response() {
         .clone()
         .unwrap()
         .operator_name;
-    // assert_eq!(expected_org_name, org_name);
-    // TODO: present identity challenge.
+    assert_eq!(expected_org_name, org_name);
+    assert_eq!(expected_operator_name, operator_name);
+    // Present identity challenge payload.
+    let temp_p_key = identity_initiation.clone().temp_p_key.unwrap();
+    let identity_challenge = present_identity_challenge(&attestor_did, &temp_p_key).unwrap();
+    let payload = identity_challenge
+        .identity_challenge_signature
+        .as_ref()
+        .unwrap();
 
+    // Check update key as expected
+    // identity_challenge
+    // Check none nonce as expected
+    // assert!(identity_challenge_nonce.is_some());
     // |------------| requester |------------|
     // TODO: identity response.
 }

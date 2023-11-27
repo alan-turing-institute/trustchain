@@ -286,6 +286,7 @@ pub struct CRIdentityChallenge {
     pub update_p_key: Option<Jwk>,
     pub update_s_key: Option<Jwk>,
     pub identity_nonce: Option<Nonce>, // make own Nonce type
+    /// Encrypted identity challenge, signed by the attestor.
     pub identity_challenge_signature: Option<String>,
     pub identity_response_signature: Option<String>,
 }
