@@ -66,7 +66,10 @@ impl TrustchainAttestorHTTP for TrustchainAttestorHTTPHandler {
 }
 
 impl TrustchainAttestorHTTPHandler {
-    /// Processes initial attestation request and provided data.
+    /// Handles a POST request for identity initiation (part 1 attestation CR).
+    ///
+    /// This function saves the attestation initiation to a file. The directory to which the information
+    /// is saved is determined by the temp public key of the attestation initiation.
     pub async fn post_identity_initiation(
         Json(attestation_initiation): Json<IdentityCRInitiation>,
     ) -> impl IntoResponse {
@@ -95,7 +98,14 @@ impl TrustchainAttestorHTTPHandler {
         }
     }
 
-    /// Processes response to identity challenge.
+    /// Handles a POST request for identity response.
+    ///
+    /// This function receives the key ID of the temporary public key and the response JSON.
+    /// It verifies the response using the attestor's secret key (assuming attestor DID is also
+    /// the `server_did` in the config file) and decrypts it with temporary public key
+    /// received in previous initiation request.
+    /// If the verification is successful, it saves the response to the file and returns
+    /// status code OK along with information for the requester on how to proceed.
     pub async fn post_identity_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
@@ -153,7 +163,14 @@ impl TrustchainAttestorHTTPHandler {
         }
     }
 
-    /// Processes initiation of second part of attestation request (content challenge-response).
+    /// Handles a POST request for content initiation (part 2 attestation CR).
+    ///
+    /// This function receives the key ID of the temporary public key and the candidate DID.
+    /// It resolves the candidate DID and extracts the public signing keys from the document.
+    /// It generates a challenge nonce per key and encrypts it with the corresponding
+    /// signing key. It then signs (attestor's secret key, assuming attestor DID is also
+    /// the `server_did` in the config file) and encrypts (temporary public key)
+    /// the challenges and returns them to the requester.
     pub async fn post_content_initiation(
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
@@ -245,7 +262,13 @@ impl TrustchainAttestorHTTPHandler {
             }
         }
     }
-    /// Processes response to second part of attestation request (content challenge-response).
+    /// Handles a POST request for content response.
+    ///
+    /// This function receives the key ID of the temporary public key and the response JSON.
+    /// It verifies the response using the attestor's secret key (assuming attestor DID is also
+    /// the `server_did` in the config file) and decrypts it with temporary public key. It then
+    /// compares the received nonces with the expected nonces and if they match, it saves the
+    /// response to the file and returns status code OK.
     pub async fn post_content_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
@@ -303,7 +326,13 @@ impl TrustchainAttestorHTTPHandler {
     }
 }
 
-/// Generates challenge for first part of attestation request (identity challenge-response).
+/// Generates challenge for part 1 of attestation request (identity challenge-response).
+///
+/// This function generates a new key pair for the update key and nonce for the challenge.
+/// It then adds the update public key and nonce to a payload and signs it with the secret
+/// signing key from provided did and encrypts it with the provided temporary public key.
+/// It returns a ```CRIdentityChallenge``` struct containing the signed and encrypted challenge
+/// payload.
 pub fn present_identity_challenge(
     did: &str,
     temp_p_key: &Jwk,
@@ -345,7 +374,11 @@ pub fn present_identity_challenge(
     Ok(identity_challenge)
 }
 
-/// Verifies nonce for challenge-response.
+/// Verifies nonce for part 1 of attestation request (identity challenge-response).
+///
+/// This function receives a payload provided by requester and the path to the directory
+/// where information about the attestation request is stored. It deserialises the expected
+/// nonce from the file and compares it with the nonce from the payload.
 fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRError> {
     // get nonce from payload
     let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
