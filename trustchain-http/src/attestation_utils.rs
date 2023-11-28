@@ -90,6 +90,12 @@ impl From<JoseError> for TrustchainCRError {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct CustomResponse {
+    pub message: String,
+    pub data: Option<String>,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum CurrentCRState {
     NotStarted,

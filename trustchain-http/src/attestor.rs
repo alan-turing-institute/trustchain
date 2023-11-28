@@ -3,7 +3,7 @@ use crate::attestation_encryption_utils::{
     SignEncrypt,
 };
 use crate::attestation_utils::{
-    attestation_request_path, CRContentChallenge, CRIdentityChallenge,
+    attestation_request_path, CRContentChallenge, CRIdentityChallenge, CustomResponse,
     ElementwiseSerializeDeserialize, IdentityCRInitiation, Nonce, TrustchainCRError,
 };
 use crate::state::AppState;
@@ -18,7 +18,7 @@ use josekit::jwk::Jwk;
 use josekit::jwt::JwtPayload;
 use log::info;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::verifier::Verifier;
@@ -34,12 +34,6 @@ use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_ion::attestor::IONAttestor;
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
-
-#[derive(Serialize)]
-struct CustomResponse {
-    message: String,
-    data: Option<String>,
-}
 
 #[async_trait]
 pub trait TrustchainAttestorHTTP {}
@@ -164,8 +158,8 @@ impl TrustchainAttestorHTTPHandler {
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
-        // TODO: Do this properly (get endpoint from config).
         let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
         let candidate_doc = match result {
             Ok((_, doc, _)) => doc.unwrap(),
@@ -290,6 +284,8 @@ impl TrustchainAttestorHTTPHandler {
             serde_json::from_value(payload.claim("nonces").unwrap().clone()).unwrap();
         // verify nonces
         if nonces_map.eq(&expected_nonce) {
+            println!("nonces map: {:?}", nonces_map);
+            println!("expected nonces map: {:?}", expected_nonce);
             content_challenge.content_response_signature = Some(response.clone());
             content_challenge.elementwise_serialize(&path).unwrap();
             let response = CustomResponse {

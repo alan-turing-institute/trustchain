@@ -18,7 +18,7 @@ use trustchain_http::{
     attestation_utils::{
         ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError, CRState
     },
-    requester::{initiate_identity_challenge, identity_response, initiate_content_challenge, content_response},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
+    requester::{initiate_identity_challenge, identity_response, initiate_content_challenge},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
 };
 use trustchain_ion::{
     attest::attest_operation, create::create_operation, get_ion_resolver, verifier::IONVerifier,
@@ -132,14 +132,7 @@ fn cli() -> Command {
                             .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
                             .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
                         )
-                        .subcommand(
-                            Command::new("respond")
-                            .about("Respond to content challenge.")
-                            .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                            .arg(arg!(-d --did <ATTESTOR_DID>).required(true))
-                            .arg(arg!(-d --ddid <CANDIDATE_DOWNSTREAM_DID>).required(true))
-                            .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
-                        ))
+                    )
                 .subcommand(
                     Command::new("complete")
                         .about("Check if challenge-response for attestation request has been completed.")
@@ -437,7 +430,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // service endpoint
                     let services = doc.service.unwrap();
                     println!("Path: {:?}", path);
-                    let identity_challenge_response = identity_response(&path, &services, public_key).await?;
+                    let identity_challenge_response = identity_response(&path, &services, &public_key).await?;
                     // serialise struct
                     identity_challenge_response.elementwise_serialize(&path)?;
                 }
@@ -455,35 +448,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if !path.exists() {
                         panic!("Provided attestation request not found. Path does not exist."); 
                     }
-
                     
-                    // resolve DID and generate challenge
+                    // resolve DID, get services and attestor public key
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let doc = doc.unwrap();
-                    let services = doc.service.unwrap();
-                    let result = initiate_content_challenge(path, ddid, &services).await?;
-                    println!("Result: {:?}", result);
-                }
-                Some(("respond", sub_matches)) => {
-                    // get provided input arguments
-                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
-                    let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
-                    if !path.exists() {
-                        panic!("Provided attestation request not found. Path does not exist."); 
-                    }
-                    let did = sub_matches.get_one::<String>("did").unwrap();
-                    let ddid = sub_matches.get_one::<String>("did").unwrap();
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
-                    let doc = doc.unwrap();
-                    // extract attestor public key from did document
                     let public_keys = extract_keys(&doc);
                     let attestor_public_key_ssi = public_keys.first().unwrap();
                     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
-                    // service endpoint
-                    let services = doc.service.unwrap();
-                    let result = content_response(path, services, attestor_public_key, ddid).await?;
-                    println!("Result: {:?}", result);
+                    let services = &doc.service.unwrap();
+         
+                    let (content_initiation, content_challenge) = initiate_content_challenge(&path, ddid, &services, &attestor_public_key).await?;
+                    content_initiation.elementwise_serialize(&path)?;
+                    content_challenge.elementwise_serialize(&path)?;
                 }
                 _ => panic!("Unrecognised CR content subcommand."),},
             Some(("complete", sub_matches)) => {
