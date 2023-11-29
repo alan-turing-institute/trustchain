@@ -125,14 +125,12 @@ impl TrustchainAttestorHTTPHandler {
         let signing_key_ssi = signing_keys.first().unwrap();
         let signing_key = ssi_to_josekit_jwk(&signing_key_ssi);
         // get temp public key
-        let temp_key_path = path.join("temp_p_key.json");
-        let file = File::open(&temp_key_path).unwrap();
-        let reader = BufReader::new(file);
-        let temp_p_key_ssi = serde_json::from_reader(reader)
-            .map_err(|_| TrustchainCRError::FailedToDeserialize)
+        // TODO: use elementise_deserialize to extract temp_p_key
+        let identity_initiation = IdentityCRInitiation::new()
+            .elementwise_deserialize(&path)
+            .unwrap()
             .unwrap();
-        let temp_p_key = ssi_to_josekit_jwk(&temp_p_key_ssi).unwrap();
-
+        let temp_p_key = identity_initiation.temp_p_key.unwrap();
         // verify response
         let attestor = Entity {};
         let payload = attestor
@@ -282,7 +280,7 @@ impl TrustchainAttestorHTTPHandler {
             .elementwise_deserialize(&path)
             .unwrap()
             .unwrap();
-        let expected_nonce = content_challenge.content_nonce.clone().unwrap();
+        let expected_nonces = content_challenge.content_nonce.clone().unwrap();
         // get signing key from ION attestor
         let did = app_state.config.server_did.as_ref().unwrap().to_owned();
         let ion_attestor = IONAttestor::new(&did);
@@ -302,9 +300,9 @@ impl TrustchainAttestorHTTPHandler {
         let nonces_map: HashMap<String, Nonce> =
             serde_json::from_value(payload.claim("nonces").unwrap().clone()).unwrap();
         // verify nonces
-        if nonces_map.eq(&expected_nonce) {
+        if nonces_map.eq(&expected_nonces) {
             println!("nonces map: {:?}", nonces_map);
-            println!("expected nonces map: {:?}", expected_nonce);
+            println!("expected nonces map: {:?}", expected_nonces);
             content_challenge.content_response_signature = Some(response.clone());
             content_challenge.elementwise_serialize(&path).unwrap();
             let response = CustomResponse {
@@ -341,7 +339,6 @@ pub fn present_identity_challenge(
         .map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
     let update_p_key = ssi_to_josekit_jwk(&update_p_key_ssi)
         .map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
-    // let update_p_key_string = serde_json::to_string_pretty(&update_p_key)?;
 
     let mut identity_challenge = IdentityCRChallenge {
         update_p_key: Some(update_p_key),
@@ -379,12 +376,11 @@ fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRE
     // get nonce from payload
     let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
     // deserialise expected nonce
-    let nonce_path = path.join("identity_nonce.json");
-    let file = File::open(&nonce_path).unwrap();
-    let reader = BufReader::new(file);
-    let expected_nonce: String =
-        serde_json::from_reader(reader).map_err(|_| TrustchainCRError::FailedToDeserialize)?;
-
+    let identity_challenge = IdentityCRChallenge::new()
+        .elementwise_deserialize(&path)
+        .unwrap()
+        .unwrap();
+    let expected_nonce = identity_challenge.identity_nonce.unwrap().to_string();
     if nonce != expected_nonce {
         return Err(TrustchainCRError::FailedToVerifyNonce);
     }
