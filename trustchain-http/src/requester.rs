@@ -11,15 +11,15 @@ use crate::{
         josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
     },
     attestation_utils::{
-        attestation_request_path, matching_endpoint, CRContentChallenge, CRIdentityChallenge,
-        ContentCRInitiation, ElementwiseSerializeDeserialize, IdentityCRInitiation,
+        attestation_request_path, matching_endpoint, ContentCRChallenge, ContentCRInitiation,
+        ElementwiseSerializeDeserialize, IdentityCRChallenge, IdentityCRInitiation,
         RequesterDetails,
     },
     attestation_utils::{CustomResponse, Nonce, TrustchainCRError},
     ATTESTATION_FRAGMENT,
 };
 
-/// Initiates the identity challenge-response process by sending a POST request to the attestor endpoint.
+/// Initiates part 1 attestation request (identity challenge-response).
 ///
 /// This function generates a temporary key to use as an identifier throughout the challenge-response process.
 /// It prompts the user to provide the organization name and operator name, which are included in the POST request
@@ -52,7 +52,6 @@ pub async fn initiate_identity_challenge(
     let url_path = "/did/attestor/identity/initiate";
     let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
     let uri = format!("{}{}", endpoint, url_path);
-    println!("URI: {}", uri);
 
     // make POST request to endpoint
     let client = reqwest::Client::new();
@@ -63,7 +62,6 @@ pub async fn initiate_identity_challenge(
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
 
-    println!("Status code: {}", result.status());
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToInitiateCR);
     }
@@ -79,18 +77,19 @@ pub async fn initiate_identity_challenge(
     Ok(())
 }
 
-/// Generates the response for the identity challenge-response process and makes a POST request to the attestor endpoint.
+/// Generates and posts response for part 1 of attesation process (identity challenge-response).
 ///
-/// This function first decrypts and verifies the challenge received from attestor to extract challenge nonce.
-/// It then signs the nonce with the requester's temporary secret key and encrypts it with the attestor's public key,
-/// before posting the response to the attestor's endpoint, using the provided url path.  
+/// This function first decrypts and verifies the challenge received from attestor to extract
+/// challenge nonce. It then signs the nonce with the requester's temporary secret key and
+/// encrypts it with the attestor's public key, before posting the response to the attestor.
+/// If post request is successful, the updated ```CRIdentityChallenge``` is returned.
 pub async fn identity_response(
     path: &PathBuf,
     services: &[Service],
     attestor_p_key: &Jwk,
-) -> Result<CRIdentityChallenge, TrustchainCRError> {
+) -> Result<IdentityCRChallenge, TrustchainCRError> {
     // deserialise challenge struct from file
-    let result = CRIdentityChallenge::new().elementwise_deserialize(path);
+    let result = IdentityCRChallenge::new().elementwise_deserialize(path);
     let mut identity_challenge = result.unwrap().unwrap();
     let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(path);
     let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
@@ -112,16 +111,11 @@ pub async fn identity_response(
     let signed_encrypted_response = requester
         .sign_and_encrypt_claim(&decrypted_verified_payload, &temp_s_key, &attestor_p_key)
         .unwrap();
-    println!(
-        "Signed and encrypted response: {:?}",
-        signed_encrypted_response
-    );
     let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
     // get uri for POST request response
     let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
     let url_path = "/did/attestor/identity/respond";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
-    println!("URI identity response: {}", uri);
     // POST response
     let client = reqwest::Client::new();
     let result = client
@@ -130,7 +124,6 @@ pub async fn identity_response(
         .send()
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
-    println!("Status code: {}", result.status());
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToRespond(result));
     }
@@ -149,16 +142,20 @@ pub async fn identity_response(
     Ok(identity_challenge)
 }
 
-/// Initiates the content challenge-response process by sending a POST request to the attestor endpoint.
+/// Initiates part 2 attestation request (content challenge-response).
 ///
-/// This function makes a POST request with the candidate DID (dDID) to the attestor endpoint, using the url path received during
-/// the identity challenge-response.
+/// This function posts the to be attested to candidate DID (dDID) to the attestor's endpoint.
+/// If the post request is successful, the response body contains the signed and encrypted
+/// challenge payload with a hashmap that contains an encrypted nonce per signing key.
+/// The response to the challenge is generated and posted to the attestor's endpoint.
+/// If the post request and the verification of the response are successful, the
+/// ```ContentCRInitiation``` and ```CRContentChallenge``` structs are returned.
 pub async fn initiate_content_challenge(
     path: &PathBuf,
     ddid: &str,
     services: &[Service],
     attestor_p_key: &Jwk,
-) -> Result<(ContentCRInitiation, CRContentChallenge), TrustchainCRError> {
+) -> Result<(ContentCRInitiation, ContentCRChallenge), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
         .elementwise_deserialize(&path)
@@ -174,7 +171,6 @@ pub async fn initiate_content_challenge(
     let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
     let url_path = "/did/attestor/content/initiate";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
-    println!("URI content challenge: {}", uri);
     // make POST request to endpoint
     let client = reqwest::Client::new();
     let result = client
@@ -188,34 +184,28 @@ pub async fn initiate_content_challenge(
         return Err(TrustchainCRError::FailedToRespond(result));
     }
 
-    // TODO: extract challenge from response if OK. Then call response function.
-    // let response_json = response
-    //     .json::<serde_json::Value>()
-    //     .await
-    //     .map_err(|err| TrustchainCRError::Reqwest(err))?;
     let response_body: CustomResponse = result
         .json()
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
-    let data = response_body.data.unwrap();
+    let signed_encrypted_challenge = response_body.data.unwrap();
 
     // response
     let result = content_response(
         &path,
-        &data.to_string(),
+        &signed_encrypted_challenge.to_string(),
         services,
         attestor_p_key.clone(),
         &ddid.to_owned(),
     )
     .await;
+    // TODO: better error handling
     let (nonces, response) = result.unwrap();
-    let content_challenge = CRContentChallenge {
+    let content_challenge = ContentCRChallenge {
         content_nonce: Some(nonces),
-        content_challenge_signature: Some(data.to_string()),
+        content_challenge_signature: Some(signed_encrypted_challenge.to_string()),
         content_response_signature: Some(response),
     };
-    // content_cr_initiation.elementwise_serialize(&path)?;
-    // // TODO: return initiation struct and challenge struct
     Ok((content_cr_initiation, content_challenge))
 }
 
@@ -223,9 +213,11 @@ pub async fn initiate_content_challenge(
 /// the attestor endpoint.
 ///
 /// This function first decrypts (temporary secret key) and verifies (attestor's public key) the
-/// challenge received from attestor to extract challenge nonces. It then decrypts each nonce with the corresponding
-/// signing key from the requestor's candidate DID (dDID) document, before posting the signed (temporary secret key)
-/// and encrypted (attestor's public key) response to the attestor's endpoint, using the provided url path.
+/// challenge received from attestor to extract challenge nonces. It then decrypts each nonce with
+/// the corresponding signing key from the requestor's candidate DID (dDID) document, before
+/// posting the signed (temporary secret key) and encrypted (attestor's public key) response to
+/// the attestor's endpoint.
+/// If successful, the nonces and the (signed and encrypted) response are returned.
 pub async fn content_response(
     path: &PathBuf,
     challenge: &str,

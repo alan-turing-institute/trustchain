@@ -87,6 +87,6 @@ pub const TEST_SIGNING_KEY_2: &str = r##"
  }
 "##;
 
-pub const TEST_UPSTREAM_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JEV4WMgoJekTa5RQD5M92P1oLjdpMNYETQ3nbtKSnLQ","y":"dRfg_5i5wcMg1lxAffQORHpzgtm2yEIqgJoUk5ZklvI","d":"DZDZd9bxopCv2YJelMpQm_BJ0awvzpT6xWdWbaQlIJI"}"#;
+pub const TEST_ATTESTOR_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JEV4WMgoJekTa5RQD5M92P1oLjdpMNYETQ3nbtKSnLQ","y":"dRfg_5i5wcMg1lxAffQORHpzgtm2yEIqgJoUk5ZklvI","d":"DZDZd9bxopCv2YJelMpQm_BJ0awvzpT6xWdWbaQlIJI"}"#;
 pub const TEST_TEMP_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U","y":"z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg","d":"CfdUwQ-CcBQkWpIDPjhSJAq2SCg6hAGdcvLmCj0aA-c"}"#;
 pub const TEST_UPDATE_KEY: &str = r#"{"kty":"EC","crv":"secp256k1","x":"AB1b_4-XSem0uiPGGuW_hf_AuPArukMuD2S95ypGDSE","y":"suvBnCbhicPdYZeqgxJfPFmiNHGYDjPiW8XkYHxwgBU"}"#;

@@ -107,7 +107,7 @@ pub enum CurrentCRState {
     ContentResponseComplete,
 }
 
-// pub struct Nonce<const N: usize>([u8; N]);
+// TODO: Impose additional constraints on the nonce type.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Nonce(String);
 
@@ -290,7 +290,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, IsEmpty)]
-pub struct CRIdentityChallenge {
+pub struct IdentityCRChallenge {
     pub update_p_key: Option<Jwk>,
     pub update_s_key: Option<Jwk>,
     pub identity_nonce: Option<Nonce>, // make own Nonce type
@@ -299,7 +299,7 @@ pub struct CRIdentityChallenge {
     pub identity_response_signature: Option<String>,
 }
 
-impl CRIdentityChallenge {
+impl IdentityCRChallenge {
     pub fn new() -> Self {
         Self {
             update_p_key: None,
@@ -321,12 +321,12 @@ impl CRIdentityChallenge {
     }
 }
 
-impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
+impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
     /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
-    ) -> Result<Option<CRIdentityChallenge>, TrustchainCRError> {
+    ) -> Result<Option<IdentityCRChallenge>, TrustchainCRError> {
         // update public key
         let mut full_path = path.join("update_p_key.json");
         self.update_p_key = match File::open(&full_path) {
@@ -384,9 +384,9 @@ impl ElementwiseSerializeDeserialize for CRIdentityChallenge {
     }
 }
 
-impl TryFrom<&CRIdentityChallenge> for JwtPayload {
+impl TryFrom<&IdentityCRChallenge> for JwtPayload {
     type Error = TrustchainCRError;
-    fn try_from(value: &CRIdentityChallenge) -> Result<Self, Self::Error> {
+    fn try_from(value: &IdentityCRChallenge) -> Result<Self, Self::Error> {
         let mut payload = JwtPayload::new();
         payload.set_claim(
             "identity_nonce",
@@ -404,10 +404,10 @@ impl TryFrom<&CRIdentityChallenge> for JwtPayload {
     }
 }
 
-impl TryFrom<&JwtPayload> for CRIdentityChallenge {
+impl TryFrom<&JwtPayload> for IdentityCRChallenge {
     type Error = TrustchainCRError;
     fn try_from(value: &JwtPayload) -> Result<Self, Self::Error> {
-        let mut challenge = CRIdentityChallenge {
+        let mut challenge = IdentityCRChallenge {
             update_p_key: None,
             update_s_key: None,
             identity_nonce: None,
@@ -475,13 +475,13 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
 }
 
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
-pub struct CRContentChallenge {
+pub struct ContentCRChallenge {
     pub content_nonce: Option<HashMap<String, Nonce>>,
     pub content_challenge_signature: Option<String>,
     pub content_response_signature: Option<String>,
 }
 
-impl CRContentChallenge {
+impl ContentCRChallenge {
     pub fn new() -> Self {
         Self {
             content_nonce: None,
@@ -499,12 +499,12 @@ impl CRContentChallenge {
     }
 }
 
-impl ElementwiseSerializeDeserialize for CRContentChallenge {
+impl ElementwiseSerializeDeserialize for ContentCRChallenge {
     /// Deserialize each field of the struct from a file. Fields are optional. If no files are found, return None.
     fn elementwise_deserialize(
         mut self,
         path: &PathBuf,
-    ) -> Result<Option<CRContentChallenge>, TrustchainCRError> {
+    ) -> Result<Option<ContentCRChallenge>, TrustchainCRError> {
         // content nonce(s)
         let mut full_path = path.join("content_nonce.json");
         self.content_nonce = match File::open(&full_path) {
@@ -555,9 +555,9 @@ impl ElementwiseSerializeDeserialize for CRContentChallenge {
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
 pub struct CRState {
     pub identity_cr_initiation: Option<IdentityCRInitiation>,
-    pub identity_challenge_response: Option<CRIdentityChallenge>,
+    pub identity_challenge_response: Option<IdentityCRChallenge>,
     pub content_cr_initiation: Option<ContentCRInitiation>,
-    pub content_challenge_response: Option<CRContentChallenge>,
+    pub content_challenge_response: Option<ContentCRChallenge>,
 }
 
 impl CRState {
@@ -689,10 +689,10 @@ impl ElementwiseSerializeDeserialize for CRState {
     ) -> Result<Option<CRState>, TrustchainCRError> {
         self.identity_cr_initiation = IdentityCRInitiation::new().elementwise_deserialize(path)?;
         self.identity_challenge_response =
-            CRIdentityChallenge::new().elementwise_deserialize(path)?;
+            IdentityCRChallenge::new().elementwise_deserialize(path)?;
         self.content_cr_initiation = ContentCRInitiation::new().elementwise_deserialize(path)?;
         self.content_challenge_response =
-            CRContentChallenge::new().elementwise_deserialize(path)?;
+            ContentCRChallenge::new().elementwise_deserialize(path)?;
         Ok(Some(self))
     }
 }
@@ -785,7 +785,7 @@ mod tests {
         };
 
         // identity challenge
-        let identity_challenge = CRIdentityChallenge {
+        let identity_challenge = IdentityCRChallenge {
             update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),
             update_s_key: None,
             identity_nonce: Some(Nonce::new()),
@@ -810,7 +810,7 @@ mod tests {
                     acc.insert(String::from(key_id), Nonce::new());
                     acc
                 });
-        let content_challenge_response = CRContentChallenge {
+        let content_challenge_response = ContentCRChallenge {
             content_nonce: Some(nonces),
             content_challenge_signature: Some(String::from(
                 "some content challenge signature string",
@@ -889,7 +889,7 @@ mod tests {
 
     #[test]
     fn test_elementwise_deserialize_identity_challenge() {
-        let identity_challenge = CRIdentityChallenge::new();
+        let identity_challenge = IdentityCRChallenge::new();
         let temp_path = tempdir().unwrap().into_path();
 
         // Test case 1: None of the json files exist
@@ -903,7 +903,7 @@ mod tests {
         let update_p_key_file = File::create(&update_p_key_path).unwrap();
         let update_p_key: Jwk = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
         serde_json::to_writer(update_p_key_file, &update_p_key).unwrap();
-        let identity_challenge = CRIdentityChallenge::new();
+        let identity_challenge = IdentityCRChallenge::new();
         let result = identity_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_ok());
         let identity_challenge = result.unwrap().unwrap();
@@ -916,7 +916,7 @@ mod tests {
         let identity_nonce_path = temp_path.join("identity_nonce.json");
         let identity_nonce_file = File::create(&identity_nonce_path).unwrap();
         serde_json::to_writer(identity_nonce_file, &42).unwrap();
-        let identity_challenge = CRIdentityChallenge::new();
+        let identity_challenge = IdentityCRChallenge::new();
         let result = identity_challenge.elementwise_deserialize(&temp_path);
         assert!(result.is_err());
         println!("Error: {:?}", result.unwrap_err());
@@ -924,7 +924,7 @@ mod tests {
 
     #[test]
     fn test_elementwise_deserialize_content_challenge() {
-        let content_challenge = CRContentChallenge::new();
+        let content_challenge = ContentCRChallenge::new();
         let temp_path = tempdir().unwrap().into_path();
 
         // Test case 1: None of the json files exist
@@ -933,7 +933,7 @@ mod tests {
         assert!(result.unwrap().is_none());
 
         // Test case 2: Only one json file exists and can be deserialized
-        let content_challenge = CRContentChallenge::new();
+        let content_challenge = ContentCRChallenge::new();
         let content_nonce_path = temp_path.join("content_nonce.json");
         let content_nonce_file = File::create(&content_nonce_path).unwrap();
         let mut nonces_map: HashMap<&str, Nonce> = HashMap::new();
@@ -969,7 +969,7 @@ mod tests {
             }),
         };
         let _ = identity_initiatiation.elementwise_serialize(&path);
-        let identity_challenge = CRIdentityChallenge {
+        let identity_challenge = IdentityCRChallenge {
             update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
             update_s_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
             identity_nonce: Some(Nonce::new()),
@@ -1079,7 +1079,7 @@ mod tests {
                 operator_name: String::from("John Doe"),
             }),
         });
-        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+        cr_state.identity_challenge_response = Some(IdentityCRChallenge {
             update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
             update_s_key: None,
             identity_nonce: Some(Nonce::new()),
@@ -1090,7 +1090,7 @@ mod tests {
         assert_eq!(result.unwrap(), CurrentCRState::IdentityChallengeComplete);
 
         // Test case 4: Identity challenge response complete, content challenge initiated
-        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+        cr_state.identity_challenge_response = Some(IdentityCRChallenge {
             // Same key used here for testing purposes
             update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
             update_s_key: None,
@@ -1107,7 +1107,7 @@ mod tests {
         assert_eq!(result.unwrap(), CurrentCRState::ContentCRInitiated);
 
         // Test case 5: Content challenge-response complete
-        cr_state.content_challenge_response = Some(CRContentChallenge {
+        cr_state.content_challenge_response = Some(ContentCRChallenge {
             content_nonce: Some(HashMap::new()),
             content_challenge_signature: Some(String::from(
                 "some content challenge signature string",
@@ -1122,7 +1122,7 @@ mod tests {
     #[test]
     fn test_check_cr_status_inconsistent_order() {
         let mut cr_state = CRState::new();
-        cr_state.identity_challenge_response = Some(CRIdentityChallenge {
+        cr_state.identity_challenge_response = Some(IdentityCRChallenge {
             update_s_key: None,
             update_p_key: Some(serde_json::from_str(TEST_UPDATE_KEY).unwrap()),
             identity_nonce: Some(Nonce::new()),

@@ -3,8 +3,8 @@ use crate::attestation_encryption_utils::{
     SignEncrypt,
 };
 use crate::attestation_utils::{
-    attestation_request_path, CRContentChallenge, CRIdentityChallenge, CustomResponse,
-    ElementwiseSerializeDeserialize, IdentityCRInitiation, Nonce, TrustchainCRError,
+    attestation_request_path, ContentCRChallenge, CustomResponse, ElementwiseSerializeDeserialize,
+    IdentityCRChallenge, IdentityCRInitiation, Nonce, TrustchainCRError,
 };
 use crate::state::AppState;
 use async_trait::async_trait;
@@ -118,7 +118,7 @@ impl TrustchainAttestorHTTPHandler {
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
-        let mut identity_challenge = CRIdentityChallenge::new()
+        let mut identity_challenge = IdentityCRChallenge::new()
             .elementwise_deserialize(&path)
             .unwrap()
             .unwrap();
@@ -241,7 +241,7 @@ impl TrustchainAttestorHTTPHandler {
 
         match signed_encrypted_challenges {
             Ok(signed_encrypted_challenges) => {
-                let content_challenge = CRContentChallenge {
+                let content_challenge = ContentCRChallenge {
                     content_nonce: Some(nonces),
                     content_challenge_signature: Some(signed_encrypted_challenges.clone()),
                     content_response_signature: None,
@@ -282,7 +282,7 @@ impl TrustchainAttestorHTTPHandler {
             .elementwise_deserialize(&path)
             .unwrap()
             .unwrap();
-        let mut content_challenge = CRContentChallenge::new()
+        let mut content_challenge = ContentCRChallenge::new()
             .elementwise_deserialize(&path)
             .unwrap()
             .unwrap();
@@ -336,7 +336,7 @@ impl TrustchainAttestorHTTPHandler {
 pub fn present_identity_challenge(
     did: &str,
     temp_p_key: &Jwk,
-) -> Result<CRIdentityChallenge, TrustchainCRError> {
+) -> Result<IdentityCRChallenge, TrustchainCRError> {
     // generate nonce and update key
     let nonce = Nonce::new();
     let update_s_key_ssi = generate_key();
@@ -347,7 +347,7 @@ pub fn present_identity_challenge(
         .map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
     // let update_p_key_string = serde_json::to_string_pretty(&update_p_key)?;
 
-    let mut identity_challenge = CRIdentityChallenge {
+    let mut identity_challenge = IdentityCRChallenge {
         update_p_key: Some(update_p_key),
         update_s_key: Some(update_s_key),
         identity_nonce: Some(nonce),
@@ -439,7 +439,7 @@ mod tests {
     fn test_verify_nonce() {
         let temp_path = tempdir().unwrap().into_path();
         let expected_nonce = Nonce::from(String::from("test_nonce"));
-        let identity_challenge = CRIdentityChallenge {
+        let identity_challenge = IdentityCRChallenge {
             update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),
             update_s_key: None,
             identity_nonce: Some(expected_nonce.clone()),
