@@ -1007,7 +1007,7 @@ mod tests {
     fn test_matching_endpoint() {
         let services = vec![
             Service {
-                id: String::from("did:example:123456789abcdefghi#service-1"),
+                id: String::from("#service-1"),
                 service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
                     "https://example.com/endpoint-1",
                 )))),
@@ -1015,7 +1015,7 @@ mod tests {
                 property_set: None,
             },
             Service {
-                id: String::from("did:example:123456789abcdefghi#service-2"),
+                id: String::from("#service-2"),
                 service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
                     "https://example.com/endpoint-2",
                 )))),
@@ -1023,15 +1023,18 @@ mod tests {
                 property_set: None,
             },
         ];
-        let result = matching_endpoint(&services, "service-1");
+        let result = matching_endpoint(&services, "#service-1");
         assert_eq!(result.unwrap(), "https://example.com/endpoint-1");
+        let result = matching_endpoint(&services, "service-1");
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_matching_endpoint_multiple_endpoints_found() {
+        // Test case: multiple endpoints found should throw error
         let services = vec![
             Service {
-                id: String::from("did:example:123456789abcdefghi#service-1"),
+                id: String::from("#service-1"),
                 service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
                     "https://example.com/endpoint-1",
                 )))),
@@ -1039,7 +1042,7 @@ mod tests {
                 property_set: None,
             },
             Service {
-                id: String::from("did:example:123456789abcdefghi#service-1"),
+                id: String::from("#service-1"),
                 service_endpoint: Some(OneOrMany::One(ServiceEndpoint::URI(String::from(
                     "https://example.com/endpoint-2",
                 )))),
@@ -1047,7 +1050,7 @@ mod tests {
                 property_set: None,
             },
         ];
-        let result = matching_endpoint(&services, "service-1");
+        let result = matching_endpoint(&services, "#service-1");
         assert!(result.is_err());
     }
 

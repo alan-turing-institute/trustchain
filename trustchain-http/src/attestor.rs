@@ -402,7 +402,6 @@ mod tests {
     use crate::data::TEST_TEMP_KEY;
 
     // Attestor integration tests
-    // TODO: make test better
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_initiation() {
@@ -419,7 +418,7 @@ mod tests {
         let initiation_json = serde_json::to_string_pretty(&attestation_initiation).unwrap();
         println!("Attestation initiation: {:?}", initiation_json);
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
-        let uri = "/did/attestor/initiate".to_string();
+        let uri = "/did/attestor/identity/initiate".to_string();
         let client = TestClient::new(app);
 
         let response = client.post(&uri).json(&attestation_initiation).send().await;
