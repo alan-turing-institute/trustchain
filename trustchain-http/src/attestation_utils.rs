@@ -10,7 +10,6 @@ use is_empty::IsEmpty;
 use josekit::JoseError;
 use josekit::{jwk::Jwk, jwt::JwtPayload};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use reqwest::Response;
 use serde::{Deserialize, Serialize};
 use serde_json::{to_string_pretty as to_json, Value};
 use serde_with::skip_serializing_none;

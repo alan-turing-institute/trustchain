@@ -9,16 +9,12 @@ use crate::attestation_utils::{
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::Path;
-use axum::{
-    response::{Html, IntoResponse},
-    Json,
-};
+use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
 use josekit::jwk::Jwk;
 use josekit::jwt::JwtPayload;
 use log::info;
 
-use serde::{Deserialize, Serialize};
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::verifier::Verifier;
