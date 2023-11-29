@@ -171,8 +171,8 @@ async fn attestation_challenge_response() {
     // The attestor decrypts the response and verifies the signature. It then compares the received
     // hashmap of nonces with the one sent to requester.
     // The entire process is automated and is kicked off with the content CR initiation request.
-    let requester_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-    // let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
+    // let requester_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+    let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
     let result = initiate_content_challenge(
         &request_path,
         requester_did,

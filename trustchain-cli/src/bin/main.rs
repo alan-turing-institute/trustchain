@@ -13,12 +13,16 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA, utils:: extract_keys};
+use trustchain_core::{
+    utils::extract_keys, vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA,
+};
 use trustchain_http::{
+    attestation_encryption_utils::ssi_to_josekit_jwk,
     attestation_utils::{
-        ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError, CRState
+        CRState, ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError,
     },
-    requester::{initiate_identity_challenge, identity_response, initiate_content_challenge},  attestation_encryption_utils::ssi_to_josekit_jwk, attestor::present_identity_challenge,
+    attestor::present_identity_challenge,
+    requester::{identity_response, initiate_content_challenge, initiate_identity_challenge},
 };
 use trustchain_ion::{
     attest::attest_operation,
@@ -91,7 +95,7 @@ fn cli() -> Command {
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
-        .subcommand( 
+        .subcommand(
             Command::new("cr")
                 .about("Challenge-response functionality for attestation challenge response process (identity and content challenge-response).")
                 .subcommand_required(true)
@@ -143,7 +147,7 @@ fn cli() -> Command {
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-p --path <PATH_ATTESTATION_REQUEST>).required(true))
                 )
-                
+
             )
 }
 
@@ -353,7 +357,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let services = doc.unwrap().service;
                     println!("Services: {:?}", services);
-                    
+
                     // user promt for org name and operator name
                     println!("Please enter your organisation name: ");
                     let mut org_name = String::new();
@@ -380,20 +384,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("present", sub_matches)) => {
                     // get attestation request path from provided input
-                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA)
+                        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    let path = PathBuf::new()
+                        .join(trustchain_dir)
+                        .join("attestation_requests")
+                        .join(path_to_check);
                     if !path.exists() {
-                        panic!("Provided attestation request not found. Path does not exist."); 
+                        panic!("Provided attestation request not found. Path does not exist.");
                     }
                     let identity_initiation = IdentityCRInitiation::new()
                         .elementwise_deserialize(&path)
                         .unwrap();
-                    // Show requester information to user and ask for confirmation to proceed 
+                    // Show requester information to user and ask for confirmation to proceed
                     println!("---------------------------------");
                     println!("Requester information: ");
-                    println!("{:?}", identity_initiation.as_ref().unwrap().requester_details.as_ref().unwrap());
+                    println!(
+                        "{:?}",
+                        identity_initiation
+                            .as_ref()
+                            .unwrap()
+                            .requester_details
+                            .as_ref()
+                            .unwrap()
+                    );
                     println!("---------------------------------");
                     println!("Recognise this attestation request and want to proceed? (y/n)");
                     let mut prompt = String::new();
@@ -404,19 +420,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if prompt != "y" && prompt != "yes" {
                         println!("Aborting attestation request.");
                         return Ok(());
-                        
                     }
-                    
+
                     let temp_p_key = identity_initiation.unwrap().temp_p_key.unwrap();
 
                     // call function to present challenge
                     let identity_challenge = present_identity_challenge(&did, &temp_p_key)?;
 
                     // print signed and encrypted payload to terminal
-                    let payload = identity_challenge.identity_challenge_signature.as_ref().unwrap();
+                    let payload = identity_challenge
+                        .identity_challenge_signature
+                        .as_ref()
+                        .unwrap();
                     println!("---------------------------------");
-                    println!("Payload:"); 
-                    println!("{:?}", payload); 
+                    println!("Payload:");
+                    println!("{:?}", payload);
                     println!("Path: /did/attestor/identity/respond/<key_id>");
                     println!("---------------------------------");
                     println!("Please send the above payload and path to the requester via alternative channels.");
@@ -428,11 +446,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Some(("respond", sub_matches)) => {
                     // get attestation request path from provided input
-                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA)
+                        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    let path = PathBuf::new()
+                        .join(trustchain_dir)
+                        .join("attestation_requests")
+                        .join(path_to_check);
                     if !path.exists() {
-                        panic!("Provided attestation request not found. Path does not exist."); 
+                        panic!("Provided attestation request not found. Path does not exist.");
                     }
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
@@ -444,7 +466,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // service endpoint
                     let services = doc.service.unwrap();
                     println!("Path: {:?}", path);
-                    let identity_challenge_response = identity_response(&path, &services, &public_key).await?;
+                    let identity_challenge_response =
+                        identity_response(&path, &services, &public_key).await?;
                     // serialise struct
                     identity_challenge_response.elementwise_serialize(&path)?;
                 }
@@ -455,14 +478,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let ddid = sub_matches.get_one::<String>("ddid").unwrap();
                     let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                   
+
                     // check attestation request path
-                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
-                    let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
+                    let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA)
+                        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                    let path = PathBuf::new()
+                        .join(trustchain_dir)
+                        .join("attestation_requests")
+                        .join(path_to_check);
                     if !path.exists() {
-                        panic!("Provided attestation request not found. Path does not exist."); 
+                        panic!("Provided attestation request not found. Path does not exist.");
                     }
-                    
+
                     // resolve DID, get services and attestor public key
                     let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
                     let doc = doc.unwrap();
@@ -470,23 +497,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let attestor_public_key_ssi = public_keys.first().unwrap();
                     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
                     let services = &doc.service.unwrap();
-         
-                    let (content_initiation, content_challenge) = initiate_content_challenge(&path, ddid, &services, &attestor_public_key).await?;
+
+                    let (content_initiation, content_challenge) =
+                        initiate_content_challenge(&path, ddid, &services, &attestor_public_key)
+                            .await?;
                     content_initiation.elementwise_serialize(&path)?;
                     content_challenge.elementwise_serialize(&path)?;
                 }
-                _ => panic!("Unrecognised CR content subcommand."),},
+                _ => panic!("Unrecognised CR content subcommand."),
+            },
             Some(("complete", sub_matches)) => {
                 let path_to_check = sub_matches.get_one::<String>("path").unwrap();
-                let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?; 
-                let path = PathBuf::new().join(trustchain_dir).join("attestation_requests").join(path_to_check);
-                let cr_state = CRState::new().elementwise_deserialize(&path).unwrap().unwrap();
+                let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA)
+                    .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+                let path = PathBuf::new()
+                    .join(trustchain_dir)
+                    .join("attestation_requests")
+                    .join(path_to_check);
+                let cr_state = CRState::new()
+                    .elementwise_deserialize(&path)
+                    .unwrap()
+                    .unwrap();
                 let current_state = cr_state.check_cr_status().unwrap();
-                
-                println!("State of attestation challenge-response process: {:?}", current_state);
-            },
+
+                println!(
+                    "State of attestation challenge-response process: {:?}",
+                    current_state
+                );
+            }
             _ => panic!("Unrecognised CR subcommand."),
-        } 
+        },
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
