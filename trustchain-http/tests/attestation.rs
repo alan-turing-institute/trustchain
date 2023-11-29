@@ -8,61 +8,28 @@ use trustchain_http::requester::{
     identity_response, initiate_content_challenge, initiate_identity_challenge,
 };
 
+use trustchain_http::utils::init_http;
 use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
 // The root event time of DID documents used in integration test below.
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
-use hyper::Server;
 use mockall::automock;
 use std::fs;
-use std::{net::TcpListener, path::PathBuf};
-use tower::make::Shared;
+use std::path::PathBuf;
 use trustchain_core::utils::{extract_keys, init};
-use trustchain_http::{config::HTTPConfig, server::TrustchainRouter};
 
 #[automock]
 pub trait AttestationUtils {
     fn attestation_request_path(&self) -> String;
 }
-// TODO: fix so can be used for all HTTP tests
-/// Init for HTTP crate
-// static INIT_HTTP: Once = Once::new();
-// lazy_static! {
-//     static ref HANDLE =
-// }
-use tokio::task::JoinHandle;
-async fn start_server() -> JoinHandle<()> {
-    let listener = TcpListener::bind("127.0.0.1:8081").expect("Could not bind ephemeral socket");
-    let addr = listener.local_addr().unwrap();
-    let port = addr.port();
-    let http_config = HTTPConfig {
-        port,
-        server_did: Some("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_string()),
-        root_event_time: Some(ROOT_EVENT_TIME_1),
-        ..Default::default()
-    };
-    // Run server
-    tokio::spawn(async move {
-        let server = Server::from_tcp(listener).unwrap().serve(Shared::new(
-            TrustchainRouter::from(http_config).into_router(),
-        ));
-        server.await.expect("server error");
-    })
-}
-// use lazy_static::lazy_static;
-// use std::future::Future;
-// lazy_static! {
-//     pub static ref HANDLE: impl Future<Output = JoinHandle<()>> = start_server();
-// }
 
 #[tokio::test]
 #[ignore]
 async fn attestation_challenge_response() {
     // Set-up: init test paths, get upstream info
-    // init_http();
-    init();
-    start_server().await;
+    init_http();
+
     // |--------------------------------------------------------------|
     // |------------| Part 1: identity challenge-response |------------|
     // |--------------------------------------------------------------|
