@@ -24,6 +24,10 @@ pub struct HTTPConfig {
     pub host_display: String,
     /// Port for server
     pub port: u16,
+    /// ION host
+    pub ion_host: IpAddr,
+    /// ION port
+    pub ion_port: u16,
     /// Optional server DID if issuing or verifying
     pub server_did: Option<String>,
     /// Flag indicating whether server uses https
@@ -49,6 +53,8 @@ impl Default for HTTPConfig {
             host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
             host_display: DEFAULT_HOST.to_string(),
             port: DEFAULT_PORT,
+            ion_host: IpAddr::from_str(DEFAULT_HOST).unwrap(),
+            ion_port: 3000,
             server_did: None,
             https: false,
             https_path: None,
@@ -116,6 +122,8 @@ mod tests {
         host = "127.0.0.1"
         host_display = "127.0.0.1"
         port = 8081
+        ion_host = "127.0.0.1"
+        ion_port = 3000
         server_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
         https = false
 

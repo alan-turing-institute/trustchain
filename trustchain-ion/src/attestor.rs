@@ -11,6 +11,7 @@ use std::convert::TryFrom;
 use trustchain_core::holder::{Holder, HolderError};
 use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
@@ -52,6 +53,9 @@ impl IONAttestor {
                     if key_in_loop_id == key_id {
                         return Ok(key_in_loop);
                     }
+                }
+                if key_in_loop.thumbprint()? == key_id {
+                    return Ok(key_in_loop);
                 }
             }
             // If none of the keys has a matching key_id, the required key does not exist.
@@ -146,12 +150,12 @@ impl Attestor for IONAttestor {
 #[async_trait]
 impl Issuer for IONAttestor {
     // Attests to a given credential returning the credential with proof. The `@context` of the credential has linked-data fields strictly checked as part of proof generation.
-    async fn sign<T: DIDResolver>(
+    async fn sign(
         &self,
         credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         // Get the signing key.
@@ -161,8 +165,8 @@ impl Issuer for IONAttestor {
         let proof = credential
             .generate_proof(
                 &signing_key,
-                &linked_data_proof_options.unwrap_or(LinkedDataProofOptions::default()),
-                resolver,
+                &linked_data_proof_options.unwrap_or_default(),
+                resolver.as_did_resolver(),
                 context_loader,
             )
             .await?;
@@ -225,7 +229,7 @@ impl Holder for IONAttestor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::get_ion_resolver;
+    use crate::trustchain_resolver;
     use ssi::did::Document;
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
@@ -302,7 +306,7 @@ mod tests {
         init();
 
         // Resolver
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
 
         // Set-up keys and attestor
         let did = "did:example:test_attest_credential";
@@ -335,7 +339,7 @@ mod tests {
         let did = "did:ion:test:EiDMe2SFfJ_7eXVW7RF1ZHOkeu2M-Bre0ak2cXNBH0P-TQ";
 
         // Make resolver
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
 
         // 2. Load Attestor
         // Attestor
@@ -371,7 +375,7 @@ mod tests {
     #[tokio::test]
     async fn test_attest_presentation() {
         init();
-        let resolver = get_ion_resolver("http://localhost:3000/");
+        let resolver = trustchain_resolver("http://localhost:3000/");
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
         let issuer = IONAttestor::new(issuer_did);
@@ -436,8 +440,31 @@ mod tests {
 
         // With a non-matching key_id, expect KeyManagerError::FailedToLoadKey
         let actual_key_res = target.signing_key(Some("1"));
-        let expected_res: Result<JWK, KeyManagerError> = Err(KeyManagerError::FailedToLoadKey);
-        assert_eq!(actual_key_res, expected_res);
+        assert!(matches!(
+            actual_key_res,
+            Err(KeyManagerError::FailedToLoadKey)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn test_signing_key_with_thumbprint() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
+        let did = "did:example:test_signing_with_thumbrint_key";
+
+        // Load keys
+        let keys: Vec<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+        let expected_key = keys.last().unwrap().clone();
+
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
+
+        // With thumbprint passed, expect correct key returned.
+        let actual_key = target.signing_key(Some(&expected_key.thumbprint().unwrap()))?;
+        assert_eq!(expected_key, actual_key);
 
         Ok(())
     }

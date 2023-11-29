@@ -32,6 +32,8 @@ pub enum TrustchainHTTPError {
     CredentialDoesNotExist,
     #[error("No issuer available.")]
     NoCredentialIssuer,
+    #[error("Wrapped reqwest error: {0}")]
+    ReqwestError(reqwest::Error),
     #[error("Failed to verify credential.")]
     FailedToVerifyCredential,
     #[error("Invalid signature.")]
@@ -123,6 +125,10 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::NoCredentialIssuer => {
                 (StatusCode::BAD_REQUEST, err.to_string())
             }
+            TrustchainHTTPError::ReqwestError(err) => (
+                err.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+                err.to_string(),
+            ),
             ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
                 TrustchainRootError::NoUniqueRootEvent(_) => {
                     (StatusCode::BAD_REQUEST, err.to_string())

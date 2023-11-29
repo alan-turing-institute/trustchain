@@ -8,7 +8,7 @@ use trustchain_http::requester::{
     identity_response, initiate_content_challenge, initiate_identity_challenge,
 };
 
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
 // The root event time of DID documents used in integration test below.
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
@@ -70,8 +70,8 @@ async fn attestation_challenge_response() {
     // |------------| requester |------------|
     // Use ROOT_PLUS_1 as attestor. Run server on localhost:8081.
     let attestor_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-    let resolver = get_ion_resolver("http://localhost:8081/");
-    let verifier = IONVerifier::new(resolver);
+    let resolver = trustchain_resolver("http://localhost:8081/");
+    let verifier = TrustchainVerifier::new(resolver);
     let resolver = verifier.resolver();
     // Verify the attestor did to make sure we can trust the endpoint.
     let result = verifier.verify(attestor_did, ROOT_EVENT_TIME_1).await;
@@ -151,7 +151,7 @@ async fn attestation_challenge_response() {
     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
 
     // Check nonce component is captured with the response being Ok
-    let result = identity_response(&request_path, services, &attestor_public_key).await;
+    let result = identity_response(&request_path, &services, &attestor_public_key).await;
     assert!(result.is_ok());
 
     // |--------------------------------------------------------------|

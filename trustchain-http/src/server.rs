@@ -97,6 +97,13 @@ impl TrustchainRouter {
                     get(root::TrustchainRootHTTPHandler::get_block_timestamp),
                 )
                 .route(
+                    "/operations",
+                    post({
+                        let state = shared_state.clone();
+                        move |operation| crate::ion::post_operation(operation, state)
+                    }),
+                )
+                .route(
                     "/did/attestor/identity/initiate",
                     post(attestor::TrustchainAttestorHTTPHandler::post_identity_initiation),
                 )

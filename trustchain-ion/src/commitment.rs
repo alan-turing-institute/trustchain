@@ -29,7 +29,7 @@ fn ipfs_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
 }
 
 fn ipfs_decode_candidate_data() -> fn(&[u8]) -> CommitmentResult<Value> {
-    |x| decode_ipfs_content(x).map_err(|_| CommitmentError::DataDecodingFailure)
+    |x| decode_ipfs_content(x, true).map_err(|_| CommitmentError::DataDecodingFailure)
 }
 
 fn block_header_hasher() -> fn(&[u8]) -> CommitmentResult<String> {
