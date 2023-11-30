@@ -3,8 +3,9 @@ use crate::attestation_encryption_utils::{
     SignEncrypt,
 };
 use crate::attestation_utils::{
-    attestation_request_path, ContentCRChallenge, CustomResponse, ElementwiseSerializeDeserialize,
-    IdentityCRChallenge, IdentityCRInitiation, Nonce, TrustchainCRError,
+    attestation_request_basepath, attestation_request_path, ContentCRChallenge,
+    ContentCRInitiation, CustomResponse, ElementwiseSerializeDeserialize, IdentityCRChallenge,
+    IdentityCRInitiation, Nonce, TrustchainCRError,
 };
 use crate::state::AppState;
 use async_trait::async_trait;
@@ -72,7 +73,7 @@ impl TrustchainAttestorHTTPHandler {
         info!("Received attestation info: {:?}", attestation_initiation);
         let temp_p_key_ssi =
             josekit_to_ssi_jwk(attestation_initiation.temp_p_key.as_ref().unwrap());
-        let path = attestation_request_path(&temp_p_key_ssi.unwrap()).unwrap();
+        let path = attestation_request_path(&temp_p_key_ssi.unwrap(), "attestor").unwrap();
         // create directory and save attestation initation to file
         let _ = std::fs::create_dir_all(&path);
         let result = attestation_initiation.elementwise_serialize(&path);
@@ -106,11 +107,8 @@ impl TrustchainAttestorHTTPHandler {
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
-        let trustchain_dir: String = std::env::var(TRUSTCHAIN_DATA).unwrap();
-        let path = PathBuf::new()
-            .join(trustchain_dir)
-            .join("attestation_requests")
-            .join(&key_id);
+        let pathbase = attestation_request_basepath("attestor").unwrap();
+        let path = pathbase.join(&key_id);
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
@@ -125,7 +123,6 @@ impl TrustchainAttestorHTTPHandler {
         let signing_key_ssi = signing_keys.first().unwrap();
         let signing_key = ssi_to_josekit_jwk(&signing_key_ssi);
         // get temp public key
-        // TODO: use elementise_deserialize to extract temp_p_key
         let identity_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
             .unwrap()
@@ -169,6 +166,8 @@ impl TrustchainAttestorHTTPHandler {
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
+        let pathbase = attestation_request_basepath("attestor").unwrap();
+        let path = pathbase.join(&key_id);
         let did = app_state.config.server_did.as_ref().unwrap().to_owned();
         // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
@@ -182,7 +181,11 @@ impl TrustchainAttestorHTTPHandler {
                 return (StatusCode::BAD_REQUEST, Json(respone));
             }
         };
-
+        // serialize content initiation request
+        let content_initiation = ContentCRInitiation {
+            requester_did: Some(ddid),
+        };
+        content_initiation.elementwise_serialize(&path);
         // extract map of keys from candidate document and generate a nonce per key
         let requester_keys = extract_key_ids_and_jwk(&candidate_doc).unwrap();
         let attestor = Entity {};
@@ -210,10 +213,6 @@ impl TrustchainAttestorHTTPHandler {
                 acc
             });
         // get public and secret keys
-        let path = PathBuf::new()
-            .join(std::env::var(TRUSTCHAIN_DATA).unwrap())
-            .join("attestation_requests")
-            .join(&key_id);
         let identity_cr_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
             .unwrap()
@@ -268,10 +267,8 @@ impl TrustchainAttestorHTTPHandler {
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         // deserialise expected nonce map
-        let path = PathBuf::new()
-            .join(std::env::var(TRUSTCHAIN_DATA).unwrap())
-            .join("attestation_requests")
-            .join(&key_id);
+        let pathbase = attestation_request_basepath("attestor").unwrap();
+        let path = pathbase.join(&key_id);
         let identity_cr_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
             .unwrap()

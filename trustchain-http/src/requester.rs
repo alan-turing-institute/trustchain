@@ -28,7 +28,7 @@ pub async fn initiate_identity_challenge(
     org_name: &str,
     op_name: &str,
     services: &[Service],
-) -> Result<(), TrustchainCRError> {
+) -> Result<(IdentityCRInitiation, PathBuf), TrustchainCRError> {
     // generate temp key
     let temp_s_key_ssi = generate_key();
     let temp_p_key_ssi = temp_s_key_ssi.to_public();
@@ -65,16 +65,14 @@ pub async fn initiate_identity_challenge(
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToInitiateCR);
     }
-    // create new directory
-    let directory = attestation_request_path(&temp_s_key_ssi.to_public())?;
-    std::fs::create_dir_all(&directory).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+    // create new directory for attestation request
+    let path = attestation_request_path(&temp_s_key_ssi.to_public(), "requester")?;
+    std::fs::create_dir_all(&path).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
 
-    // serialise identity_cr_initiation struct to file
+    // Add secret key to struct
     identity_cr_initiation.temp_s_key = Some(temp_s_key);
-    identity_cr_initiation.elementwise_serialize(&directory)?;
-    println!("Successfully initiated attestation request.");
-    println!("You will receive more information on the challenge-response process via alternative communication channel.");
-    Ok(())
+
+    Ok((identity_cr_initiation, path))
 }
 
 /// Generates and posts response for part 1 of attesation process (identity challenge-response).
@@ -91,6 +89,7 @@ pub async fn identity_response(
     // deserialise challenge struct from file
     let result = IdentityCRChallenge::new().elementwise_deserialize(path);
     let mut identity_challenge = result.unwrap().unwrap();
+    // get temp secret key from file
     let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(path);
     let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
     let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key).unwrap();
@@ -191,16 +190,14 @@ pub async fn initiate_content_challenge(
     let signed_encrypted_challenge = response_body.data.unwrap();
 
     // response
-    let result = content_response(
+    let (nonces, response) = content_response(
         &path,
         &signed_encrypted_challenge.to_string(),
         services,
         attestor_p_key.clone(),
         &ddid.to_owned(),
     )
-    .await;
-    // TODO: better error handling
-    let (nonces, response) = result.unwrap();
+    .await?;
     let content_challenge = ContentCRChallenge {
         content_nonce: Some(nonces),
         content_challenge_signature: Some(signed_encrypted_challenge.to_string()),

@@ -231,8 +231,9 @@ impl IdentityCRInitiation {
             requester_details: None,
         }
     }
-
-    fn is_complete(&self) -> bool {
+    /// Returns true if all fields required for the initiation have a non-null value.
+    /// Note: temp_s_key is optional since only requester has it.
+    pub fn is_complete(&self) -> bool {
         return self.temp_p_key.is_some() && self.requester_details.is_some();
     }
 }
@@ -309,13 +310,14 @@ impl IdentityCRChallenge {
         }
     }
     /// Returns true if all fields required for the challenge have a non-null value.
+    /// Note: update_s_key is optional since only attestor has it.
     fn challenge_complete(&self) -> bool {
         return self.update_p_key.is_some()
             && self.identity_nonce.is_some()
             && self.identity_challenge_signature.is_some();
     }
-    /// Returns true if all fields of the challenge-response have a non-null value.
-    fn response_complete(&self) -> bool {
+    /// Returns true if challenge-response is complete.
+    fn is_complete(&self) -> bool {
         return self.challenge_complete() && self.identity_response_signature.is_some();
     }
 }
@@ -329,6 +331,17 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         // update public key
         let mut full_path = path.join("update_p_key.json");
         self.update_p_key = match File::open(&full_path) {
+            Ok(file) => {
+                let reader = std::io::BufReader::new(file);
+                let deserialized = serde_json::from_reader(reader)
+                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                Some(deserialized)
+            }
+            Err(_) => None,
+        };
+        // update secret key
+        let mut full_path = path.join("update_s_key.json");
+        self.update_s_key = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)
@@ -493,7 +506,7 @@ impl ContentCRChallenge {
         return self.content_nonce.is_some() && self.content_challenge_signature.is_some();
     }
     /// Returns true if all fields required for the challenge-response have a non-null value.
-    fn response_complete(&self) -> bool {
+    fn is_complete(&self) -> bool {
         return self.challenge_complete() && self.content_response_signature.is_some();
     }
 }
@@ -569,11 +582,33 @@ impl CRState {
         }
     }
     /// Returns true if all fields have a non-null value.
+    // pub fn is_complete(&self) -> bool {
+    //     if self.identity_cr_initiation.is_some()
+    //         && self.identity_challenge_response.is_some()
+    //         && self.content_cr_initiation.is_some()
+    //         && self.content_challenge_response.is_some()
+    //     {
+    //         return true;
+    //     }
+    //     return false;
+    // }
     pub fn is_complete(&self) -> bool {
-        if self.identity_cr_initiation.is_some()
-            && self.identity_challenge_response.is_some()
-            && self.content_cr_initiation.is_some()
-            && self.content_challenge_response.is_some()
+        if (self.identity_cr_initiation.is_some()
+            && self.identity_cr_initiation.as_ref().unwrap().is_complete())
+            && (self.identity_challenge_response.is_some()
+                && self
+                    .identity_challenge_response
+                    .as_ref()
+                    .unwrap()
+                    .is_complete())
+            && (self.content_cr_initiation.is_some()
+                && self.content_cr_initiation.as_ref().unwrap().is_complete())
+            && (self.content_challenge_response.is_some()
+                && self
+                    .content_challenge_response
+                    .as_ref()
+                    .unwrap()
+                    .is_complete())
         {
             return true;
         }
@@ -624,7 +659,7 @@ impl CRState {
             .identity_challenge_response
             .as_ref()
             .unwrap()
-            .response_complete()
+            .is_complete()
         {
             return Ok(current_state);
         }
@@ -655,7 +690,7 @@ impl CRState {
             .content_challenge_response
             .as_ref()
             .unwrap()
-            .response_complete()
+            .is_complete()
         {
             return Ok(current_state);
         }
@@ -749,16 +784,23 @@ pub fn matching_endpoint(
 }
 
 /// Returns unique path name for a specific attestation request derived from public key for the interaction.
-pub fn attestation_request_path(key: &JWK) -> Result<PathBuf, TrustchainCRError> {
+pub fn attestation_request_path(key: &JWK, prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
-    let path: String =
-        std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+    let path = attestation_request_basepath(prefix)
+        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
     let key_id = key
         .thumbprint()
         .map_err(|_| TrustchainCRError::MissingJWK)?; // Use hash of temp_pub_key
+    Ok(path.join(key_id))
+}
+
+pub fn attestation_request_basepath(prefix: &str) -> Result<PathBuf, TrustchainCRError> {
+    // Root path in TRUSTCHAIN_DATA
+    let path: String =
+        std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
     Ok(Path::new(path.as_str())
-        .join("attestation_requests")
-        .join(key_id))
+        .join(prefix)
+        .join("attestation_responses"))
 }
 
 #[cfg(test)]

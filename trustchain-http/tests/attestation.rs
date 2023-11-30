@@ -1,8 +1,10 @@
 /// Integration test for attestation challenge-response process.
 use trustchain_core::verifier::Verifier;
-use trustchain_core::TRUSTCHAIN_DATA;
-use trustchain_http::attestation_encryption_utils::ssi_to_josekit_jwk;
-use trustchain_http::attestation_utils::{ElementwiseSerializeDeserialize, IdentityCRInitiation};
+use trustchain_http::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
+use trustchain_http::attestation_utils::{
+    attestation_request_path, CRState, ElementwiseSerializeDeserialize, IdentityCRChallenge,
+    IdentityCRInitiation,
+};
 use trustchain_http::attestor::present_identity_challenge;
 use trustchain_http::requester::{
     identity_response, initiate_content_challenge, initiate_identity_challenge,
@@ -92,6 +94,10 @@ async fn attestation_challenge_response() {
 
     let result =
         initiate_identity_challenge(&expected_org_name, &expected_operator_name, &services).await;
+    // Make sure initiation was successful and information is complete before serializing.
+    assert!(result.is_ok());
+    let (identity_initiation_requester, requester_path) = result.unwrap();
+    let result = identity_initiation_requester.elementwise_serialize(&requester_path);
     assert!(result.is_ok());
 
     // |------------| attestor |------------|
@@ -99,45 +105,51 @@ async fn attestation_challenge_response() {
     // done manually using `trustchain-cli`, where the attestor has to confirm that they recognize
     // the requester and that they want to proceed with challenge-response process
     // for attestation.
-    let path = std::env::var(TRUSTCHAIN_DATA).unwrap();
-    let attestation_requests_path = PathBuf::from(path).join("attestation_requests");
-
-    // For the test, there should be only one attestation request (subdirectory).
-    let paths = fs::read_dir(attestation_requests_path).unwrap();
-    let request_path: PathBuf = paths.map(|path| path.unwrap().path()).collect();
+    let temp_p_key =
+        josekit_to_ssi_jwk(&identity_initiation_requester.clone().temp_p_key.unwrap()).unwrap();
+    let attestor_path = attestation_request_path(&temp_p_key, "attestor").unwrap();
 
     // Deserialized received information and check that it is correct.
-    let identity_initiation = IdentityCRInitiation::new()
-        .elementwise_deserialize(&request_path)
+    let identity_initiation_attestor = IdentityCRInitiation::new()
+        .elementwise_deserialize(&attestor_path)
         .unwrap()
         .unwrap();
-    let org_name = identity_initiation
+    // Make sure that attestor has all required information about initiation (but not secret key).
+    assert_eq!(identity_initiation_attestor.is_complete(), true);
+    assert!(identity_initiation_attestor.temp_s_key.is_none());
+    let org_name = identity_initiation_attestor
         .requester_details
         .clone()
         .unwrap()
         .requester_org;
-    let operator_name = identity_initiation
+    let operator_name = identity_initiation_attestor
         .requester_details
         .clone()
         .unwrap()
         .operator_name;
     assert_eq!(expected_org_name, org_name);
     assert_eq!(expected_operator_name, operator_name);
-    // If data matches, proceed with presenting signed and encrypted identity challenge payload.
-    let temp_p_key = identity_initiation.clone().temp_p_key.unwrap();
-    let identity_challenge_attestor =
-        present_identity_challenge(&attestor_did, &temp_p_key).unwrap();
-    let payload = identity_challenge_attestor
-        .identity_challenge_signature
-        .as_ref()
-        .unwrap();
 
-    // Write payload as requester (this step would done manually or by GUI, since in deployment
-    // challenge payload is sent via alternative channel) for use in subsequent response.
-    // However, as nonce for verifying response is required in part 1.3, serialise
-    // full struct instead.
-    identity_challenge_attestor
-        .elementwise_serialize(&request_path)
+    // If data matches, proceed with presenting signed and encrypted identity challenge payload.
+    let temp_p_key = identity_initiation_attestor.clone().temp_p_key.unwrap();
+    let result = present_identity_challenge(&attestor_did, &temp_p_key);
+    assert!(result.is_ok());
+    let identity_challenge_attestor = result.unwrap();
+    let _ = identity_challenge_attestor.elementwise_serialize(&attestor_path);
+
+    // |------------| requester |------------|
+    // Write signed and encrypted challenge to file to requester path (this step would done manually
+    // or by GUI, since in deployment
+    // challenge is sent via alternative channel) for use in subsequent response.
+    let identity_challenge_requester = IdentityCRChallenge {
+        update_p_key: None,
+        update_s_key: None,
+        identity_challenge_signature: identity_challenge_attestor.identity_challenge_signature,
+        identity_nonce: None,
+        identity_response_signature: None,
+    };
+    identity_challenge_requester
+        .elementwise_serialize(&requester_path)
         .unwrap();
 
     // Part 1.3: Requester responds to challenge. The received challenge is first decrypted and
@@ -145,14 +157,18 @@ async fn attestation_challenge_response() {
     // public key. This response is sent to attestor via a POST request.
     // Upon receiving the request, the attestor decrypts the response and verifies the signature,
     // before comparing the nonce from the response with the nonce from the challenge.
-    // |------------| requester |------------|
+
     let public_keys = extract_keys(&attestor_doc);
     let attestor_public_key_ssi = public_keys.first().unwrap();
     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
 
     // Check nonce component is captured with the response being Ok
-    let result = identity_response(&request_path, &services, &attestor_public_key).await;
+    let result = identity_response(&requester_path, &services, &attestor_public_key).await;
     assert!(result.is_ok());
+    let identity_challenge_requester = result.unwrap();
+    identity_challenge_requester
+        .elementwise_serialize(&requester_path)
+        .unwrap();
 
     // |--------------------------------------------------------------|
     // |------------| Part 2: content challenge-response |------------|
@@ -174,7 +190,7 @@ async fn attestation_challenge_response() {
     // let requester_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
     let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
     let result = initiate_content_challenge(
-        &request_path,
+        &requester_path,
         requester_did,
         &services,
         &attestor_public_key,
@@ -182,4 +198,51 @@ async fn attestation_challenge_response() {
     .await;
     // Check nonces is captured with the response being Ok
     assert!(result.is_ok());
+    let (content_cr_initiation, content_cr_challenge) = result.unwrap();
+    content_cr_initiation
+        .elementwise_serialize(&requester_path)
+        .unwrap();
+    content_cr_challenge
+        .elementwise_serialize(&requester_path)
+        .unwrap();
+
+    // Check that requester has all attestation challenge-response information it should have.
+    let cr_state_requester = CRState::new()
+        .elementwise_deserialize(&requester_path)
+        .unwrap()
+        .unwrap();
+    let result = cr_state_requester.is_complete();
+    assert_eq!(result, true);
+
+    // Check that requester has temp_s_key but not update_s_key.
+    assert!(cr_state_requester
+        .identity_cr_initiation
+        .unwrap()
+        .temp_s_key
+        .is_some());
+    assert!(cr_state_requester
+        .identity_challenge_response
+        .unwrap()
+        .update_s_key
+        .is_none());
+
+    // |------------| attestor |------------|
+    // Check that attestor has all attestation challenge-response information it should have.
+    let cr_state_attestor = CRState::new()
+        .elementwise_deserialize(&attestor_path)
+        .unwrap()
+        .unwrap();
+    let result = cr_state_attestor.is_complete();
+    assert_eq!(result, true);
+    // Check that attestor does not have temp_s_key but update_s_key.
+    assert!(cr_state_attestor
+        .identity_cr_initiation
+        .unwrap()
+        .temp_s_key
+        .is_none());
+    assert!(cr_state_attestor
+        .identity_challenge_response
+        .unwrap()
+        .update_s_key
+        .is_some());
 }

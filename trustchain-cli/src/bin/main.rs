@@ -374,13 +374,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Organisation name: {}", org_name);
                     println!("Operator name: {}", op_name);
                     // initiate identity challenge
-                    let result = initiate_identity_challenge(
+                    let (identity_cr_initiation, path) = initiate_identity_challenge(
                         org_name.trim(),
                         op_name.trim(),
                         &services.unwrap(),
                     )
                     .await?;
-                    println!("Result: {:?}", result);
+                    identity_cr_initiation.elementwise_serialize(&path)?;
+                    println!("Successfully initiated attestation request.");
+                    println!("You will receive more information on the challenge-response process via alternative communication channel.");
                 }
                 Some(("present", sub_matches)) => {
                     // get attestation request path from provided input
