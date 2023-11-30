@@ -298,8 +298,6 @@ impl TrustchainAttestorHTTPHandler {
             serde_json::from_value(payload.claim("nonces").unwrap().clone()).unwrap();
         // verify nonces
         if nonces_map.eq(&expected_nonces) {
-            println!("nonces map: {:?}", nonces_map);
-            println!("expected nonces map: {:?}", expected_nonces);
             content_challenge.content_response_signature = Some(response.clone());
             content_challenge.elementwise_serialize(&path).unwrap();
             let response = CustomResponse {

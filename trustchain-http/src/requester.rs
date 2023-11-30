@@ -250,12 +250,21 @@ pub async fn content_response(
     let ion_attestor = IONAttestor::new(&ddid);
     let signing_keys = ion_attestor.signing_keys().unwrap();
     // iterate over all keys, convert to Jwk (josekit) -> TODO: functional
-    let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
-    for key in signing_keys {
-        let key_id = key.thumbprint().unwrap();
-        let jwk = ssi_to_josekit_jwk(&key).unwrap();
-        signing_keys_map.insert(key_id, jwk);
-    }
+    // let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
+    // for key in signing_keys {
+    //     let key_id = key.thumbprint().unwrap();
+    //     let jwk = ssi_to_josekit_jwk(&key).unwrap();
+    //     signing_keys_map.insert(key_id, jwk);
+    // }
+
+    let signing_keys_map = signing_keys
+        .into_iter()
+        .fold(HashMap::new(), |mut acc, key| {
+            let key_id = key.thumbprint().unwrap();
+            let jwk = ssi_to_josekit_jwk(&key).unwrap();
+            acc.insert(key_id, jwk);
+            acc
+        });
 
     let decrypted_nonces: HashMap<String, Nonce> =
         challenges_map

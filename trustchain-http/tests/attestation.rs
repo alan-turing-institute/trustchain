@@ -180,7 +180,7 @@ async fn attestation_challenge_response() {
     // attestor's endpoint.
     // Upon receiving the POST request the attestor resolves dDID, extracts the signing keys from it
     // and returns to the requester a signed and encrypted challenge payload with a hashmap that
-    // contains an encrypted nonce per signing key.
+    // contains an encrypted nonce pecurr signing key.
     // The requester decrypts the challenge payload and verifies the signature. It then decrypts
     // each nonce with the corresponding signing key and collects them in a hashmap. This
     // hashmap is signed and encrypted and sent back to the attestor via POST request.
