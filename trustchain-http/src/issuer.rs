@@ -12,6 +12,7 @@ use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::jsonld::ContextLoader;
+use ssi::jwk::Algorithm;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
@@ -102,17 +103,27 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         }
 
         let issuer = IONAttestor::new(&credential_store_item.issuer_did);
-        // TODO: change thumbprint to filter for RSS thumbprints and pick first?
+        // TODO: test RSS key filtering
         let key_id = if rss {
-            Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34")
+            // TODO: add conversion from key manager error to trustchain http error
+            // TODO: made signing_keys public on attestor to enable
+            let signing_keys = issuer.signing_keys().unwrap();
+            signing_keys
+                .into_iter()
+                .filter(|key| matches!(key.get_algorithm(), Some(Algorithm::RSS2023)))
+                .map(|jwk| jwk.thumbprint())
+                .take(1)
+                .collect::<Result<String, _>>()
+                .ok()
         } else {
             None
         };
+
         Ok(issuer
             .sign(
                 &credential,
                 None,
-                key_id,
+                key_id.as_deref(),
                 resolver,
                 // TODO: add context loader to app_state
                 &mut ContextLoader::default(),
@@ -336,6 +347,59 @@ mod tests {
         let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
         let path = format!("/vc/issuer/{id}");
+        let client = TestClient::new(app);
+        let response = client
+            .post(&path)
+            .json(&VcInfo {
+                subject_id: expected_subject_id.to_string(),
+            })
+            .send()
+            .await;
+        // Test response
+        assert_eq!(response.status(), StatusCode::OK);
+        let credential = response.json::<Credential>().await;
+
+        // Test credential subject ID
+        match credential.credential_subject {
+            OneOrMany::One(CredentialSubject {
+                id: Some(URI::String(ref actual_subject_id)),
+                property_set: _,
+            }) => assert_eq!(actual_subject_id.to_string(), expected_subject_id),
+            _ => panic!(),
+        }
+
+        // Test signature
+        let verifier = TrustchainVerifier::new(trustchain_resolver("http://localhost:3000/"));
+        let verify_credential_result = credential
+            .verify(
+                None,
+                verifier.resolver().as_did_resolver(),
+                &mut ContextLoader::default(),
+            )
+            .await;
+        assert!(verify_credential_result.errors.is_empty());
+
+        // Test valid Trustchain issuer DID
+        match credential.issuer {
+            Some(Issuer::URI(URI::String(issuer))) => {
+                assert!(verifier.verify(&issuer, 1666265405).await.is_ok())
+            }
+            _ => panic!("No issuer present."),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    async fn test_post_issuer_rss_credential() {
+        let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
+            TEST_HTTP_CONFIG.to_owned(),
+            serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
+        )))
+        .into_router();
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
+        let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
+        let path = format!("/vc_rss/issuer/{id}");
         let client = TestClient::new(app);
         let response = client
             .post(&path)
