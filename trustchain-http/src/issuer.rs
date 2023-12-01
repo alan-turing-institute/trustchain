@@ -127,9 +127,15 @@ impl TrustchainIssuerHTTPHandler {
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
     ) -> Result<Html<String>, TrustchainHTTPError> {
+        let did = app_state
+            .credentials
+            .get(&id)
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
+            .issuer_did
+            .to_owned();
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
-                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                did,
                 route: "/vc/issuer/".to_string(),
                 id,
             })
@@ -150,9 +156,15 @@ impl TrustchainIssuerHTTPHandler {
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
     ) -> Result<Html<String>, TrustchainHTTPError> {
+        let did = app_state
+            .credentials
+            .get(&id)
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
+            .issuer_did
+            .to_owned();
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
-                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                did,
                 route: "/vc_rss/issuer/".to_string(),
                 id,
             })
@@ -230,34 +242,38 @@ mod tests {
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
+    const ISSUER_DID: &str = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some(ISSUER_DID.to_string()),
             ..Default::default()
         };
     }
 
     const CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
-            "@context" : [
-               "https://www.w3.org/2018/credentials/v1",
-               "https://www.w3.org/2018/credentials/examples/v1"
-            ],
-            "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
-            "credentialSubject" : {
-               "degree" : {
-                  "college" : "University of Oxbridge",
-                  "name" : "Bachelor of Arts",
-                  "type" : "BachelorDegree"
-               },
-               "familyName" : "Bloggs",
-               "givenName" : "Jane"
-            },
-            "type" : [
-               "VerifiableCredential"
-            ]
-         }
+            "did": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            "credential": {
+                "@context" : [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1"
+                ],
+                "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
+                "credentialSubject" : {
+                "degree" : {
+                    "college" : "University of Oxbridge",
+                    "name" : "Bachelor of Arts",
+                    "type" : "BachelorDegree"
+                },
+                "familyName" : "Bloggs",
+                "givenName" : "Jane"
+                },
+                "type" : [
+                "VerifiableCredential"
+                ]
+            }
+        }
     }
     "#;
 
