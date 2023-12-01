@@ -1,9 +1,9 @@
 use crate::root::RootCandidatesResult;
+use crate::store::CredentialStoreItem;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
 use chrono::NaiveDate;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
 use ssi::did_resolve::DIDResolver;
-use ssi::vc::Credential;
 use std::collections::HashMap;
 use std::sync::RwLock;
 use trustchain_core::TRUSTCHAIN_DATA;
@@ -20,7 +20,7 @@ where
 {
     pub config: HTTPConfig,
     pub verifier: TrustchainVerifier<T>,
-    pub credentials: HashMap<String, Credential>,
+    pub credentials: HashMap<String, CredentialStoreItem>,
     pub root_candidates: RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
     pub presentation_requests: HashMap<String, PresentationRequest>,
 }
@@ -29,7 +29,8 @@ impl AppState {
     pub fn new(config: HTTPConfig) -> Self {
         let verifier = TrustchainVerifier::new(trustchain_resolver(DEFAULT_VERIFIER_ENDPOINT));
         let path = std::env::var(TRUSTCHAIN_DATA).expect("TRUSTCHAIN_DATA env not set.");
-        let credentials: HashMap<String, Credential> = serde_json::from_reader(
+        let credentials: HashMap<String, CredentialStoreItem> = serde_json::from_reader(
+            // let credentials: HashMap<String, Credential> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("credentials/offers/cache.json"))
                 // If no cache, default to empty
                 .unwrap_or_default()
@@ -54,7 +55,7 @@ impl AppState {
     }
     pub fn new_with_cache(
         config: HTTPConfig,
-        credentials: HashMap<String, Credential>,
+        credentials: HashMap<String, CredentialStoreItem>,
         presentation_requests: HashMap<String, PresentationRequest>,
     ) -> Self {
         let verifier = TrustchainVerifier::new(trustchain_resolver(DEFAULT_VERIFIER_ENDPOINT));

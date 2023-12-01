@@ -2,6 +2,7 @@ use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
+use crate::store::CredentialStoreItem;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -38,7 +39,7 @@ impl CredentialOffer {
             expires: Some(VCDateTime::from(Utc::now() + chrono::Duration::minutes(60))),
         }
     }
-    /// Generates credential offer.
+    /// Generates credential offer adding the UUID to the credential
     pub fn generate(credential: &Credential, id: &str) -> Self {
         let mut credential: Credential = credential.to_owned();
         credential.id = Some(ssi::vc::StringOrURI::URI(ssi::vc::URI::String(format!(
@@ -59,16 +60,11 @@ pub struct VcInfo {
 #[async_trait]
 pub trait TrustchainIssuerHTTP {
     /// Issues an offer for a verifiable credential
-    fn generate_credential_offer(
-        template: &Credential,
-        id: &str,
-        issuer_did: &str,
-    ) -> CredentialOffer;
+    fn generate_credential_offer(template: &CredentialStoreItem, id: &str) -> CredentialOffer;
     /// Issues a verifiable credential (should it return `Credential` or `String`)
     async fn issue_credential(
-        credential: &Credential,
+        credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
-        issuer_did: &str,
         resolver: &dyn TrustchainResolver,
         rss: bool,
     ) -> Result<Credential, TrustchainHTTPError>;
@@ -79,28 +75,23 @@ pub struct TrustchainIssuerHTTPHandler;
 
 #[async_trait]
 impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
-    fn generate_credential_offer(
-        template: &Credential,
-        id: &str,
-        issuer_did: &str,
-    ) -> CredentialOffer {
-        let mut credential = template.to_owned();
+    fn generate_credential_offer(template: &CredentialStoreItem, id: &str) -> CredentialOffer {
+        let mut credential = template.credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            issuer_did.to_string(),
+            template.issuer_did.to_string(),
         )));
         CredentialOffer::generate(&credential, id)
     }
 
     async fn issue_credential(
-        credential: &Credential,
+        credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
-        issuer_did: &str,
         resolver: &dyn TrustchainResolver,
         rss: bool,
     ) -> Result<Credential, TrustchainHTTPError> {
-        let mut credential = credential.to_owned();
+        let mut credential = credential_store_item.credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            issuer_did.to_string(),
+            credential_store_item.issuer_did.to_string(),
         )));
         let now = chrono::offset::Utc::now();
         credential.issuance_date = Some(VCDateTime::from(now));
@@ -109,7 +100,9 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
                 subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
             }
         }
-        let issuer = IONAttestor::new(issuer_did);
+
+        let issuer = IONAttestor::new(&credential_store_item.issuer_did);
+        // TODO: change thumbprint to filter for RSS thumbprints and pick first?
         let key_id = if rss {
             Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34")
         } else {
@@ -181,23 +174,16 @@ impl TrustchainIssuerHTTPHandler {
         Path(credential_id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
-        let issuer_did = app_state
-            .config
-            .server_did
-            .as_ref()
-            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
-
         app_state
             .credentials
             .get(&credential_id)
             .ok_or(TrustchainHTTPError::CredentialDoesNotExist)
-            .map(|credential| {
+            .map(|credential_store_item| {
                 (
                     StatusCode::OK,
                     Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
-                        credential,
+                        credential_store_item,
                         &credential_id,
-                        issuer_did,
                     )),
                 )
             })
@@ -209,17 +195,11 @@ impl TrustchainIssuerHTTPHandler {
         rss: bool,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
-        let issuer_did = app_state
-            .config
-            .server_did
-            .as_ref()
-            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
         match app_state.credentials.get(&credential_id) {
-            Some(credential) => {
+            Some(credential_store_item) => {
                 let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
-                    credential,
+                    credential_store_item,
                     Some(&vc_info.subject_id),
-                    issuer_did,
                     app_state.verifier.resolver(),
                     rss,
                 )
@@ -298,9 +278,10 @@ mod tests {
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         let mut actual_offer = response.json::<CredentialOffer>().await;
-        let mut credential = state.credentials.get(&uid).unwrap().clone();
+        let credential_store_item = state.credentials.get(&uid).unwrap().clone();
+        let mut credential = credential_store_item.credential;
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            state.config.server_did.as_ref().unwrap().to_string(),
+            credential_store_item.issuer_did.to_string(),
         )));
         let mut expected_offer = CredentialOffer::generate(&credential, &uid);
 
