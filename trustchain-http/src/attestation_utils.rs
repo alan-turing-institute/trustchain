@@ -259,6 +259,16 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
             }
             Err(_) => None,
         };
+        // TODO: complete refactor
+        // if !Path::new(&temp_p_key_path).exists() {
+        //     self.temp_p_key = None;
+        // }
+        // let deserialized = serde_json::from_str(
+        //     &fs::read_to_string(&temp_p_key_path)
+        //         .map_err(|_| TrustchainCRError::FailedToDeserialize)?,
+        // )
+        // .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+        // self.temp_p_key = Some(deserialized);
 
         let temp_s_key_path = path.join("temp_s_key.json");
         self.temp_s_key = match File::open(&temp_s_key_path) {
@@ -732,7 +742,7 @@ impl ElementwiseSerializeDeserialize for CRState {
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
         CurrentCRState::NotStarted => {
-            return String::from("No records found for this challenge-response identifier. \nThe challenge-response process has not been initiated yet.");
+            return String::from("No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.");
         }
         CurrentCRState::IdentityCRInitiated => {
             return String::from("Identity challenge-response initiated. Await response.");

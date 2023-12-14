@@ -21,21 +21,19 @@ use trustchain_api::TrustchainAPI;
 use trustchain_core::verifier::Verifier;
 
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use trustchain_core::utils::generate_key;
-use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_ion::attestor::IONAttestor;
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
 #[async_trait]
+/// An API for a Trustchain attestor server.
 pub trait TrustchainAttestorHTTP {}
 
-/// Type for implementing the TrustchainIssuerHTTP trait that will contain additional handler methods.
+/// Type for implementing the TrustchainAttestorHTTP trait that will contain additional handler methods.
 pub struct TrustchainAttestorHTTPHandler;
 
 #[async_trait]
@@ -63,7 +61,7 @@ impl TrustchainAttestorHTTP for TrustchainAttestorHTTPHandler {
 }
 
 impl TrustchainAttestorHTTPHandler {
-    /// Handles a POST request for identity initiation (part 1 attestation CR).
+    /// Handles a POST request for identity initiation (part one attestation CR).
     ///
     /// This function saves the attestation initiation to a file. The directory to which the information
     /// is saved is determined by the temp public key of the attestation initiation.
@@ -121,7 +119,7 @@ impl TrustchainAttestorHTTPHandler {
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys().unwrap();
         let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi);
+        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
         // get temp public key
         let identity_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
@@ -131,7 +129,7 @@ impl TrustchainAttestorHTTPHandler {
         // verify response
         let attestor = Entity {};
         let payload = attestor
-            .decrypt_and_verify(response.clone(), &signing_key.unwrap(), &temp_p_key)
+            .decrypt_and_verify(response.clone(), &signing_key, &temp_p_key)
             .unwrap();
         let result = verify_nonce(payload, &path);
         match result {
@@ -154,7 +152,7 @@ impl TrustchainAttestorHTTPHandler {
         }
     }
 
-    /// Handles a POST request for content initiation (part 2 attestation CR).
+    /// Handles a POST request for content initiation (part two attestation CR).
     ///
     /// This function receives the key ID of the temporary public key and the candidate DID.
     /// It resolves the candidate DID and extracts the public signing keys from the document.
@@ -181,6 +179,8 @@ impl TrustchainAttestorHTTPHandler {
                 return (StatusCode::BAD_REQUEST, Json(respone));
             }
         };
+        // TODO: check if resolved candidate DID contains expected update_p_key
+
         // serialize content initiation request
         let content_initiation = ContentCRInitiation {
             requester_did: Some(ddid),
@@ -315,7 +315,7 @@ impl TrustchainAttestorHTTPHandler {
     }
 }
 
-/// Generates challenge for part 1 of attestation request (identity challenge-response).
+/// Generates challenge for part one of attestation request (identity challenge-response).
 ///
 /// This function generates a new key pair for the update key and nonce for the challenge.
 /// It then adds the update public key and nonce to a payload and signs it with the secret
@@ -362,7 +362,7 @@ pub fn present_identity_challenge(
     Ok(identity_challenge)
 }
 
-/// Verifies nonce for part 1 of attestation request (identity challenge-response).
+/// Verifies nonce for part one of attestation request (identity challenge-response).
 ///
 /// This function receives a payload provided by requester and the path to the directory
 /// where information about the attestation request is stored. It deserialises the expected
