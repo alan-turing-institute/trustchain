@@ -42,9 +42,9 @@ pub enum TrustchainCRError {
     /// Failed to open file.
     #[error("Failed to open file.")]
     FailedToOpen,
-    /// Failed to save to file.
-    #[error("Failed to save to file.")]
-    FailedToSave,
+    /// Failed to serialize to file.
+    #[error("Failed to serialize to file.")]
+    FailedToSerialize,
     /// Failed to set permissions on file.
     #[error("Failed to set permissions on file.")]
     FailedToSetPermissions,
@@ -90,12 +90,14 @@ impl From<JoseError> for TrustchainCRError {
 }
 
 #[derive(Serialize, Deserialize)]
+/// Type for implementing custom response returned by the server. Provides a message and optional data field.
 pub struct CustomResponse {
     pub message: String,
     pub data: Option<String>,
 }
 
 #[derive(Debug, PartialEq)]
+/// Enumerates the possible states of the challenge-response process.
 pub enum CurrentCRState {
     NotStarted,
     IdentityCRInitiated,
@@ -108,6 +110,7 @@ pub enum CurrentCRState {
 
 // TODO: Impose additional constraints on the nonce type.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+/// Nonce type for challenge-response.
 pub struct Nonce(String);
 
 impl Nonce {
@@ -157,7 +160,7 @@ where
     /// Serialize each field of the struct to a file.
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
         let serialized =
-            serde_json::to_value(&self).map_err(|_| TrustchainCRError::FailedToSave)?;
+            serde_json::to_value(&self).map_err(|_| TrustchainCRError::FailedToSerialize)?;
         if let Value::Object(fields) = serialized {
             for (field_name, field_value) in fields {
                 if !field_value.is_null() {
@@ -199,17 +202,18 @@ where
                             .map_err(|_| TrustchainCRError::FailedToSetPermissions)?;
                         Ok(())
                     }
-                    Err(_) => Err(TrustchainCRError::FailedToSave),
+                    Err(_) => Err(TrustchainCRError::FailedToSerialize),
                 }
             }
 
-            Err(_) => Err(TrustchainCRError::FailedToSave),
+            Err(_) => Err(TrustchainCRError::FailedToSerialize),
         }
     }
 }
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Type for storing details of the requester.
 pub struct RequesterDetails {
     pub requester_org: String,
     pub operator_name: String,
@@ -217,6 +221,7 @@ pub struct RequesterDetails {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, IsEmpty, Clone)]
+/// Type for storing initiation details of the attestation request.
 pub struct IdentityCRInitiation {
     pub temp_p_key: Option<Jwk>,
     pub temp_s_key: Option<Jwk>,
@@ -290,6 +295,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, IsEmpty)]
+/// Type for storing details of part one (identity challenge) of the challenge-response process.
 pub struct IdentityCRChallenge {
     pub update_p_key: Option<Jwk>,
     pub update_s_key: Option<Jwk>,
@@ -442,6 +448,7 @@ impl TryFrom<&JwtPayload> for IdentityCRChallenge {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, IsEmpty)]
+/// Type for storing initiation details of part two (content challenge) of the challenge-response process.
 pub struct ContentCRInitiation {
     pub requester_did: Option<String>,
 }
@@ -475,9 +482,6 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
             Err(_) => None,
         };
 
-        // if self.temp_p_key.is_none() && self.requester_did.is_none() {
-        //     return Ok(None);
-        // }
         if self.requester_did.is_none() {
             return Ok(None);
         }
@@ -487,6 +491,7 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
 }
 
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
+/// Type for storing details of part two (content challenge) of the challenge-response process.
 pub struct ContentCRChallenge {
     pub content_nonce: Option<HashMap<String, Nonce>>,
     pub content_challenge_signature: Option<String>,
@@ -565,6 +570,8 @@ impl ElementwiseSerializeDeserialize for ContentCRChallenge {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, IsEmpty)]
+/// Type for representing the state of the challenge-response process. Holds information about both
+/// identity (part one) and content challenge-response (part two) and their respective initiation.
 pub struct CRState {
     pub identity_cr_initiation: Option<IdentityCRInitiation>,
     pub identity_challenge_response: Option<IdentityCRChallenge>,
@@ -581,17 +588,7 @@ impl CRState {
             content_challenge_response: None,
         }
     }
-    /// Returns true if all fields have a non-null value.
-    // pub fn is_complete(&self) -> bool {
-    //     if self.identity_cr_initiation.is_some()
-    //         && self.identity_challenge_response.is_some()
-    //         && self.content_cr_initiation.is_some()
-    //         && self.content_challenge_response.is_some()
-    //     {
-    //         return true;
-    //     }
-    //     return false;
-    // }
+    /// Returns true if all fields are complete.
     pub fn is_complete(&self) -> bool {
         if (self.identity_cr_initiation.is_some()
             && self.identity_cr_initiation.as_ref().unwrap().is_complete())
@@ -793,13 +790,14 @@ pub fn attestation_request_path(key: &JWK, prefix: &str) -> Result<PathBuf, Trus
     Ok(path.join(key_id))
 }
 
+/// Returns the root path for storing attestation requests.
 pub fn attestation_request_basepath(prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
     let path: String =
         std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
     Ok(Path::new(path.as_str())
         .join(prefix)
-        .join("attestation_responses"))
+        .join("attestation_requests"))
 }
 
 #[cfg(test)]
