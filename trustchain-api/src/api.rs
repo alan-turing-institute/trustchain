@@ -293,7 +293,7 @@ mod tests {
           "VerifiableCredential",
           "Iso18013DriversLicense"
         ],
-        "issuer": "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q",
+        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
         "issuanceDate": "2023-11-23T11:43:26.806224Z",
         "credentialSubject": {
           "id": "did:example:12347abcd",
@@ -353,12 +353,10 @@ mod tests {
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_rss_credential() {
-        // **NOT** using init(), because the chain written to a temp dir in init() does not have any
-        // RSS keys.
-        // init();
+        init();
 
         // DID with RSS verification method
-        let issuer_did_suffix = "EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q";
+        let issuer_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let resolver = trustchain_resolver("http://localhost:3000/");
         let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
         let attestor = IONAttestor::new(issuer_did_suffix);
@@ -367,7 +365,7 @@ mod tests {
             .sign(
                 &vc,
                 None,
-                Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34"),
+                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
                 &resolver,
                 &mut ContextLoader::default(),
             )
@@ -379,7 +377,7 @@ mod tests {
         let res = TrustchainAPI::verify_credential(
             &signed_vc,
             None,
-            1697213008,
+            ROOT_EVENT_TIME_1,
             &verifier,
             &mut context_loader,
         )
@@ -391,12 +389,10 @@ mod tests {
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_redact_verify_rss_credential() {
-        // **NOT** using init(), because the chain written to a temp dir in init() does not have any
-        // RSS keys.
-        // init();
+        init();
 
         // DID with RSS verification method
-        let issuer_did_suffix = "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q";
+        let issuer_did_suffix = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let resolver = trustchain_resolver("http://localhost:3000/");
         let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
         let attestor = IONAttestor::new(issuer_did_suffix);
@@ -405,7 +401,7 @@ mod tests {
             .sign(
                 &vc,
                 None,
-                Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34"),
+                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
                 &resolver,
                 &mut ContextLoader::default(),
             )
@@ -449,15 +445,16 @@ mod tests {
         let res = TrustchainAPI::verify_credential(
             &signed_vc,
             None,
-            1697213008,
+            ROOT_EVENT_TIME_1,
             &verifier,
             &mut context_loader,
         )
         .await;
-        // println!("{:?}", &res);
+
         assert!(res.is_ok());
     }
 
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_presentation() {
         init();

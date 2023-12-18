@@ -2,6 +2,7 @@ use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
+use crate::store::CredentialStoreItem;
 use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -11,6 +12,7 @@ use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::jsonld::ContextLoader;
+use ssi::jwk::Algorithm;
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
@@ -38,7 +40,7 @@ impl CredentialOffer {
             expires: Some(VCDateTime::from(Utc::now() + chrono::Duration::minutes(60))),
         }
     }
-    /// Generates credential offer.
+    /// Generates credential offer adding the UUID to the credential
     pub fn generate(credential: &Credential, id: &str) -> Self {
         let mut credential: Credential = credential.to_owned();
         credential.id = Some(ssi::vc::StringOrURI::URI(ssi::vc::URI::String(format!(
@@ -59,16 +61,11 @@ pub struct VcInfo {
 #[async_trait]
 pub trait TrustchainIssuerHTTP {
     /// Issues an offer for a verifiable credential
-    fn generate_credential_offer(
-        template: &Credential,
-        id: &str,
-        issuer_did: &str,
-    ) -> CredentialOffer;
-    /// Issues a verifiable credential (should it return `Credential` or `String`)
+    fn generate_credential_offer(template: &CredentialStoreItem, id: &str) -> CredentialOffer;
+    /// Issues a verifiable credential.
     async fn issue_credential(
-        credential: &Credential,
+        credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
-        issuer_did: &str,
         resolver: &dyn TrustchainResolver,
         rss: bool,
     ) -> Result<Credential, TrustchainHTTPError>;
@@ -79,28 +76,23 @@ pub struct TrustchainIssuerHTTPHandler;
 
 #[async_trait]
 impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
-    fn generate_credential_offer(
-        template: &Credential,
-        id: &str,
-        issuer_did: &str,
-    ) -> CredentialOffer {
-        let mut credential = template.to_owned();
+    fn generate_credential_offer(template: &CredentialStoreItem, id: &str) -> CredentialOffer {
+        let mut credential = template.credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            issuer_did.to_string(),
+            template.issuer_did.to_string(),
         )));
         CredentialOffer::generate(&credential, id)
     }
 
     async fn issue_credential(
-        credential: &Credential,
+        credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
-        issuer_did: &str,
         resolver: &dyn TrustchainResolver,
         rss: bool,
     ) -> Result<Credential, TrustchainHTTPError> {
-        let mut credential = credential.to_owned();
+        let mut credential = credential_store_item.credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            issuer_did.to_string(),
+            credential_store_item.issuer_did.to_string(),
         )));
         let now = chrono::offset::Utc::now();
         credential.issuance_date = Some(VCDateTime::from(now));
@@ -109,17 +101,27 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
                 subject.id = Some(ssi::vc::URI::String(subject_id_str.to_string()));
             }
         }
-        let issuer = IONAttestor::new(issuer_did);
+
+        let issuer = IONAttestor::new(&credential_store_item.issuer_did);
         let key_id = if rss {
-            Some("Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34")
+            // TODO: move key management filtering logic into AttestorKeyManager.
+            let signing_keys = issuer.signing_keys()?;
+            signing_keys
+                .into_iter()
+                .filter(|key| matches!(key.get_algorithm(), Some(Algorithm::RSS2023)))
+                .map(|jwk| jwk.thumbprint())
+                .take(1)
+                .collect::<Result<String, _>>()
+                .ok()
         } else {
             None
         };
+
         Ok(issuer
             .sign(
                 &credential,
                 None,
-                key_id,
+                key_id.as_deref(),
                 resolver,
                 // TODO: add context loader to app_state
                 &mut ContextLoader::default(),
@@ -134,9 +136,15 @@ impl TrustchainIssuerHTTPHandler {
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
     ) -> Result<Html<String>, TrustchainHTTPError> {
+        let did = app_state
+            .credentials
+            .get(&id)
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
+            .issuer_did
+            .to_owned();
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
-                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                did,
                 route: "/vc/issuer/".to_string(),
                 id,
             })
@@ -157,9 +165,15 @@ impl TrustchainIssuerHTTPHandler {
         State(app_state): State<Arc<AppState>>,
         Path(id): Path<String>,
     ) -> Result<Html<String>, TrustchainHTTPError> {
+        let did = app_state
+            .credentials
+            .get(&id)
+            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
+            .issuer_did
+            .to_owned();
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
-                did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                did,
                 route: "/vc_rss/issuer/".to_string(),
                 id,
             })
@@ -181,23 +195,16 @@ impl TrustchainIssuerHTTPHandler {
         Path(credential_id): Path<String>,
         State(app_state): State<Arc<AppState>>,
     ) -> impl IntoResponse {
-        let issuer_did = app_state
-            .config
-            .server_did
-            .as_ref()
-            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
-
         app_state
             .credentials
             .get(&credential_id)
             .ok_or(TrustchainHTTPError::CredentialDoesNotExist)
-            .map(|credential| {
+            .map(|credential_store_item| {
                 (
                     StatusCode::OK,
                     Json(TrustchainIssuerHTTPHandler::generate_credential_offer(
-                        credential,
+                        credential_store_item,
                         &credential_id,
-                        issuer_did,
                     )),
                 )
             })
@@ -209,17 +216,11 @@ impl TrustchainIssuerHTTPHandler {
         rss: bool,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
-        let issuer_did = app_state
-            .config
-            .server_did
-            .as_ref()
-            .ok_or(TrustchainHTTPError::NoCredentialIssuer)?;
         match app_state.credentials.get(&credential_id) {
-            Some(credential) => {
+            Some(credential_store_item) => {
                 let credential_signed = TrustchainIssuerHTTPHandler::issue_credential(
-                    credential,
+                    credential_store_item,
                     Some(&vc_info.subject_id),
-                    issuer_did,
                     app_state.verifier.resolver(),
                     rss,
                 )
@@ -250,34 +251,38 @@ mod tests {
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
+    const ISSUER_DID: &str = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
-            server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
+            server_did: Some(ISSUER_DID.to_string()),
             ..Default::default()
         };
     }
 
     const CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
-            "@context" : [
-               "https://www.w3.org/2018/credentials/v1",
-               "https://www.w3.org/2018/credentials/examples/v1"
-            ],
-            "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
-            "credentialSubject" : {
-               "degree" : {
-                  "college" : "University of Oxbridge",
-                  "name" : "Bachelor of Arts",
-                  "type" : "BachelorDegree"
-               },
-               "familyName" : "Bloggs",
-               "givenName" : "Jane"
-            },
-            "type" : [
-               "VerifiableCredential"
-            ]
-         }
+            "did": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            "credential": {
+                "@context" : [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1"
+                ],
+                "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
+                "credentialSubject" : {
+                "degree" : {
+                    "college" : "University of Oxbridge",
+                    "name" : "Bachelor of Arts",
+                    "type" : "BachelorDegree"
+                },
+                "familyName" : "Bloggs",
+                "givenName" : "Jane"
+                },
+                "type" : [
+                "VerifiableCredential"
+                ]
+            }
+        }
     }
     "#;
 
@@ -298,9 +303,10 @@ mod tests {
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         let mut actual_offer = response.json::<CredentialOffer>().await;
-        let mut credential = state.credentials.get(&uid).unwrap().clone();
+        let credential_store_item = state.credentials.get(&uid).unwrap().clone();
+        let mut credential = credential_store_item.credential;
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
-            state.config.server_did.as_ref().unwrap().to_string(),
+            credential_store_item.issuer_did.to_string(),
         )));
         let mut expected_offer = CredentialOffer::generate(&credential, &uid);
 
@@ -339,6 +345,59 @@ mod tests {
         let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
         let path = format!("/vc/issuer/{id}");
+        let client = TestClient::new(app);
+        let response = client
+            .post(&path)
+            .json(&VcInfo {
+                subject_id: expected_subject_id.to_string(),
+            })
+            .send()
+            .await;
+        // Test response
+        assert_eq!(response.status(), StatusCode::OK);
+        let credential = response.json::<Credential>().await;
+
+        // Test credential subject ID
+        match credential.credential_subject {
+            OneOrMany::One(CredentialSubject {
+                id: Some(URI::String(ref actual_subject_id)),
+                property_set: _,
+            }) => assert_eq!(actual_subject_id.to_string(), expected_subject_id),
+            _ => panic!(),
+        }
+
+        // Test signature
+        let verifier = TrustchainVerifier::new(trustchain_resolver("http://localhost:3000/"));
+        let verify_credential_result = credential
+            .verify(
+                None,
+                verifier.resolver().as_did_resolver(),
+                &mut ContextLoader::default(),
+            )
+            .await;
+        assert!(verify_credential_result.errors.is_empty());
+
+        // Test valid Trustchain issuer DID
+        match credential.issuer {
+            Some(Issuer::URI(URI::String(issuer))) => {
+                assert!(verifier.verify(&issuer, 1666265405).await.is_ok())
+            }
+            _ => panic!("No issuer present."),
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
+    async fn test_post_issuer_rss_credential() {
+        let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
+            TEST_HTTP_CONFIG.to_owned(),
+            serde_json::from_str(CREDENTIALS).unwrap(),
+            HashMap::new(),
+        )))
+        .into_router();
+        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
+        let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
+        let path = format!("/vc_rss/issuer/{id}");
         let client = TestClient::new(app);
         let response = client
             .post(&path)
