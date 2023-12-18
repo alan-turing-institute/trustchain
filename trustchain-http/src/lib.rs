@@ -1,4 +1,5 @@
 pub mod config;
+pub(crate) mod data;
 pub mod errors;
 pub mod ion;
 pub mod issuer;
