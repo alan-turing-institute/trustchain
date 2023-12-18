@@ -1,4 +1,5 @@
 pub mod config;
+#[cfg(test)]
 pub(crate) mod data;
 pub mod errors;
 pub mod ion;
