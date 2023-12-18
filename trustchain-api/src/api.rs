@@ -458,6 +458,7 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_presentation() {
         init();

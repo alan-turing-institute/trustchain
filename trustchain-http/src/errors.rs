@@ -3,8 +3,8 @@ use hyper::StatusCode;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, issuer::IssuerError, resolver::ResolverError, vc::CredentialError,
-    verifier::VerifierError, vp::PresentationError,
+    commitment::CommitmentError, issuer::IssuerError, key_manager::KeyManagerError,
+    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
 };
 use trustchain_ion::root::TrustchainRootError;
 
@@ -25,6 +25,8 @@ pub enum TrustchainHTTPError {
     RootError(TrustchainRootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
+    #[error("Trustchain key manager error: {0}")]
+    KeyManagerError(KeyManagerError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -79,6 +81,12 @@ impl From<PresentationError> for TrustchainHTTPError {
     }
 }
 
+impl From<KeyManagerError> for TrustchainHTTPError {
+    fn from(err: KeyManagerError) -> Self {
+        TrustchainHTTPError::KeyManagerError(err)
+    }
+}
+
 // See axum IntoRespone example:
 // https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
 
@@ -112,6 +120,9 @@ impl IntoResponse for TrustchainHTTPError {
                 CredentialError::VerifierError(VerifierError::InvalidRoot(_)),
             )) => (StatusCode::OK, err.to_string()),
             err @ TrustchainHTTPError::PresentationError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::KeyManagerError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CredentialDoesNotExist => {

@@ -103,11 +103,9 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         }
 
         let issuer = IONAttestor::new(&credential_store_item.issuer_did);
-        // TODO: test RSS key filtering
         let key_id = if rss {
-            // TODO: add conversion from key manager error to trustchain http error
-            // TODO: made signing_keys public on attestor to enable
-            let signing_keys = issuer.signing_keys().unwrap();
+            // TODO: move key management filtering logic into AttestorKeyManager.
+            let signing_keys = issuer.signing_keys()?;
             signing_keys
                 .into_iter()
                 .filter(|key| matches!(key.get_algorithm(), Some(Algorithm::RSS2023)))
