@@ -62,7 +62,7 @@ pub struct VcInfo {
 pub trait TrustchainIssuerHTTP {
     /// Issues an offer for a verifiable credential
     fn generate_credential_offer(template: &CredentialStoreItem, id: &str) -> CredentialOffer;
-    /// Issues a verifiable credential (should it return `Credential` or `String`)
+    /// Issues a verifiable credential.
     async fn issue_credential(
         credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
