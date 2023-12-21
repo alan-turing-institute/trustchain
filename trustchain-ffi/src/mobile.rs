@@ -177,7 +177,7 @@ pub fn vc_redact(
             .rss_redact(masked_copy, &resolver, &mut ContextLoader::default())
             .await
     })
-    .map_err(|err| FFIMobileError::FailedToRedactCredential(err))?;
+    .map_err(FFIMobileError::FailedToRedactCredential)?;
     Ok(serde_json::to_string_pretty(&o_cred).map_err(FFIMobileError::FailedToSerialize)?)
 }
 
