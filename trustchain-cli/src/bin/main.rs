@@ -227,6 +227,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("Proof... Invalid");
                             err?;
                         }
+                        err @ Err(CredentialError::NoProofPresent) => {
+                            println!("Proof... ❌ (missing proof)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::MissingVerificationMethod) => {
+                            println!("Proof... ❌ (missing verification method)");
+                            err?;
+                        }
                         err @ Err(CredentialError::NoIssuerPresent) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (missing issuer)");

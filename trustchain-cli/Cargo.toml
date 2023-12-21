@@ -13,11 +13,15 @@ trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
 
-clap = { version = "4.0.32", features=["derive", "cargo"] }
-did-ion = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}
-lazy_static="1.4.0"
+clap = { version = "4.0.32", features = ["derive", "cargo"] }
+did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
+lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt", features = ["http-did", "secp256k1"]}
-tokio = {version = "1.20.1", features = ["full"]}
-toml="0.7.2"
+ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5", features = [
+    "http-did",
+    "secp256k1",
+    "rss",
+] }
+tokio = { version = "1.20.1", features = ["full"] }
+toml = "0.7.2"

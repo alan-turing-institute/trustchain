@@ -6,21 +6,27 @@ edition = "2021"
 
 
 [dependencies]
+ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", rev = "ec9386e125d87c5f54898b34fbe0883b3b36ffd4" }
+
 async-trait = "0.1"
 base64 = "0.13"
 canonical_json = "0.4.0"
 chrono = "0.4"
-did-method-key = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt"}
+did-method-key = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
 futures = "0.3.21"
-petgraph = {version = "0.6"}
+petgraph = { version = "0.6" }
 serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
 sha2 = "0.10.7"
-ssi = {git="https://github.com/alan-turing-institute/ssi.git", branch="modify-encode-sign-jwt", features = ["http-did", "secp256k1"]}
+ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5", features = [
+    "http-did",
+    "secp256k1",
+    "rss",
+] }
 tempfile = { version = "3.3" }
 thiserror = "1.0"
-tokio = {version = "1.20.1", features = ["full"]}
+tokio = { version = "1.20.1", features = ["full"] }
 
 [dev-dependencies]
 mockall = "0.11.2"

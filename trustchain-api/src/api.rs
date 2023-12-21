@@ -248,10 +248,11 @@ pub trait TrustchainVPAPI {
 mod tests {
     use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
     use crate::TrustchainAPI;
+    use did_ion::sidetree::PublicKeyEntry;
     use ssi::jsonld::ContextLoader;
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime};
+    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime};
     use trustchain_core::utils::init;
     use trustchain_core::vc::CredentialError;
     use trustchain_core::vp::PresentationError;
@@ -269,14 +270,8 @@ mod tests {
           "https://www.w3.org/2018/credentials/examples/v1",
           "https://w3id.org/citizenship/v1"
         ],
-        "credentialSchema": {
-          "id": "did:example:cdf:35LB7w9ueWbagPL94T9bMLtyXDj9pX5o",
-          "type": "did:example:schema:22KpkXgecryx9k7N6XN1QoN3gXwBkSU8SfyyYQG"
-        },
         "type": ["VerifiableCredential"],
         "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-        "issuanceDate": "2023-09-06T12:15:08.630033Z",
-        "image": "some_base64_representation",
         "credentialSubject": {
           "givenName": "Jane",
           "familyName": "Doe",
@@ -288,6 +283,33 @@ mod tests {
         }
       }
       "#;
+
+    const UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://w3id.org/vdl/v1"
+        ],
+        "type": [
+          "VerifiableCredential",
+          "Iso18013DriversLicense"
+        ],
+        "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+        "issuanceDate": "2023-11-23T11:43:26.806224Z",
+        "credentialSubject": {
+          "id": "did:example:12347abcd",
+          "Iso18013DriversLicense": {
+            "height": 1.8,
+            "weight": 70,
+            "nationality": "France",
+            "given_name": "Test",
+            "family_name": "A",
+            "issuing_country": "US",
+            "birth_date": "1958-07-17",
+            "age_in_years": 30,
+            "age_birth_year": 1958
+          }
+        }
+      }"###;
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
@@ -326,6 +348,110 @@ mod tests {
         } else {
             panic!("should error with VerificationResultError varient of CredentialError")
         }
+    }
+
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
+    async fn test_verify_rss_credential() {
+        init();
+
+        // DID with RSS verification method
+        let issuer_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
+        let attestor = IONAttestor::new(issuer_did_suffix);
+
+        let signed_vc = attestor
+            .sign(
+                &vc,
+                None,
+                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
+                &resolver,
+                &mut ContextLoader::default(),
+            )
+            .await
+            .unwrap();
+        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        let mut context_loader = ContextLoader::default();
+        let verifier = TrustchainVerifier::new(resolver);
+        let res = TrustchainAPI::verify_credential(
+            &signed_vc,
+            None,
+            ROOT_EVENT_TIME_1,
+            &verifier,
+            &mut context_loader,
+        )
+        .await;
+        // println!("{:?}", &res);
+        assert!(res.is_ok());
+    }
+
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
+    async fn test_redact_verify_rss_credential() {
+        init();
+
+        // DID with RSS verification method
+        let issuer_did_suffix = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
+        let attestor = IONAttestor::new(issuer_did_suffix);
+
+        let mut signed_vc = attestor
+            .sign(
+                &vc,
+                None,
+                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
+                &resolver,
+                &mut ContextLoader::default(),
+            )
+            .await
+            .unwrap();
+        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        // derive redacted RSignature
+        let masked_cred_sub: CredentialSubject = serde_json::from_str(
+            r###"{
+              "id": "did:example:12347abcd",
+              "Iso18013DriversLicense": {
+                "height": null,
+                "weight": null,
+                "nationality": null,
+                "given_name": null,
+                "family_name": null,
+                "issuing_country": "US",
+                "birth_date": null,
+                "age_in_years": 30,
+                "age_birth_year": null
+              }
+            }"###,
+        )
+        .unwrap();
+        let mut masked_copy = signed_vc.clone();
+        masked_copy.credential_subject = OneOrMany::One(masked_cred_sub);
+
+        // produce redacted vc from redacted json
+        let mut context_loader = ContextLoader::default();
+        let verifier = TrustchainVerifier::new(resolver);
+        signed_vc
+            .rss_redact(
+                masked_copy,
+                &trustchain_resolver("http://localhost:3000/"),
+                &mut context_loader,
+            )
+            .await
+            .unwrap();
+        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+
+        let res = TrustchainAPI::verify_credential(
+            &signed_vc,
+            None,
+            ROOT_EVENT_TIME_1,
+            &verifier,
+            &mut context_loader,
+        )
+        .await;
+
+        assert!(res.is_ok());
     }
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
@@ -443,5 +569,17 @@ mod tests {
             .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
             .await
             .unwrap()
+    }
+
+    #[test]
+    fn get_key_entry() {
+        use ps_sig::keys::Params;
+        use ssi::jwk::rss::generate_keys_jwk;
+        use ssi::jwk::JWK;
+
+        let key: JWK = generate_keys_jwk(64, &Params::new("test".to_string().as_bytes())).unwrap();
+        println!("{}", serde_json::to_string_pretty(&key).unwrap());
+        let entry: PublicKeyEntry = key.try_into().unwrap();
+        println!("{}", serde_json::to_string_pretty(&entry).unwrap());
     }
 }

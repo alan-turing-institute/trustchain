@@ -1,4 +1,5 @@
 //! Core utilities.
+use crate::data::{ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS};
 use crate::key_manager::KeyManager;
 use crate::key_manager::KeyType;
 use crate::TRUSTCHAIN_DATA;
@@ -35,12 +36,25 @@ pub fn init() {
         // Include test signing keys for two resolvable DIDs
         let root_plus_1_did_suffix = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-        let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
-        let root_plus_2_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"0nnR-pz2EZGfb7E1qfuHhnDR824HhBioxz4E-EBMnM4","y":"rWqDVJ3h16RT1N-Us7H7xRxvbC0UlMMQQgxmXOXd4bY","d":"bJnhIQgj0eQoRXIw5Xna6LErnili2ajMstoJLI21HiQ"}"#;
-        let root_plus_1_signing_jwk: JWK= serde_json::from_str(root_plus_1_signing_key).unwrap();
-        let root_plus_2_signing_jwk: JWK= serde_json::from_str(root_plus_2_signing_key).unwrap();
-        utils_key_manager.save_keys(root_plus_1_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_1_signing_jwk), false).unwrap();
-        utils_key_manager.save_keys(root_plus_2_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_signing_jwk), false).unwrap();
+        let root_plus_1_signing_jwk: JWK = serde_json::from_str(ROOT_PLUS_1_SIGNING_KEY).unwrap();
+        let root_plus_2_signing_jwks: Vec<JWK> =
+            serde_json::from_str(ROOT_PLUS_2_SIGNING_KEYS).unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_1_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::One(root_plus_1_signing_jwk),
+                false,
+            )
+            .unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_2_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::Many(root_plus_2_signing_jwks),
+                false,
+            )
+            .unwrap();
     });
 }
 
