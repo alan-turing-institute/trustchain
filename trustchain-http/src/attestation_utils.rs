@@ -345,7 +345,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         path: &PathBuf,
     ) -> Result<Option<IdentityCRChallenge>, TrustchainCRError> {
         // update public key
-        let mut full_path = path.join("update_p_key.json");
+        let full_path = path.join("update_p_key.json");
         self.update_p_key = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);

@@ -134,8 +134,7 @@ pub fn extract_key_ids_and_jwk(
 mod tests {
     use super::*;
     use crate::data::{
-        TEST_ATTESTOR_KEY, TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1,
-        TEST_SIGNING_KEY_2, TEST_TEMP_KEY, TEST_UPDATE_KEY,
+        TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
     };
     #[test]
     fn test_sign_encrypt_and_decrypt_verify() {

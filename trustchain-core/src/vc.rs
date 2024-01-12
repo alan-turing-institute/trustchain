@@ -9,6 +9,12 @@ pub enum CredentialError {
     /// No issuer present in credential.
     #[error("No issuer.")]
     NoIssuerPresent,
+    /// No proof present in credential.
+    #[error("No proof.")]
+    NoProofPresent,
+    /// Missing verification method in credential proof.
+    #[error("Missing verification method in credential proof.")]
+    MissingVerificationMethod,
     /// Failed to decode JWT error.
     #[error("Failed to decode JWT.")]
     FailedToDecodeJWT,
@@ -25,6 +31,3 @@ impl From<VerifierError> for CredentialError {
         CredentialError::VerifierError(err)
     }
 }
-
-#[cfg(test)]
-mod tests {}

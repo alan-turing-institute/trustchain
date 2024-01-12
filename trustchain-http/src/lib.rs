@@ -2,7 +2,8 @@ pub mod attestation_encryption_utils;
 pub mod attestation_utils;
 pub mod attestor;
 pub mod config;
-pub mod data;
+#[cfg(test)]
+pub(crate) mod data;
 pub mod errors;
 pub mod ion;
 pub mod issuer;
@@ -14,6 +15,7 @@ pub mod root;
 pub mod server;
 pub mod state;
 pub mod static_handlers;
+pub mod store;
 pub mod utils;
 pub mod verifier;
 
