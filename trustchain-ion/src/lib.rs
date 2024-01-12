@@ -27,9 +27,9 @@ use thiserror::Error;
 // for better handling of URLs.
 pub type URL = String;
 
-/// Full client zero sized type for marker in `IONVerifier`.
+/// Full client zero sized type for marker in `TrustchainVerifier`.
 pub struct FullClient;
-/// Light client zero sized type for marker in `IONVerifier`.
+/// Light client zero sized type for marker in `TrustchainVerifier`.
 pub struct LightClient;
 
 /// Type for representing an endpoint as a base URL and port.

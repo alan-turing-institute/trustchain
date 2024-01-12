@@ -93,7 +93,7 @@ impl<T> TrustchainVerifier<T, FullClient>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Constructs a new IONVerifier.
+    /// Constructs a new TrustchainVerifier.
     // TODO: refactor to use config struct over direct config file lookup
     pub fn new(resolver: HTTPTrustchainResolver<T>) -> Self {
         // Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
@@ -308,7 +308,7 @@ impl<T> TrustchainVerifier<T, LightClient>
 where
     T: Send + Sync + DIDResolver,
 {
-    /// Constructs a new IONVerifier.
+    /// Constructs a new TrustchainVerifier.
     // TODO: consider refactor to remove resolver from API
     pub fn with_endpoint(resolver: HTTPTrustchainResolver<T, LightClient>, endpoint: URL) -> Self {
         Self {

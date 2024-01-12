@@ -4,7 +4,7 @@ use tokio::runtime::Runtime;
 use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_core::chain::DIDChain;
 use trustchain_core::verifier::Verifier;
-use trustchain_ion::{get_ion_resolver, verifier::IONVerifier};
+use trustchain_ion::{get_ion_resolver, verifier::TrustchainVerifier};
 
 /// Example greet function.
 pub fn greet() -> String {
@@ -30,7 +30,7 @@ pub fn verify_prototype(did: String, root_timestamp: u32) -> DIDChain {
     rt.block_on(async {
         // Construct a Trustchain Resolver from a Sidetree (ION) DIDMethod.
         let resolver = get_ion_resolver("http://localhost:3000/");
-        let verifier = IONVerifier::new(resolver);
+        let verifier = TrustchainVerifier::new(resolver);
 
         verifier.verify(&did, root_timestamp).await.unwrap()
     })
