@@ -1,6 +1,6 @@
 use crate::TrustchainAPI;
 use async_trait::async_trait;
-use did_ion::sidetree::DocumentState;
+use did_ion::sidetree::{DocumentState, PublicKeyJwk};
 use futures::{stream, StreamExt, TryStreamExt};
 use ssi::{
     did_resolve::DIDResolver,
@@ -33,8 +33,9 @@ pub trait TrustchainDIDAPI {
     fn create(
         document_state: Option<DocumentState>,
         verbose: bool,
+        update_p_key: Option<PublicKeyJwk>,
     ) -> Result<String, Box<dyn Error>> {
-        create_operation(document_state, verbose)
+        create_operation(document_state, verbose, update_p_key)
     }
     /// An uDID attests to a dDID, writing the associated update operation to file in the operations
     /// path.

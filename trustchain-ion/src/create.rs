@@ -47,7 +47,7 @@ impl OperationDID for CreateOperation {
 fn write_create_operation(
     create_operation: CreateOperation,
     signing_key: Option<JWK>,
-    update_key: JWK,
+    update_key: Option<JWK>,
     recovery_key: JWK,
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Get DID
@@ -112,13 +112,22 @@ fn create_operation_from_keys(
 pub fn create_operation(
     document_state: Option<DocumentState>,
     verbose: bool,
+    update_p_key: Option<PublicKeyJwk>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    // Generate random keys
-    let update_key = generate_key();
+    let (update_pk, update_key) = if let Some(update_pk) = update_p_key {
+        (update_pk, None)
+    } else {
+        // Generate random keys
+        let update_key = generate_key();
+        ION::validate_key(&update_key).unwrap();
+        (
+            PublicKeyJwk::try_from(update_key.to_public()).unwrap(),
+            Some(update_key),
+        )
+    };
+
     let recovery_key = generate_key();
-    ION::validate_key(&update_key).unwrap();
     ION::validate_key(&recovery_key).unwrap();
-    let update_pk = PublicKeyJwk::try_from(update_key.to_public()).unwrap();
     let recovery_pk = PublicKeyJwk::try_from(recovery_key.to_public()).unwrap();
 
     // Create operation: Make the create patch from scratch or passed file
@@ -218,7 +227,7 @@ pub fn create_operation_mnemonic(
     write_create_operation(
         create_operation,
         Some(ion_keys.signing_key),
-        ion_keys.update_key,
+        Some(ion_keys.update_key),
         ion_keys.recovery_key,
     )
 }
@@ -262,16 +271,39 @@ mod test {
         ]
     }"#;
 
+    const TEST_P_KEY: &str = r#"{
+        "temp_p_key": {
+            "kty": "EC",
+            "crv": "secp256k1",
+            "x": "JokHTNHd1lIw2EXUTV1RJL3wvWMgoIRHPaWxTHcyH9U",
+            "y": "z737jJY7kxW_lpE1eZur-9n9_HUEGFyBGsTdChzI4Kg"
+        },
+        "requester_details": {
+            "requester_org": "myTrustworthyEntity",
+            "operator_name": "trustworthyOperator"
+        }
+    }"#;
+
     #[test]
     fn test_create() -> Result<(), Box<dyn std::error::Error>> {
         init();
 
         // 1. Run create with no document state passed
-        create_operation(None, false)?;
+        create_operation(None, false, None)?;
 
         // 2. Run create with a document state passed
         let doc_state: DocumentState = serde_json::from_reader(TEST_DOC_STATE.as_bytes())?;
-        create_operation(Some(doc_state), false)?;
+        create_operation(Some(doc_state.clone()), false, None)?;
+
+        // 3. Create with an update public key provided
+        let update_p_key = Some(serde_json::from_str(TEST_P_KEY).unwrap());
+        create_operation(Some(doc_state), false, update_p_key.clone())?;
+
+        // Check the update_commitment is in one of the create operations
+        // println!(
+        //     "{}",
+        //     ION::commitment_scheme(&update_p_key.unwrap()).unwrap()
+        // );
 
         // Try to read outputted create operations and check they deserialize
         let path = get_operations_path()?;
@@ -284,13 +316,14 @@ mod test {
             if let Ok(path_buf) = path {
                 let operation_string = std::fs::read_to_string(path_buf)?;
                 let _operation: Operation = serde_json::from_str(&operation_string)?;
+                println!("{:?}", _operation);
                 operation_count += 1;
             } else {
                 panic!("No path present.");
             }
         }
         // Check two create operations exist.
-        assert!(operation_count == 2);
+        assert!(operation_count == 3);
         Ok(())
     }
 }

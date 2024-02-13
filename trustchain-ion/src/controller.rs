@@ -21,12 +21,17 @@ impl ControllerKeyManager for IONController {}
 pub struct ControllerData {
     did: String,
     controlled_did: String,
-    update_key: JWK,
+    update_key: Option<JWK>,
     recovery_key: JWK,
 }
 
 impl ControllerData {
-    pub fn new(did: String, controlled_did: String, update_key: JWK, recovery_key: JWK) -> Self {
+    pub fn new(
+        did: String,
+        controlled_did: String,
+        update_key: Option<JWK>,
+        recovery_key: JWK,
+    ) -> Self {
         ControllerData {
             did,
             controlled_did,
@@ -43,13 +48,15 @@ impl TryFrom<ControllerData> for IONController {
             did: data.did,
             controlled_did: data.controlled_did,
         };
-        // Attempt to save the update key, but do not overwrite existing key data.
-        controller.save_key(
-            controller.controlled_did_suffix(),
-            KeyType::UpdateKey,
-            &data.update_key,
-            false,
-        )?;
+        if let Some(update_key) = data.update_key {
+            // Attempt to save the update key, but do not overwrite existing key data.
+            controller.save_key(
+                controller.controlled_did_suffix(),
+                KeyType::UpdateKey,
+                &update_key,
+                false,
+            )?;
+        }
         // Attempt to save the recovery key, but do not overwrite existing key data.
         controller.save_key(
             controller.controlled_did_suffix(),
@@ -224,7 +231,7 @@ mod tests {
         did: &str,
         controlled_did: &str,
     ) -> Result<IONController, Box<dyn std::error::Error>> {
-        let update_key: JWK = serde_json::from_str(TEST_UPDATE_KEY)?;
+        let update_key: Option<JWK> = Some(serde_json::from_str(TEST_UPDATE_KEY)?);
         let recovery_key: JWK = serde_json::from_str(TEST_RECOVERY_KEY)?;
         IONController::try_from(ControllerData::new(
             did.to_string(),

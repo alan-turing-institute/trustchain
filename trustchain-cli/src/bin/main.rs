@@ -1,8 +1,9 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
 use core::panic;
+use did_ion::sidetree::PublicKeyJwk;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
@@ -50,7 +51,8 @@ fn cli() -> Command {
                         .about("Creates a new controlled DID from a document state.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
-                        .arg(arg!(-f --file_path <FILE_PATH>).required(false)),
+                        .arg(arg!(-f --file_path <FILE_PATH>).required(false))
+                        .arg(arg!(-f --update_p_key_file_path <FILE_PATH_TO_UPDATE_P_KEY>).required(false)),
                 )
                 .subcommand(
                     Command::new("attest")
@@ -165,8 +167,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match sub_matches.subcommand() {
                 Some(("create", sub_matches)) => {
                     let file_path = sub_matches.get_one::<String>("file_path");
+                    let update_p_key_file_path =
+                        sub_matches.get_one::<String>("update_p_key_file_path");
                     let verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
                     let mnemonic = matches!(sub_matches.get_one::<bool>("mnemonic"), Some(true));
+
+                    // TODO: mnemonic and update_p_key both being provided is not currently supported.
+                    // Not expected in practice: mnemonic is for mobile users, update_p_key is for challenge-response.
+                    if mnemonic && update_p_key_file_path.is_some() {
+                        panic!("mnemonic and update_p_key both being provided is not currently supported.")
+                    }
+
+                    let update_p_key: Option<PublicKeyJwk> = match update_p_key_file_path {
+                        Some(file) => {
+                            let reader = std::io::BufReader::new(File::open(file)?);
+                            let deserialized = serde_json::from_reader(reader)
+                                .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                            Some(deserialized)
+                        }
+                        None => None,
+                    };
+
                     if mnemonic && file_path.is_some() {
                         panic!("Please use only one of '--file_path' and '--mnemonic'.")
                     }
@@ -177,7 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else {
                             None
                         };
-                        create_operation(doc_state, verbose)?;
+                        create_operation(doc_state, verbose, update_p_key)?;
                     } else {
                         let mut mnemonic = String::new();
                         println!("Enter a mnemonic:");
