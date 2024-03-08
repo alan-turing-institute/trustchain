@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct DIDQRCode {
     /// DID for issuance and/or verifier endpoint resolution.
     pub did: String,
-    /// HTTP route for making issuer or verifer requests.
-    pub route: String,
-    /// ID for identifying credential offer or presentation request.
-    pub id: String,
+    /// Service ID for credential offer or presentation request.
+    pub service: String,
+    /// HTTP path for making issuer or verifer requests.
+    pub relative_ref: Option<String>,
 }
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {
