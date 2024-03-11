@@ -52,7 +52,7 @@ fn cli() -> Command {
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false))
-                        .arg(arg!(-f --update_p_key_file_path <FILE_PATH_TO_UPDATE_P_KEY>).required(false)),
+                        .arg(arg!(-u --update_p_key_file_path <FILE_PATH_TO_UPDATE_P_KEY>).required(false)),
                 )
                 .subcommand(
                     Command::new("attest")
