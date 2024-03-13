@@ -133,6 +133,12 @@ async fn attestation_challenge_response() {
     let result = identity_response(&requester_path, &services, &attestor_public_key).await;
     assert!(result.is_ok());
     let identity_challenge_requester = result.unwrap();
+    assert_eq!(
+        identity_challenge_requester.update_p_key,
+        identity_challenge_attestor.update_p_key
+    );
+    assert_eq!(identity_challenge_requester.update_s_key, None);
+
     identity_challenge_requester
         .elementwise_serialize(&requester_path)
         .unwrap();

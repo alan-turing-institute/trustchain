@@ -133,8 +133,14 @@ pub async fn identity_response(
         .as_str()
         .unwrap();
     let nonce = Nonce::from(String::from(nonce_str));
-    // update struct
-    identity_challenge.update_p_key = Some(attestor_p_key.clone());
+    let update_p_key_str = decrypted_verified_payload
+        .claim("update_p_key")
+        .unwrap()
+        .as_str()
+        .unwrap();
+    let update_p_key: Jwk = serde_json::from_str(update_p_key_str).unwrap();
+    // update struct: add nonce and update_p_key
+    identity_challenge.update_p_key = Some(update_p_key);
     identity_challenge.identity_nonce = Some(nonce);
     identity_challenge.identity_response_signature = Some(signed_encrypted_response);
 
