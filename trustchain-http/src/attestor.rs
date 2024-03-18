@@ -185,7 +185,7 @@ impl TrustchainAttestorHTTPHandler {
         let content_initiation = ContentCRInitiation {
             requester_did: Some(ddid),
         };
-        content_initiation.elementwise_serialize(&path);
+        content_initiation.elementwise_serialize(&path).unwrap();
         // extract map of keys from candidate document and generate a nonce per key
         let requester_keys = extract_key_ids_and_jwk(&candidate_doc).unwrap();
         let attestor = Entity {};

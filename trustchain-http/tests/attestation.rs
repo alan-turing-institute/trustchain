@@ -17,7 +17,7 @@ use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
 use mockall::automock;
-use trustchain_core::utils::{extract_keys, init};
+use trustchain_core::utils::extract_keys;
 
 #[automock]
 pub trait AttestationUtils {

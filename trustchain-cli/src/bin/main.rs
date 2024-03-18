@@ -3,7 +3,7 @@ use clap::{arg, ArgAction, Command};
 use core::panic;
 use did_ion::sidetree::PublicKeyJwk;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
