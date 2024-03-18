@@ -337,13 +337,13 @@ pub fn present_identity_challenge(
 
     let mut identity_challenge = IdentityCRChallenge {
         update_p_key: Some(update_p_key),
-        update_s_key: None,
+        update_s_key: Some(update_s_key),
         identity_nonce: Some(nonce),
         identity_challenge_signature: None,
         identity_response_signature: None,
     };
 
-    // make payload
+    // make payload (only nonce and update_p_key are included)
     let payload = JwtPayload::try_from(&identity_challenge).unwrap();
 
     // get signing key from ION attestor
@@ -358,9 +358,6 @@ pub fn present_identity_challenge(
     let signed_encrypted_challenge =
         attestor.sign_and_encrypt_claim(&payload, &signing_key, &temp_p_key);
     identity_challenge.identity_challenge_signature = Some(signed_encrypted_challenge?);
-
-    // Store update secret key
-    identity_challenge.update_s_key = Some(update_s_key);
 
     Ok(identity_challenge)
 }
