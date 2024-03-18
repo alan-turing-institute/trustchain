@@ -17,8 +17,6 @@ use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
 use mockall::automock;
-use std::fs;
-use std::path::PathBuf;
 use trustchain_core::utils::{extract_keys, init};
 
 #[automock]
@@ -135,6 +133,14 @@ async fn attestation_challenge_response() {
     let identity_challenge_requester = result.unwrap();
     assert_eq!(
         identity_challenge_requester.update_p_key,
+        identity_challenge_attestor.update_p_key
+    );
+    assert_eq!(
+        identity_challenge_attestor
+            .update_s_key
+            .unwrap()
+            .to_public_key()
+            .ok(),
         identity_challenge_attestor.update_p_key
     );
     assert_eq!(identity_challenge_requester.update_s_key, None);
