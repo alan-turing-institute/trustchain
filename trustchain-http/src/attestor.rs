@@ -185,7 +185,7 @@ impl TrustchainAttestorHTTPHandler {
         let content_initiation = ContentCRInitiation {
             requester_did: Some(ddid),
         };
-        content_initiation.elementwise_serialize(&path);
+        content_initiation.elementwise_serialize(&path).unwrap();
         // extract map of keys from candidate document and generate a nonce per key
         let requester_keys = extract_key_ids_and_jwk(&candidate_doc).unwrap();
         let attestor = Entity {};
@@ -343,7 +343,7 @@ pub fn present_identity_challenge(
         identity_response_signature: None,
     };
 
-    // make payload
+    // make payload (only nonce and update_p_key are included)
     let payload = JwtPayload::try_from(&identity_challenge).unwrap();
 
     // get signing key from ION attestor

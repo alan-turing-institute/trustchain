@@ -3,7 +3,7 @@ use clap::{arg, ArgAction, Command};
 use core::panic;
 use did_ion::sidetree::PublicKeyJwk;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, jwk::JWK, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
@@ -52,7 +52,7 @@ fn cli() -> Command {
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false))
-                        .arg(arg!(-f --update_p_key_file_path <FILE_PATH_TO_UPDATE_P_KEY>).required(false)),
+                        .arg(arg!(-u --update_p_key_file_path <FILE_PATH_TO_UPDATE_P_KEY>).required(false)),
                 )
                 .subcommand(
                     Command::new("attest")
