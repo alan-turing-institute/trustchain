@@ -24,7 +24,7 @@ theme:
       toggle:
         icon: material/toggle-switch
         name: Switch to light mode
-      primary: orange
+      primary: custom
       accent: orange
 
 extra:
@@ -48,3 +48,6 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.mark
   - attr_list
+
+plugins:
+  - awesome-pages
