@@ -2,9 +2,11 @@ nav:
     - index.md
     - use-cases.md
     - getting-started.md
+    - roles.md
+    - usage.md
+    - faq.md
+    - technical-notes.md
     - dev-guide.md
     - contributing.md
-    - technical-notes.md
-    - faq.md
     - license.md
     - acknowledgements.md
