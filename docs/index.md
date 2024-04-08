@@ -1,4 +1,8 @@
-# Welcome to MkDocs
+---
+hide:
+  - footer
+---
+# Welcome to Trustchain Docs
 
 For full documentation visit [mkdocs.org](https://www.mkdocs.org).
 
