@@ -182,3 +182,4 @@ In this example we have considered federation across two pre-existing digital ID
 In order to achieve a similar arrangement, without the means of an open & shared public key infrastructure, bilateral or multilateral agreements between identity providers would need to be securely communicated to all users and relying parties, including updating lists of trusted public keys on their client devices. In that scenario device updates would become an attack vector and, in the absence of a universally accessible & verifiable "ground truth", the shared state across different participants in the system could easily become unsynchronised.
 
 <!-- [TODO: consider the (more complicated) case in which the VC is issued not by the ID provider itself but by a subordinate entity. ] -->
+<br/><br/>

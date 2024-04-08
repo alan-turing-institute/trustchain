@@ -16,9 +16,7 @@ Trustchain is free and open source software. The setup and operational costs of 
 
 ## Useful links
 
-- [Trustchain repo](https://github.com/alan-turing-institute/trustchain)
+- [Trustchain repository (GitHub)](https://github.com/alan-turing-institute/trustchain)
+- [Trustchain Mobile repository (GitHub)](https://github.com/alan-turing-institute/trustchain-mobile)
 - [Trustchain article](https://arxiv.org/abs/2305.08533)
 - [Trustchain wiki](https://github.com/alan-turing-institute/trustchain/wiki)
-- [Trustchain FAQ](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-FAQ)
-- [Slides & videos](https://github.com/alan-turing-institute/trustchain/wiki#presentations)
-- [Technical notes](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes)
