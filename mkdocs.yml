@@ -1,6 +1,7 @@
 site_name: Trustchain Docs
 theme:
   name: material
+  favicon: assets/trustchain-icon-circular-thick.png
   logo: assets/trustchain-icon-circular-thick.png
   features:
     - navigation.sections
