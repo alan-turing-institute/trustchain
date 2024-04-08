@@ -2,3 +2,9 @@ nav:
     - index.md
     - use-cases.md
     - getting-started.md
+    - dev-guide.md
+    - contributing.md
+    - technical-notes.md
+    - faq.md
+    - license.md
+    - acknowledgements.md

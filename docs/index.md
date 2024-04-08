@@ -14,8 +14,6 @@ Trustchain enables the creation of DIDs which are themselves verifiable. Via thi
 
 Trustchain is free and open source software. The setup and operational costs of the system are low, without compromising on security or resilience, because it is built upon existing, robust peer-to-peer networks. It is globally accessible and can operate at any social scale, making it freely available for any user community to adopt.
 
-<!-- <center><img src="assets/figs/dDID_schematic.png" width="400px" /></center> -->
-
 ## Useful links
 
 - [Trustchain repo](https://github.com/alan-turing-institute/trustchain)
