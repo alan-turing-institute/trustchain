@@ -1,7 +1,7 @@
 site_name: Trustchain Docs
 theme:
   name: material
-  logo: assets/trustchain-icon-circular.png
+  logo: assets/trustchain-icon-circular-thick.png
   features:
     - navigation.sections
     - navigation.footer
@@ -19,7 +19,7 @@ theme:
         icon: material/toggle-switch-off-outline
         name: Switch to dark mode
       primary: custom
-      accent: orange
+      accent: custom
     - scheme: slate
       toggle:
         icon: material/toggle-switch
