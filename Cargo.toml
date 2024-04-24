@@ -1,3 +1,13 @@
+[package]
+name = "trustchain"
+version = "0.2.0"
+authors = ["Trustchain Devs"]
+license = "MIT OR Apache-2.0"
+description = "Trustchain decentralised PKI reference implementation."
+homepage = "https://alan-turing-institute.github.io/trustchain/"
+repository = "https://github.com/alan-turing-institute/trustchain/"
+keywords = ["pki", "did", "vc", "vp"]
+
 [workspace]
 members = [
     "trustchain-core",
