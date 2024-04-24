@@ -9,11 +9,11 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 /// QR code JSON type of verifiable content.
 pub(crate) struct DIDQRCode {
-    /// DID for issuance and/or verifier endpoint resolution.
+    /// DID
     pub did: String,
-    /// Service ID for credential offer or presentation request.
+    /// DID `service` parameter (see [W3C spec](https://www.w3.org/TR/did-core/#did-parameters)).
     pub service: String,
-    /// HTTP path for making issuer or verifer requests.
+    /// DID `relativeRef` parameter (see [W3C spec](https://www.w3.org/TR/did-core/#did-parameters)).
     pub relative_ref: Option<String>,
 }
 
