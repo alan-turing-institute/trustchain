@@ -12,9 +12,12 @@ path = "src/bin/main.rs"
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
+trustchain-http = { path = "../trustchain-http" }
+
 
 clap = { version = "4.0.32", features = ["derive", "cargo"] }
 did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
+josekit = "0.8"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

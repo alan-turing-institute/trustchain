@@ -25,6 +25,9 @@ pub enum TrustchainHTTPError {
     RootError(TrustchainRootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
+    // TODO: once needed in http propagate
+    // #[error("Jose error: {0}")]
+    // JoseError(JoseError),
     #[error("Trustchain key manager error: {0}")]
     KeyManagerError(KeyManagerError),
     #[error("Credential does not exist.")]
@@ -43,6 +46,8 @@ pub enum TrustchainHTTPError {
     FailedToDeserialize(serde_json::Error),
     #[error("Root event time not configured for verification.")]
     RootEventTimeNotSet,
+    #[error("Attestation request failed.")]
+    FailedAttestationRequest,
 }
 
 impl From<ResolverError> for TrustchainHTTPError {
@@ -160,6 +165,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::RootEventTimeNotSet => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::FailedAttestationRequest => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };
