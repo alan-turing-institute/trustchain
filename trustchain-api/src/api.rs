@@ -23,7 +23,7 @@ use trustchain_ion::{
     attest::attest_operation, attestor::IONAttestor, create::create_operation, trustchain_resolver,
 };
 
-/// API for Trustchain CLI DID functionality.
+/// API for Trustchain DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
     /// Creates a controlled DID from a passed document state, writing the associated create
@@ -79,7 +79,7 @@ pub trait TrustchainDIDAPI {
     // }
 }
 
-/// API for Trustchain CLI VC functionality.
+/// API for Trustchain VC functionality.
 #[async_trait]
 pub trait TrustchainVCAPI {
     /// Signs a credential.
@@ -135,6 +135,7 @@ pub trait TrustchainVCAPI {
     }
 }
 
+/// API for Trustchain VP functionality.
 #[async_trait]
 pub trait TrustchainVPAPI {
     /// Signs a presentation constructing a verifiable presentation.

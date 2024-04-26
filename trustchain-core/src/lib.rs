@@ -1,4 +1,4 @@
-//! Trustchain library.
+//! Core traits and logic (data layer independent).
 pub mod attestor;
 pub mod chain;
 pub mod commitment;

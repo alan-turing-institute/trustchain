@@ -7,6 +7,7 @@ description = "Trustchain decentralised PKI reference implementation."
 homepage = "https://alan-turing-institute.github.io/trustchain/"
 repository = "https://github.com/alan-turing-institute/trustchain/"
 keywords = ["pki", "did", "vc", "vp"]
+edition =  "2021"
 
 [workspace]
 members = [
@@ -18,3 +19,10 @@ members = [
     "trustchain-ffi"
 ]
 resolver = "2"
+
+[dependencies]
+trustchain-api = { path = "./trustchain-api", version = "0.1.0"}
+trustchain-core = { path = "./trustchain-core", version = "0.2.0"}
+trustchain-ffi = { path = "./trustchain-ffi", version = "0.1.0"}
+trustchain-http = { path = "./trustchain-http", version = "0.1.0"}
+trustchain-ion = { path = "./trustchain-ion", version = "0.2.0"}

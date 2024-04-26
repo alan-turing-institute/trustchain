@@ -1,3 +1,4 @@
+//! HTTP server functionality.
 pub mod config;
 #[cfg(test)]
 pub(crate) mod data;
