@@ -1,3 +1,4 @@
+//! QR code functionality for encoding credential offers and presentation requests.
 use base64::engine::general_purpose;
 use base64::write::EncoderWriter;
 use image::Luma;

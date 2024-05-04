@@ -1,3 +1,4 @@
+//! Handlers and trait for verifying VCs and VPs and providing presentation requests.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
