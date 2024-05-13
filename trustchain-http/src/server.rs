@@ -1,3 +1,4 @@
+//! Trustchain HTTP router type and functionality for spawning HTTP and HTTPS servers.
 use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{
@@ -11,7 +12,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tower::ServiceBuilder;
 
-/// A wrapped axum router.
+/// A wrapped axum router combining Trustchain HTTP handlers for resolution (DIDs, chains, bundles),
+/// verification (VCs and VPs), issuance (VCs), root candidate retrieval and communication with an
+/// ION node.
 pub struct TrustchainRouter {
     router: Router,
 }

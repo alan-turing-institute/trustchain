@@ -1,3 +1,4 @@
+//! Handlers and trait for issuing VCs and providing credential offers.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
