@@ -313,7 +313,7 @@ fn ipfs_key_endpoints(doc: &Document) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::{TEST_DOCUMENT_IPFS_KEY, TEST_RSS_VM_JSON};
+    use crate::data::{TEST_DOCUMENT_IPFS_KEY, TEST_IPFS_KEY_VM_JSON};
 
     use super::*;
 
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn test_verification_method_deserialisation() {
-        let mut json: serde_json::Value = serde_json::from_str(TEST_RSS_VM_JSON).unwrap();
+        let mut json: serde_json::Value = serde_json::from_str(TEST_IPFS_KEY_VM_JSON).unwrap();
 
         json.as_object_mut()
             .ok_or(ResolverError::FailedToConvertToTrustchain(String::from(

@@ -43,10 +43,6 @@ impl TrustchainRouter {
                     get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode),
                 )
                 .route(
-                    "/issuer_rss/:id",
-                    get(issuer::TrustchainIssuerHTTPHandler::get_issuer_qrcode_rss),
-                )
-                .route(
                     "/verifier",
                     get(verifier::TrustchainVerifierHTTPHandler::get_verifier_qrcode),
                 )
@@ -55,24 +51,7 @@ impl TrustchainRouter {
                     get(issuer::TrustchainIssuerHTTPHandler::get_issuer).post({
                         let state = shared_state.clone();
                         move |(id, vc_info)| {
-                            issuer::TrustchainIssuerHTTPHandler::post_issuer(
-                                (id, vc_info),
-                                state,
-                                false,
-                            )
-                        }
-                    }),
-                )
-                .route(
-                    "/vc_rss/issuer/:id",
-                    get(issuer::TrustchainIssuerHTTPHandler::get_issuer).post({
-                        let state = shared_state.clone();
-                        move |(id, vc_info)| {
-                            issuer::TrustchainIssuerHTTPHandler::post_issuer(
-                                (id, vc_info),
-                                state,
-                                true,
-                            )
+                            issuer::TrustchainIssuerHTTPHandler::post_issuer((id, vc_info), state)
                         }
                     }),
                 )

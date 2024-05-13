@@ -13,7 +13,7 @@ use chrono::Utc;
 use log::info;
 use serde::{Deserialize, Serialize};
 use ssi::jsonld::ContextLoader;
-use ssi::jwk::Algorithm;
+
 use ssi::one_or_many::OneOrMany;
 use ssi::vc::Credential;
 use ssi::vc::VCDateTime;
@@ -68,7 +68,6 @@ pub trait TrustchainIssuerHTTP {
         credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
-        rss: bool,
     ) -> Result<Credential, TrustchainHTTPError>;
 }
 
@@ -89,7 +88,6 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         credential_store_item: &CredentialStoreItem,
         subject_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
-        rss: bool,
     ) -> Result<Credential, TrustchainHTTPError> {
         let mut credential = credential_store_item.credential.to_owned();
         credential.issuer = Some(ssi::vc::Issuer::URI(ssi::vc::URI::String(
@@ -104,25 +102,12 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         }
 
         let issuer = IONAttestor::new(&credential_store_item.issuer_did);
-        let key_id = if rss {
-            // TODO: move key management filtering logic into AttestorKeyManager.
-            let signing_keys = issuer.signing_keys()?;
-            signing_keys
-                .into_iter()
-                .filter(|key| matches!(key.get_algorithm(), Some(Algorithm::RSS2023)))
-                .map(|jwk| jwk.thumbprint())
-                .take(1)
-                .collect::<Result<String, _>>()
-                .ok()
-        } else {
-            None
-        };
 
         Ok(issuer
             .sign(
                 &credential,
                 None,
-                key_id.as_deref(),
+                None,
                 resolver,
                 // TODO: add context loader to app_state
                 &mut ContextLoader::default(),
@@ -162,35 +147,6 @@ impl TrustchainIssuerHTTPHandler {
         Ok(Html(str_to_qr_code_html(&qr_code_str, "Issuer")))
     }
 
-    pub async fn get_issuer_qrcode_rss(
-        State(app_state): State<Arc<AppState>>,
-        Path(id): Path<String>,
-    ) -> Result<Html<String>, TrustchainHTTPError> {
-        let did = app_state
-            .credentials
-            .get(&id)
-            .ok_or(TrustchainHTTPError::CredentialDoesNotExist)?
-            .issuer_did
-            .to_owned();
-        let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
-            serde_json::to_string(&DIDQRCode {
-                did,
-                route: "/vc_rss/issuer/".to_string(),
-                id,
-            })
-            .unwrap()
-        } else {
-            format!(
-                "{}://{}:{}/vc_rss/issuer/{id}",
-                http_config().http_scheme(),
-                app_state.config.host_display,
-                app_state.config.port
-            )
-        };
-        // Respond with the QR code as a png embedded in html
-        Ok(Html(str_to_qr_code_html(&qr_code_str, "Issuer")))
-    }
-
     /// API endpoint taking the UUID of a VC. Response is the VC JSON.
     pub async fn get_issuer(
         Path(credential_id): Path<String>,
@@ -214,7 +170,6 @@ impl TrustchainIssuerHTTPHandler {
     pub async fn post_issuer(
         (Path(credential_id), Json(vc_info)): (Path<String>, Json<VcInfo>),
         app_state: Arc<AppState>,
-        rss: bool,
     ) -> impl IntoResponse {
         info!("Received VC info: {:?}", vc_info);
         match app_state.credentials.get(&credential_id) {
@@ -223,7 +178,6 @@ impl TrustchainIssuerHTTPHandler {
                     credential_store_item,
                     Some(&vc_info.subject_id),
                     app_state.verifier.resolver(),
-                    rss,
                 )
                 .await?;
                 Ok((StatusCode::OK, Json(credential_signed)))
@@ -346,59 +300,6 @@ mod tests {
         let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
         let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
         let path = format!("/vc/issuer/{id}");
-        let client = TestClient::new(app);
-        let response = client
-            .post(&path)
-            .json(&VcInfo {
-                subject_id: expected_subject_id.to_string(),
-            })
-            .send()
-            .await;
-        // Test response
-        assert_eq!(response.status(), StatusCode::OK);
-        let credential = response.json::<Credential>().await;
-
-        // Test credential subject ID
-        match credential.credential_subject {
-            OneOrMany::One(CredentialSubject {
-                id: Some(URI::String(ref actual_subject_id)),
-                property_set: _,
-            }) => assert_eq!(actual_subject_id.to_string(), expected_subject_id),
-            _ => panic!(),
-        }
-
-        // Test signature
-        let verifier = TrustchainVerifier::new(trustchain_resolver("http://localhost:3000/"));
-        let verify_credential_result = credential
-            .verify(
-                None,
-                verifier.resolver().as_did_resolver(),
-                &mut ContextLoader::default(),
-            )
-            .await;
-        assert!(verify_credential_result.errors.is_empty());
-
-        // Test valid Trustchain issuer DID
-        match credential.issuer {
-            Some(Issuer::URI(URI::String(issuer))) => {
-                assert!(verifier.verify(&issuer, 1666265405).await.is_ok())
-            }
-            _ => panic!("No issuer present."),
-        }
-    }
-
-    #[tokio::test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    async fn test_post_issuer_rss_credential() {
-        let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
-            TEST_HTTP_CONFIG.to_owned(),
-            serde_json::from_str(CREDENTIALS).unwrap(),
-            HashMap::new(),
-        )))
-        .into_router();
-        let id = "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556".to_string();
-        let expected_subject_id = "did:example:284b3f34fad911ed9aea439566dd422a".to_string();
-        let path = format!("/vc_rss/issuer/{id}");
         let client = TestClient::new(app);
         let response = client
             .post(&path)
