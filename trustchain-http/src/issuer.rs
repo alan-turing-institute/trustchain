@@ -131,8 +131,8 @@ impl TrustchainIssuerHTTPHandler {
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
                 did,
-                route: "/vc/issuer/".to_string(),
-                id,
+                service: "TrustchainHTTP".to_string(),
+                relative_ref: Some(format!("/vc/issuer/{id}")),
             })
             .unwrap()
         } else {

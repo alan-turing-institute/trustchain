@@ -164,8 +164,8 @@ impl TrustchainVerifierHTTPHandler {
                 let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
                     serde_json::to_string(&DIDQRCode {
                         did: app_state.config.server_did.as_ref().unwrap().to_owned(),
-                        route: "/vc/verifier/".to_string(),
-                        id: uid.to_owned(),
+                        service: "TrustchainHTTP".to_string(),
+                        relative_ref: Some(format!("/vc/verifier/{uid}")),
                     })
                     .unwrap()
                 } else {
