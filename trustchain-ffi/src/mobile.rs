@@ -9,7 +9,7 @@ use ssi::{
     jwk::JWK,
     ldp::{now_ns, Proof},
     one_or_many::OneOrMany,
-    vc::{Credential, CredentialSubject, LinkedDataProofOptions, Presentation},
+    vc::{Credential, LinkedDataProofOptions, Presentation},
 };
 use thiserror::Error;
 use tokio::runtime::Runtime;
@@ -51,8 +51,6 @@ pub enum FFIMobileError {
     FailedToVerifyPresentation(PresentationError),
     #[error("Failed to make create operation from mnemonic: {0}.")]
     FailedCreateOperation(String),
-    #[error("Failed to redact credential fields with RSS selective disclosure: {0}.")]
-    FailedToRedactCredential(ssi::ldp::Error),
 }
 
 /// Checks time on proof is valid.
@@ -153,32 +151,6 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
             serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
         })?)
     })
-}
-
-/// Generate a selectivley disclosed Credential with a new RSS proof derived from the original
-/// credential and a masked copy of the credential subject.
-pub fn vc_redact(
-    original_credential: String,
-    credential_subject_mask: String,
-    opts: String,
-) -> Result<String> {
-    let mobile_opts: FFIConfig = opts.parse()?;
-    let endpoint_opts = mobile_opts.endpoint()?;
-    let mut o_cred: Credential = serde_json::from_str(&original_credential)?;
-    let cred_sub: CredentialSubject = serde_json::from_str(&credential_subject_mask)?;
-    let mut masked_copy = o_cred.clone();
-    masked_copy.credential_subject = OneOrMany::One(cred_sub);
-    let resolver =
-        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
-
-    let rt = Runtime::new().unwrap();
-    rt.block_on(async {
-        o_cred
-            .rss_redact(masked_copy, &resolver, &mut ContextLoader::default())
-            .await
-    })
-    .map_err(FFIMobileError::FailedToRedactCredential)?;
-    Ok(serde_json::to_string_pretty(&o_cred).map_err(FFIMobileError::FailedToSerialize)?)
 }
 
 /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
@@ -291,16 +263,6 @@ mod tests {
     trustchainEndpoint.port = 8081
     "#;
 
-    const TEST_FFI_CONFIG_RSS: &str = r#"
-    [ffi.trustchainOptions]
-    rootEventTime = 1697213008
-    signatureOnly = false
-
-    [ffi.endpointOptions]
-    trustchainEndpoint.host = "127.0.0.1"
-    trustchainEndpoint.port = 8081
-    "#;
-
     const TEST_CREDENTIAL: &str = r#"
     {
         "@context": [
@@ -330,8 +292,6 @@ mod tests {
     }
     "#;
 
-    const TEST_CREDENTIAL_RSS: &str = r#"{"@context":["https://www.w3.org/2018/credentials/v1","https://w3id.org/vdl/v1"],"type":["VerifiableCredential","Iso18013DriversLicense"],"credentialSubject":{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":"British","given_name":"Jane","family_name":"Bloggs","issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}},"issuer":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q","issuanceDate":"2023-11-23T14:37:04.349867Z","proof":{"type":"RSSSignature2023","proofPurpose":"assertionMethod","proofValue":"1 0FCABC8DA586913D57CA7C3D5A9083E2C63999F2B07ABE7A091468A8290137232D21178A3093B41A182EBD0CB0314D96 1 0192B26C65C48F88E21E29D5985DD7B41D8E052382E557DD0EAEF2E60C77251632217A1A1B4B3CB4C61399B7B22832F8 1 0BBC5C12C26C3BCD90AA0B95BF83C147E43A47F49E5BDAB5EF91618ED017829829D1BB3F7E8B48A9E67B6D2A007A9D2C 1 10F41FE24A63CB21342250325C5FAD5213599EFA0EBEA69C55E66DC56FB544850DE756354390107FD484B703BF52EA16 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 0055C44D1473432D778E23A1C141F645BDA5EAB305045E3B2630F82F2AEB6A29F8DC413889F55F30AD7AD7F53984FB22 1 0CCFEEBFE7B5BBB224E64003C1501E69A4141A29D5BDF0EAA011C1A71D533A33C435A61B22D674B9C36F27ED4EA81ED4 1 186888DD113D3570CEAE2305783B9857AAB7A51869CD1C1D0D4A57411DF14DADEF2528BCE2EBC257C7DDD9C6BDE79B62 1 0A8B390C4EE079DD728C093ED8E9D56BB4BB96B3EA7C047E9B19BA7A2F7F970AD6E2ACDC8C26AEF474BE18E4B9996061 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","verificationMethod":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q#Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34","created":"2023-11-23T14:37:04.356221Z"}}"#;
-    const TEST_CREDENTIAL_SUBJECT_MASK: &str = r#"{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":null,"given_name":null,"family_name":null,"issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}}"#;
     const TEST_PRESENTATION: &str = r#"
     {
         "@context": [
@@ -437,30 +397,6 @@ mod tests {
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
-    }
-
-    #[test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    fn test_vc_verify_rss_credential() {
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG_RSS)).unwrap();
-        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL_RSS).unwrap();
-        vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
-    }
-
-    #[test]
-    #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
-    fn test_vc_redact_rss_credential() {
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG_RSS)).unwrap();
-        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL_RSS).unwrap();
-        let credential_subject_mask: CredentialSubject =
-            serde_json::from_str(TEST_CREDENTIAL_SUBJECT_MASK).unwrap();
-        let derived_vc = vc_redact(
-            serde_json::to_string(&credential).unwrap(),
-            serde_json::to_string(&credential_subject_mask).unwrap(),
-            ffi_opts.clone(),
-        )
-        .unwrap();
-        vc_verify_credential(derived_vc, ffi_opts).unwrap();
     }
 
     #[test]

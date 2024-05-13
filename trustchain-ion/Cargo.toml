@@ -1,6 +1,6 @@
 [package]
 name = "trustchain-ion"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
@@ -16,7 +16,7 @@ bitcoincore-rpc = "0.16.0"
 canonical_json = "0.4.0"
 chrono = "0.4"
 clap = { version = "^4.1", features = ["derive", "cargo"] }
-did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
+did-ion = { version = "0.2"}
 ed25519-dalek-bip32 = "0.3.0"
 flate2 = "1.0.24"
 futures = "0.3.21"
@@ -32,11 +32,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_jcs = "0.1.0"
 serde_json = "1.0"
 sha2 = "0.10.7"
-ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5", features = [
-    "http-did",
-    "secp256k1",
-    "rss",
-] }
+ssi = { version = "0.7", features = ["http-did", "secp256k1"]}
 thiserror = "1.0"
 toml = "0.7.2"
 tokio = { version = "1.20.1", features = ["full"] }

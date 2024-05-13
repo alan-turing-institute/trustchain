@@ -1,3 +1,4 @@
+//! API for DID, VC and VP functionality.
 pub mod api;
 use crate::api::{TrustchainDIDAPI, TrustchainVCAPI, TrustchainVPAPI};
 

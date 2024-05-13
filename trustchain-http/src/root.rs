@@ -1,3 +1,4 @@
+//! Handler and trait for identifying root DID candidates from a naive date.
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::{Path, Query, State};

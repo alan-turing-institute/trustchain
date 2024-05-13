@@ -1,3 +1,4 @@
+//! Handlers for HTTP communication with an ION node.
 use crate::{errors::TrustchainHTTPError, state::AppState};
 use axum::{
     response::{IntoResponse, Response},
