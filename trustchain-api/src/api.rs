@@ -440,16 +440,4 @@ mod tests {
             .await
             .unwrap()
     }
-
-    // #[test]
-    // fn get_key_entry() {
-    //     use ps_sig::keys::Params;
-    //     use ssi::jwk::rss::generate_keys_jwk;
-    //     use ssi::jwk::JWK;
-
-    //     let key: JWK = generate_keys_jwk(64, &Params::new("test".to_string().as_bytes())).unwrap();
-    //     println!("{}", serde_json::to_string_pretty(&key).unwrap());
-    //     let entry: PublicKeyEntry = key.try_into().unwrap();
-    //     println!("{}", serde_json::to_string_pretty(&entry).unwrap());
-    // }
 }

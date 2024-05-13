@@ -51,8 +51,6 @@ pub enum FFIMobileError {
     FailedToVerifyPresentation(PresentationError),
     #[error("Failed to make create operation from mnemonic: {0}.")]
     FailedCreateOperation(String),
-    #[error("Failed to redact credential fields with RSS selective disclosure: {0}.")]
-    FailedToRedactCredential(ssi::ldp::Error),
 }
 
 /// Checks time on proof is valid.
@@ -154,32 +152,6 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
         })?)
     })
 }
-
-// /// Generate a selectivley disclosed Credential with a new RSS proof derived from the original
-// /// credential and a masked copy of the credential subject.
-// pub fn vc_redact(
-//     original_credential: String,
-//     credential_subject_mask: String,
-//     opts: String,
-// ) -> Result<String> {
-//     let mobile_opts: FFIConfig = opts.parse()?;
-//     let endpoint_opts = mobile_opts.endpoint()?;
-//     let mut o_cred: Credential = serde_json::from_str(&original_credential)?;
-//     let cred_sub: CredentialSubject = serde_json::from_str(&credential_subject_mask)?;
-//     let mut masked_copy = o_cred.clone();
-//     masked_copy.credential_subject = OneOrMany::One(cred_sub);
-//     let resolver =
-//         trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
-
-//     let rt = Runtime::new().unwrap();
-//     rt.block_on(async {
-//         o_cred
-//             .rss_redact(masked_copy, &resolver, &mut ContextLoader::default())
-//             .await
-//     })
-//     .map_err(FFIMobileError::FailedToRedactCredential)?;
-//     Ok(serde_json::to_string_pretty(&o_cred).map_err(FFIMobileError::FailedToSerialize)?)
-// }
 
 /// Issues a verifiable presentation. Analogous with [didkit](https://docs.rs/didkit/latest/didkit/c/fn.didkit_vc_issue_presentation.html).
 pub fn vp_issue_presentation(
