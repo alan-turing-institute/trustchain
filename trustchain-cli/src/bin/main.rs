@@ -83,6 +83,28 @@ fn cli() -> Command {
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
+        .subcommand(
+            Command::new("data")
+                .about("Credentials for data functionality: sign and verify.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .allow_external_subcommands(true)
+                .subcommand(
+                    Command::new("sign")
+                        .about("Signs a dataset.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(false))
+                        .arg(arg!(--key_id <KEY_ID>).required(false)),
+                )
+                .subcommand(
+                    Command::new("verify")
+                        .about("Verifies a dataset.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(false))
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
+                ),
+        )
 }
 
 #[tokio::main]
