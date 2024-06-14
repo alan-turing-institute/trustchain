@@ -5,9 +5,10 @@ use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{stdin, BufReader},
+    path::Path,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainVCAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
@@ -94,14 +95,14 @@ fn cli() -> Command {
                         .about("Signs a dataset.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        .arg(arg!(-f --data_file <DATA_FILE>).required(false))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(true))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a dataset.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        .arg(arg!(-f --data_file <DATA_FILE>).required(false))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(true))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -226,6 +227,128 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u64>().unwrap(),
                         None => cli_config().root_event_time.into(),
                     };
+                    // Deserialize
+                    let credential: Credential =
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
+                    // Verify credential
+                    let verify_result = TrustchainAPI::verify_credential(
+                        &credential,
+                        None,
+                        root_event_time,
+                        &verifier,
+                        &mut context_loader,
+                    )
+                    .await;
+                    // Handle result
+                    match verify_result {
+                        err @ Err(CredentialError::VerificationResultError(_)) => {
+                            println!("Proof... Invalid");
+                            err?;
+                        }
+                        err @ Err(CredentialError::NoProofPresent) => {
+                            println!("Proof... ❌ (missing proof)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::MissingVerificationMethod) => {
+                            println!("Proof... ❌ (missing verification method)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::NoIssuerPresent) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ❌ (missing issuer)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::VerifierError(_)) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ❌ (with verifier error)");
+                            err?;
+                        }
+                        err @ Err(CredentialError::FailedToDecodeJWT) => {
+                            println!("Proof... ❌");
+                            println!("Issuer... ❌");
+                            err?;
+                        }
+                        Ok(_) => {
+                            println!("Proof... ✅");
+                            println!("Issuer... ✅");
+                        }
+                    }
+
+                    // Show chain
+                    if let Some(&verbose_count) = verbose {
+                        let issuer = credential
+                            .get_issuer()
+                            .expect("No issuer present in credential.");
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
+                            .await
+                            // Can unwrap as already verified above.
+                            .unwrap();
+                        if verbose_count > 1 {
+                            let (_, doc, doc_meta) =
+                                resolver.resolve_as_result(issuer).await.unwrap();
+                            println!("---");
+                            println!("Issuer DID doc:");
+                            println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
+                            println!("---");
+                            println!("Issuer DID doc metadata:");
+                            println!(
+                                "{}",
+                                &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                            );
+                        }
+                        if verbose_count > 0 {
+                            println!("---");
+                            println!("Chain:");
+                            println!("{}", chain);
+                            println!("---");
+                        }
+                    }
+                }
+                _ => panic!("Unrecognised VC subcommand."),
+            }
+        }
+        Some(("data", sub_matches)) => {
+            let verifier = TrustchainVerifier::new(trustchain_resolver(&endpoint));
+            let resolver = verifier.resolver();
+            match sub_matches.subcommand() {
+                Some(("sign", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let key_id = sub_matches
+                        .get_one::<String>("key_id")
+                        .map(|string| string.as_str());
+                    // TODO: change to data file:
+                    let dataset = if let Some(path) = sub_matches.get_one::<String>("dataset_file")
+                    {
+                        Path::new(path)
+                    } else {
+                        todo!(); // TODO: fail with message that dataset_file param is needed.
+                    };
+
+                    // TODO: change to dataset with proof (as xattr):
+                    let dataset_with_proof = TrustchainAPI::sign_dataset(
+                        &dataset, // &Path,
+                        did,
+                        None,
+                        key_id,
+                        resolver,
+                        &mut context_loader,
+                    )
+                    .await
+                    .expect("Failed to sign dataset.");
+                    println!("{}", &to_string_pretty(&dataset_with_proof).unwrap());
+                }
+                Some(("verify", sub_matches)) => {
+                    let verbose = sub_matches.get_one::<u8>("verbose");
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u64>().unwrap(),
+                        None => cli_config().root_event_time.into(),
+                    };
+                    // TODO: change to dataset:
                     // Deserialize
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {

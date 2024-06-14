@@ -1,15 +1,23 @@
-use crate::TrustchainAPI;
+use crate::{TrustchainAPI, DATASET_ATTRIBUTE, DATASET_CREDENTIAL_TEMPLATE, VC_XATTR_NAME};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::DIDResolver,
     jsonld::ContextLoader,
     ldp::LinkedDataDocument,
-    vc::{Credential, CredentialOrJWT, URI},
-    vc::{LinkedDataProofOptions, Presentation},
+    vc::{
+        Credential, CredentialOrJWT, CredentialSubject, LinkedDataProofOptions, Presentation, URI,
+    },
 };
-use std::error::Error;
+use std::{
+    error::Error,
+    fs::{read, File},
+    ops::Deref,
+    os::unix::fs::FileExt,
+    path::Path,
+};
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
@@ -242,6 +250,94 @@ pub trait TrustchainVPAPI {
             return Err(PresentationError::VerifiedHolderUnauthenticated(result));
         }
         Ok(())
+    }
+}
+
+/// API for Trustchain DATA functionality.
+#[async_trait]
+pub trait TrustchainDataAPI {
+    /// Signs a dataset.
+    async fn sign_dataset(
+        dataset: &Path,
+        did: &str,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
+        key_id: Option<&str>,
+        resolver: &dyn TrustchainResolver,
+        context_loader: &mut ContextLoader,
+    ) -> Result<(), IssuerError> {
+        // Read the dataset credential template.
+        let mut credential = Credential::from_json_unsigned(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
+
+        // Hash the dataset bytes.
+        let bytes = std::fs::read(dataset).unwrap();
+        let dataset_hash = Sha256::digest(bytes);
+
+        // Insert the hash in the credential as the `dataset` field value under credentialSubject.
+        let dataset_element = credential
+            .credential_subject
+            .to_single_mut()
+            .expect("Template credential has a single credentialSubject.")
+            .property_set
+            .as_mut()
+            .expect("Template credential has a property set.")
+            .get_mut(DATASET_ATTRIBUTE)
+            .expect("Template credential has a dataset property.");
+        *dataset_element = serde_json::from_str(&hex::encode(dataset_hash)).unwrap();
+
+        // Sign the credential
+        let attestor = IONAttestor::new(did);
+        let signed_credential = attestor
+            .sign(
+                &credential,
+                linked_data_proof_options,
+                key_id,
+                resolver,
+                context_loader,
+            )
+            .await?;
+
+        // Add the signed credential to the data file as an extended attribute.
+        xattr::set(
+            dataset,
+            VC_XATTR_NAME,
+            serde_json::to_string_pretty(&signed_credential)
+                .unwrap() // TODO: handle error with ?
+                .as_bytes(),
+        )
+        .unwrap(); // TODO: handle error with ?
+        Ok(())
+    }
+
+    // TODO: change to dataset verification:
+    /// Verifies a signed dataset.
+    async fn verify_dataset<T, U>(
+        credential: &Credential,
+        linked_data_proof_options: Option<LinkedDataProofOptions>,
+        root_event_time: Timestamp,
+        verifier: &U,
+        context_loader: &mut ContextLoader,
+    ) -> Result<DIDChain, CredentialError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
+        // Verify signature
+        let result = credential
+            .verify(
+                linked_data_proof_options,
+                verifier.resolver().as_did_resolver(),
+                context_loader,
+            )
+            .await;
+        if !result.errors.is_empty() {
+            return Err(CredentialError::VerificationResultError(result));
+        }
+        // Verify issuer
+        let issuer = credential
+            .get_issuer()
+            .ok_or(CredentialError::NoIssuerPresent)?;
+        Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
 

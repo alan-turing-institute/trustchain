@@ -12,6 +12,7 @@ ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", rev = "ec93
 
 async-trait = "0.1"
 serde_json = "1.0"
+sha2 = "0.10.7"
 ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5", features = [
     "http-did",
     "secp256k1",
@@ -19,6 +20,8 @@ ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223
 ] }
 did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
 futures = "0.3.28"
+hex = "0.4.3"
+xattr = "1.3.1"
 
 [dev-dependencies]
 tokio = { version = "1.20.1", features = ["full"] }
