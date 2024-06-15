@@ -2,6 +2,7 @@ use crate::{TrustchainAPI, DATASET_ATTRIBUTE, DATASET_CREDENTIAL_TEMPLATE, VC_XA
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use serde_json::to_string;
 use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::DIDResolver,
@@ -270,7 +271,7 @@ pub trait TrustchainDataAPI {
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
 
         // Hash the dataset bytes.
-        let bytes = std::fs::read(dataset).unwrap();
+        let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
         let dataset_hash = Sha256::digest(bytes);
 
         // Insert the hash in the credential as the `dataset` field value under credentialSubject.
@@ -309,10 +310,9 @@ pub trait TrustchainDataAPI {
         Ok(())
     }
 
-    // TODO: change to dataset verification:
     /// Verifies a signed dataset.
     async fn verify_dataset<T, U>(
-        credential: &Credential,
+        dataset: &Path,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &U,
@@ -322,22 +322,40 @@ pub trait TrustchainDataAPI {
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        // Verify signature
-        let result = credential
-            .verify(
-                linked_data_proof_options,
-                verifier.resolver().as_did_resolver(),
-                context_loader,
-            )
-            .await;
-        if !result.errors.is_empty() {
-            return Err(CredentialError::VerificationResultError(result));
-        }
-        // Verify issuer
-        let issuer = credential
-            .get_issuer()
-            .ok_or(CredentialError::NoIssuerPresent)?;
-        Ok(verifier.verify(issuer, root_event_time).await?)
+        // Deserialize
+        let credential: Credential = if let Ok(Some(bytes)) = xattr::get(dataset, VC_XATTR_NAME) {
+            serde_json::from_slice(&bytes).unwrap() // TODO: handle error with ?
+        } else {
+            todo!(); // TODO: handle error "Credential metadata not found in data file."
+        };
+        // Verify the dataset hash.
+        // Hash the dataset bytes.
+        let bytes = std::fs::read(dataset).unwrap();
+        let actual_hash = hex::encode(Sha256::digest(bytes));
+
+        // Check that the hash matches the dataset attribute value in the credential.
+        let expected_hash = credential
+            .credential_subject
+            .to_single()
+            .unwrap() // TODO: handle error with ?
+            .property_set
+            .as_ref()
+            .unwrap() // TODO: handle error with ?
+            .get(DATASET_ATTRIBUTE)
+            .unwrap() // TODO: handle error with ?
+            .to_string();
+        if actual_hash != expected_hash {
+            panic!("Dataset hash does not match its credential."); // TODO: handle properly.
+        };
+        // Verify the dataset credential.
+        TrustchainAPI::verify_credential(
+            &credential,
+            linked_data_proof_options,
+            root_event_time,
+            verifier,
+            context_loader,
+        )
+        .await
     }
 }
 
