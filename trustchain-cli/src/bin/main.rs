@@ -1,5 +1,6 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
+use core::fmt;
 use serde_json::to_string_pretty;
 use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
@@ -321,17 +322,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
-                    // TODO: change to data file:
-                    let dataset = if let Some(path) = sub_matches.get_one::<String>("dataset_file")
-                    {
-                        Path::new(path)
-                    } else {
-                        todo!(); // TODO: fail with message that dataset_file param is needed.
-                    };
-
-                    // TODO: change to dataset with proof (as xattr):
+                    let dataset = Path::new(sub_matches.get_one::<String>("dataset_file").unwrap());
                     let dataset_with_proof = TrustchainAPI::sign_dataset(
-                        &dataset, // &Path,
+                        &dataset,
                         did,
                         None,
                         key_id,
@@ -348,18 +341,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u64>().unwrap(),
                         None => cli_config().root_event_time.into(),
                     };
-                    // TODO: change to dataset:
-                    // Deserialize
-                    let credential: Credential =
-                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
-                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
-                        } else {
-                            let buffer = BufReader::new(stdin());
-                            serde_json::from_reader(buffer).unwrap()
-                        };
-                    // Verify credential
-                    let verify_result = TrustchainAPI::verify_credential(
-                        &credential,
+                    let dataset = Path::new(sub_matches.get_one::<String>("dataset_file").unwrap());
+
+                    let verify_result = TrustchainAPI::verify_dataset(
+                        &dataset,
                         None,
                         root_event_time,
                         &verifier,
@@ -367,62 +352,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
-                    match verify_result {
+                    let verify_result = match verify_result {
                         err @ Err(CredentialError::VerificationResultError(_)) => {
                             println!("Proof... Invalid");
-                            err?;
+                            err
                         }
                         err @ Err(CredentialError::NoProofPresent) => {
                             println!("Proof... ❌ (missing proof)");
-                            err?;
+                            err
                         }
                         err @ Err(CredentialError::MissingVerificationMethod) => {
                             println!("Proof... ❌ (missing verification method)");
-                            err?;
+                            err
                         }
                         err @ Err(CredentialError::NoIssuerPresent) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (missing issuer)");
-                            err?;
+                            err
                         }
                         err @ Err(CredentialError::VerifierError(_)) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (with verifier error)");
-                            err?;
+                            err
                         }
                         err @ Err(CredentialError::FailedToDecodeJWT) => {
                             println!("Proof... ❌");
                             println!("Issuer... ❌");
-                            err?;
+                            err
                         }
-                        Ok(_) => {
+                        Ok(chain) => {
                             println!("Proof... ✅");
                             println!("Issuer... ✅");
+                            Ok(chain)
                         }
-                    }
-
+                    };
                     // Show chain
                     if let Some(&verbose_count) = verbose {
-                        let issuer = credential
-                            .get_issuer()
-                            .expect("No issuer present in credential.");
-                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
-                            .await
-                            // Can unwrap as already verified above.
-                            .unwrap();
-                        if verbose_count > 1 {
-                            let (_, doc, doc_meta) =
-                                resolver.resolve_as_result(issuer).await.unwrap();
-                            println!("---");
-                            println!("Issuer DID doc:");
-                            println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
-                            println!("---");
-                            println!("Issuer DID doc metadata:");
-                            println!(
-                                "{}",
-                                &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
-                            );
-                        }
+                        let chain = verify_result.expect("Error variants already handled.");
                         if verbose_count > 0 {
                             println!("---");
                             println!("Chain:");
@@ -431,7 +397,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                _ => panic!("Unrecognised VC subcommand."),
+                _ => panic!("Unrecognised DATA subcommand."),
             }
         }
         _ => panic!("Unrecognised subcommand."),
