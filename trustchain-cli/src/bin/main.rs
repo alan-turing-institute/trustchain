@@ -322,7 +322,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
-                    let dataset = Path::new(sub_matches.get_one::<String>("dataset_file").unwrap());
+                    let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
                     let dataset_with_proof = TrustchainAPI::sign_dataset(
                         &dataset,
                         did,
@@ -341,7 +341,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u64>().unwrap(),
                         None => cli_config().root_event_time.into(),
                     };
-                    let dataset = Path::new(sub_matches.get_one::<String>("dataset_file").unwrap());
+                    let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
 
                     let verify_result = TrustchainAPI::verify_dataset(
                         &dataset,
