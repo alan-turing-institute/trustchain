@@ -36,6 +36,9 @@ pub enum TrustchainCRError {
     /// Claim not found in JWTPayload.
     #[error("Claim not found in JWTPayload.")]
     ClaimNotFound,
+    /// Claim cannot be constructed
+    #[error("Claim cannot be constructed from: {0}")]
+    ClaimCannotBeConstructed(String),
     /// Nonce type invalid.
     #[error("Invalid nonce type.")]
     InvalidNonceType,
@@ -51,6 +54,9 @@ pub enum TrustchainCRError {
     /// Failed deserialize from file.
     #[error("Failed to deserialize.")]
     FailedToDeserialize,
+    /// Failed deserialize from file.
+    #[error("Failed to deserialize with error: {0}.")]
+    FailedToDeserializeWithError(serde_json::Error),
     /// Failed to check CR status.
     #[error("Failed to determine CR status.")]
     FailedStatusCheck,
@@ -152,6 +158,12 @@ impl TryFrom<&Nonce> for JwtPayload {
     }
 }
 
+impl From<serde_json::Error> for TrustchainCRError {
+    fn from(value: serde_json::Error) -> Self {
+        TrustchainCRError::FailedToDeserializeWithError(value)
+    }
+}
+
 /// Interface for serializing and deserializing each field of structs to/from files.
 pub trait ElementwiseSerializeDeserialize
 where
@@ -159,15 +171,13 @@ where
 {
     /// Serialize each field of the struct to a file.
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        let serialized =
-            serde_json::to_value(&self).map_err(|_| TrustchainCRError::FailedToSerialize)?;
+        let serialized = serde_json::to_value(&self)?;
         if let Value::Object(fields) = serialized {
             for (field_name, field_value) in fields {
                 if !field_value.is_null() {
                     let json_filename = format!("{}.json", field_name);
                     let file_path = path.join(json_filename);
-
-                    self.save_to_file(&file_path, &to_json(&field_value).unwrap())?;
+                    self.save_to_file(&file_path, &to_json(&field_value)?)?;
                 }
             }
         }
@@ -253,8 +263,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         self.temp_p_key = match File::open(&temp_p_key_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -274,8 +283,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         self.temp_s_key = match File::open(&temp_s_key_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -285,8 +293,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         self.requester_details = match File::open(&requester_details_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -349,8 +356,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         self.update_p_key = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -360,8 +366,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         self.update_s_key = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -371,8 +376,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         self.identity_nonce = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -382,8 +386,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         self.identity_challenge_signature = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -393,8 +396,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
         self.identity_response_signature = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -419,13 +421,27 @@ impl TryFrom<&IdentityCRChallenge> for JwtPayload {
         payload.set_claim(
             "identity_nonce",
             Some(Value::from(
-                value.identity_nonce.as_ref().unwrap().to_string(),
+                value
+                    .identity_nonce
+                    .as_ref()
+                    .ok_or(TrustchainCRError::ClaimCannotBeConstructed(
+                        "`identity_nonce` field in `IdentityCRChallenge` is missing (`None`)"
+                            .to_string(),
+                    ))?
+                    .to_string(),
             )),
         )?;
         payload.set_claim(
             "update_p_key",
             Some(Value::from(
-                value.update_p_key.as_ref().unwrap().to_string(),
+                value
+                    .update_p_key
+                    .as_ref()
+                    .ok_or(TrustchainCRError::ClaimCannotBeConstructed(
+                        "`update_p_key` field in `IdentityCRChallenge` is missing (`None`)"
+                            .to_string(),
+                    ))?
+                    .to_string(),
             )),
         )?;
         Ok(payload)
@@ -485,8 +501,7 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
         self.requester_did = match File::open(&requester_details_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -537,8 +552,7 @@ impl ElementwiseSerializeDeserialize for ContentCRChallenge {
         self.content_nonce = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -549,8 +563,7 @@ impl ElementwiseSerializeDeserialize for ContentCRChallenge {
         self.content_challenge_signature = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
@@ -560,8 +573,7 @@ impl ElementwiseSerializeDeserialize for ContentCRChallenge {
         self.content_response_signature = match File::open(&full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
-                let deserialized = serde_json::from_reader(reader)
-                    .map_err(|_| TrustchainCRError::FailedToDeserialize)?;
+                let deserialized = serde_json::from_reader(reader)?;
                 Some(deserialized)
             }
             Err(_) => None,
