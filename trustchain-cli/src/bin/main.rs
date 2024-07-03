@@ -13,6 +13,7 @@ use trustchain_api::{
 };
 use trustchain_cli::config::cli_config;
 use trustchain_core::{
+    chain::DIDChain,
     vc::{CredentialError, DataCredentialError},
     verifier::Verifier,
 };
@@ -252,26 +253,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        _err @ Err(CredentialError::VerificationResultError(_)) => {
-                            println!("Proof... ❌ Invalid");
-                        }
-                        _err @ Err(CredentialError::NoProofPresent) => {
-                            println!("Proof... ❌ (missing proof)");
-                        }
-                        _err @ Err(CredentialError::MissingVerificationMethod) => {
-                            println!("Proof... ❌ (missing verification method)");
-                        }
-                        _err @ Err(CredentialError::NoIssuerPresent) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (missing issuer)");
-                        }
-                        _err @ Err(CredentialError::VerifierError(_)) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (with verifier error)");
-                        }
-                        _err @ Err(CredentialError::FailedToDecodeJWT) => {
-                            println!("Proof... ❌");
-                            println!("Issuer... ❌");
+                        Err(cred_err) => {
+                            handle_credential_error(&cred_err);
                         }
                         Ok(_) => {
                             println!("Proof... ✅");
@@ -363,32 +346,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
-                    // TODO: avoid repetition (see similar error handling above).
                     match verify_result {
                         ref _e @ Err(DataCredentialError::CredentialError(ref cred_err)) => {
-                            match cred_err {
-                                _err @ CredentialError::VerificationResultError(_) => {
-                                    println!("Proof... ❌ Invalid");
-                                }
-                                _err @ CredentialError::NoProofPresent => {
-                                    println!("Proof... ❌ (missing proof)");
-                                }
-                                _err @ CredentialError::MissingVerificationMethod => {
-                                    println!("Proof... ❌ (missing verification method)");
-                                }
-                                _err @ CredentialError::NoIssuerPresent => {
-                                    println!("Proof... ✅");
-                                    println!("Issuer... ❌ (missing issuer)");
-                                }
-                                _err @ CredentialError::VerifierError(_) => {
-                                    println!("Proof... ✅");
-                                    println!("Issuer... ❌ (with verifier error)");
-                                }
-                                _err @ CredentialError::FailedToDecodeJWT => {
-                                    println!("Proof... ❌");
-                                    println!("Issuer... ❌");
-                                }
-                            }
+                            handle_credential_error(cred_err);
                         }
                         _e @ Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
                             println!("Digest... ❌ (mismatched dataset hash digests)");
@@ -436,4 +396,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
+}
+
+fn handle_credential_error(err: &CredentialError) {
+    match err {
+        _err @ CredentialError::VerificationResultError(_) => {
+            println!("Proof... ❌ Invalid");
+        }
+        _err @ CredentialError::NoProofPresent => {
+            println!("Proof... ❌ (missing proof)");
+        }
+        _err @ CredentialError::MissingVerificationMethod => {
+            println!("Proof... ❌ (missing verification method)");
+        }
+        _err @ CredentialError::NoIssuerPresent => {
+            println!("Proof... ✅");
+            println!("Issuer... ❌ (missing issuer)");
+        }
+        _err @ CredentialError::VerifierError(_) => {
+            println!("Proof... ✅");
+            println!("Issuer... ❌ (with verifier error)");
+        }
+        _err @ CredentialError::FailedToDecodeJWT => {
+            println!("Proof... ❌");
+            println!("Issuer... ❌");
+        }
+    }
 }
