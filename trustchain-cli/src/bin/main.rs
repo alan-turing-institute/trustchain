@@ -13,7 +13,6 @@ use trustchain_api::{
 };
 use trustchain_cli::config::cli_config;
 use trustchain_core::{
-    chain::DIDChain,
     vc::{CredentialError, DataCredentialError},
     verifier::Verifier,
 };
