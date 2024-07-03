@@ -10,7 +10,7 @@ impl TrustchainVCAPI for TrustchainAPI {}
 impl TrustchainVPAPI for TrustchainAPI {}
 impl TrustchainDataAPI for TrustchainAPI {}
 
-pub(crate) const DATASET_CREDENTIAL_TEMPLATE: &str = r#"
+pub(crate) const DATASET_CREDENTIAL_TEMPLATE: &str = r###"
 {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
@@ -23,8 +23,8 @@ pub(crate) const DATASET_CREDENTIAL_TEMPLATE: &str = r#"
     "credentialSubject": {
       "dataset": ""
     },
-    "issuer": "did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q"
+    "issuer": "did:ion:test:XYZ",
+    "issuanceDate": "2000-01-01T00:00:00.0Z"
 }
-"#;
+"###;
 pub(crate) const DATASET_ATTRIBUTE: &str = "dataset";
-pub(crate) const VC_XATTR_NAME: &str = "vc";

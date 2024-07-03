@@ -1,30 +1,21 @@
-use crate::{TrustchainAPI, DATASET_ATTRIBUTE, DATASET_CREDENTIAL_TEMPLATE, VC_XATTR_NAME};
+use crate::{TrustchainAPI, DATASET_ATTRIBUTE, DATASET_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
-use serde_json::to_string;
 use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::DIDResolver,
     jsonld::ContextLoader,
     ldp::LinkedDataDocument,
-    vc::{
-        Credential, CredentialOrJWT, CredentialSubject, LinkedDataProofOptions, Presentation, URI,
-    },
+    vc::{Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, URI},
 };
-use std::{
-    error::Error,
-    fs::{read, File},
-    ops::Deref,
-    os::unix::fs::FileExt,
-    path::Path,
-};
+use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
     resolver::{ResolverResult, TrustchainResolver},
-    vc::CredentialError,
+    vc::{CredentialError, DataCredentialError},
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,
 };
@@ -259,22 +250,23 @@ pub trait TrustchainVPAPI {
 pub trait TrustchainDataAPI {
     /// Signs a dataset.
     async fn sign_dataset(
-        dataset: &Path,
+        bytes: &[u8],
         did: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<(), IssuerError> {
+    ) -> Result<Credential, IssuerError> {
         // Read the dataset credential template.
         let mut credential = Credential::from_json_unsigned(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        // Add the issuer & issuanceDate attributes.
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
+        credential.issuance_date = Some(chrono::offset::Local::now().into());
 
-        // Hash the dataset bytes.
-        let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
+        // Compute the SHA256 hash of the dataset.
         let dataset_hash = Sha256::digest(bytes);
 
-        // Insert the hash in the credential as the `dataset` field value under credentialSubject.
+        // Insert the dataset hash into the credential.
         let dataset_element = credential
             .credential_subject
             .to_single_mut()
@@ -284,11 +276,11 @@ pub trait TrustchainDataAPI {
             .expect("Template credential has a property set.")
             .get_mut(DATASET_ATTRIBUTE)
             .expect("Template credential has a dataset property.");
-        *dataset_element = serde_json::from_str(&hex::encode(dataset_hash)).unwrap();
+        *dataset_element = hex::encode(dataset_hash).to_string().into();
 
         // Sign the credential
         let attestor = IONAttestor::new(did);
-        let signed_credential = attestor
+        Ok(attestor
             .sign(
                 &credential,
                 linked_data_proof_options,
@@ -296,41 +288,23 @@ pub trait TrustchainDataAPI {
                 resolver,
                 context_loader,
             )
-            .await?;
-
-        // Add the signed credential to the data file as an extended attribute.
-        xattr::set(
-            dataset,
-            VC_XATTR_NAME,
-            serde_json::to_string_pretty(&signed_credential)
-                .unwrap() // TODO: handle error with ?
-                .as_bytes(),
-        )
-        .unwrap(); // TODO: handle error with ?
-        Ok(())
+            .await?)
     }
 
     /// Verifies a signed dataset.
     async fn verify_dataset<T, U>(
-        dataset: &Path,
+        bytes: &[u8],
+        credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<DIDChain, CredentialError>
+    ) -> Result<DIDChain, DataCredentialError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        // Deserialize
-        let credential: Credential = if let Ok(Some(bytes)) = xattr::get(dataset, VC_XATTR_NAME) {
-            serde_json::from_slice(&bytes).unwrap() // TODO: handle error with ?
-        } else {
-            todo!(); // TODO: handle error "Credential metadata not found in data file."
-        };
-        // Verify the dataset hash.
-        // Hash the dataset bytes.
-        let bytes = std::fs::read(dataset).unwrap();
+        // Compute the SHA256 hash of the dataset.
         let actual_hash = hex::encode(Sha256::digest(bytes));
 
         // Check that the hash matches the dataset attribute value in the credential.
@@ -343,9 +317,14 @@ pub trait TrustchainDataAPI {
             .unwrap() // TODO: handle error with ?
             .get(DATASET_ATTRIBUTE)
             .unwrap() // TODO: handle error with ?
-            .to_string();
+            .as_str()
+            .expect("dataset attribute is a str");
+
         if actual_hash != expected_hash {
-            panic!("Dataset hash does not match its credential."); // TODO: handle properly.
+            return Err(DataCredentialError::MismatchedHashDigests(
+                expected_hash.to_string(),
+                actual_hash,
+            ));
         };
         // Verify the dataset credential.
         TrustchainAPI::verify_credential(
@@ -356,20 +335,24 @@ pub trait TrustchainDataAPI {
             context_loader,
         )
         .await
+        .map_err(|e| DataCredentialError::CredentialError(e))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{TrustchainVCAPI, TrustchainVPAPI};
+    use crate::api::{
+        TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATASET_CREDENTIAL_TEMPLATE,
+    };
     use crate::TrustchainAPI;
     use did_ion::sidetree::PublicKeyEntry;
+    use sha2::{Digest, Sha256};
     use ssi::jsonld::ContextLoader;
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime};
+    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime, URI};
     use trustchain_core::utils::init;
-    use trustchain_core::vc::CredentialError;
+    use trustchain_core::vc::{CredentialError, DataCredentialError};
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
@@ -686,6 +669,29 @@ mod tests {
             .unwrap()
     }
 
+    // Helper function to create a signed dataset credential given an attesor & dataset hash.
+    async fn signed_dataset_credential(issuer_did: &str, bytes: &[u8]) -> Credential {
+        let attestor = IONAttestor::new(issuer_did);
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let mut vc: Credential = serde_json::from_str(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        vc.issuer = Some(ssi::vc::Issuer::URI(URI::String(issuer_did.to_string())));
+        // Insert the dataset hash into the credential.
+        let dataset_element = vc
+            .credential_subject
+            .to_single_mut()
+            .expect("Template credential has a single credentialSubject.")
+            .property_set
+            .as_mut()
+            .expect("Template credential has a property set.")
+            .get_mut(crate::DATASET_ATTRIBUTE)
+            .expect("Template credential has a dataset property.");
+        *dataset_element = hex::encode(Sha256::digest(bytes)).to_string().into();
+        attestor
+            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .await
+            .unwrap()
+    }
+
     #[test]
     fn get_key_entry() {
         use ps_sig::keys::Params;
@@ -696,5 +702,61 @@ mod tests {
         println!("{}", serde_json::to_string_pretty(&key).unwrap());
         let entry: PublicKeyEntry = key.try_into().unwrap();
         println!("{}", serde_json::to_string_pretty(&entry).unwrap());
+    }
+
+    #[test]
+    fn test_dataset_credential_template() {
+        // Read the dataset credential template.
+        let credential = Credential::from_json_unsigned(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        assert_eq!(credential.issuer.unwrap().get_id(), "did:ion:test:XYZ");
+    }
+
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
+    async fn test_verify_dataset() {
+        init();
+        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+
+        let bytes = "test-dataset-content".as_bytes();
+        let expected_hash = hex::encode(Sha256::digest(&bytes));
+
+        let vc_with_proof = signed_dataset_credential(issuer_did, &bytes).await;
+
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let mut context_loader = ContextLoader::default();
+
+        let res = TrustchainAPI::verify_dataset(
+            &bytes,
+            &vc_with_proof,
+            None,
+            ROOT_EVENT_TIME_1,
+            &TrustchainVerifier::new(resolver),
+            &mut context_loader,
+        )
+        .await;
+        assert!(res.is_ok());
+
+        // Change the dataset to make the hash digest invalid.
+        let bytes = "different-dataset-content".as_bytes();
+
+        // Verify: expect no warnings and a MismatchedHashDigests error as the dataset has changed.
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let res = TrustchainAPI::verify_dataset(
+            &bytes,
+            &vc_with_proof,
+            None,
+            ROOT_EVENT_TIME_1,
+            &TrustchainVerifier::new(resolver),
+            &mut context_loader,
+        )
+        .await;
+        assert!(res.is_err());
+
+        if let DataCredentialError::MismatchedHashDigests(expected, actual) = res.err().unwrap() {
+            assert_eq!(expected, expected_hash);
+            assert_ne!(actual, expected_hash);
+        } else {
+            panic!("Unexpected CredentialError variant.")
+        }
     }
 }

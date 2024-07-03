@@ -1,6 +1,5 @@
 //! Trustchain CLI binary
 use clap::{arg, ArgAction, Command};
-use core::fmt;
 use serde_json::to_string_pretty;
 use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
@@ -13,7 +12,10 @@ use trustchain_api::{
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
-use trustchain_core::{vc::CredentialError, verifier::Verifier};
+use trustchain_core::{
+    vc::{CredentialError, DataCredentialError},
+    verifier::Verifier,
+};
 use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},
@@ -74,6 +76,7 @@ fn cli() -> Command {
                         .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
+                        // TODO: credential file Should be required?
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
@@ -81,6 +84,7 @@ fn cli() -> Command {
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                        // TODO: credential file Should be required?
                         .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
@@ -104,6 +108,7 @@ fn cli() -> Command {
                         .about("Verifies a dataset.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --data_file <DATA_FILE>).required(true))
+                        .arg(arg!(-c --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -247,32 +252,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        err @ Err(CredentialError::VerificationResultError(_)) => {
-                            println!("Proof... Invalid");
-                            err?;
+                        _err @ Err(CredentialError::VerificationResultError(_)) => {
+                            println!("Proof... ❌ Invalid");
                         }
-                        err @ Err(CredentialError::NoProofPresent) => {
+                        _err @ Err(CredentialError::NoProofPresent) => {
                             println!("Proof... ❌ (missing proof)");
-                            err?;
                         }
-                        err @ Err(CredentialError::MissingVerificationMethod) => {
+                        _err @ Err(CredentialError::MissingVerificationMethod) => {
                             println!("Proof... ❌ (missing verification method)");
-                            err?;
                         }
-                        err @ Err(CredentialError::NoIssuerPresent) => {
+                        _err @ Err(CredentialError::NoIssuerPresent) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (missing issuer)");
-                            err?;
                         }
-                        err @ Err(CredentialError::VerifierError(_)) => {
+                        _err @ Err(CredentialError::VerifierError(_)) => {
                             println!("Proof... ✅");
                             println!("Issuer... ❌ (with verifier error)");
-                            err?;
                         }
-                        err @ Err(CredentialError::FailedToDecodeJWT) => {
+                        _err @ Err(CredentialError::FailedToDecodeJWT) => {
                             println!("Proof... ❌");
                             println!("Issuer... ❌");
-                            err?;
                         }
                         Ok(_) => {
                             println!("Proof... ✅");
@@ -323,8 +322,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
+
                     let dataset_with_proof = TrustchainAPI::sign_dataset(
-                        &dataset,
+                        &bytes,
                         did,
                         None,
                         key_id,
@@ -342,9 +343,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None => cli_config().root_event_time.into(),
                     };
                     let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    // Deserialize
+                    let credential: Credential =
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
+                    let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
 
                     let verify_result = TrustchainAPI::verify_dataset(
-                        &dataset,
+                        &bytes,
+                        &credential,
                         None,
                         root_event_time,
                         &verifier,
@@ -352,43 +363,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     .await;
                     // Handle result
-                    let verify_result = match verify_result {
-                        err @ Err(CredentialError::VerificationResultError(_)) => {
-                            println!("Proof... Invalid");
-                            err
+                    // TODO: avoid repetition (see similar error handling above).
+                    match verify_result {
+                        ref _e @ Err(DataCredentialError::CredentialError(ref cred_err)) => {
+                            match cred_err {
+                                _err @ CredentialError::VerificationResultError(_) => {
+                                    println!("Proof... ❌ Invalid");
+                                }
+                                _err @ CredentialError::NoProofPresent => {
+                                    println!("Proof... ❌ (missing proof)");
+                                }
+                                _err @ CredentialError::MissingVerificationMethod => {
+                                    println!("Proof... ❌ (missing verification method)");
+                                }
+                                _err @ CredentialError::NoIssuerPresent => {
+                                    println!("Proof... ✅");
+                                    println!("Issuer... ❌ (missing issuer)");
+                                }
+                                _err @ CredentialError::VerifierError(_) => {
+                                    println!("Proof... ✅");
+                                    println!("Issuer... ❌ (with verifier error)");
+                                }
+                                _err @ CredentialError::FailedToDecodeJWT => {
+                                    println!("Proof... ❌");
+                                    println!("Issuer... ❌");
+                                }
+                            }
                         }
-                        err @ Err(CredentialError::NoProofPresent) => {
-                            println!("Proof... ❌ (missing proof)");
-                            err
+                        _e @ Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
+                            println!("Digest... ❌ (mismatched dataset hash digests)");
                         }
-                        err @ Err(CredentialError::MissingVerificationMethod) => {
-                            println!("Proof... ❌ (missing verification method)");
-                            err
-                        }
-                        err @ Err(CredentialError::NoIssuerPresent) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (missing issuer)");
-                            err
-                        }
-                        err @ Err(CredentialError::VerifierError(_)) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (with verifier error)");
-                            err
-                        }
-                        err @ Err(CredentialError::FailedToDecodeJWT) => {
-                            println!("Proof... ❌");
-                            println!("Issuer... ❌");
-                            err
-                        }
-                        Ok(chain) => {
+                        Ok(_) => {
                             println!("Proof... ✅");
                             println!("Issuer... ✅");
-                            Ok(chain)
+                            println!("Digest... ✅");
                         }
                     };
                     // Show chain
                     if let Some(&verbose_count) = verbose {
-                        let chain = verify_result.expect("Error variants already handled.");
+                        let issuer = credential
+                            .get_issuer()
+                            .expect("No issuer present in credential.");
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
+                            .await
+                            // Can unwrap as already verified above.
+                            .unwrap();
+                        // TODO: avoid repetition (see vc subcommand above):
+                        if verbose_count > 1 {
+                            let (_, doc, doc_meta) =
+                                resolver.resolve_as_result(issuer).await.unwrap();
+                            println!("---");
+                            println!("Issuer DID doc:");
+                            println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
+                            println!("---");
+                            println!("Issuer DID doc metadata:");
+                            println!(
+                                "{}",
+                                &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                            );
+                        }
                         if verbose_count > 0 {
                             println!("---");
                             println!("Chain:");

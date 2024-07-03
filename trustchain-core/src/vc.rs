@@ -26,6 +26,23 @@ pub enum CredentialError {
     VerificationResultError(VerificationResult),
 }
 
+/// An error relating to a verifiable credential for a dataset.
+#[derive(Error, Debug)]
+pub enum DataCredentialError {
+    /// Wrapped CredentialError
+    #[error("Credential error: {0:?}")]
+    CredentialError(CredentialError),
+    /// Hash digests do not match.
+    #[error("Hash digests do not match. Expected: {0}. Actual: {1}.")]
+    MismatchedHashDigests(String, String),
+}
+
+impl From<CredentialError> for DataCredentialError {
+    fn from(err: CredentialError) -> Self {
+        DataCredentialError::CredentialError(err)
+    }
+}
+
 impl From<VerifierError> for CredentialError {
     fn from(err: VerifierError) -> Self {
         CredentialError::VerifierError(err)
