@@ -33,7 +33,7 @@ fn cli() -> Command {
         .allow_external_subcommands(true)
         .subcommand(
             Command::new("did")
-                .about("DID functionality: create, attest, resolve.")
+                .about("DID functionality: create, attest, resolve, verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
@@ -91,7 +91,7 @@ fn cli() -> Command {
         )
         .subcommand(
             Command::new("data")
-                .about("Credentials for data functionality: sign and verify.")
+                .about("Data provenance functionality: sign and verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
