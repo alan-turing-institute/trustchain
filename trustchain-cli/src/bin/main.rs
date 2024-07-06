@@ -15,12 +15,14 @@ use trustchain_cli::config::cli_config;
 use trustchain_core::{
     vc::{CredentialError, DataCredentialError},
     verifier::Verifier,
+    JSON_FILE_EXTENSION,
 };
 use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},
     trustchain_resolver,
     verifier::TrustchainVerifier,
+    CREATE_OPERATION_FILENAME_PREFIX,
 };
 
 fn cli() -> Command {
@@ -131,6 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if mnemonic && file_path.is_some() {
                         panic!("Please use only one of '--file_path' and '--mnemonic'.")
                     }
+                    let filename: String;
                     if !mnemonic {
                         // Read doc state from file path
                         let doc_state = if let Some(file_path) = file_path {
@@ -138,13 +141,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         } else {
                             None
                         };
-                        create_operation(doc_state, verbose)?;
+                        filename = create_operation(doc_state, verbose)?;
                     } else {
                         let mut mnemonic = String::new();
                         println!("Enter a mnemonic:");
                         std::io::stdin().read_line(&mut mnemonic).unwrap();
-                        create_operation_mnemonic(&mnemonic, None)?;
+                        filename = create_operation_mnemonic(&mnemonic, None)?;
                     }
+                    println!(
+                        "Created new DID: {}",
+                        filename
+                            .strip_prefix(CREATE_OPERATION_FILENAME_PREFIX)
+                            .unwrap_or_else(|| &filename)
+                            .strip_suffix(JSON_FILE_EXTENSION)
+                            .unwrap_or_else(|| &filename)
+                    );
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();

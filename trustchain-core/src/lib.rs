@@ -30,3 +30,5 @@ pub const TRUSTCHAIN_PROOF_SERVICE_ID_VALUE: &str = "trustchain-controller-proof
 
 /// The value of the type for the service containing a Trustchain controller proof within a DID document.
 pub const TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE: &str = "TrustchainProofService";
+
+pub const JSON_FILE_EXTENSION: &str = ".json";
