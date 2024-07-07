@@ -20,7 +20,7 @@ Contrast this to the hierarchical connections in Trustchain, which are digital r
 
 *Independently verifiable timestamping* means that the mechanism used to verify a timestamp is available to anybody, and does not require any special knowledge or trust in any third party.
 
-For a full explanation of the timestamping process and verification mechanism, see [this technical note](https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Technical-Notes#independently-verifiable-timestamping).
+For a full explanation of the timestamping process and verification mechanism, see [this technical note](technical-notes.md#independently-verifiable-timestamping).
 
 ### Q: Why is independently verifiable timestamping important in Trustchain?
 
