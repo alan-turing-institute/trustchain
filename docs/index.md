@@ -26,3 +26,5 @@ Trustchain Mobile is a mobile app built to demonstrate the Trustchain user exper
 - [Trustchain Mobile repository (GitHub)](https://github.com/alan-turing-institute/trustchain-mobile)
 - [Trustchain article](https://arxiv.org/abs/2305.08533)
 - [Trustchain wiki](https://github.com/alan-turing-institute/trustchain/wiki)
+
+&nbsp;

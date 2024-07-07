@@ -636,3 +636,5 @@ This work was not completed.
 - Trustchain Mobile and Trustchain GUI use _different_ dart widgets to display the same trustchain Rust structs.
 - **Platform agnostic widgets** could be shared and ensure consistent UI for applications on all platforms.
 - **Palettes, styling and assets** should be maintained in this repository to ensure consistency across applications on all platforms.
+
+&nbsp;

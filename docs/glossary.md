@@ -26,4 +26,14 @@
 
 **recovery secret**
 
+**root DID**
+
+**root event date**
+
+**root event time**
+
+**service**
+
 **service endpoint**
+
+&nbsp;

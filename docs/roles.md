@@ -1,7 +1,7 @@
-# Roles
+# User Roles
 
 
-## User (Verifier)
+## Verifier
 
 
 
@@ -16,3 +16,6 @@
 
 
 ## Root Entity (Root DID Subject)
+
+
+&nbsp;
