@@ -27,7 +27,7 @@ At the time of writing (April 2022), the total hash rate of the Bitcoin network 
 |----|--------|-------|--------|---------|
 | ~$1 | $3.4m | $81.0m | $566.8m | $2.463b |
 
-We can see that it is very cheap to create honest timestamps but very expensive to create deceptive ones. (In addition, any attempt at falsification would be immediately observable by all nodes on the Bitcoin network.)
+We can see that it is very cheap to create honest timestamps but very expensive to create deceptive ones. (In addition, any attempt at deception would be immediately observable by all nodes on the Bitcoin network.)
 
 In this way, the timestamp on a transaction (and hence on a DID Document) can be verified in a quantitative manner by computing how expensive it would be to execute an attack to produce a deceptive timestamp.
 
