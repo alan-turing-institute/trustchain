@@ -2,17 +2,13 @@
 
 Trustchain enables communities of any size to establish their own trustworthy public key infrastructure (PKI), without expensive setup costs or reliance on any third parties. Since PKI is fundamental digital infrastructure, it opens the door to a wide variety of use cases.
 
-Here we describe four applications that can be supported. Each represents an entire category of possible use cases.
+Here we describe four types of application that can be supported by Trustchain. Each represents an entire category of possible use cases.
 
 ## Verifiable Credentials
 
-Trustchain is designed to support ecosystems of verifiable digital credentials that put the user in control of their own data, providing the benefits of digital ID without the risks to privacy and data security.
+Trustchain is designed to support ecosystems of verifiable digital credentials that put the user in control of their own data, providing the benefits of digital ID without the risks to privacy and data security. This solution is based on the principle that credential-issuing institutions ought to be uniquely and transparently identifiable, while individual users need not be.
 
-This solution is based on the principle that credential-issuing institutions ought to be uniquely and transparently identifiable, while individual users need not be.
-
-We adopt the W3C standard for Verifiable Credentials, which specifies their technical details but also provides a useful [introduction](https://www.w3.org/TR/vc-data-model-2.0/#introduction) to the key concepts.
-
-This [related document](https://www.w3.org/TR/vc-use-cases/) from the W3C focusses on the numerous use cases for the Verifiable Credentials model.
+We adopt the W3C standard for Verifiable Credentials, which specifies their technical details and also provides a useful [introduction](https://www.w3.org/TR/vc-data-model-2.0/#introduction) to the key concepts. This [related document](https://www.w3.org/TR/vc-use-cases/) from the W3C focusses on the numerous use cases presented by the Verifiable Credentials model.
 
 ## Data Provenance
 
@@ -22,7 +18,7 @@ Every news article, every image, every video could be signed by the original pub
 
 ## Verifiable URLs
 
-There is currently no foolproof way to verify that a web page is legitimate before visiting it. This is a particular problem when URLs are displayed in QR codes at payment locations such as car parks or EV charging points, so-called QR code scams.
+There is currently no foolproof way to verify that a web page is legitimate before visiting it. This is a particular problem when URLs are displayed in QR codes at payment locations such as car parks or EV charging points, so-called [QR code scams](https://www.bbc.co.uk/programmes/articles/2ds8k78dDqJbrLz6SnbqBw0/qr-code-scams).
 
 By making URLs cryptographically verifiable, Trustchain can provide robust defence against all types of phishing attacks, including QR code scams.
 
