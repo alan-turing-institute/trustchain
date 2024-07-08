@@ -51,7 +51,7 @@ cargo install --path trustchain-cli
 
 To configure your Trustchain node, you will need to choose a directory for storing data related to its operation.
 
-In these instructions we assume that directory will be `~/.trustchain`, but if you prefer to use a different one, simply replace the path when setting up the TRUSTCHAIN_DATA environment variable below.
+In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
 
 Create two environment variables by adding these lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
 ```
@@ -82,13 +82,13 @@ Then edit the following parameters inside your copy of `trustchain_config.toml`:
 root_event_time = 1697213008
 ```
 
-!!! warning "Root event time configuration parameter"
+!!! warning "Root event time"
 
     The "root event time" refers to the exact time at which the root DID was published. It is imperative that this configuration parameter is entered correctly, because it identifies the root public key certificate.
 
-    If you are not sure about the correct root event time, or you are intending to create your own root DID, leave this parameter unset for now.
+    If you are not sure about the correct root event time for your network, or you are intending to create your own root DID, leave this parameter unset for now.
 
-    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar data (the "root event date") plus a short confirmation code.
+    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar date (the "root event date") plus a short confirmation code.
 
 ## Using Trustchain
 
