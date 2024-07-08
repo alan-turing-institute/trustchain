@@ -14,9 +14,11 @@ Trustchain enables the creation of DIDs which are themselves verifiable. Via thi
 
 Trustchain is free and open source software. The setup and operational costs of the system are low, without compromising on security or resilience, because it is built upon existing, robust peer-to-peer networks. It is globally accessible and can operate at any social scale, making it freely available for any user community to adopt.
 
+&nbsp;
+
 # Trustchain Mobile
 
-Trustchain Mobile is a mobile app built to demonstrate the Trustchain user experience, from the perspective of a holder and/or verifier of digital credentials. It is a fork of the Credible credential wallet app developed by [SpruceID](https://www.spruceid.dev/).
+Trustchain Mobile is a mobile app built to demonstrate the Trustchain user experience from the perspective of a holder and/or verifier of digital credentials. It is a fork of the Credible credential wallet app developed by [SpruceID](https://www.spruceid.dev/).
 
 <!-- Users can receive, hold, verify and present their credentials -->
 
