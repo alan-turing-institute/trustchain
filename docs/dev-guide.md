@@ -637,4 +637,31 @@ This work was not completed.
 - **Platform agnostic widgets** could be shared and ensure consistent UI for applications on all platforms.
 - **Palettes, styling and assets** should be maintained in this repository to ensure consistency across applications on all platforms.
 
+## Documentation
+
+The Trustchain Docs documentation site is built with [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
+
+### Terminal commands
+
+All Terminal commands in the documentation should be rendered in full-line code blocks (not inline) and tagged with the identifier `console` after the three opening backticks. They should include the `$` character to indicate the command prompt.
+
+The prompt character helps to distinguish between Terminal commands and other code snippets that should not be entered at the command line, and is omitted when the "Copy to clipboard" icon is clicked (or the code is selected).
+
+For example, the Markdown code block:
+````
+```console
+$ echo "hello, world"
+```
+````
+will be rendered as:
+```console
+$ echo "hello, world"
+```
+but only the command `echo "hello, world"` will be copied to the clipboard.
+
+!!! info
+
+    The feature to omit the command prompt character when copying to the clipboard is [not implemented](https://github.com/squidfunk/mkdocs-material/issues/3647#issuecomment-1108132654) in Material for MkDocs. Instead it was added via custom Javascript following [this approach](https://github.com/SensorsIot/IOTstack/pull/547).
+
+
 &nbsp;
