@@ -105,41 +105,34 @@ $ cargo install --path trustchain-cli
 
 ## Configuration
 
-TODO.
-
-In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
-
-Now create three environment variables by adding the following lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
-```
-export TRUSTCHAIN_REPO=<PATH_TO_TRUSTCHAIN_REPOSITORY>
-export TRUSTCHAIN_DATA=~/.trustchain/
-export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"/trustchain_config.toml
-```
-
-TODO: this isn't quite right yet because the repo hasn't been cloned
-
-To check that these environment variables were added successfully, close and re-open the Terminal window and then run the following command:
-```console
-$ echo $TRUSTCHAIN_REPO; $TRUSTCHAIN_DATA; echo $TRUSTCHAIN_CONFIG;
-```
-You should see the value of each environment variable printed to the screen.
-
 ### Trustchain data directory
 
-Your Trustchain node will use the `TRUSTCHAIN_DATA` directory for storing data related to its operation.
+Trustchain uses a data directory to store files related to its operation. Here we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the path in the following command when creating the `TRUSTCHAIN_DATA` environment variable.
 
-Create the `TRUSTCHAIN_DATA` directory on your file system:
+!!! tip "Create the `TRUSTCHAIN_DATA` environment variable"
+
+    ```console
+    $ echo 'export TRUSTCHAIN_DATA=~/.trustchain/' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+Now create the `TRUSTCHAIN_DATA` directory on your file system:
 ```console
 $ mkdir $TRUSTCHAIN_DATA
 ```
 
 ### Trustchain configuration file
 
-Configuration parameters relating to Trustchain are stored in a file named `trustchain_config.toml`.
+Configuration parameters relating to Trustchain are stored in a file named `trustchain_config.toml`, which will be stored in the data directory (created above). Once again, we create an environment variable containing the path to this file.
 
-Copy the template configuration file From the Trustchain repository to the data directory:
+!!! tip "Create the `TRUSTCHAIN_CONFIG` environment variable"
+
+    ```console
+    $ echo 'export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"trustchain_config.toml' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+Copy the template configuration file from the Trustchain repository to the data directory (unless it already exists):
 ```console
-$ cp $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_DATA
+$ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
 
 Then edit the following parameters inside your copy of `trustchain_config.toml`:
