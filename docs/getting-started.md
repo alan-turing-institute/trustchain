@@ -12,37 +12,35 @@ Trustchain can be installed on all major operating systems. The steps below have
     ```console
     $ echo "Hello World"
     ```
-    The initial prompt character `$` indicates that this is a Terminal command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
+    The initial prompt character `$` indicates that this is a command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
 
-    To copy commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command will be copied (the prompt character will be omitted), so it can be pasted straight in to the Terminal.
+    To copy such commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command itself will be copied (the prompt character will be omitted), so it can be pasted straight in to the Terminal.
 
-## Preparation
+## Environment Variables
 
-In order to provide Terminal commands that will work on any computer, we shall define some environment variables to keep track of the folders that are important to Trustchain.
+As far as possible, we would like the Terminal commands given in this guide to work on any computer, so they can be copied and pasted without modification. This makes the installation process quicker and less error-prone. However, many commands depend on particular files or folders, which different users may wish to store in different locations.
 
-Environment variables are defined in your Terminal configuration file.
+To solve this problem, we shall define **environment variables** to keep track of the location of relevant files and folders. An environment variable is just like a variable in any programming language. It enables us to use a generic and meaningful name to refer to something specific which is not known in advance (in this case the path to a particular file or folder).
 
-If you're not sure which shell environment config file to use, run the following command and pick one of them:
+Environment variables are defined in your Terminal configuration file. Since we will need to edit this file several times during the installation, it will be convenient to have an environment variable containing its path on the file system.
+
+To do this, run the following command:
 ```console
-$ ls ~/.*shrc
+$ echo "export SHELL_CONFIG=" $(find ~/.*shrc -maxdepth 0 | head -n 1) | sed 's/= /=/g' >> $(find ~/.*shrc -maxdepth 0 | head -n 1)
 ```
-
-In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
-
-Now create three environment variables by adding the following lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
-```
-export TRUSTCHAIN_REPO=<PATH_TO_TRUSTCHAIN_REPOSITORY>
-export TRUSTCHAIN_DATA=~/.trustchain/
-export TRUSTCHAIN_CONFIG=$TRUSTCHAIN_DATA/trustchain_config.toml
-```
-
-TODO: this isn't quite right yet because the repo hasn't been cloned
-
-To check that these environment variables were added successfully, close and re-open the Terminal window and then run the following command:
+Then close and reopen the Terminal window that you're working in, so that the change takes effect. Now check that the new environment variable exists:
 ```console
-$ echo $TRUSTCHAIN_REPO; $TRUSTCHAIN_DATA; echo $TRUSTCHAIN_CONFIG;
+$ echo $SHELL_CONFIG
 ```
-You should see the value of each environment variable printed to the screen.
+This command should output the path to your Terminal configuration file. From now on, whenever we want to refer to that file we will be able to use the `SHELL_CONFIG` environment variable.
+
+!!! tip "Creating environment variables"
+
+    Now that we have defined the `SHELL_CONFIG` environment variable (above), we can use it to conveniently create new environment variables. Whenever we need to define a new variable, you will be given a command similar to the following (don't run this one, it's just an example):
+    ```console
+    $ echo "export NAME=VALUE" >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+    This command adds a new environment variable named `NAME` with value `VALUE` to your Terminal config file, and then reads the updated file so the change takes effect inside the current Terminal session.
 
 ## Installation
 
@@ -55,27 +53,45 @@ As the main Trustchain dependency, ION has its own section on this site. Please 
 Instructions for installing the Rust language can be found [here](https://www.rust-lang.org/tools/install).
 
 On Linux or Mac OS, the recommended method is to run the following command:
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```console
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Then check the installation was successful by running:
-```bash
-rustc --version
+```console
+$ rustc --version
 ```
 
 ### Step 3. Install Trustchain
 
-Run the following commands to clone the Trustchain repository and build the package:
-```bash
-git clone https://github.com/alan-turing-institute/trustchain.git
-cd trustchain
-cargo build
+Choose a directory in which you want to store the Trustchain software and use the `cd <DIRECTORY_NAME>` command to change to that directory. For instance, to change to your home directory run the `cd` command without any arguments:
+```console
+$ cd
+```
+Now clone the Trustchain code repository from GitHub:
+```console
+$ git clone https://github.com/alan-turing-institute/trustchain.git
+```
+and change into the newly-created `trustchain` subfolder:
+```console
+$ cd trustchain
 ```
 
-Install the Trustchain command line interface (CLI):
-```bash
-cargo install --path trustchain-cli
+!!! tip "Create the `TRUSTCHAIN_REPO` environment variable"
+
+    Since we will need to refer to this folder in future, let's create an [environment variable](#environment-variables) containing its file path:
+    ```console
+    $ echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+The next step is to build the Trustchain software from its source code (this may take a minute or two):
+```console
+$ cargo build
+```
+
+Finally, we install the Trustchain command line interface (CLI):
+```console
+$ cargo install --path trustchain-cli
 ```
 
 !!! info "This step is optional."
@@ -83,19 +99,38 @@ cargo install --path trustchain-cli
     Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials over the Web. It can also respond to requests made by the Trustchain mobile app.
 
     To install the Trustchain HTTP server, run:
-    ```bash
-    cargo install --path trustchain-http
+    ```console
+    $ cargo install --path trustchain-http
     ```
 
 ## Configuration
+
+TODO.
+
+In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
+
+Now create three environment variables by adding the following lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
+```
+export TRUSTCHAIN_REPO=<PATH_TO_TRUSTCHAIN_REPOSITORY>
+export TRUSTCHAIN_DATA=~/.trustchain/
+export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"/trustchain_config.toml
+```
+
+TODO: this isn't quite right yet because the repo hasn't been cloned
+
+To check that these environment variables were added successfully, close and re-open the Terminal window and then run the following command:
+```console
+$ echo $TRUSTCHAIN_REPO; $TRUSTCHAIN_DATA; echo $TRUSTCHAIN_CONFIG;
+```
+You should see the value of each environment variable printed to the screen.
 
 ### Trustchain data directory
 
 Your Trustchain node will use the `TRUSTCHAIN_DATA` directory for storing data related to its operation.
 
 Create the `TRUSTCHAIN_DATA` directory on your file system:
-```
-mkdir $TRUSTCHAIN_DATA
+```console
+$ mkdir $TRUSTCHAIN_DATA
 ```
 
 ### Trustchain configuration file
@@ -103,8 +138,8 @@ mkdir $TRUSTCHAIN_DATA
 Configuration parameters relating to Trustchain are stored in a file named `trustchain_config.toml`.
 
 Copy the template configuration file From the Trustchain repository to the data directory:
-```
-cp $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_DATA
+```console
+$ cp $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_DATA
 ```
 
 Then edit the following parameters inside your copy of `trustchain_config.toml`:
