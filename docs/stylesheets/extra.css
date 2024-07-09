@@ -15,3 +15,9 @@
     height: 1.52rem;
     width: 1.52rem;
 }
+/* prevent selection of prefix and output for console syntax */
+.language-console .gp, .language-console .go {
+    user-select: none;
+    -webkit-user-select: none; /* Chrome/Safari */
+    -ms-user-select: none; /* IE10+ */
+}
