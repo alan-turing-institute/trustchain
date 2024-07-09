@@ -135,7 +135,11 @@ Copy the template configuration file from the Trustchain repository to the data 
 $ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
 
-Then edit the following parameters inside your copy of `trustchain_config.toml`:
+Then open your copy of `trustchain_config.toml` in a text editor:
+```console
+$ open $TRUSTCHAIN_CONFIG
+```
+and edit the following configuration parameters:
 
 - In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you [installed](ion.md#install-bitcoin-core) Bitcoin Core.
 - If you intend to act as an issuer of digital credentials, and you already have you own DID for this purpose, add it in the `[http]` section to the `issuer_did` parameter value. Otherwise, the `[http]` section can be ignored.
