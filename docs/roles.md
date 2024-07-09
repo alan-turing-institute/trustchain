@@ -1,21 +1,24 @@
 # User Roles
 
 
-## Verifier
+
+## Credential Holder
 
 
 
-## Downstream Entity (dDID Subject)
+## Credential Verifier
 
 
 
-
-## Upstream Entity (uDID Subject)
-
+## Credential Issuer
 
 
 
-## Root Entity (Root DID Subject)
+## Downstream DID Issuer
+
+
+
+## Root DID Subject
 
 
 &nbsp;
