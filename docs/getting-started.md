@@ -1,8 +1,50 @@
 # Getting Started
 
-## Installation
+The instructions below will guide you through the installation and configuration of the Trustchain software.
 
 Trustchain can be installed on all major operating systems. The steps below have been tested on Linux and Mac OS. On Windows the process will be similar, with instructions available via the links provided.
+
+!!! info "Running commands in the Terminal"
+
+    This guide will make frequent use of the command line interface provided by the Terminal application, which is available on all operating systems.
+
+    Commands will be presented in code blocks like this one:
+    ```console
+    $ echo "Hello World"
+    ```
+    The initial prompt character `$` indicates that this is a Terminal command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
+
+    To copy commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command will be copied (the prompt character will be omitted), so it can be pasted straight in to the Terminal.
+
+## Preparation
+
+In order to provide Terminal commands that will work on any computer, we shall define some environment variables to keep track of the folders that are important to Trustchain.
+
+Environment variables are defined in your Terminal configuration file.
+
+If you're not sure which shell environment config file to use, run the following command and pick one of them:
+```console
+$ ls ~/.*shrc
+```
+
+In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
+
+Now create three environment variables by adding the following lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
+```
+export TRUSTCHAIN_REPO=<PATH_TO_TRUSTCHAIN_REPOSITORY>
+export TRUSTCHAIN_DATA=~/.trustchain/
+export TRUSTCHAIN_CONFIG=$TRUSTCHAIN_DATA/trustchain_config.toml
+```
+
+TODO: this isn't quite right yet because the repo hasn't been cloned
+
+To check that these environment variables were added successfully, close and re-open the Terminal window and then run the following command:
+```console
+$ echo $TRUSTCHAIN_REPO; $TRUSTCHAIN_DATA; echo $TRUSTCHAIN_CONFIG;
+```
+You should see the value of each environment variable printed to the screen.
+
+## Installation
 
 ### Step 1. Install ION
 
@@ -49,17 +91,9 @@ cargo install --path trustchain-cli
 
 ### Trustchain data directory
 
-To configure your Trustchain node, you will need to choose a directory for storing data related to its operation.
+Your Trustchain node will use the `TRUSTCHAIN_DATA` directory for storing data related to its operation.
 
-In these instructions we assume that the data directory will be `~/.trustchain`, but if you prefer to use a different one simply change the value of the `TRUSTCHAIN_DATA` environment variable below.
-
-Create two environment variables by adding these lines to your shell environment config file (e.g. `~/.zshrc` or `~/.bashrc`):
-```
-export TRUSTCHAIN_DATA=~/.trustchain/
-export TRUSTCHAIN_CONFIG=$TRUSTCHAIN_DATA/trustchain_config.toml
-```
-
-Then create the `TRUSTCHAIN_DATA` directory on your file system:
+Create the `TRUSTCHAIN_DATA` directory on your file system:
 ```
 mkdir $TRUSTCHAIN_DATA
 ```
@@ -68,9 +102,9 @@ mkdir $TRUSTCHAIN_DATA
 
 Configuration parameters relating to Trustchain are stored in a file named `trustchain_config.toml`.
 
-From the cloned Trustchain repository, copy the template configuration file to the Trustchain data directory:
+Copy the template configuration file From the Trustchain repository to the data directory:
 ```
-cp trustchain_config.toml $TRUSTCHAIN_DATA
+cp $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_DATA
 ```
 
 Then edit the following parameters inside your copy of `trustchain_config.toml`:
