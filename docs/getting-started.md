@@ -14,7 +14,7 @@ Trustchain can be installed on all major operating systems. The steps below have
     ```
     The initial prompt character `$` indicates that this is a command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
 
-    To copy such commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command itself will be copied (the prompt character will be omitted), so it can be pasted straight in to the Terminal.
+    To copy such commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command itself will be copied (the prompt character will be omitted), so it can be pasted straight into the Terminal.
 
 ## Environment Variables
 
