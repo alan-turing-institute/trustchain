@@ -21,3 +21,15 @@
     -webkit-user-select: none; /* Chrome/Safari */
     -ms-user-select: none; /* IE10+ */
 }
+.center-table {
+    text-align: center;
+  }
+  .md-typeset .center-table :is(td,th):not([align]) {
+    text-align: initial; /* Reset alignment for table cells */
+}
+.check {
+    color: #5D9E52;
+}
+.xmark {
+    color: #CCCCCC;
+}
