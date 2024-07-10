@@ -96,7 +96,7 @@ $ cargo install --path trustchain-cli
 
 !!! info "This step is optional."
 
-    Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials over the Web. It can also respond to requests made by the Trustchain mobile app.
+    Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials via an HTTP API. It can also respond to requests made by the Trustchain mobile app.
 
     To install the Trustchain HTTP server, run:
     ```console

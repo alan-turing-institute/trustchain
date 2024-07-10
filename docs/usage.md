@@ -13,8 +13,8 @@ Depending on your role within the network of Trustchain users you may need to pe
 ## Trustchain CLI
 
 To invoke the Trustchain CLI, open a Terminal and run this command:
-``` bash
-trustchain-cli
+``` console
+$ trustchain-cli
 ```
 You should see a list of available commands and some usage hints.
 
@@ -29,8 +29,8 @@ The CLI is organised into a set of subcommands for different types of operation:
 | `data`        | Data provenance functionality: sign and verify.       |
 
 To get help with a particular subcommand, use the `--help` flag (or `-h` for short). For example, to get help with the CLI commands relating to DIDs:
-``` bash
-trustchain-cli did --help
+```console
+$ trustchain-cli did --help
 ```
 
 ## DID Resolution
@@ -40,8 +40,8 @@ DID Resolution is a process defined in the [W3C standard](https://www.w3.org/TR/
 It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity referred to by the DID.
 
 To resolve a DID using the Trustchain CLI, execute this command replacing `<DID>` with the DID of interest:
-```
-trustchain-cli did resolve --did <DID>
+```console
+$ trustchain-cli did resolve --did <DID>
 ```
 
 If the DID is found, the complete DID document (and document metadata) will be printed to the terminal.
@@ -51,8 +51,8 @@ If the DID is found, the complete DID document (and document metadata) will be p
     !!! example "Example: DID resolution on Mainnet"
 
         To test that Trustchain and ION are working correctly, try resolving this example DID:
-        ```
-        trustchain-cli did resolve --did did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w
+        ```console
+        $ trustchain-cli did resolve --did did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w
         ```
 
 
@@ -61,8 +61,8 @@ If the DID is found, the complete DID document (and document metadata) will be p
     !!! example "Example: DID resolution on Testnet"
 
         To test that Trustchain and ION are working correctly, try resolving this example DID:
-        ```
-        trustchain-cli did resolve --did did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw
+        ```console
+        $ trustchain-cli did resolve --did did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw
         ```
 
 ## DID Issuance
@@ -101,22 +101,22 @@ The file can be saved anywhere, but we recommend storing it in a directory named
 #### Create the DID
 
 Having defined the content of the DID document, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing `<DID_CONTENT_FILE>` with the path to the DID document content file (from the previous step):
-```
-trustchain-cli did create --file_path <DID_CONTENT_FILE>
+```console
+$ trustchain-cli did create --file_path <DID_CONTENT_FILE>
 ```
 
 !!! example "Example: DID creation"
 
     Suppose you named your DID document content file `did_content.json` and saved it in the folder `$TRUSTCHAIN_DATA/doc_states/`. Then you would create the DID with the following command:
-    ```
-    trustchain-cli did create --file_path $TRUSTCHAIN_DATA/doc_states/did_content.json
+    ```console
+    $ trustchain-cli did create --file_path $TRUSTCHAIN_DATA/doc_states/did_content.json
     ```
 
 The `create` command prints the new DID in the terminal window.
 
 It also creates a new file inside the folder `$TRUSTCHAIN_DATA/operations/`. To see the contents of this file, replace `<DID>` with the newly-created DID in the following command:
-```
-cat $TRUSTCHAIN_DATA/operations/create_operation_<DID>.json
+```console
+$ cat $TRUSTCHAIN_DATA/operations/create_operation_<DID>.json
 ```
 
 Inside this file you will be able to see the services copied from the DID document content file (previous step).
@@ -166,8 +166,8 @@ TODO: this is currently a manual step (to be built into the CLI in future). You 
 After running the `publish.sh` script, wait for the transaction to be published and processed by the Bitcoin network, then check that it was successfully published by attempting to resolve the DID (or DIDs, if more than one operation was published) with the CLI.
 
 Then there is a further manual step required: once you have confirmed that the DID(s) can be resolved, clean up the `.trustchain/operations/` folder by running this command to move all operations files to the `sent/` subdirectory:
-```
-mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
+```console
+$ mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
 ```
 
 !!! info "Network processing time"
@@ -201,13 +201,13 @@ This step must be carried out by the dDID controller, that is, the [uDID subject
 We assume that the downsteam legal entity has published their candidate dDID document and shared their candidate dDID (string identifier) with the controller. In the following commands, replace `<CANDIDATE_dDID>` with the candidate dDID and `<uDID>` with the controller's DID.
 
 First check that the candidate dDID can be successfully resolved:
-```
-trustchain-cli did resolve --did <CANDIDATE_dDID>
+```console
+$ trustchain-cli did resolve --did <CANDIDATE_dDID>
 ```
 
 Next, use the CLI to attest to the dDID:
-```
-trustchain-cli did attest --did <uDID> --controlled_did <CANDIDATE_dDID>
+```console
+$ trustchain-cli did attest --did <uDID> --controlled_did <CANDIDATE_dDID>
 ```
 
 #### Publish the updated dDID document
@@ -223,8 +223,8 @@ To publish the updated dDID document, containing the controller's attestation, f
 ## Downstream DID Verification
 
 To verify a downstream DID, run the following command with the relevant `<dDID>` identifier:
-```
-trustchain-cli did verify --did <dDID>
+```console
+$ trustchain-cli did verify --did <dDID>
 ```
 The Trustchain CLI will perform the following verification process and report the result:
 
