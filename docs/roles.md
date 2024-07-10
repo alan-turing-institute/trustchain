@@ -13,12 +13,26 @@
 ## Credential Issuer
 
 
+## dDID Subject
 
-## Downstream DID Issuer
+
+## dDID Issuer
 
 
 
 ## Root DID Subject
 
+
+## Summary
+
+
+| Role | Trustchain Mobile | Trustchain using Docker | Trustchain full installation |
+| ---- | :---------------: | :---------------------: | :--------------------------: |
+| Credential Holder   | :fontawesome-solid-circle-check:{ .check } | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-xmark:{ .xmark } |
+| Credential Verifier | :fontawesome-solid-circle-check:{ .check } | :fontawesome-solid-circle-check:{ .check } | :fontawesome-solid-circle-check:{ .check } |
+| Credential Issuer   | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-check:{ .check } | :fontawesome-solid-circle-check:{ .check } |
+| dDID Subject        | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-check:{ .check } | :fontawesome-solid-circle-check:{ .check } |
+| dDID Issuer         | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-check:{ .check } |
+| Root DID Subject    | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-xmark:{ .xmark } | :fontawesome-solid-circle-check:{ .check } |
 
 &nbsp;
