@@ -64,7 +64,7 @@ $ rustc --version
 
 ### Step 3. Install Trustchain
 
-Choose a directory in which you want to store the Trustchain software and use the `cd <DIRECTORY_NAME>` command to change to that directory. For instance, to change to your home directory run the `cd` command without any arguments:
+Choose a directory in which you want to store the Trustchain software and change to that directory using the command `$ cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
 ```console
 $ cd
 ```
