@@ -22,7 +22,7 @@ pub trait SignEncrypt {
     fn sign(&self, payload: &JwtPayload, secret_key: &Jwk) -> Result<String, TrustchainCRError> {
         let mut header = JwsHeader::new();
         header.set_token_type("JWT");
-        let signer = ES256K.signer_from_jwk(&secret_key)?;
+        let signer = ES256K.signer_from_jwk(secret_key)?;
         let signed_jwt = jwt::encode_with_signer(payload, &header, &signer)?;
         Ok(signed_jwt)
     }
@@ -35,7 +35,7 @@ pub trait SignEncrypt {
         header.set_content_encryption("A128CBC-HS256");
         header.set_content_encryption("A256GCM");
 
-        let encrypter = ECDH_ES.encrypter_from_jwk(&public_key)?;
+        let encrypter = ECDH_ES.encrypter_from_jwk(public_key)?;
         let encrypted_jwt = jwt::encode_with_encrypter(payload, &header, &encrypter)?;
         Ok(encrypted_jwt)
     }
@@ -49,15 +49,20 @@ pub trait SignEncrypt {
         let signed_payload = self.sign(payload, secret_key)?;
         let mut claims = JwtPayload::new();
         claims.set_claim("claim", Some(Value::from(signed_payload)))?;
-        self.encrypt(&claims, &public_key)
+        self.encrypt(&claims, public_key)
     }
 }
 /// Interface for decrypting and then verifying data.
 pub trait DecryptVerify {
     /// Decrypts a payload with a secret key.
     fn decrypt(&self, value: &Value, secret_key: &Jwk) -> Result<JwtPayload, TrustchainCRError> {
-        let decrypter = ECDH_ES.decrypter_from_jwk(&secret_key)?;
-        let (payload, _) = jwt::decode_with_decrypter(value.as_str().unwrap(), &decrypter)?;
+        let decrypter = ECDH_ES.decrypter_from_jwk(secret_key)?;
+        let (payload, _) = jwt::decode_with_decrypter(
+            value
+                .as_str()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(value.clone()))?,
+            &decrypter,
+        )?;
         Ok(payload)
     }
     /// Wrapper function that combines decrypting a payload with a secret key and then verifying it with a public key.
@@ -71,8 +76,13 @@ pub trait DecryptVerify {
         let (payload, _) = jwt::decode_with_decrypter(input, &decrypter)?;
 
         let verifier = ES256K.verifier_from_jwk(public_key)?;
+        let claim = payload
+            .claim("claim")
+            .ok_or(TrustchainCRError::ClaimNotFound)?;
         let (payload, _) = jwt::decode_with_verifier(
-            &payload.claim("claim").unwrap().as_str().unwrap(),
+            claim
+                .as_str()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(claim.clone()))?,
             &verifier,
         )?;
         Ok(payload)
@@ -81,14 +91,14 @@ pub trait DecryptVerify {
 
 /// Converts key from josekit Jwk into ssi JWK
 pub fn josekit_to_ssi_jwk(key: &Jwk) -> Result<JWK, serde_json::Error> {
-    let key_as_str: &str = &serde_json::to_string(&key).unwrap();
-    let ssi_key: JWK = serde_json::from_str(key_as_str).unwrap();
+    let key_as_str: &str = &serde_json::to_string(&key)?;
+    let ssi_key: JWK = serde_json::from_str(key_as_str)?;
     Ok(ssi_key)
 }
 /// Converts key from ssi JWK into josekit Jwk
 pub fn ssi_to_josekit_jwk(key: &JWK) -> Result<Jwk, serde_json::Error> {
-    let key_as_str: &str = &serde_json::to_string(&key).unwrap();
-    let ssi_key: Jwk = serde_json::from_str(key_as_str).unwrap();
+    let key_as_str: &str = &serde_json::to_string(&key)?;
+    let ssi_key: Jwk = serde_json::from_str(key_as_str)?;
     Ok(ssi_key)
 }
 
@@ -111,19 +121,15 @@ pub fn extract_key_ids_and_jwk(
         // TODO: consider rewriting functional with filter, partition, fold over returned error
         // variants.
         for vm in vms {
-            match vm {
-                VerificationMethod::Map(vm_map) => {
-                    let key = vm_map
-                        .get_jwk()
-                        .map_err(|_| TrustchainCRError::MissingJWK)?;
-                    let id = key
-                        .thumbprint()
-                        .map_err(|_| TrustchainCRError::MissingJWK)?;
-                    let key_jose =
-                        ssi_to_josekit_jwk(&key).map_err(|err| TrustchainCRError::Serde(err))?;
-                    my_map.insert(id, key_jose);
-                }
-                _ => (),
+            if let VerificationMethod::Map(vm_map) = vm {
+                let key = vm_map
+                    .get_jwk()
+                    .map_err(|_| TrustchainCRError::MissingJWK)?;
+                let id = key
+                    .thumbprint()
+                    .map_err(|_| TrustchainCRError::MissingJWK)?;
+                let key_jose = ssi_to_josekit_jwk(&key).map_err(TrustchainCRError::Serde)?;
+                my_map.insert(id, key_jose);
             }
         }
     }

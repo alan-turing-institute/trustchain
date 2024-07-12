@@ -54,6 +54,9 @@ pub enum TrustchainCRError {
     /// Failed deserialize from file.
     #[error("Failed to deserialize.")]
     FailedToDeserialize,
+    /// Value is not a string.
+    #[error("Value is not a string: {0}")]
+    FailedToConvertToStr(Value),
     /// Failed deserialize from file.
     #[error("Failed to deserialize with error: {0}.")]
     FailedToDeserializeWithError(serde_json::Error),
