@@ -267,7 +267,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             handle_credential_error(&cred_err);
                         }
                         Ok(_) => {
-                            println!("Proof... ✅");
+                            println!("Proof.... ✅");
                             println!("Issuer... ✅");
                         }
                     }
@@ -364,7 +364,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("Digest... ❌ (mismatched dataset hash digests)");
                         }
                         Ok(_) => {
-                            println!("Proof... ✅");
+                            println!("Proof.... ✅");
                             println!("Issuer... ✅");
                             println!("Digest... ✅");
                         }
@@ -420,15 +420,15 @@ fn handle_credential_error(err: &CredentialError) {
             println!("Proof... ❌ (missing verification method)");
         }
         _err @ CredentialError::NoIssuerPresent => {
-            println!("Proof... ✅");
+            println!("Proof.... ✅");
             println!("Issuer... ❌ (missing issuer)");
         }
         _err @ CredentialError::VerifierError(_) => {
-            println!("Proof... ✅");
+            println!("Proof.... ✅");
             println!("Issuer... ❌ (with verifier error)");
         }
         _err @ CredentialError::FailedToDecodeJWT => {
-            println!("Proof... ❌");
+            println!("Proof.... ❌");
             println!("Issuer... ❌");
         }
     }
