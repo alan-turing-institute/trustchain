@@ -286,50 +286,56 @@ $ bitcoin-cli stop
 
 ### Configure ION
 
-... explain...
-
-TODO: create environment variables `ION_CONFIG=<PATH_TO_ION_REPOSITORY` and `ION_CONFIG=~/.ion`, then use them throughout.
-
-Clone the ION repository:
+Choose a directory in which you want to store the ION software and change to that directory using the command `$ cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
+```console
+$ cd
 ```
-git clone https://github.com/decentralized-identity/ion
-cd ion
+Now clone the ION code repository from GitHub:
+```console
+$ git clone https://github.com/decentralized-identity/ion
+```
+and change into the newly-created `ion` subfolder:
+```console
+$ cd ion
 ```
 
 !!! tip "Create the `ION_REPO` environment variable"
 
-    TODO:
+    Since we will need to refer to this folder in future, let's create an [environment variable](#environment-variables) containing its file path:
+    ```console
+    $ echo "export ION_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+We will need a folder for storing ION configuration files. For convenience, we'll also create an environment variable for that folder.
 
 !!! tip "Create the `ION_CONFIG` environment variable"
 
-    TODO:
+    Our convention is to use the folder `~/.ion` for ION configuration files. If you want to use a different folder, just change the path in the following command:
+    ```console
+    $ echo "export ION_CONFIG=~/.ion" >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
 
-Make a new directory for your ION configuration.
+
+Having defined `ION_CONFIG` environment variable (above), use it to create the folder itself:
+```console
+$ mkdir $ION_CONFIG
 ```
-mkdir ~/.ion
-```
 
-Create your configuration files from templates.
-
-Copy the ION configuration files (for both the Bitcoin and core microservices) to another directory, (e.g. `~/.ion/`):
+Next, copy the template ION configuration files to your `ION_CONFIG` directory:
 
 === "Mainnet"
 
-    ```
-    cp config/mainnet-bitcoin-config.json ~/.ion
-    cp config/mainnet-bitcoin-versioning.json ~/.ion
-    cp config/mainnet-core-config.json ~/.ion
-    cp config/mainnet-core-versioning.json ~/.ion/
+    ```console
+    $ cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG
     ```
 
 === "Testnet"
 
     ```
-    cp config/testnet-bitcoin-config.json ~/.ion
-    cp config/testnet-bitcoin-versioning.json ~/.ion
-    cp config/testnet-core-config.json ~/.ion
-    cp config/testnet-core-versioning.json ~/.ion/
+    $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
     ```
+
+... TODO FROM HERE ...
 
 Update the config parameters for the ION Bitcoin microservice in the config file `testnet-bitcoin-config.json`:
 
