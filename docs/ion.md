@@ -382,40 +382,31 @@ $ mkdir $ION_CONFIG
 
     Set the `bitcoinRpcPassword` parameter: TODO.
 
-
-... TODO FROM HERE ...
-
-- `bitcoinDataDirectory`
-    - This is an optional config value. By configuring this value, instead of using rpc call to initialize Bitcoin microservice, the node will read from the block binary files. This is useful in speeding up init time if you have fast access to the files (local SSD is optimal). If the files are stored and retrieved across network, such as on the cloud in AWS S3 Bucket or Azure Blob Storage, then this will be slower than using RPC as it has to download GB worth of files.
-    - Leave it blank if you do not wish to init from file. If you want to init from files, it needs to point to the block files folder specified in the `datadir` config parameter in `bitcoin.conf`:
-    - testnet: `<datadir>/testnet3`
-    - mainnet: `<datadir>` (i.e. exactly the same as the `datadir` value configured for Bitcoin Core in [Set up Bitcoin Core](/installation#Set-up-Bitcoin-Core).)
-- `bitcoinWalletImportString`
-    - For testnet: this can be left unchanged for now; a valid testnet example wallet will be generated each time ion-bitcoin fails to load a valid WIF string on startup, so we shall update this parameter later.
-    - For mainnet: (must be a mainnet-compatible WIF)
-- `bitcoinRpcUsername`
-    - Must match what was set for `rpcuser` in the `bitcoin.conf` file in [Set up Bitcoin Core](/installation#Set-up-Bitcoin-Core).
-- `bitcoinRpcPassword`
-    - must match what was set for `rpcpassword` in the `bitcoin.conf` file in [Set up Bitcoin Core](/installation#Set-up-Bitcoin-Core).
-
-Update the ION microservice config file `testnet-core-config.json`:
-
-- `didMethodName`
-    - testnet: `ion:test`
-    - mainnet: `ion`
-
-
 ### Build ION
 
-Build ION
+Change directory into the ION repository:
+```console
+$ cd $ION_REPO
+```
+Now install the ION dependencies:
+```console
+$ npm i
+```
+make sure Typescript is installed:
+```console
+$ npm install typescript
+```
+and then build the ION package:
+```console
+$ npm run build
+```
 
-- From the root of the cloned ION repository:
-        ```
-        npm i
-        npm run build
-        ```
-    - NOTE: You may need to run `npm install tsc` before running `npm run build` to install TypeScript in Linux/Mac environments.
-    - NOTE: You must rerun `npm run build` every time a configuration JSON file is modified.
+!!! info "Rebuild ION whenever a configuration file is modified"
+
+    You must rerun `npm run build` whenever one of the JSON configuration files in the `ION_CONFIG` folder is modified.
+
+TODO: IS THIS NEEDED?:
+
 - Fix an **upstream bug** in the ION Bitcoin microservice:
     - From the root of the ION repository (cloned in step 5.), open the file `node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js`
     and comment out the following lines inside the `initializeBitcoinCore` function:
@@ -424,36 +415,41 @@ Build ION
         // yield this.loadWallet();
         ```
         Then re-run `npm run build`.
-    - Create a Bitcoin wallet with the following RPC call (where `<rpcuser>` is the username given in `bitcoin.conf` in Step 2, and when prompted enter the `rpcpassword` also given in `bitcoin.conf`):
-    ```
-    curl --user <rpcuser> --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "createwallet", "params": {"wallet_name": "sidetreeDefaultWallet", "descriptors": false}}' -H 'content-type: text/plain;' http://127.0.0.1:18332/
-    ```
-    **NOTE** the name of the wallet in the previous command **MUST** be `sidetreeDefaultWallet` (as this is hard-coded in Sidetree).
-    The output from this command should look like this:
-    ```
-    {"result":{"name":"sidetreeDefaultWallet","warning":"Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."},"error":null,"id":"curltest"}
-    ```
 
-### Start ION
+TODO: DO THIS EARLIER, WHEN CONFIGURING BITCOIN CORE:
 
-Congratulations! Your ION installation should now be complete. To start
+- Create a Bitcoin wallet with the following RPC call (where `<rpcuser>` is the username given in `bitcoin.conf` in Step 2, and when prompted enter the `rpcpassword` also given in `bitcoin.conf`):
+```
+curl --user <rpcuser> --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "createwallet", "params": {"wallet_name": "sidetreeDefaultWallet", "descriptors": false}}' -H 'content-type: text/plain;' http://127.0.0.1:18332/
+```
+**NOTE** the name of the wallet in the previous command **MUST** be `sidetreeDefaultWallet` (as this is hard-coded in Sidetree).
+The output from this command should look like this:
+```
+{"result":{"name":"sidetreeDefaultWallet","warning":"Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."},"error":null,"id":"curltest"}
+```
+
+Congratulations! Your installation should now be complete and you are ready to run ION.
 
 ## Running ION
 
+The following commands must be run each time you start your ION node, e.g. after restarting your computer. Some of them will keep control of the Terminal, so you will need to open a new Terminal window to continue.
+
 !!! tip "Tip: Use tmux"
 
-    A convenient way to start all of the following processes is to use [tmux](https://github.com/tmux/tmux/wiki) (the terminal multiplexer). Open a tmux session with the command:
+    A convenient way to start all of the following processes is to use [tmux](https://github.com/tmux/tmux/wiki) (the terminal multiplexer). Once installed, open a tmux session with the command:
     ```console
     $ tmux new -s ion
     ```
-    and run each process in its own window. Then detach the tmux session with ++ctrl+b++. To reattach the session later, run:
+    and hit ++ctrl+b++ followed by ++c++ each time you need to open a new window.
+
+    When all of the processes are started, detach the tmux session with ++ctrl+b++ followed by ++d++. To reattach the session later, run:
     ```console
     $ tmux a -t ion
     ```
 
 Follow these steps to start your ION node:
 
-**1. Start IPFS.**
+**1. Start IPFS**
 
 ```console
 $ ipfs daemon
@@ -466,7 +462,7 @@ $ ipfs daemon
     $ ipfs shutdown
     ```
 
-**2. Start MongoDB.**
+**2. Start MongoDB**
 
 === "Linux"
 
@@ -507,7 +503,7 @@ $ ipfs daemon
         ```
 
 
-**3. Start Bitcoin Core.** TODO: With aliases set up for `bitcoind` and `bitcoin-cli` (see [link](TODO)):
+**3. Start Bitcoin Core**
 ```console
 $ bitcoind -daemon
 ```
