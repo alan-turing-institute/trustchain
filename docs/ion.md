@@ -223,10 +223,33 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
         $ sed -i '' "1s|^|server=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
         ```
 
+        To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
+        ```console
+        $ head -n 3 /Applications/bitcoin-24.0.1/bitcoin.conf
+        ```
+        You should see these lines printed to the Terminal:
+        ```
+        server=1
+        txindex=1
+        datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
+        ```
+
     === "Testnet"
 
         ```console
         $ sed -i '' "1s|^|testnet=1\nserver=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
+        ```
+
+        To confirm these changes were made correctly, check the first four lines in the `bitcoin.conf` file by running:
+        ```console
+        $ head -n 4 /Applications/bitcoin-24.0.1/bitcoin.conf
+        ```
+        You should see these lines printed to the Terminal:
+        ```
+        testnet=1
+        server=1
+        txindex=1
+        datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
         ```
 
     When we run Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
@@ -331,18 +354,36 @@ Next, copy the template ION configuration files to your `ION_CONFIG` directory:
 
 === "Testnet"
 
-    ```
+    ```console
     $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
+    ```
+
+Now you will need to edit some of these configuration files to add the parameters specific to your system. These instructions use the `pico` text editor, but you can use whichever editor you like.
+
+=== "Mainnet"
+
+    Open the file `mainnet-bitcoin-config.json` in the `pico` text editor:
+    ```console
+    $ pico $ION_CONFIG/mainnet-bitcoin-config.json
+    ```
+    TODO.
+
+=== "Testnet"
+
+    OLD:
+    Open the file `testnet-bitcoin-config.json` in the `pico` text editor:
+    ```console
+    $ pico $ION_CONFIG/testnet-bitcoin-config.json
+    ```
+
+    NEW:
+    Update the config parameters for the ION Bitcoin microservice in the config file `testnet-bitcoin-config.json`:
+    ```console
+    sed -i '' 's|"bitcoinDataDirectory": "[FILL THIS IN!]"|"bitcoinDataDirectory": "$BITCOIN_DATA"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
 
 ... TODO FROM HERE ...
 
-Update the config parameters for the ION Bitcoin microservice in the config file `testnet-bitcoin-config.json`:
-
-- `bitcoinPeerUri`
-    - Ensure it points to the RPC endpoint of the Bitcoin Core client you setup earlier in this guide
-    - For testnet: `http://localhost:18332`
-    - For mainnet: `http://localhost:8332`
 - `bitcoinDataDirectory`
     - This is an optional config value. By configuring this value, instead of using rpc call to initialize Bitcoin microservice, the node will read from the block binary files. This is useful in speeding up init time if you have fast access to the files (local SSD is optimal). If the files are stored and retrieved across network, such as on the cloud in AWS S3 Bucket or Azure Blob Storage, then this will be slower than using RPC as it has to download GB worth of files.
     - Leave it blank if you do not wish to init from file. If you want to init from files, it needs to point to the block files folder specified in the `datadir` config parameter in `bitcoin.conf`:
