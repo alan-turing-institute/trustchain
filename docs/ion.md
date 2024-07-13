@@ -344,43 +344,44 @@ Having defined `ION_CONFIG` environment variable (above), use it to create the f
 $ mkdir $ION_CONFIG
 ```
 
-Next, copy the template ION configuration files to your `ION_CONFIG` directory:
-
 === "Mainnet"
 
+    Next, copy the template ION configuration files to your `ION_CONFIG` directory:
     ```console
     $ cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG
     ```
 
+    The following commands will edit some of the configuration parameters inside the file named `mainnet-bitcoin-config.json`.
+
+    Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
+    ```console
+    $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    ```
+
+    Set the `bitcoinRpcUsername` parameter: TODO.
+
+    Set the `bitcoinRpcPassword` parameter: TODO.
+
+    Set the `bitcoinWalletImportString` parameter TODO. Note: this can be left unchanged for now *only* on testnet. On mainnet it must be a mainnet-compatible WIF.
+
 === "Testnet"
 
+    Next, copy the template ION configuration files to your `ION_CONFIG` directory:
     ```console
     $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
     ```
 
-Now you will need to edit some of these configuration files to add the parameters specific to your system. These instructions use the `pico` text editor, but you can use whichever editor you like.
+    The following commands will edit some of the configuration parameters inside the file named `testnet-bitcoin-config.json`.
 
-=== "Mainnet"
-
-    Open the file `mainnet-bitcoin-config.json` in the `pico` text editor:
+    Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
     ```console
-    $ pico $ION_CONFIG/mainnet-bitcoin-config.json
-    ```
-    TODO.
-
-=== "Testnet"
-
-    OLD:
-    Open the file `testnet-bitcoin-config.json` in the `pico` text editor:
-    ```console
-    $ pico $ION_CONFIG/testnet-bitcoin-config.json
+    $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'testnet3/"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
 
-    NEW:
-    Update the config parameters for the ION Bitcoin microservice in the config file `testnet-bitcoin-config.json`:
-    ```console
-    sed -i '' 's|"bitcoinDataDirectory": "[FILL THIS IN!]"|"bitcoinDataDirectory": "$BITCOIN_DATA"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
+    Set the `bitcoinRpcUsername` parameter: TODO.
+
+    Set the `bitcoinRpcPassword` parameter: TODO.
+
 
 ... TODO FROM HERE ...
 
