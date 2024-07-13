@@ -36,15 +36,13 @@ In this guide, commands and configuration settings may depend on which network i
 
 ### Local vs. Remote Installation
 
-...TODO. Mention port forwarding instructions in the [SSH config](#ssh-config) section.
+You can install ION on your local machine or a remote one, e.g. a virtual machine in the Cloud. If you are using a remote machine, connect to it using SSH and follow the instructions below.
+
+Once installed, follow the port forwarding instructions in the [SSH config](#ssh-config) section to produce a setup that is indistinguishable from running an ION node locally.
 
 ## ION Installation Guide
 
 These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
-
-!!! info "Local or remote installation"
-
-    You can install ION on your local machine or a remote one, e.g. a Virtual Machine in the cloud. If you are using a remote machine, connect to it using SSH and follow the instructions below. Also see the instructions on [SSH configuration](#ssh-config).
 
 ### Prerequisites
 
@@ -519,7 +517,7 @@ $ (cd $ION_REPO && npm run core)
 
 ## SSH config
 
-When running a remote ION node, it can be convenient to open an SSH connection (with port forwarding) from your local machine. This produces a setup that is indistinguishable from running an ION locally.
+When running a remote ION node, it can be convenient to open an SSH connection (with port forwarding) from your local machine. This produces a setup that is indistinguishable from running ION locally.
 
 !!! warning "Allow incoming connections on the remote machine"
 
