@@ -2,9 +2,18 @@
 
 The [Identity Overlay Network](https://identity.foundation/ion/) (ION) is an open source [DID method](https://www.w3.org/TR/did-core/#methods) implementation developed by the Decentralized Identity Foundation.
 
-In other words, ION is a software tool that can be used to perform DID operations, such as creating and publishing new DIDs and DID documents, and resolving existing ones. It does this by reading and writing data to the [Bitcoin](TODO) blockchain and to the [IPFS](TODO) distributed file system. As such, every ION instance is a node on these two peer-to-peer networks.
+In other words, ION is a software tool that can be used to perform DID operations, such as creating and publishing new DIDs and DID documents, and resolving existing ones. It does this by reading and writing data to the [Bitcoin](https://bitcoin.org/en/) blockchain and to the [IPFS](https://ipfs.tech/) distributed file system. As such, every ION instance is a node on these two peer-to-peer networks.
 
 Trustchain delegates the execution of DID operations to an ION node. Therefore to use Trustchain you must first install and run ION, either on the same machine or a connected one.
+
+!!! warning "ION resource requirements"
+
+    An ION installation includes a full node on the Bitcoin network, which must download and store the entire Bitcoin blockchain. This is a large amount of data that typically takes several hours, or even days, to download.
+
+    The recommended system requirements for an ION installation are:
+
+    - 6GB of RAM
+    - 1TB of storage.
 
 Note, however, that **Trustchain makes no assumptions about the trustworthiness of the ION system** and the Trustchain security model does not rely on the correct functioning of the ION software. Trustchain independently verifies all of the data it receives from ION, so a faulty or compromised ION node would not represent a security vulnerability in Trustchain (although it could cause a loss of service).
 
@@ -18,11 +27,11 @@ Before beginning the installation, a few decisions must be made that will determ
 
 ### Docker Container vs. Full Installation
 
-The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, this method provides a read-only ION node. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.
+The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, this method provides a **read-only ION node**. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.
 
 If you would like to be able to use Trustchain to create and publish your own DIDs, follow the full installation instructions below (and ignore the [ION with Docker](#ion-with-docker) section).
 
-If you want to install ION using Docker, you can skip most of this page and just follow the instructions in the [ION with Docker](#ion-with-docker) section.
+If you want to run ION using Docker, you can skip most of this page and just follow the instructions in the [ION with Docker](#ion-with-docker) section.
 
 ### Mainnet vs. Testnet
 
@@ -129,8 +138,7 @@ IPFS is the InterPlanetary File System, a peer-to-peer protocol and network used
 
 ### Install Bitcoin Core
 
-DIDs published with ION are anchored into the Bitcoin blockchain, endowing them with an independently-verifiable timestamp. Therefore ION wraps a node on the Bitcoin network...
-
+Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructions below assume that version. More recent versions of Bitcoin Core are [available](https://bitcoincore.org/en/releases/) and can be used, but will require some minor changes to the commands in the following steps.
 
 === "Linux"
 
@@ -148,12 +156,10 @@ DIDs published with ION are anchored into the Bitcoin blockchain, endowing them 
 
 === "Mac OS"
 
-    Trustchain has been tested with Bitcoin Core v24.0.1, and therefore the instructions below assume that version. More [recent versions](https://bitcoincore.org/en/releases/) of Bitcoin Core are available and can be used, but will require some minor changes to the commands in the following steps.
+    Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-24.0.1/) for your system:
 
-    Download the [binary release](https://bitcoincore.org/bin/bitcoin-core-24.0.1/) for your system:
-
-     - [Installer](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-x86_64-apple-darwin.tar.gz) for Mac with x86-64 processor.
-     - [Installer](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-arm64-apple-darwin.tar.gz) for Mac with Apple M1 processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-x86_64-apple-darwin.tar.gz) for Mac with x86-64 processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-arm64-apple-darwin.tar.gz) for Mac with Apple M1 processor.
 
     Verify the download by comparing the [published hash](https://bitcoincore.org/bin/bitcoin-core-24.0.1/SHA256SUMS) with the result of this command:
     ```console
@@ -168,7 +174,7 @@ DIDs published with ION are anchored into the Bitcoin blockchain, endowing them 
     ```console
     $ mv ~/Downloads/bitcoin-24.0.1 /Applications
     ```
-    This folder contains an executable file named `bitcoind` which we will run to start Bitcoin Core.
+    The download contains an executable file named `bitcoind` which we will run to start Bitcoin Core.
 
     !!! info "Sign the Bitcoin Core executable files"
 
