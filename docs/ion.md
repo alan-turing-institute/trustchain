@@ -313,19 +313,19 @@ $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=/A
 
 
 
-Now, whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`.
+Now, whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`. A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/).
 
-A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/). Some useful examples are given below.
-
-To get information about the state of your Bitcoin node, including whether it is fully synchronised, run:
+One useful example is the following `-getinfo` command. It reports information about the state of your Bitcoin node, including whether it is fully synchronised:
 ```console
 $ bitcoin-cli -getinfo
 ```
 
-To stop your Bitcoin node, run:
-```console
-$ bitcoin-cli stop
-```
+!!! info "Create a Bitcoin wallet for ION"
+
+    Before using ION you must create a Bitcoin wallet by running the following CLI command:
+    ```console
+    $ bitcoin-cli createwallet "sidetreeDefaultWallet"
+    ```
 
 ### Configure ION
 
