@@ -53,6 +53,12 @@ Once installed, follow the port forwarding instructions in the [SSH config](#ssh
 
 These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
 
+Both Linux and Mac OS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions.
+
+Instructions for installing on Windows are given in the official [ION guide](https://identity.foundation/ion/install-guide/).
+
+In all cases, administrator rights are required.
+
 ### Prerequisites
 
 Run the following commands to set up your environment.
@@ -195,64 +201,60 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
 
 ### Configure Bitcoin Core
 
-=== "Linux"
+Let's begin by creating a folder to store the Bitcoin blockchain data. For convenience, we'll also create an environment variable for that folder.
 
-    TODO.
+!!! tip "Create the `BITCOIN_DATA` environment variable"
 
-=== "Mac OS"
-
-    Let's begin by creating a folder to store the Bitcoin blockchain data. For convenience, we'll also create an environment variable for that folder.
-
-    !!! tip "Create the `BITCOIN_DATA` environment variable"
-
-        Our convention is to use the folder `~/.bitcoin` for Bitcoin Core data. If you want to use a different folder, just change the path in the following command:
-        ```console
-        $ echo "export BITCOIN_DATA=~/.bitcoin" >> $SHELL_CONFIG; source $SHELL_CONFIG
-        ```
-
-    Having defined `BITCOIN_DATA` environment variable (above), use it to create the data folder itself:
+    Our convention is to use the folder `~/.bitcoin` for Bitcoin Core data. If you want to use a different folder, just change the path in the following command:
     ```console
-    $ mkdir $BITCOIN_DATA
+    $ echo "export BITCOIN_DATA=~/.bitcoin" >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
+
+Having defined the `BITCOIN_DATA` environment variable (above), use it to create the data folder itself:
+```console
+$ mkdir $BITCOIN_DATA
+```
+
+=== "Mainnet"
 
     Bitcoin configuration parameters are stored in the file `/Applications/bitcoin-24.0.1/bitcoin.conf`. The following command adds the required parameters to the beginning of this file:
 
-    === "Mainnet"
+    ```console
+    $ sed -i '' "1s|^|server=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
 
-        ```console
-        $ sed -i '' "1s|^|server=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
-        ```
+    To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
+    ```console
+    $ head -n 3 /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
+    You should see these lines printed to the Terminal:
+    ```
+    server=1
+    txindex=1
+    datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
+    ```
 
-        To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
-        ```console
-        $ head -n 3 /Applications/bitcoin-24.0.1/bitcoin.conf
-        ```
-        You should see these lines printed to the Terminal:
-        ```
-        server=1
-        txindex=1
-        datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
-        ```
+=== "Testnet"
 
-    === "Testnet"
+    Bitcoin configuration parameters are stored in the file `/Applications/bitcoin-24.0.1/bitcoin.conf`. The following command adds the required parameters to the beginning of this file:
 
-        ```console
-        $ sed -i '' "1s|^|testnet=1\nserver=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
-        ```
+    ```console
+    $ sed -i '' "1s|^|testnet=1\nserver=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
 
-        To confirm these changes were made correctly, check the first four lines in the `bitcoin.conf` file by running:
-        ```console
-        $ head -n 4 /Applications/bitcoin-24.0.1/bitcoin.conf
-        ```
-        You should see these lines printed to the Terminal:
-        ```
-        testnet=1
-        server=1
-        txindex=1
-        datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
-        ```
+    To confirm these changes were made correctly, check the first four lines in the `bitcoin.conf` file by running:
+    ```console
+    $ head -n 4 /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
+    You should see these lines printed to the Terminal:
+    ```
+    testnet=1
+    server=1
+    txindex=1
+    datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
+    ```
 
-    When we run Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
+    When we start Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
     ```console
     $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -daemon -conf=/Applications/bitcoin-24.0.1/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
@@ -274,13 +276,13 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
     ```
     Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
 
-    You should now see the message "Bitcoin Core starting" in the Terminal.
+You should now see the message "Bitcoin Core starting" in the Terminal.
 
-    !!! warning "Bitcoin synchronisation"
+!!! warning "Bitcoin synchronisation"
 
-        When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
+    When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
 
-        The synchronisation process may take several hours, or even days, to complete. You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
+    The synchronisation process may take several hours, or even days, to complete. You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
 
 ### Bitcoin CLI
 
@@ -290,7 +292,28 @@ Run the following command to create an alias, making to easy to access the CLI:
 ```console
 $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=/Applications/bitcoin-24.0.1/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
 ```
-Now you can invoke the CLI with commands beginning `bitcoin-cli`.
+
+!!! info "Bitcoin RPC username and password"
+
+    Before you can make use of the CLI, you will need to add a username and password to the Bitcoin configuration file.
+
+    To do this, replace the `<RPC_USERNAME>` and `<RPC_PASSWORD>` in the following command and then execute it to make the change inside the `bitcoin.conf` file:
+    ```console
+    $ sed -i '' "1s|^|rpcuser=<RPC_USERNAME>\nrpcpassword=<RPC_PASSWORD>|" /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
+    To confirm these changes were made correctly, check the first two lines in the `bitcoin.conf` file by running:
+    ```console
+    $ head -n 2 /Applications/bitcoin-24.0.1/bitcoin.conf
+    ```
+    You should see these lines printed to the Terminal:
+    ```
+    rpcuser=<RPC_USERNAME>
+    rpcpassword=<RPC_PASSWORD>
+    ```
+
+
+
+Now, whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`.
 
 A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/). Some useful examples are given below.
 
@@ -303,9 +326,6 @@ To stop your Bitcoin node, run:
 ```console
 $ bitcoin-cli stop
 ```
-
-
-
 
 ### Configure ION
 
@@ -339,7 +359,7 @@ We will need a folder for storing ION configuration files. For convenience, we'l
     ```
 
 
-Having defined `ION_CONFIG` environment variable (above), use it to create the folder itself:
+Having defined the `ION_CONFIG` environment variable (above), use it to create the folder itself:
 ```console
 $ mkdir $ION_CONFIG
 ```
@@ -565,6 +585,17 @@ $ (cd $ION_REPO && npm run core)
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
     ```
 
+## Funding your Bitcoin wallet
+
+ION provides two core functions resolving existing DIDs and publishing new DIDs.
+
+TODO.
+
+TODO: Include a wallet balance check via the Bitcoin CLI:
+```console
+$ bitcoin-cli getbalances
+```
+
 ## SSH config
 
 When running a remote ION node, it can be convenient to open an SSH connection (with port forwarding) from your local machine. This produces a setup that is indistinguishable from running ION locally.
@@ -630,18 +661,7 @@ $ ssh ion
 
 As long as this connection is active, data sent to the ports specified in the SSH configuration (above) will be relayed to the same ports on the remote machine, producing a setup equivalent to running ION and its related processes locally.
 
-## Funding your Bitcoin wallet
-
-ION provides two core functions resolving existing DIDs and publishing new DIDs.
-
-TODO.
-
-TODO: Include a wallet balance check via the Bitcoin CLI:
-```console
-$ bitcoin-cli getbalances
-```
-
-## ION with Docker
+## ION using Docker
 
 !!! warning
 
