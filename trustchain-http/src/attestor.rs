@@ -206,7 +206,7 @@ impl TrustchainAttestorHTTPHandler {
                     attestor
                         .encrypt(
                             &JwtPayload::try_from(nonce).unwrap(),
-                            &requester_keys.get(key_id).unwrap(),
+                            requester_keys.get(key_id).unwrap(),
                         )
                         .unwrap(),
                 );
@@ -220,7 +220,7 @@ impl TrustchainAttestorHTTPHandler {
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys().unwrap();
         let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
 
         // sign and encrypt challenges
         let value: serde_json::Value = serde_json::to_value(challenges).unwrap();
