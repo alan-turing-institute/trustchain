@@ -106,7 +106,7 @@ impl TrustchainAttestorHTTPHandler {
         app_state: Arc<AppState>,
     ) -> impl IntoResponse {
         let pathbase = attestation_request_basepath("attestor").unwrap();
-        let path = pathbase.join(&key_id);
+        let path = pathbase.join(key_id);
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
@@ -119,7 +119,7 @@ impl TrustchainAttestorHTTPHandler {
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys().unwrap();
         let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
         // get temp public key
         let identity_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
@@ -268,7 +268,7 @@ impl TrustchainAttestorHTTPHandler {
     ) -> impl IntoResponse {
         // deserialise expected nonce map
         let pathbase = attestation_request_basepath("attestor").unwrap();
-        let path = pathbase.join(&key_id);
+        let path = pathbase.join(key_id);
         let identity_cr_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)
             .unwrap()
@@ -283,7 +283,7 @@ impl TrustchainAttestorHTTPHandler {
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys().unwrap();
         let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(&signing_key_ssi).unwrap();
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
 
         // decrypt and verify response => nonces map
         let attestor = Entity {};
@@ -351,12 +351,12 @@ pub fn present_identity_challenge(
     let signing_keys = ion_attestor.signing_keys().unwrap();
     let signing_key_ssi = signing_keys.first().unwrap();
     let signing_key =
-        ssi_to_josekit_jwk(&signing_key_ssi).map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
+        ssi_to_josekit_jwk(signing_key_ssi).map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
 
     // sign (with pub key) and encrypt (with temp_p_key) payload
     let attestor = Entity {};
     let signed_encrypted_challenge =
-        attestor.sign_and_encrypt_claim(&payload, &signing_key, &temp_p_key);
+        attestor.sign_and_encrypt_claim(&payload, &signing_key, temp_p_key);
     identity_challenge.identity_challenge_signature = Some(signed_encrypted_challenge?);
 
     Ok(identity_challenge)
@@ -372,7 +372,7 @@ fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRE
     let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
     // deserialise expected nonce
     let identity_challenge = IdentityCRChallenge::new()
-        .elementwise_deserialize(&path)
+        .elementwise_deserialize(path)
         .unwrap()
         .unwrap();
     let expected_nonce = identity_challenge.identity_nonce.unwrap().to_string();
