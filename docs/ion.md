@@ -260,11 +260,11 @@ $ mkdir $BITCOIN_DATA
 
     The example given in the official [ION install guide](https://identity.foundation/ion/install-guide/) does use this shorthand, which causes an error, so beware of this issue if you edit the `bitcoin.conf` file manually when following that guide.
 
-When we start Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
+When we start Bitcoin Core we will need to make sure it uses the correct configuration file that was edited above (and we also want to run it as a background process). To make this more convenient, let's create an alias in our `SHELL_CONFIG` file:
 ```console
 $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -daemon -conf=/Applications/bitcoin-24.0.1/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
 ```
-Now use the following command to run Bitcoin Core:
+Now we can use the following simple command to start Bitcoin Core:
 ```console
 $ bitcoind
 ```
@@ -288,7 +288,7 @@ You should now see the message "Bitcoin Core starting" in the Terminal.
 
     When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
 
-    The synchronisation process may take several hours, or even days, to complete. You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
+    **The synchronisation process may take several hours, or even days, to complete.** You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
 
 ### Bitcoin CLI
 
@@ -301,20 +301,24 @@ $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=/A
 
 !!! info "Bitcoin RPC username and password"
 
-    Before you can make use of the CLI you will need to add a username and password to the Bitcoin configuration file. These same parameters will also be used for authentication when ION interacts with Bitcoin Core. In both cases,
+    Before you can make use of the CLI you will need to add a username and password to the Bitcoin configuration file. These same parameters will also be used for authentication when ION interacts with Bitcoin Core. In both cases, the interaction is possible because Bitcoin Core provides access via a Remote Procedure Call (RPC) interface.
 
-    To do this, replace the `<RPC_USERNAME>` and `<RPC_PASSWORD>` in the following command and then execute it to make the change inside the `bitcoin.conf` file:
+    We shall use `admin` for the RPC username. To set up the RPC password, copy and paste the following command into the Terminal and then change `<password>` to something of your choice before hitting the ++return++ key:
     ```console
-    $ sed -i '' "1s|^|rpcuser=<RPC_USERNAME>\nrpcpassword=<RPC_PASSWORD>|" /Applications/bitcoin-24.0.1/bitcoin.conf
+    $ RPC_PASSWORD="<password>"
+    ```
+    Now run the following command to add the username and password to the `bitcoin.conf` file:
+    ```console
+    $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
     ```
     To confirm these changes were made correctly, check the first two lines in the `bitcoin.conf` file by running:
     ```console
     $ head -n 2 /Applications/bitcoin-24.0.1/bitcoin.conf
     ```
-    You should see these lines printed to the Terminal:
+    You should see these lines printed to the Terminal (with your chosen password):
     ```
-    rpcuser=<RPC_USERNAME>
-    rpcpassword=<RPC_PASSWORD>
+    rpcuser=admin
+    rpcpassword=<password>
     ```
 
 
