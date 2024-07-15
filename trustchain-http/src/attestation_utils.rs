@@ -60,6 +60,8 @@ pub enum TrustchainCRError {
     /// Failed deserialize from file.
     #[error("Failed to deserialize with error: {0}.")]
     FailedToDeserializeWithError(serde_json::Error),
+    #[error("Wrapped SSI JWK error: {0}.")]
+    WrappedSSIJWKError(ssi::jwk::Error),
     /// Failed to check CR status.
     #[error("Failed to determine CR status.")]
     FailedStatusCheck,
@@ -167,6 +169,12 @@ impl From<serde_json::Error> for TrustchainCRError {
     }
 }
 
+impl From<ssi::jwk::Error> for TrustchainCRError {
+    fn from(value: ssi::jwk::Error) -> Self {
+        TrustchainCRError::WrappedSSIJWKError(value)
+    }
+}
+
 /// Interface for serializing and deserializing each field of structs to/from files.
 pub trait ElementwiseSerializeDeserialize
 where
@@ -198,7 +206,12 @@ where
         }
 
         // Open the new file if it doesn't exist yet
-        let new_file = OpenOptions::new().create(true).write(true).open(path);
+        let new_file = OpenOptions::new()
+            .create(true)
+            .append(false)
+            .truncate(false)
+            .write(true)
+            .open(path);
 
         // Write key to file
         match new_file {
@@ -801,25 +814,22 @@ pub fn matching_endpoint(
     if endpoints.len() != 1 {
         return Err(TrustchainCRError::InvalidServiceEndpoint);
     }
-    return Ok(endpoints[0].clone());
+    Ok(endpoints[0].clone())
 }
 
 /// Returns unique path name for a specific attestation request derived from public key for the interaction.
 pub fn attestation_request_path(key: &JWK, prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
-    let path = attestation_request_basepath(prefix)
-        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
-    let key_id = key
-        .thumbprint()
-        .map_err(|_| TrustchainCRError::MissingJWK)?; // Use hash of temp_pub_key
+    let path = attestation_request_basepath(prefix)?;
+    let key_id = key.thumbprint()?; // Use hash of temp_pub_key
     Ok(path.join(key_id))
 }
 
 /// Returns the root path for storing attestation requests.
 pub fn attestation_request_basepath(prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
-    let path: String =
-        std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+    let path: String = std::env::var(TRUSTCHAIN_DATA)
+        .expect("`TRUSTCHAIN_DATA` environment variable must be set.");
     Ok(Path::new(path.as_str())
         .join(prefix)
         .join("attestation_requests"))
