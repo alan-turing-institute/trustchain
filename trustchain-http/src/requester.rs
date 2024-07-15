@@ -60,7 +60,7 @@ pub async fn initiate_identity_challenge(
         .json(&identity_cr_initiation)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
 
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToInitiateCR);
@@ -103,12 +103,12 @@ pub async fn identity_response(
                 .clone()
                 .unwrap(),
             &temp_s_key,
-            &attestor_p_key,
+            attestor_p_key,
         )
         .unwrap();
     // sign and encrypt response
     let signed_encrypted_response = requester
-        .sign_and_encrypt_claim(&decrypted_verified_payload, &temp_s_key, &attestor_p_key)
+        .sign_and_encrypt_claim(&decrypted_verified_payload, &temp_s_key, attestor_p_key)
         .unwrap();
     let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
     // get uri for POST request response
@@ -122,7 +122,7 @@ pub async fn identity_response(
         .json(&signed_encrypted_response)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToRespond(result));
     }
@@ -157,7 +157,7 @@ pub async fn initiate_content_challenge(
 ) -> Result<(ContentCRInitiation, ContentCRChallenge), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
-        .elementwise_deserialize(&path)
+        .elementwise_deserialize(path)
         .unwrap()
         .unwrap();
     let temp_s_key_ssi = josekit_to_ssi_jwk(&identity_cr_initiation.temp_s_key.unwrap()).unwrap();
@@ -177,21 +177,18 @@ pub async fn initiate_content_challenge(
         .json(&ddid)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToRespond(result));
     }
 
-    let response_body: CustomResponse = result
-        .json()
-        .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+    let response_body: CustomResponse = result.json().await.map_err(TrustchainCRError::Reqwest)?;
     let signed_encrypted_challenge = response_body.data.unwrap();
 
     // response
     let (nonces, response) = content_response(
-        &path,
+        path,
         &signed_encrypted_challenge.to_string(),
         services,
         attestor_p_key.clone(),
@@ -223,7 +220,7 @@ pub async fn content_response(
     ddid: &String,
 ) -> Result<(HashMap<String, Nonce>, String), TrustchainCRError> {
     // get keys
-    let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(&path);
+    let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(path);
     let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
     let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key).unwrap();
     // get endpoint
@@ -247,7 +244,7 @@ pub async fn content_response(
     .unwrap();
 
     // keymap with requester secret keys
-    let ion_attestor = IONAttestor::new(&ddid);
+    let ion_attestor = IONAttestor::new(ddid);
     let signing_keys = ion_attestor.signing_keys().unwrap();
     // iterate over all keys, convert to Jwk (josekit) -> TODO: functional
     // let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
@@ -275,7 +272,7 @@ pub async fn content_response(
                     Nonce::from(
                         requester
                             .decrypt(
-                                &Some(Value::from(nonce.clone())).unwrap(),
+                                &Value::from(nonce.clone()),
                                 signing_keys_map.get(key_id).unwrap(),
                             )
                             .unwrap()
@@ -303,7 +300,7 @@ pub async fn content_response(
         .json(&signed_encrypted_response)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToRespond(result));

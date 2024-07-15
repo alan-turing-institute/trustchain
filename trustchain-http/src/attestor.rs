@@ -20,7 +20,6 @@ use log::info;
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::attestor::AttestorError;
-use trustchain_core::key_manager::KeyManagerError;
 use trustchain_core::verifier::Verifier;
 
 use std::collections::HashMap;

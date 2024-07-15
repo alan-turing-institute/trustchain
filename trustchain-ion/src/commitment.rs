@@ -931,7 +931,7 @@ mod tests {
 
         // The first one commits to the chunk file CID and is expected
         // to contain the same data as the iterated commitment.
-        let chunk_file_commitment = commitments.get(0).unwrap();
+        let chunk_file_commitment = commitments.first().unwrap();
         assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
         assert_eq!(expected_data, chunk_file_commitment.expected_data());
 

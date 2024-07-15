@@ -331,7 +331,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Change credential to make signature invalid
-        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
+        vc_with_proof.expiration_date = Some(VCDateTime::from(now_ns()));
 
         // Verify: expect no warnings and a signature error as VC has changed
         let resolver = trustchain_resolver("http://localhost:3000/");
