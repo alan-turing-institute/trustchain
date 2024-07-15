@@ -474,15 +474,20 @@ impl TryFrom<&JwtPayload> for IdentityCRChallenge {
             identity_challenge_signature: None,
             identity_response_signature: None,
         };
-        challenge.update_p_key = Some(
-            serde_json::from_str(value.claim("update_p_key").unwrap().as_str().unwrap()).unwrap(),
-        );
+        let claim = value
+            .claim("update_p_key")
+            .ok_or(TrustchainCRError::ClaimNotFound)?;
+        challenge.update_p_key =
+            Some(serde_json::from_str(claim.as_str().ok_or(
+                TrustchainCRError::FailedToConvertToStr(claim.clone()),
+            )?)?);
+        let claim = value
+            .claim("identity_nonce")
+            .ok_or(TrustchainCRError::ClaimNotFound)?;
         challenge.identity_nonce = Some(Nonce::from(
-            value
-                .claim("identity_nonce")
-                .unwrap()
+            claim
                 .as_str()
-                .unwrap()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(claim.clone()))?
                 .to_string(),
         ));
         Ok(challenge)
@@ -628,26 +633,18 @@ impl CRState {
     }
     /// Returns true if all fields are complete.
     pub fn is_complete(&self) -> bool {
-        if (self.identity_cr_initiation.is_some()
-            && self.identity_cr_initiation.as_ref().unwrap().is_complete())
-            && (self.identity_challenge_response.is_some()
-                && self
-                    .identity_challenge_response
-                    .as_ref()
-                    .unwrap()
-                    .is_complete())
-            && (self.content_cr_initiation.is_some()
-                && self.content_cr_initiation.as_ref().unwrap().is_complete())
-            && (self.content_challenge_response.is_some()
-                && self
-                    .content_challenge_response
-                    .as_ref()
-                    .unwrap()
-                    .is_complete())
-        {
-            return true;
+        if let (Some(ici), Some(icr), Some(cci), Some(ccr)) = (
+            self.identity_cr_initiation.as_ref(),
+            self.identity_challenge_response.as_ref(),
+            self.content_cr_initiation.as_ref(),
+            self.content_challenge_response.as_ref(),
+        ) {
+            return ici.is_complete()
+                && icr.is_complete()
+                && cci.is_complete()
+                && ccr.is_complete();
         }
-        return false;
+        false
     }
     /// Determines current status of the challenge response process and accordingly prints messages to the console.
     pub fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
@@ -668,6 +665,7 @@ impl CRState {
 
         // Identity CR initation
         if self.identity_cr_initiation.is_none()
+            // Unwrap: first condition ensures is not None
             || !self.identity_cr_initiation.as_ref().unwrap().is_complete()
         {
             println!("{}", get_status_message(&current_state));
@@ -678,6 +676,7 @@ impl CRState {
 
         // Identity challenge
         if self.identity_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
             || !self
                 .identity_challenge_response
                 .as_ref()
@@ -690,7 +689,11 @@ impl CRState {
         println!("{}", get_status_message(&current_state));
 
         // Identity response
-        if !self
+        if self
+            .identity_challenge_response
+            .is_none()
+            // Unwrap: first condition ensures is not None
+            || !self
             .identity_challenge_response
             .as_ref()
             .unwrap()
@@ -702,6 +705,7 @@ impl CRState {
 
         // Content CR initation
         if self.content_cr_initiation.is_none()
+        // Unwrap: first condition ensures is not None
             || !self.content_cr_initiation.as_ref().unwrap().is_complete()
         {
             return Ok(current_state);
@@ -710,6 +714,7 @@ impl CRState {
 
         // Content challenge
         if self.content_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
             || !self
                 .content_challenge_response
                 .as_ref()
@@ -721,16 +726,18 @@ impl CRState {
         current_state = CurrentCRState::ContentChallengeComplete;
 
         // Content response
-        if !self
-            .content_challenge_response
-            .as_ref()
-            .unwrap()
-            .is_complete()
+        if self.content_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
+            || !self
+                .content_challenge_response
+                .as_ref()
+                .unwrap()
+                .is_complete()
         {
             return Ok(current_state);
         }
 
-        return Ok(current_state);
+        Ok(current_state)
     }
 }
 
