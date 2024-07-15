@@ -72,7 +72,7 @@ Now clone the Trustchain code repository from GitHub:
 ```console
 $ git clone https://github.com/alan-turing-institute/trustchain.git
 ```
-and change into the newly-created `trustchain` subfolder:
+and then enter the newly-created `trustchain` subfolder:
 ```console
 $ cd trustchain
 ```
