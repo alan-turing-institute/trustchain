@@ -7,6 +7,7 @@ use crate::attestation_utils::{
     ContentCRInitiation, CustomResponse, ElementwiseSerializeDeserialize, IdentityCRChallenge,
     IdentityCRInitiation, Nonce, TrustchainCRError,
 };
+use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;
 use axum::extract::Path;
@@ -18,6 +19,8 @@ use log::info;
 
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
+use trustchain_core::attestor::AttestorError;
+use trustchain_core::key_manager::KeyManagerError;
 use trustchain_core::verifier::Verifier;
 
 use std::collections::HashMap;
@@ -163,20 +166,28 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_content_initiation(
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> impl IntoResponse {
-        let pathbase = attestation_request_basepath("attestor").unwrap();
+    ) -> Result<(StatusCode, String), TrustchainHTTPError> {
+        let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(&key_id);
-        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let did = app_state
+            .config
+            .server_did
+            .as_ref()
+            .expect("Server DID must be set for challenge-response content initiation.")
+            .to_owned();
         // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
         let candidate_doc = match result {
             Ok((_, doc, _)) => doc.unwrap(),
             Err(_) => {
-                let respone = CustomResponse {
+                let response = CustomResponse {
                     message: "Resolution of candidate DID failed.".to_string(),
                     data: None,
                 };
-                return (StatusCode::BAD_REQUEST, Json(respone));
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    serde_json::to_string(&response).map_err(TrustchainCRError::Serde)?,
+                ));
             }
         };
         // TODO: check if resolved candidate DID contains expected update_p_key
@@ -185,9 +196,11 @@ impl TrustchainAttestorHTTPHandler {
         let content_initiation = ContentCRInitiation {
             requester_did: Some(ddid),
         };
-        content_initiation.elementwise_serialize(&path);
+        content_initiation
+            .elementwise_serialize(&path)
+            .map_err(TrustchainHTTPError::CRError)?;
         // extract map of keys from candidate document and generate a nonce per key
-        let requester_keys = extract_key_ids_and_jwk(&candidate_doc).unwrap();
+        let requester_keys = extract_key_ids_and_jwk(&candidate_doc)?;
         let attestor = Entity {};
         let nonces: HashMap<String, Nonce> =
             requester_keys
@@ -198,32 +211,35 @@ impl TrustchainAttestorHTTPHandler {
                 });
 
         // sign and encrypt nonces to generate challenges
-        let challenges = nonces
-            .iter()
-            .fold(HashMap::new(), |mut acc, (key_id, nonce)| {
-                acc.insert(
-                    String::from(key_id),
-                    attestor
-                        .encrypt(
-                            &JwtPayload::try_from(nonce).unwrap(),
-                            requester_keys.get(key_id).unwrap(),
-                        )
-                        .unwrap(),
-                );
-                acc
-            });
+        let mut challenges = HashMap::new();
+        for (key_id, nonce) in nonces.iter() {
+            challenges.insert(
+                String::from(key_id),
+                attestor.encrypt(
+                    &JwtPayload::try_from(nonce)?,
+                    requester_keys
+                        .get(key_id)
+                        .ok_or(TrustchainCRError::KeyNotFound)?,
+                )?,
+            );
+        }
         // get public and secret keys
         let identity_cr_initiation = IdentityCRInitiation::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
+            .elementwise_deserialize(&path)?
             .unwrap();
         let ion_attestor = IONAttestor::new(&did);
-        let signing_keys = ion_attestor.signing_keys().unwrap();
-        let signing_key_ssi = signing_keys.first().unwrap();
+        let signing_keys = ion_attestor.signing_keys()?;
+        let signing_key_ssi = signing_keys
+            .first()
+            .ok_or(AttestorError::NoSigningKey(format!(
+                "No signing keys for ION attestor with DID: {did}"
+            )))
+            .unwrap();
         let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
 
         // sign and encrypt challenges
-        let value: serde_json::Value = serde_json::to_value(challenges).unwrap();
+        let value: serde_json::Value =
+            serde_json::to_value(challenges).map_err(TrustchainCRError::Serde)?;
         let mut payload = JwtPayload::new();
         payload.set_claim("challenges", Some(value)).unwrap();
         let signed_encrypted_challenges = attestor.sign_and_encrypt_claim(
@@ -244,14 +260,17 @@ impl TrustchainAttestorHTTPHandler {
                     message: "Challenges generated successfully.".to_string(),
                     data: Some(signed_encrypted_challenges),
                 };
-                (StatusCode::OK, Json(response))
+                Ok((StatusCode::OK, serde_json::to_string(&response).unwrap()))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Failed to generate challenges.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(response))
+                Ok((
+                    StatusCode::BAD_REQUEST,
+                    serde_json::to_string(&response).unwrap(),
+                ))
             }
         }
     }

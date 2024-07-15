@@ -8,6 +8,8 @@ use trustchain_core::{
 };
 use trustchain_ion::root::TrustchainRootError;
 
+use crate::attestation_utils::TrustchainCRError;
+
 // TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
 pub enum TrustchainHTTPError {
@@ -30,6 +32,8 @@ pub enum TrustchainHTTPError {
     // JoseError(JoseError),
     #[error("Trustchain key manager error: {0}")]
     KeyManagerError(KeyManagerError),
+    #[error("Trustchain challenge-response error: {0}")]
+    CRError(TrustchainCRError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -92,6 +96,12 @@ impl From<KeyManagerError> for TrustchainHTTPError {
     }
 }
 
+impl From<TrustchainCRError> for TrustchainHTTPError {
+    fn from(err: TrustchainCRError) -> Self {
+        TrustchainHTTPError::CRError(err)
+    }
+}
+
 // See axum IntoRespone example:
 // https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
 
@@ -128,6 +138,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::KeyManagerError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::CRError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CredentialDoesNotExist => {
