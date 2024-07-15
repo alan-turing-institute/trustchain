@@ -33,7 +33,7 @@ If you would like to be able to use Trustchain to create and publish your own DI
 
 If you want to run ION using Docker, you can skip most of this page and just follow the instructions in the [ION with Docker](#ion-with-docker) section.
 
-### Mainnet vs. Testnet
+### Bitcoin Mainnet vs. Testnet
 
 The Bitcoin client wrapped inside an ION node can be configured either for **Mainnet** (the main Bitcoin network) or **Testnet** (an alternative blockchain designed for testing and software development).
 
@@ -435,7 +435,7 @@ $ npm run build
 
     You must rerun `npm run build` whenever one of the JSON configuration files in the `ION_CONFIG` folder is modified.
 
-TODO: IS THIS NEEDED?:
+TODO: IS THIS NEEDED? (SEE ALSO THE NOTES ON [MAC INSTALLATION DETAILS](https://hackmd.io/k_l6jW1cSDieS_fGrM-dRg#Installation-on-Mac-Detailed-guide)):
 
 - Fix an **upstream bug** in the ION Bitcoin microservice:
     - From the root of the ION repository (cloned in step 5.), open the file `node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js`
@@ -597,14 +597,67 @@ $ (cd $ION_REPO && npm run core)
 
 ## Funding your Bitcoin wallet
 
-ION provides two core functions resolving existing DIDs and publishing new DIDs.
+ION can be used to resolve existing DIDs and to publish new ones. New DIDs are published by writing the DID document content to IPFS and inserting an identifier for that content inside a Bitcoin transaction. This has the effect of timestamping the DID document and also making it easily discoverable (by scanning the Bitcoin blockchain).
 
-TODO.
+Every Bitcoin transaction must include a processing fee, and therefore some funds must be available in your ION Bitcoin wallet before it can be used to publish any new DIDs. No funds are needed to resolve existing DIDs.
 
-TODO: Include a wallet balance check via the Bitcoin CLI:
+First check that `sidetreeDefaultWallet`, that was created [earlier](#configure-bitcoin-core), is loaded. You should see the following output when running this command:
+```console
+$ bitcoin-cli listwallets
+[
+  "sidetreeDefaultWallet"
+]
+```
+Then use this command to list the receiving addresses for this wallet (with their balances):
+```console
+$ bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
+```
+
+To fund your wallet, send Bitcoins to the **first** receive address in this list.
+
+=== "Mainnet"
+
+    !!! tip "Purchase BTC on a Bitcoin exchange"
+
+        If you do not already own any bitcoins, they can be purchased on a [Bitcoin exchange](https://bitcoin.org/en/exchanges). Make sure that you acquire genuine bitcoins, which are identified by the ticker symbol `BTC`. When withdrawing your coins from the exchange, enter the receive address obtained in the preceding step to send them to your ION wallet.
+
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid.
+
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as [blockstream.info](https://blockstream.info/).
+
+
+=== "Testnet"
+
+    !!! tip "Request tBTC from a Testnet faucet"
+
+        Testnet bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.
+
+        Since coins on the Bitcoin Testnet have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.
+
+        Visit a Bitcoin Testnet faucet, such as [coinfaucet.eu](https://coinfaucet.eu/en/btc-testnet/), and enter the recieve address obtained in the preceding step to send them to your ION wallet.
+
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet explorer such as [blockstream.info](https://blockstream.info/testnet/).
+
+Then check your wallet balance with:
 ```console
 $ bitcoin-cli getbalances
 ```
+The output should look something like this, with a non-zero balance for the `watchonly` wallet:
+```
+{
+  "mine": {
+    "trusted": 0.00000000,
+    "untrusted_pending": 0.00000000,
+    "immature": 0.00000000
+  },
+  "watchonly": {
+    "trusted": 0.00017612,
+    "untrusted_pending": 0.00000000,
+    "immature": 0.00000000
+  }
+}
+```
+
 
 ## SSH config
 
