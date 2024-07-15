@@ -227,7 +227,7 @@ $ mkdir $BITCOIN_DATA
     ```console
     $ head -n 3 /Applications/bitcoin-24.0.1/bitcoin.conf
     ```
-    You should see these lines printed to the Terminal:
+    You should see lines like these printed to the Terminal:
     ```
     server=1
     txindex=1
@@ -246,7 +246,7 @@ $ mkdir $BITCOIN_DATA
     ```console
     $ head -n 4 /Applications/bitcoin-24.0.1/bitcoin.conf
     ```
-    You should see these lines printed to the Terminal:
+    You should see lines like these printed to the Terminal:
     ```
     testnet=1
     server=1
@@ -254,27 +254,33 @@ $ mkdir $BITCOIN_DATA
     datadir=<PATH_TO_YOUR_BITCOIN_DATA_DIRECTORY>
     ```
 
-    When we start Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
-    ```console
-    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -daemon -conf=/Applications/bitcoin-24.0.1/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
-    ```
-    Now use the following command to run Bitcoin Core:
-    ```console
-    $ bitcoind
-    ```
-    The first time your run this command, you will see the following pop-up message:
+!!! warning "Note: Do not use the `~` shorthand in the `datadir` parameter"
 
-    ![bitcoind Mac OS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
+    The directory path in the `datadir` parameter must not contain the `~` character as a shorthand for the user's home directory.
 
-    You need to tell Mac OS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
+    The example given in the official [ION install guide](https://identity.foundation/ion/install-guide/) does use this shorthand, which causes an error, so beware of this issue if you edit the `bitcoin.conf` file manually when following that guide.
 
-    ![bitcoind Mac OS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
+When we start Bitcoin Core we need to make sure it uses the correct configuration file (and we also want to run it as a background process). Let's create an alias to make this more convenient:
+```console
+$ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -daemon -conf=/Applications/bitcoin-24.0.1/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+```
+Now use the following command to run Bitcoin Core:
+```console
+$ bitcoind
+```
+The first time your run this command, you will see the following pop-up message:
 
-    Now re-run the command to start Bitcoin Core:
-    ```console
-    $ bitcoind
-    ```
-    Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
+![bitcoind Mac OS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
+
+You need to tell Mac OS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
+
+![bitcoind Mac OS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
+
+Now re-run the command to start Bitcoin Core:
+```console
+$ bitcoind
+```
+Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
 
 You should now see the message "Bitcoin Core starting" in the Terminal.
 
@@ -295,7 +301,7 @@ $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=/A
 
 !!! info "Bitcoin RPC username and password"
 
-    Before you can make use of the CLI, you will need to add a username and password to the Bitcoin configuration file.
+    Before you can make use of the CLI you will need to add a username and password to the Bitcoin configuration file. These same parameters will also be used for authentication when ION interacts with Bitcoin Core. In both cases,
 
     To do this, replace the `<RPC_USERNAME>` and `<RPC_PASSWORD>` in the following command and then execute it to make the change inside the `bitcoin.conf` file:
     ```console
