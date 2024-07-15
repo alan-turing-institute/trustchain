@@ -136,18 +136,18 @@ impl TrustchainAttestorHTTPHandler {
             Ok(_) => {
                 identity_challenge.identity_response_signature = Some(response.clone());
                 identity_challenge.elementwise_serialize(&path).unwrap();
-                let respone = CustomResponse {
+                let response = CustomResponse {
                     message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
                     data: None
                 };
-                (StatusCode::OK, respone);
+                (StatusCode::OK, Json(response))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Verification failed. Please try again.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, response);
+                (StatusCode::BAD_REQUEST, Json(response))
             }
         }
     }
