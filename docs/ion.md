@@ -778,7 +778,7 @@ $ (cd $ION_REPO && npm run core)
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
     ```
 
-    This command should print the contents of the resolved DID document and document metadata to the Terminal. If it does not, see the Troubleshoot tips [above](#test-ion).
+This command should print the contents of the resolved DID document and document metadata to the Terminal. If it does not, see the Troubleshoot tips [above](#test-ion).
 
 ## Funding your Bitcoin wallet
 
