@@ -2,7 +2,7 @@
 
 The instructions below will guide you through the installation and configuration of the Trustchain software.
 
-Trustchain can be installed on all major operating systems. The steps below have been tested on Linux and Mac OS. On Windows the process will be similar, with instructions available via the links provided.
+Trustchain can be installed on all major operating systems. The steps below have been tested on Linux and macOS. On Windows the process will be similar, with instructions available via the links provided.
 
 !!! info "Running commands in the Terminal"
 
@@ -52,7 +52,7 @@ As the main Trustchain dependency, ION has its own section on this site. Please 
 
 Instructions for installing the Rust language can be found [here](https://www.rust-lang.org/tools/install).
 
-On Linux or Mac OS, the recommended method is to run the following command:
+On Linux or macOS, the recommended method is to run the following command:
 ```console
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```

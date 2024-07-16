@@ -53,7 +53,7 @@ Once installed, follow the port forwarding instructions in the [SSH config](#ssh
 
 These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
 
-Both Linux and Mac OS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions.
+Both Linux and macOS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions.
 
 Instructions for installing on Windows are given in the official [ION guide](https://identity.foundation/ion/install-guide/).
 
@@ -86,7 +86,7 @@ Run the following commands to set up your environment.
     $ sudo snap install node --classic --channel=14
     ```
 
-=== "Mac OS"
+=== "macOS"
 
     Install Xcode [command line tools](https://developer.apple.com/download/all/):
     ```console
@@ -105,7 +105,7 @@ IPFS is the InterPlanetary File System, a peer-to-peer protocol and network used
 
     Follow the official IPFS [installation instructions](https://docs.ipfs.tech/install/command-line/#install-kubo-linux) for Linux.
 
-=== "Mac OS"
+=== "macOS"
 
     Install IPFS:
     ```console
@@ -131,7 +131,7 @@ IPFS is the InterPlanetary File System, a peer-to-peer protocol and network used
     Then following [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/) to install MongoDB on Linux
 
 
-=== "Mac OS"
+=== "macOS"
 
     Following [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/):
     ```console
@@ -168,7 +168,7 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
     ```
     The installation includes an executable file named `bitcoind` which we will run to start Bitcoin Core.
 
-=== "Mac OS"
+=== "macOS"
 
     Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-24.0.1/) for your system:
 
@@ -192,7 +192,7 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
 
     !!! info "Sign the Bitcoin Core executable files"
 
-        Newer Mac OS systems will refuse to run an executable file unless it is signed. Run the following command to check whether this is a requirement on your machine:
+        Newer macOS systems will refuse to run an executable file unless it is signed. Run the following command to check whether this is a requirement on your machine:
         ```console
         $ codesign -d -vvv --entitlements :- /Applications/bitcoin-24.0.1/bin/bitcoind
         > /Applications/bitcoin-24.0.1/bin/bitcoind: code object is not signed at all
@@ -283,7 +283,7 @@ When we start Bitcoin Core we will need to make sure it uses the correct configu
     $ echo 'alias bitcoind="/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
-=== "Mac OS"
+=== "macOS"
 
     ```console
     $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
@@ -295,11 +295,11 @@ $ bitcoind
 ```
 The first time your run this command, you will see the following pop-up message:
 
-![bitcoind Mac OS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
+![bitcoind macOS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
 
-You need to tell Mac OS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
+You need to tell macOS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
 
-![bitcoind Mac OS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
+![bitcoind macOS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
 
 Now re-run the command to start Bitcoin Core:
 ```console
@@ -327,7 +327,7 @@ Run the following command to create an alias, making to easy to access the CLI:
     $ echo 'alias bitcoin-cli="/usr/local/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
-=== "Mac OS"
+=== "macOS"
 
     ```console
     $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
@@ -661,7 +661,7 @@ $ ipfs daemon
         sudo systemctl status mongod
         ```
 
-=== "Mac OS"
+=== "macOS"
 
     ```console
     $ brew services start mongodb-community
@@ -927,7 +927,7 @@ These instructions are based on the [guide](https://github.com/decentralized-ide
     sudo chmod +x /usr/local/bin/docker-compose
     ```
 
-=== "Mac OS"
+=== "macOS"
 
     Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
