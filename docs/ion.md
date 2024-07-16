@@ -13,7 +13,7 @@ Trustchain delegates the execution of DID operations to an ION node. Therefore t
     The recommended system requirements for an ION installation are:
 
     - 6GB of RAM
-    - 1TB of storage.
+    - 1TB of storage (or 256GB for [Testnet](#bitcoin-mainnet-vs-testnet)).
 
 Note, however, that **Trustchain makes no assumptions about the trustworthiness of the ION system** and the Trustchain security model does not rely on the correct functioning of the ION software. Trustchain independently verifies all of the data it receives from ION, so a faulty or compromised ION node would not represent a security vulnerability in Trustchain (although it could cause a loss of service).
 
@@ -53,11 +53,9 @@ Once installed, follow the port forwarding instructions in the [SSH config](#ssh
 
 These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
 
-Both Linux and macOS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions.
+Both Linux and macOS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions. Instructions for installing on Windows are given in the official [ION guide](https://identity.foundation/ion/install-guide/).
 
-Instructions for installing on Windows are given in the official [ION guide](https://identity.foundation/ion/install-guide/).
-
-In all cases, administrator rights are required.
+In all cases, administrator privileges are required.
 
 ### Prerequisites
 
@@ -212,7 +210,7 @@ We shall need to specify a folder to store the Bitcoin blockchain data.
 
 !!! warning "Bitcoin data storage requirements"
 
-    TODO... x GB for Mainnet and y GB for Testnet.
+    The Bitcoin data folder will store the entire Bitcoin blockchain, which is >580GB for Mainnet and >75GB for Testnet.
 
 For convenience, we create an environment variable for the Bitcoin data folder.
 
@@ -443,7 +441,7 @@ $ mkdir $ION_CONFIG
     $ RPC_PASSWORD="<password>"
     ```
 
-    Then run this command to update the `bitcoinRpcPassword` parameter in `ION_CONFIG`:
+    Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
     ```console
     $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
     ```
@@ -455,7 +453,7 @@ $ mkdir $ION_CONFIG
     $ WIF="<wif>"
     ```
 
-    Then run this command to update the `bitcoinWalletImportString` parameter in `ION_CONFIG`:
+    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
     ```console
     $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
     ```
@@ -490,7 +488,7 @@ $ mkdir $ION_CONFIG
     $ RPC_PASSWORD="<password>"
     ```
 
-    Then run this command to update the `bitcoinRpcPassword` parameter in `ION_CONFIG`:
+    Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
     ```console
     $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
@@ -548,7 +546,6 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     $ (cd $ION_REPO && npm run bitcoin)
     ```
 
-
 === "Testnet"
     ```sh
     Chain: test
@@ -576,31 +573,39 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     Non-base58 character
     Is bitcoinWalletImportString valid? Consider using <testnet> key generated below:
     ```
-    followed by a base58 string. In this case, copy the string and paste it into the config file at `~/.ion/testnet-bitcoin-config.json` at the `bitcoinWalletImportString` parameter.
+    followed by a base58 string. In this case, copy the base58 string and paste it into the following command in place of `<wif>`:
+    ```console
+    $ WIF="<wif>"
+    ```
 
+    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
+    ```console
+    $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+    ```
 
-??? tip "Troubleshooting Tips"
+    Now repeat the attempt to start the ION Bitcoin microservice:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
 
-    - If you get an `ECONNREFUSED` error, make sure bitcoind has started and is listening on the expected port (see the dropdown info box in Step 3).
-    - A [known issue](https://github.com/decentralized-identity/sidetree/pull/1192) with the ION "Sidetree" library may cause the `loadwallet` jRPC call to fail. See the Troubleshooting section (TODO) for a workaround.
-        - TODO: IS THIS NEEDED? (SEE ALSO THE NOTES ON [MAC INSTALLATION DETAILS](https://hackmd.io/k_l6jW1cSDieS_fGrM-dRg#Installation-on-Mac-Detailed-guide)):
-        - Fix an **upstream bug** in the ION Bitcoin microservice:
-            - From the root of the ION repository (cloned in step 5.), open the file `node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js`
-        and comment out the following lines inside the `initializeBitcoinCore` function:
-            ```
-            // yield this.createWallet();
-            // yield this.loadWallet();
-            ```
-            Then re-run `npm run build`.
+??? tip "Troubleshooting Tip"
+
+    - If you see an `ECONNREFUSED` error message when starting the ION Bitcoin microservice, this indicates that it has failed to communicate with Bitcoin Core. In this case, make sure that Bitcoin Core started successfully.
+
+!!! warning "ION synchronisation"
+
+    When the ION Bitcoin microservice starts for the first time, it will begin scanning the Bitcoin blockchain for ION DID operations, by making calls to the Bitcoin Core RPC interface.
+
+    **The synchronisation process may take >1 hour to complete.** Wait until it has finished before running the ION Core microservice in the following step.
 
 In another new Terminal, start the ION Core microservice with:
 ```console
 $ (cd $ION_REPO && npm run core)
 ```
 
-??? tip "Troubleshooting Tips"
+??? tip "Troubleshooting Tip"
 
-    TODO. ECONNN ERROR
+    If you see an `ECONNREFUSED` error message when starting the ION Core microservice, this indicates that it has failed to communicate with the ION Bitcoin microservice. In this case, make sure that the ION Bitcoin microservice started successfully.
 
 Finally, to confirm that ION is working properly, open yet another new Terminal and resolve a sample DID:
 
@@ -911,7 +916,7 @@ As long as this connection is active, data sent to the ports specified in the SS
 
 ## ION using Docker
 
-!!! warning
+!!! warning "ION using Docker is read-only"
 
     The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, **this method provides a read-only ION node**. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.
 
@@ -967,7 +972,30 @@ Now run the ION container. This command depends on whether you wish to run a Mai
     docker-compose -f docker-compose.yml -f docker-compose.testnet-override.yml up -d
     ```
 
-TODO: screenshots, and a warning that it will take >1 day to synchronise (during which time any attempt to use it will produce an error!)
+!!! warning "Bitcoin and ION synchronisation"
+
+    When the ION container starts for the first time, it will begin synchronising with the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed. Once this has finished, ION itself will then scan the entire blockchain for ION DID operations, which is also a lengthy process.
+
+    **In total, the synchronisation process may take several hours, or even days, to complete.** You will not be able to use Trustchain until your ION node has finished synchronising.
+
+
+<!-- TODO: screenshots! -->
+
+When the synchronisation process has finished, confirm that ION is working properly by running the following command to resolve a sample DID:
+
+=== "Mainnet"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp
+    ```
+
+=== "Testnet"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
+    ```
+
+If ION is working properly, the command above will return a JSON data structure containing the resolved DID document and document metadata for the sample DID.
 
 
 &nbsp;
