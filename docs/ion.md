@@ -280,34 +280,39 @@ When we start Bitcoin Core we will need to make sure it uses the correct configu
 === "Linux"
 
     ```console
-    $ echo 'alias bitcoind="/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    $ echo 'alias bitcoind="/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+    Now we can use the following simple command to start Bitcoin Core:
+    ```console
+    $ bitcoind
     ```
 
 === "macOS"
 
     ```console
-    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf -daemon"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
-Now we can use the following simple command to start Bitcoin Core:
-```console
-$ bitcoind
-```
-The first time your run this command, you will see the following pop-up message:
+    Now we can use the following simple command to start Bitcoin Core:
+    ```console
+    $ bitcoind
+    ```
+    The first time your run this command, you will see the following pop-up message:
 
-![bitcoind macOS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
+    ![bitcoind macOS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
 
-You need to tell macOS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
+    You need to tell macOS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
 
-![bitcoind macOS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
+    ![bitcoind macOS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
 
-Now re-run the command to start Bitcoin Core:
-```console
-$ bitcoind
-```
-Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
+    Now re-run the command to start Bitcoin Core:
+    ```console
+    $ bitcoind
+    ```
+    Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
 
-You should now see the message "Bitcoin Core starting" in the Terminal.
+    You should now see the message "Bitcoin Core starting" in the Terminal.
 
 !!! warning "Bitcoin synchronisation"
 
@@ -681,7 +686,7 @@ $ ipfs daemon
 
 **3. Start Bitcoin Core**
 ```console
-$ bitcoind -daemon
+$ bitcoind
 ```
 
 ??? info "Other Bitcoin Core commands"
