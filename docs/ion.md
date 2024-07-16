@@ -408,9 +408,22 @@ $ mkdir $ION_CONFIG
     $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'testnet3/"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
 
-    Set the `bitcoinRpcUsername` parameter: TODO.
+    Set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
 
-    Set the `bitcoinRpcPassword` parameter: TODO.
+    We chose `admin` for the RPC username, and the following command sets this same value inside the ION config file:
+    ```console
+    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_CONFIG/testnet-bitcoin-config.json
+    ```
+
+    For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
+    ```console
+    $ RPC_PASSWORD="<password>"
+    ```
+
+    Then run this command to update the `bitcoinRpcPassword` parameter in `ION_CONFIG`:
+    ```console
+    $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+    ```
 
 ### Build ION
 
@@ -431,34 +444,111 @@ and then build the ION package:
 $ npm run build
 ```
 
-!!! info "Rebuild ION whenever a configuration file is modified"
+!!! info "Note: Rebuild ION whenever a configuration file is modified"
 
-    You must rerun `npm run build` whenever one of the JSON configuration files in the `ION_CONFIG` folder is modified.
+    You must rerun the command `npm run build` if changes are made to the JSON configuration files in the `ION_CONFIG` folder.
 
-TODO: IS THIS NEEDED? (SEE ALSO THE NOTES ON [MAC INSTALLATION DETAILS](https://hackmd.io/k_l6jW1cSDieS_fGrM-dRg#Installation-on-Mac-Detailed-guide)):
+### Test ION
 
-- Fix an **upstream bug** in the ION Bitcoin microservice:
-    - From the root of the ION repository (cloned in step 5.), open the file `node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js`
-    and comment out the following lines inside the `initializeBitcoinCore` function:
-        ```
-        // yield this.createWallet();
-        // yield this.loadWallet();
-        ```
-        Then re-run `npm run build`.
-
-TODO: DO THIS EARLIER, WHEN CONFIGURING BITCOIN CORE:
-
-- Create a Bitcoin wallet with the following RPC call (where `<rpcuser>` is the username given in `bitcoin.conf` in Step 2, and when prompted enter the `rpcpassword` also given in `bitcoin.conf`):
-```
-curl --user <rpcuser> --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "createwallet", "params": {"wallet_name": "sidetreeDefaultWallet", "descriptors": false}}' -H 'content-type: text/plain;' http://127.0.0.1:18332/
-```
-**NOTE** the name of the wallet in the previous command **MUST** be `sidetreeDefaultWallet` (as this is hard-coded in Sidetree).
-The output from this command should look like this:
-```
-{"result":{"name":"sidetreeDefaultWallet","warning":"Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."},"error":null,"id":"curltest"}
+Before running ION for the first time, make sure that you have started IPFS, MongoDB and Bitcoin Core (by following the instructions above). Also make sure that Bitcoin Core is fully synchronised by running:
+```console
+$ bitcoin-cli -getinfo
 ```
 
-Congratulations! Your installation should now be complete and you are ready to run ION.
+You should see output similar to the following. Bitcoin Core is synchronised if the number of `Blocks` is equal to the number of `Headers`:
+
+=== "Mainnet"
+    ```sh
+    Blocks: 852429
+    Headers: 852429
+    Verification progress: ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 100%
+    Difficulty: 79.620365071432086
+
+    Network: in 0, out 10, total 10
+    Version: 240001
+    Time offset (s): 0
+    Proxies: n/a
+    Min tx relay fee rate (BTC/kvB): 0.00001000
+
+    Warnings: (none)
+    ```
+
+    In a new Terminal, start the ION Bitcoin microservice with:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
+
+
+=== "Testnet"
+    ```sh
+    Chain: test
+    Blocks: 2868427
+    Headers: 2868427
+    Verification progress: ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 100%
+    Difficulty: 3.620365071432086
+
+    Network: in 0, out 10, total 10
+    Version: 240001
+    Time offset (s): 0
+    Proxies: n/a
+    Min tx relay fee rate (BTC/kvB): 0.00001000
+
+    Warnings: (none)
+    ```
+
+    In a new Terminal, start the ION Bitcoin microservice with:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
+
+    When running this command for the first time, expect the error:
+    ```
+    Non-base58 character
+    Is bitcoinWalletImportString valid? Consider using <testnet> key generated below:
+    ```
+    followed by a base58 string. In this case, copy the string and paste it into the config file at `~/.ion/testnet-bitcoin-config.json` at the `bitcoinWalletImportString` parameter.
+
+
+??? tip "Troubleshooting Tips"
+
+    - If you get an `ECONNREFUSED` error, make sure bitcoind has started and is listening on the expected port (see the dropdown info box in Step 3).
+    - A [known issue](https://github.com/decentralized-identity/sidetree/pull/1192) with the ION "Sidetree" library may cause the `loadwallet` jRPC call to fail. See the Troubleshooting section (TODO) for a workaround.
+        - TODO: IS THIS NEEDED? (SEE ALSO THE NOTES ON [MAC INSTALLATION DETAILS](https://hackmd.io/k_l6jW1cSDieS_fGrM-dRg#Installation-on-Mac-Detailed-guide)):
+        - Fix an **upstream bug** in the ION Bitcoin microservice:
+            - From the root of the ION repository (cloned in step 5.), open the file `node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js`
+        and comment out the following lines inside the `initializeBitcoinCore` function:
+            ```
+            // yield this.createWallet();
+            // yield this.loadWallet();
+            ```
+            Then re-run `npm run build`.
+
+In another new Terminal, start the ION Core microservice with:
+```console
+$ (cd $ION_REPO && npm run core)
+```
+
+??? tip "Troubleshooting Tips"
+
+    TODO. ECONNN ERROR
+
+Finally, to confirm that ION is working properly, open yet another new Terminal and resolve a sample DID:
+
+=== "Mainnet"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp
+    ```
+
+=== "Testnet"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
+    ```
+
+If ION is working properly, the command above will return a JSON data structure containing the resolved DID document and document metadata for the sample DID.
+
+Congratulations! Your ION installation is now complete.
 
 ## Running ION
 
@@ -502,7 +592,7 @@ $ ipfs daemon
 
     ??? info "Other MongoDB commands"
 
-        Stop:
+        Stop MongoDB:
         ```
         sudo systemctl stop mongod
         ```
@@ -540,41 +630,64 @@ $ bitcoind -daemon
 
 ??? info "Other Bitcoin Core commands"
 
-    Check status:
-    ```console
-    $ bitcoin-cli -getinfo
-    ```
+    === "Mainnet"
 
-    Stop the daemon:
-    ```console
-    $ bitcoin-cli stop
-    ```
+        Check status:
+        ```console
+        $ bitcoin-cli -getinfo
+        ```
 
-    Reindex the chain (may take >1 hour):
-    ```console
-    $ bitcoind -reindex-chainstate
-    ```
+        Stop Bitcoin Core:
+        ```console
+        $ bitcoin-cli stop
+        ```
 
-    Check which port bitcoind is listening on (should be 8333 for mainnet, or 18333 for testnet):
-    ```console
-    $ netstat -tulpn | grep 'bitcoind'
-    ```
+        Print the log file to the Terminal (hit ++ctrl+c++ to exit):
+        ```console
+        $ tail -f $BITCOIN_DATA/debug.log
+        ```
+
+        Reindex the chain (may take >1 hour):
+        ```console
+        $ bitcoind -reindex-chainstate
+        ```
+
+        Check which port bitcoind is listening on (should be 8333 for Mainnet):
+        ```console
+        $ netstat -tulpn | grep 'bitcoind'
+        ```
+
+    === "Testnet"
+
+        Check status:
+        ```console
+        $ bitcoin-cli -getinfo
+        ```
+
+        Stop Bitcoin Core:
+        ```console
+        $ bitcoin-cli stop
+        ```
+
+        Print the log file to the Terminal (hit ++ctrl+c++ to exit):
+        ```console
+        $ tail -f $BITCOIN_DATA/testnet3/debug.log
+        ```
+
+        Reindex the chain (may take >1 hour):
+        ```console
+        $ bitcoind -reindex-chainstate
+        ```
+
+        Check which port bitcoind is listening on (should be 18333 for Testnet):
+        ```console
+        $ netstat -tulpn | grep 'bitcoind'
+        ```
 
 **4. Start the ION bitcoin service.**
 ```console
 $ (cd $ION_REPO && npm run bitcoin)
 ```
-
-??? tip "Troubleshooting Tips"
-
-    - If you get an `ECONNREFUSED` error, make sure bitcoind has started and is listening on the expected port (see the dropdown info box in Step 3).
-    - When running this command for the first time, expect the error:
-    ```
-    Non-base58 character
-    Is bitcoinWalletImportString valid? Consider using <testnet> key generated below:
-    ```
-    followed by a base58 string. In this case, copy the string and paste it into the config file at `~/.ion/testnet-bitcoin-config.json` at the `bitcoinWalletImportString` parameter.
-    - A [known issue](https://github.com/decentralized-identity/sidetree/pull/1192) with the ION "Sidetree" library may cause the `loadwallet` jRPC call to fail. See the Troubleshooting section (TODO) for a workaround.
 
 **5. Start the ION core service.**
 ```console
@@ -594,6 +707,8 @@ $ (cd $ION_REPO && npm run core)
     ```console
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
     ```
+
+    This command should print the contents of the resolved DID document and document metadata to the Terminal. If it does not, see the Troubleshoot tips [above](#test-ion).
 
 ## Funding your Bitcoin wallet
 
