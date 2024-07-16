@@ -231,9 +231,9 @@ $ mkdir $BITCOIN_DATA
 === "Mainnet"
 
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
-    The following command creates that file with the required parameters:
+    The following command creates that file with the required parameters and user permissions:
     ```console
-    $ echo "server=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n" > $BITCOIN_DATA/bitcoin.conf
+    $ echo "server=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
@@ -251,9 +251,9 @@ $ mkdir $BITCOIN_DATA
 === "Testnet"
 
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
-    The following command creates that file with the required parameters:
+    The following command creates that file with the required parameters and user permissions:
     ```console
-    $ echo "testnet=1\nserver=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n\n" > $BITCOIN_DATA/bitcoin.conf
+    $ echo "testnet=1\nserver=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
@@ -414,6 +414,10 @@ $ mkdir $ION_CONFIG
     ```console
     $ cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG
     ```
+    and set appropriate user permissions:
+    ```console
+    $ chmod 640 $ION_CONFIG/mainnet-bitcoin-config.json $ION_CONFIG/mainnet-bitcoin-versioning.json $ION_CONFIG/mainnet-core-config.json $ION_CONFIG/mainnet-core-versioning.json
+    ```
 
     The following commands will edit some of the configuration parameters inside the file named `mainnet-bitcoin-config.json`.
 
@@ -422,17 +426,35 @@ $ mkdir $ION_CONFIG
     $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
     ```
 
-    Set the `bitcoinRpcUsername` parameter: TODO.
+    Set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
 
-    Set the `bitcoinRpcPassword` parameter: TODO.
+    We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
+    ```console
+    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    ```
 
-    Set the `bitcoinWalletImportString` parameter TODO. Note: this can be left unchanged for now *only* on testnet. On mainnet it must be a mainnet-compatible WIF.
+    For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
+    ```console
+    $ RPC_PASSWORD="<password>"
+    ```
+
+    Then run this command to update the `bitcoinRpcPassword` parameter in `ION_CONFIG`:
+    ```console
+    $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    ```
+
+    Set the `bitcoinWalletImportString` parameter. TODO. Note: this can be left unchanged for now *only* on testnet. On mainnet it must be a mainnet-compatible WIF.
+    [x](https://learnmeabitcoin.com/technical/wif)
 
 === "Testnet"
 
     Next, copy the template ION configuration files to your `ION_CONFIG` directory:
     ```console
     $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
+    ```
+    and set appropriate user permissions:
+    ```console
+    $ chmod 640 $ION_CONFIG/testnet-bitcoin-config.json $ION_CONFIG/testnet-bitcoin-versioning.json $ION_CONFIG/testnet-core-config.json $ION_CONFIG/testnet-core-versioning.json
     ```
 
     The following commands will edit some of the configuration parameters inside the file named `testnet-bitcoin-config.json`.
@@ -444,7 +466,7 @@ $ mkdir $ION_CONFIG
 
     Set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
 
-    We chose `admin` for the RPC username, and the following command sets this same value inside the ION config file:
+    We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
     ```console
     $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
