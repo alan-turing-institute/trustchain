@@ -811,9 +811,7 @@ To fund your wallet, send Bitcoins to the **first** receive address in this list
 
         If you do not already own any bitcoins, they can be purchased on a [Bitcoin exchange](https://bitcoin.org/en/exchanges). Make sure that you acquire genuine bitcoins, which are identified by the ticker symbol `BTC`. When withdrawing your coins from the exchange, enter the receive address obtained in the preceding step to send them to your ION wallet.
 
-    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid.
-
-    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as [blockstream.info](https://blockstream.info/).
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as [blockstream.info](https://blockstream.info/).
 
 
 === "Testnet"
@@ -828,12 +826,12 @@ To fund your wallet, send Bitcoins to the **first** receive address in this list
 
     After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet explorer such as [blockstream.info](https://blockstream.info/testnet/).
 
-Then check your wallet balance with:
+When the transaction is confirmed, check your wallet balance with:
 ```console
 $ bitcoin-cli getbalances
 ```
 The output should look something like this, with a non-zero balance for the `watchonly` wallet:
-```
+```json
 {
   "mine": {
     "trusted": 0.00000000,

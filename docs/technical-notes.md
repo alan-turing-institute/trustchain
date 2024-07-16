@@ -5,6 +5,7 @@
 Trustchain adopts the W3C standard for Verifiable Credentials (VCs) and specifies the precise nature of the Verifiable Data Registry which plays a central role in the [VC data model](https://www.w3.org/TR/vc-data-model-2.0/#roles). The main purpose of this data registry is to store [Decentralised Identifiers](https://www.w3.org/TR/did-core/) (DIDs) and associated DID Documents containing public key information.
 
 The data registry employed by Trustchain enables independent verification of:
+
  1. the timestamps associated with DIDs and DID Documents (including metadata),
  2. the content of those DID Documents.
 

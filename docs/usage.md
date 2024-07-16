@@ -81,7 +81,7 @@ Using a text editor, make a copy of the following template, remove any services 
 
 The file can be saved anywhere, but we recommend storing it in a directory named `doc_states` inside the `TRUSTCHAIN_DATA` directory. That way it will be easy to find later, when you use it to create your DID document.
 
-```
+```json
 {
    "services": [
       {
