@@ -448,8 +448,17 @@ $ mkdir $ION_CONFIG
     $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
     ```
 
-    Set the `bitcoinWalletImportString` parameter. TODO. Note: this can be left unchanged for now *only* on testnet. On mainnet it must be a mainnet-compatible WIF.
-    [x](https://learnmeabitcoin.com/technical/wif)
+    Set the `bitcoinWalletImportString` parameter. This must be a mainnet-compatible key in wallet import format (WIF). If you intend to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. Otherwise, you can use [this tool](https://learnmeabitcoin.com/technical/wif) to generate a WIF string without any bitcoin.
+
+    Copy and paste the following command into the Terminal and then change `<wif>` to your WIF string:
+    ```console
+    $ WIF="<wif>"
+    ```
+
+    Then run this command to update the `bitcoinWalletImportString` parameter in `ION_CONFIG`:
+    ```console
+    $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    ```
 
 === "Testnet"
 
