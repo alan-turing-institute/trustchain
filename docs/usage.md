@@ -8,7 +8,7 @@ Depending on your role within the network of Trustchain users you may need to pe
 
     To use the Trustchain CLI, first make sure that you have followed the installation and configuration instructions on the [Getting Started](getting-started.md) page.
 
-    Also, your ION node will need to be up and running, either locally or on a remote machine to which the user is connected via SSH and with port forwarding. Instructions for restarting ION, and setting up port forwarding, can be found [here](ion.md#restarting-ion).
+    Also, your ION node will need to be up and running, either locally or on a remote machine to which the user is connected via SSH and with port forwarding. Instructions for restarting ION, and setting up port forwarding, can be found [here](ion.md#running-ion).
 
 ## Trustchain CLI
 
@@ -196,7 +196,7 @@ The second step is for the dDID controller to attest to the DID by adding their 
 
 #### Attest to the dDID
 
-This step must be carried out by the dDID controller, that is, the [uDID subject](roles.md#upstream-entity-udid-subject).
+This step must be carried out by the [dDID issuer](roles.md#ddid-issuer).
 
 We assume that the downsteam legal entity has published their candidate dDID document and shared their candidate dDID (string identifier) with the controller. In the following commands, replace `<CANDIDATE_dDID>` with the candidate dDID and `<uDID>` with the controller's DID.
 

@@ -16,7 +16,6 @@ Trustchain is free and open source software. The setup and operational costs of 
 
 &nbsp;
 
-
 # Trustchain Mobile
 
 Trustchain Mobile is a mobile app built to demonstrate the Trustchain user experience from the perspective of a holder and/or verifier of digital credentials. It is a fork of the Credible credential wallet app developed by [SpruceID](https://www.spruceid.dev/).

@@ -29,7 +29,7 @@ Before beginning the installation, a few decisions must be made that will determ
 
 The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, this method provides a **read-only ION node**. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.
 
-If you would like to be able to use Trustchain to create and publish your own DIDs, follow the full installation instructions below (and ignore the [ION with Docker](#ion-with-docker) section).
+If you would like to be able to use Trustchain to create and publish your own DIDs, follow the full installation instructions below (and ignore the [ION with Docker](#ion-using-docker) section).
 
 If you want to run ION using Docker, you can skip most of this page and just follow the instructions in the [ION with Docker](#ion-with-docker) section.
 
@@ -391,7 +391,7 @@ $ cd ion
 
 !!! tip "Create the `ION_REPO` environment variable"
 
-    Since we will need to refer to this folder in future, let's create an [environment variable](#environment-variables) containing its file path:
+    Since we will need to refer to this folder in future, let's create an [environment variable](getting-started.md#environment-variables) containing its file path:
     ```console
     $ echo "export ION_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
