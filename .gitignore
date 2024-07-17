@@ -31,3 +31,6 @@ outputs/
 
 # dist paths
 **/dist
+
+# OS
+.DS_Store
