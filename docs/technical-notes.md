@@ -156,6 +156,18 @@ The option to rebase one root or branch onto another tree may be beneficial for 
 
 This feature also promotes one of the key benefits of decentralisation, namely permissionless access, since marginalised communities can establish their own roots of trust and make use of the technology without accepting or contributing to the possibility of long-term exclusion.
 
+## Root DID Integration
+
+Suppose (as in the [Rebasing](#rebasing) section above) two independent root DIDs have been created by two separate user communities, each with its own network of trust relationships represented by chains of downstream DIDs.
+
+At some later date there may be a mutual agreement to fuse the two networks into a single one, but (unlike the case above) suppose that neither of the root entities is prepared to be subordinated by the other.
+
+In this situation the two networks can be integrated by publishing a new root DID, whose set of public keys is the union of the public keys from each of the original roots. Those two root DIDs are then updated to become downstream DIDs of the new root. In each case, the dDID attestation is made using the signing key from the original root, so it is clear that the original root entity is attesting to itself.
+
+Users on both networks would need to reconfigure the root event time on their Trustchain nodes to match the publication time of the new integrated root DID. Once this is done, all credentials that were previously issued will remain valid and will now be verifiable by participants on both networks.
+
+Here we have considered integrating two root DIDs, but the same approach works equally well for larger numbers.
+
 ## Interoperability dDIDs
 
 The concept of an *Interoperability dDID* provides a means to support loosely-coupled federation across multiple, pre-existing digital ID systems in which Verifiable Credentials (VCs) are issued either by an identity provider itself, or by a recognised (subordinate) issuer.
