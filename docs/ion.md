@@ -407,11 +407,11 @@ We will need a folder for storing ION configuration files. For convenience, we'l
 
     === "Mainnet"
         ```console
-        $ echo "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
+        $ echo -e "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
         ```
     === "Testnet"
         ```console
-        $ echo "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
+        $ echo -e "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
         ```
 
 Having defined the `ION_CONFIG` environment variable (above), use it to create the folder itself:
