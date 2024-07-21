@@ -387,7 +387,7 @@ $ bitcoin-cli -getinfo
       ]
     }
     ```
-    Note that we have chosen to create a "legacy" Bitcoin wallet.
+    Note that we have chosen to create a "legacy" Bitcoin wallet, for compatibility with ION.
 
 
 ### Configure ION
@@ -499,9 +499,38 @@ The final configuration step is to set the `bitcoinWalletOrImportString` paramet
 
 === "Mainnet"
 
-    This must be a mainnet-compatible key in wallet import format (WIF). If you intend to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. Otherwise, you can use [this tool](https://learnmeabitcoin.com/technical/wif) to generate a WIF string without any bitcoin.
+    This must be a mainnet-compatible private key in wallet import format (WIF).
 
-    Copy and paste the following command into the Terminal and then change `<wif>` to your WIF string:
+    If you do **not** intend to use Trustchain to write your own DID operations, you can use [this tool](https://learnmeabitcoin.com/technical/wif) to randomly generate a WIF string without any bitcoin.
+
+    If you are intending to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. To do this, first check that `sidetreeDefaultWallet` (that was created [earlier](#configure-bitcoin-core)) is loaded. You should see the following output when running this command:
+    ```console
+    $ bitcoin-cli listwallets
+    [
+    "sidetreeDefaultWallet"
+    ]
+    ```
+    Next create a wallet address with this command:
+    ```console
+    $ bitcoin-cli getnewaddress
+    bc1qr5f53xkgfehq3tr0rjg478kvxdjfkc5tatma3u
+    ```
+    This command will output a new address (similar to the example above, but a different string of characters).
+
+    Now, to get the private key for this Bitcoin address, run the following command but with `<address>` replaced with the output from the previous step:
+    ```console
+    $ bitcoin-cli dumpprivkey <address>
+    L1eokPoQRzBXEddxWAyejiR49FopMj5iKyEZNSMaQKMqcZWFVLR5
+    ```
+    Once again, the output will look similar to the above, but with different characters. This is the WIF string to be used in the following command.
+
+    !!! warning "Never share your Bitcoin private keys"
+
+        The output from the previous command is the Bitcoin private key corresponding to your wallet address. Anyone who has access to this private key can spend the bitcoins in that address, so you should be careful to keep it secret.
+
+        In the following step we will copy the private key into an ION configuration file, to enable ION to execute the Bitcoin transactions necessary to create and update DIDs. The permissions on this configuration file have already been set (above) so that only the user and their group can read the file contents.
+
+    Copy and paste this command into the Terminal and then change `<wif>` to your WIF string:
     ```console
     $ WIF="<wif>"
     ```
