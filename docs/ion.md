@@ -601,9 +601,16 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     ```
 
     Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
-    ```console
-    $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+        ```
+
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+        ```
 
     Now repeat the attempt to start the ION Bitcoin microservice:
     ```console
