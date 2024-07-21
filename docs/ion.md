@@ -343,9 +343,16 @@ Run the following command to create an alias, making to easy to access the CLI:
     $ RPC_PASSWORD="<password>"
     ```
     Now run the following command to add the username and password to the `bitcoin.conf` file:
-    ```console
-    $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
-    ```
+
+    === "Linux"
+        ```console
+        $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
+        ```
+
     To confirm these changes were made correctly, check the first two lines in the `bitcoin.conf` file by running:
     ```console
     $ head -n 2 /Applications/bitcoin-24.0.1/bitcoin.conf
@@ -449,11 +456,11 @@ $ chmod 640 $ION_BITCOIN_CONFIG_FILE_PATH $ION_BITCOIN_VERSIONING_CONFIG_FILE_PA
 Having made copies of the template configuration files, we now edit some of their parameters to match our Bitcoin Core configuration.
 
 Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
+
 === "Linux"
     ```console
     $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
-
 === "macOS"
     ```console
     $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
@@ -462,11 +469,11 @@ Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` 
 Next we shall set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
 
 We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
+
 === "Linux"
     ```console
     $ sed -i 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
-
 === "macOS"
     ```console
     $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
@@ -478,11 +485,11 @@ $ RPC_PASSWORD="<password>"
 ```
 
 Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
+
 === "Linux"
     ```console
     $ sed -i 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
-
 === "macOS"
     ```console
     $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
@@ -500,11 +507,11 @@ The final configuration step is to set the `bitcoinWalletOrImportString` paramet
     ```
 
     Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
+
     === "Linux"
         ```console
         $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
-
     === "macOS"
         ```console
         $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
@@ -606,7 +613,6 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
         ```console
         $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
         ```
-
     === "macOS"
         ```console
         $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
