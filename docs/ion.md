@@ -369,8 +369,19 @@ $ bitcoin-cli -getinfo
 
     Before using ION you must create a Bitcoin wallet by running the following CLI command:
     ```console
-    $ bitcoin-cli createwallet "sidetreeDefaultWallet"
+    $ bitcoin-cli -named createwallet wallet_name="sidetreeDefaultWallet" descriptors=false
     ```
+    Expected output:
+    ```json
+    {
+      "name": "sidetreeDefaultWallet",
+      "warnings": [
+        "Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."
+      ]
+    }
+    ```
+    Note that we have chosen to create a "legacy" Bitcoin wallet.
+
 
 ### Configure ION
 
@@ -477,7 +488,7 @@ Then run this command to update the `bitcoinRpcPassword` parameter in the ION co
     $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
 
-The final configuration step is to set the `bitcoinWalletImportString` parameter.
+The final configuration step is to set the `bitcoinWalletOrImportString` parameter.
 
 === "Mainnet"
 
@@ -488,20 +499,20 @@ The final configuration step is to set the `bitcoinWalletImportString` parameter
     $ WIF="<wif>"
     ```
 
-    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
+    Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
     === "Linux"
         ```console
-        $ sed -i 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
     === "macOS"
         ```console
-        $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
 === "Testnet"
 
-    On Testnet, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletImportString` parameter, so you don't need to do anything in this step.
+    On Testnet, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
 
 ### Build ION
 
@@ -589,9 +600,9 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     $ WIF="<wif>"
     ```
 
-    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
+    Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
     ```console
-    $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+    $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
     ```
 
     Now repeat the attempt to start the ION Bitcoin microservice:
