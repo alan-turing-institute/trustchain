@@ -7,18 +7,18 @@ description = "Trustchain decentralised PKI reference implementation."
 homepage = "https://alan-turing-institute.github.io/trustchain/"
 repository = "https://github.com/alan-turing-institute/trustchain/"
 keywords = ["pki", "did", "vc", "vp"]
-edition =  "2021"
+edition = "2021"
 
 [workspace]
-members = [
-    "trustchain-core",
-    "trustchain-ion",
-    "trustchain-http",
-    "trustchain-api",
-    "trustchain-cli",
-    "trustchain-ffi"
-]
+members = ["crates/*"]
 resolver = "2"
+
+[dependencies]
+trustchain-api = { path = "crates/trustchain-api", version = "0.1.0" }
+trustchain-core = { path = "crates/trustchain-core", version = "0.2.0" }
+trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0" }
+trustchain-http = { path = "crates/trustchain-http", version = "0.1.0" }
+trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0" }
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -66,10 +66,3 @@ toml = "0.7.2"
 tower = "0.4"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-
-[dependencies]
-trustchain-api = { path = "./trustchain-api", version = "0.1.0"}
-trustchain-core = { path = "./trustchain-core", version = "0.2.0"}
-trustchain-ffi = { path = "./trustchain-ffi", version = "0.1.0"}
-trustchain-http = { path = "./trustchain-http", version = "0.1.0"}
-trustchain-ion = { path = "./trustchain-ion", version = "0.2.0"}
