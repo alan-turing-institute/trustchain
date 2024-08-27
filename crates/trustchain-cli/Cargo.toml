@@ -1,0 +1,22 @@
+[package]
+name = "trustchain-cli"
+version = "0.1.0"
+authors = ["Trustchain Devs"]
+edition = "2021"
+
+[[bin]]
+name = "trustchain-cli"
+path = "src/bin/main.rs"
+
+[dependencies]
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+trustchain-api = { path = "../trustchain-api" }
+
+clap = { workspace = true, features = ["derive", "cargo"] }
+lazy_static = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
