@@ -12,8 +12,8 @@ impl TrustchainDataAPI for TrustchainAPI {}
 
 /// A template for data credentials.
 /// Uses the dataset attribute from schema.org.
-/// The context (i.e. "https://schema.org/") is checked by the SSI library against the list at:
-/// https://github.com/spruceid/ssi/blob/976e2607080c20cd5789b977e477e98b6417f8af/ssi-json-ld/src/lib.rs#L41
+/// The context (i.e. ["https://schema.org/"](https://schema.org/)) is checked by the SSI library
+/// against this [list](https://github.com/spruceid/ssi/blob/976e2607080c20cd5789b977e477e98b6417f8af/ssi-json-ld/src/lib.rs#L41)
 /// with an exact string match. (Therefore the trailing "/" is required.)
 pub(crate) const DATA_CREDENTIAL_TEMPLATE: &str = r###"
 {
