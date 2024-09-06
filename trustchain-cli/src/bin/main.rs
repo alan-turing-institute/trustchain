@@ -78,16 +78,14 @@ fn cli() -> Command {
                         .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        // TODO: credential file Should be required?
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        // TODO: credential file Should be required?
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -314,7 +312,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
                     let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
-                    let bytes = std::fs::read(data).unwrap(); // TODO: handle with ? or expect.
+                    let bytes = std::fs::read(data)?;
 
                     let data_with_proof = TrustchainAPI::sign_data(
                         &bytes,
@@ -343,7 +341,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-                    let bytes = std::fs::read(data).unwrap(); // TODO: handle with ? or expect.
+                    let bytes = std::fs::read(data)?;
 
                     let verify_result = TrustchainAPI::verify_data(
                         &bytes,
