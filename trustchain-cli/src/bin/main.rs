@@ -133,21 +133,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if mnemonic && file_path.is_some() {
                         panic!("Please use only one of '--file_path' and '--mnemonic'.")
                     }
-                    let filename: String;
-                    if !mnemonic {
+                    let filename = if !mnemonic {
                         // Read doc state from file path
                         let doc_state = if let Some(file_path) = file_path {
                             Some(serde_json::from_reader(File::open(file_path)?)?)
                         } else {
                             None
                         };
-                        filename = create_operation(doc_state, verbose)?;
+                        create_operation(doc_state, verbose)?
                     } else {
                         let mut mnemonic = String::new();
                         println!("Enter a mnemonic:");
                         std::io::stdin().read_line(&mut mnemonic).unwrap();
-                        filename = create_operation_mnemonic(&mnemonic, None)?;
-                    }
+                        create_operation_mnemonic(&mnemonic, None)?
+                    };
                     println!(
                         "Created new DID: {}",
                         filename
@@ -264,7 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // Handle result
                     match verify_result {
                         Err(cred_err) => {
-                            handle_credential_error(&cred_err);
+                            handle_credential_error(cred_err)?;
                         }
                         Ok(_) => {
                             println!("Proof.... ✅");
@@ -357,10 +356,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        ref _e @ Err(DataCredentialError::CredentialError(ref cred_err)) => {
-                            handle_credential_error(cred_err);
+                        Err(DataCredentialError::CredentialError(cred_err)) => {
+                            handle_credential_error(cred_err)?;
                         }
-                        _e @ Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
+                        Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
                             println!("Digest... ❌ (mismatched data hash digests)");
                         }
                         Ok(_) => {
@@ -408,28 +407,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn handle_credential_error(err: &CredentialError) {
+fn handle_credential_error(err: CredentialError) -> Result<(), CredentialError> {
     match err {
-        _err @ CredentialError::VerificationResultError(_) => {
+        CredentialError::VerificationResultError(_) => {
             println!("Proof... ❌ Invalid");
         }
-        _err @ CredentialError::NoProofPresent => {
+        CredentialError::NoProofPresent => {
             println!("Proof... ❌ (missing proof)");
         }
-        _err @ CredentialError::MissingVerificationMethod => {
+        CredentialError::MissingVerificationMethod => {
             println!("Proof... ❌ (missing verification method)");
         }
-        _err @ CredentialError::NoIssuerPresent => {
+        CredentialError::NoIssuerPresent => {
             println!("Proof.... ✅");
             println!("Issuer... ❌ (missing issuer)");
         }
-        _err @ CredentialError::VerifierError(_) => {
+        CredentialError::VerifierError(_) => {
             println!("Proof.... ✅");
             println!("Issuer... ❌ (with verifier error)");
         }
-        _err @ CredentialError::FailedToDecodeJWT => {
+        CredentialError::FailedToDecodeJWT => {
             println!("Proof.... ❌");
             println!("Issuer... ❌");
         }
     }
+    Err(err)
 }
