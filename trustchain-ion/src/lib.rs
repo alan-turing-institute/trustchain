@@ -168,6 +168,7 @@ pub enum TrustchainBitcoinError {
 pub const CONTROLLER_KEY: &str = "controller";
 pub const CREATE_OPERATION_FILENAME_PREFIX: &str = "create_operation_";
 pub const ATTEST_OPERATION_FILENAME_PREFIX: &str = "attest_operation_";
+// TODO: uncomment when update operation functionality merged
 // pub const UPDATE_OPERATION_FILENAME_PREFIX: &str = "update_operation_";
 
 // ION
