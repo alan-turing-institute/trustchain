@@ -3,6 +3,7 @@ use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
 use crate::ion::IONTest as ION;
 use crate::mnemonic::IONKeys;
+use crate::CREATE_OPERATION_FILENAME_PREFIX;
 use bip39::Mnemonic;
 use did_ion::sidetree::{CreateOperation, DIDStatePatch};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
@@ -13,6 +14,7 @@ use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
 use trustchain_core::controller::Controller;
 use trustchain_core::utils::{generate_key, get_operations_path};
+use trustchain_core::JSON_FILE_EXTENSION;
 
 /// Collection of methods to return DID information from an operation.
 pub trait OperationDID {
@@ -73,8 +75,10 @@ fn write_create_operation(
     // Write create operation to push to ION server
     let path = get_operations_path().unwrap();
     let filename = format!(
-        "create_operation_{}.json",
-        controller.controlled_did_suffix()
+        "{}{}{}",
+        CREATE_OPERATION_FILENAME_PREFIX,
+        controller.controlled_did_suffix(),
+        JSON_FILE_EXTENSION
     );
     std::fs::write(
         path.join(&filename),
@@ -275,7 +279,10 @@ mod test {
 
         // Try to read outputted create operations and check they deserialize
         let path = get_operations_path()?;
-        let pattern = path.join("create_operation_*.json");
+        let pattern = path.join(format!(
+            "{}*{}",
+            CREATE_OPERATION_FILENAME_PREFIX, JSON_FILE_EXTENSION
+        ));
         let pattern = pattern.into_os_string().into_string().unwrap();
         let paths = glob(pattern.as_str())?;
 

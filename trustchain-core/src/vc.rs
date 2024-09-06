@@ -1,6 +1,6 @@
 //! Verifiable credential functionality for Trustchain.
 use crate::verifier::VerifierError;
-use ssi::vc::VerificationResult;
+use ssi::vc::{CredentialSubject, OneOrMany, VerificationResult};
 use thiserror::Error;
 
 /// An error relating to verifiable credentials and presentations.
@@ -24,6 +24,29 @@ pub enum CredentialError {
     /// Wrapped verification result with errors.
     #[error("A wrapped verification result error: {0:?}")]
     VerificationResultError(VerificationResult),
+}
+
+/// An error relating to a verifiable credential for a dataset.
+#[derive(Error, Debug)]
+pub enum DataCredentialError {
+    /// Wrapped CredentialError
+    #[error("Credential error: {0:?}")]
+    CredentialError(CredentialError),
+    /// Hash digests do not match.
+    #[error("Hash digests do not match. Expected: {0}. Actual: {1}.")]
+    MismatchedHashDigests(String, String),
+    /// Multiple credential subjects
+    #[error("Multiple credential subjects: {0:?}")]
+    ManyCredentialSubject(OneOrMany<CredentialSubject>),
+    /// Missing attribute
+    #[error("Missing attribute: {0}")]
+    MissingAttribute(String),
+}
+
+impl From<CredentialError> for DataCredentialError {
+    fn from(err: CredentialError) -> Self {
+        DataCredentialError::CredentialError(err)
+    }
 }
 
 impl From<VerifierError> for CredentialError {
