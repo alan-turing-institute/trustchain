@@ -1,4 +1,4 @@
-use crate::{TrustchainAPI, DATASET_ATTRIBUTE, DATASET_CREDENTIAL_TEMPLATE};
+use crate::{TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
@@ -248,8 +248,8 @@ pub trait TrustchainVPAPI {
 /// API for Trustchain DATA functionality.
 #[async_trait]
 pub trait TrustchainDataAPI {
-    /// Signs a dataset.
-    async fn sign_dataset(
+    /// Signs data in the form of bytes.
+    async fn sign_data(
         bytes: &[u8],
         did: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
@@ -257,26 +257,26 @@ pub trait TrustchainDataAPI {
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
-        // Read the dataset credential template.
-        let mut credential = Credential::from_json_unsigned(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        // Read the data credential template.
+        let mut credential = Credential::from_json_unsigned(DATA_CREDENTIAL_TEMPLATE).unwrap();
         // Add the issuer & issuanceDate attributes.
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         credential.issuance_date = Some(chrono::offset::Local::now().into());
 
-        // Compute the SHA256 hash of the dataset.
-        let dataset_hash = Sha256::digest(bytes);
+        // Compute the SHA256 hash of the data.
+        let data_hash = Sha256::digest(bytes);
 
-        // Insert the dataset hash into the credential.
-        let dataset_element = credential
+        // Insert the data hash into the credential.
+        let data_element = credential
             .credential_subject
             .to_single_mut()
             .expect("Template credential has a single credentialSubject.")
             .property_set
             .as_mut()
             .expect("Template credential has a property set.")
-            .get_mut(DATASET_ATTRIBUTE)
+            .get_mut(DATA_ATTRIBUTE)
             .expect("Template credential has a dataset property.");
-        *dataset_element = hex::encode(dataset_hash).to_string().into();
+        *data_element = hex::encode(data_hash).to_string().into();
 
         // Sign the credential
         let attestor = IONAttestor::new(did);
@@ -291,8 +291,8 @@ pub trait TrustchainDataAPI {
             .await?)
     }
 
-    /// Verifies a signed dataset.
-    async fn verify_dataset<T, U>(
+    /// Verifies a data credential by hashing the data bytes.
+    async fn verify_data<T, U>(
         bytes: &[u8],
         credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
@@ -304,7 +304,7 @@ pub trait TrustchainDataAPI {
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        // Compute the SHA256 hash of the dataset.
+        // Compute the SHA256 hash of the data.
         let actual_hash = hex::encode(Sha256::digest(bytes));
 
         // Check that the hash matches the dataset attribute value in the credential.
@@ -315,7 +315,7 @@ pub trait TrustchainDataAPI {
             .property_set
             .as_ref()
             .unwrap() // TODO: handle error with ?
-            .get(DATASET_ATTRIBUTE)
+            .get(DATA_ATTRIBUTE)
             .unwrap() // TODO: handle error with ?
             .as_str()
             .expect("dataset attribute is a str");
@@ -326,7 +326,7 @@ pub trait TrustchainDataAPI {
                 actual_hash,
             ));
         };
-        // Verify the dataset credential.
+        // Verify the data credential.
         TrustchainAPI::verify_credential(
             &credential,
             linked_data_proof_options,
@@ -342,7 +342,7 @@ pub trait TrustchainDataAPI {
 #[cfg(test)]
 mod tests {
     use crate::api::{
-        TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATASET_CREDENTIAL_TEMPLATE,
+        TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATA_CREDENTIAL_TEMPLATE,
     };
     use crate::TrustchainAPI;
     use did_ion::sidetree::PublicKeyEntry;
@@ -669,23 +669,23 @@ mod tests {
             .unwrap()
     }
 
-    // Helper function to create a signed dataset credential given an attesor & dataset hash.
-    async fn signed_dataset_credential(issuer_did: &str, bytes: &[u8]) -> Credential {
+    // Helper function to create a signed data credential given an attesor & data hash.
+    async fn signed_data_credential(issuer_did: &str, bytes: &[u8]) -> Credential {
         let attestor = IONAttestor::new(issuer_did);
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let mut vc: Credential = serde_json::from_str(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+        let mut vc: Credential = serde_json::from_str(DATA_CREDENTIAL_TEMPLATE).unwrap();
         vc.issuer = Some(ssi::vc::Issuer::URI(URI::String(issuer_did.to_string())));
-        // Insert the dataset hash into the credential.
-        let dataset_element = vc
+        // Insert the data hash into the credential.
+        let data_element = vc
             .credential_subject
             .to_single_mut()
             .expect("Template credential has a single credentialSubject.")
             .property_set
             .as_mut()
             .expect("Template credential has a property set.")
-            .get_mut(crate::DATASET_ATTRIBUTE)
+            .get_mut(crate::DATA_ATTRIBUTE)
             .expect("Template credential has a dataset property.");
-        *dataset_element = hex::encode(Sha256::digest(bytes)).to_string().into();
+        *data_element = hex::encode(Sha256::digest(bytes)).to_string().into();
         attestor
             .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
             .await
@@ -705,27 +705,27 @@ mod tests {
     }
 
     #[test]
-    fn test_dataset_credential_template() {
-        // Read the dataset credential template.
-        let credential = Credential::from_json_unsigned(DATASET_CREDENTIAL_TEMPLATE).unwrap();
+    fn test_data_credential_template() {
+        // Read the data credential template.
+        let credential = Credential::from_json_unsigned(DATA_CREDENTIAL_TEMPLATE).unwrap();
         assert_eq!(credential.issuer.unwrap().get_id(), "did:ion:test:XYZ");
     }
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
-    async fn test_verify_dataset() {
+    async fn test_verify_data() {
         init();
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
 
-        let bytes = "test-dataset-content".as_bytes();
+        let bytes = "test-data-content".as_bytes();
         let expected_hash = hex::encode(Sha256::digest(&bytes));
 
-        let vc_with_proof = signed_dataset_credential(issuer_did, &bytes).await;
+        let vc_with_proof = signed_data_credential(issuer_did, &bytes).await;
 
         let resolver = trustchain_resolver("http://localhost:3000/");
         let mut context_loader = ContextLoader::default();
 
-        let res = TrustchainAPI::verify_dataset(
+        let res = TrustchainAPI::verify_data(
             &bytes,
             &vc_with_proof,
             None,
@@ -736,12 +736,12 @@ mod tests {
         .await;
         assert!(res.is_ok());
 
-        // Change the dataset to make the hash digest invalid.
-        let bytes = "different-dataset-content".as_bytes();
+        // Change the data to make the hash digest invalid.
+        let bytes = "different-data-content".as_bytes();
 
-        // Verify: expect no warnings and a MismatchedHashDigests error as the dataset has changed.
+        // Verify: expect no warnings and a MismatchedHashDigests error as the data has changed.
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let res = TrustchainAPI::verify_dataset(
+        let res = TrustchainAPI::verify_data(
             &bytes,
             &vc_with_proof,
             None,

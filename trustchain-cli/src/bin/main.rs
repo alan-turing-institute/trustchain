@@ -99,7 +99,7 @@ fn cli() -> Command {
                 .allow_external_subcommands(true)
                 .subcommand(
                     Command::new("sign")
-                        .about("Signs a dataset.")
+                        .about("Signs the data in the given file.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
                         .arg(arg!(-f --data_file <DATA_FILE>).required(true))
@@ -107,7 +107,7 @@ fn cli() -> Command {
                 )
                 .subcommand(
                     Command::new("verify")
-                        .about("Verifies a dataset.")
+                        .about("Verifies a data credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --data_file <DATA_FILE>).required(true))
                         .arg(arg!(-c --credential_file <CREDENTIAL_FILE>).required(true))
@@ -314,10 +314,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
-                    let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
-                    let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
+                    let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    let bytes = std::fs::read(data).unwrap(); // TODO: handle with ? or expect.
 
-                    let dataset_with_proof = TrustchainAPI::sign_dataset(
+                    let data_with_proof = TrustchainAPI::sign_data(
                         &bytes,
                         did,
                         None,
@@ -326,8 +326,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &mut context_loader,
                     )
                     .await
-                    .expect("Failed to sign dataset.");
-                    println!("{}", &to_string_pretty(&dataset_with_proof).unwrap());
+                    .expect("Failed to sign data.");
+                    println!("{}", &to_string_pretty(&data_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
                     let verbose = sub_matches.get_one::<u8>("verbose");
@@ -335,7 +335,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some(time) => time.parse::<u64>().unwrap(),
                         None => cli_config().root_event_time.into(),
                     };
-                    let dataset = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
                     // Deserialize
                     let credential: Credential =
                         if let Some(path) = sub_matches.get_one::<String>("credential_file") {
@@ -344,9 +344,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let buffer = BufReader::new(stdin());
                             serde_json::from_reader(buffer).unwrap()
                         };
-                    let bytes = std::fs::read(dataset).unwrap(); // TODO: handle with ? or expect.
+                    let bytes = std::fs::read(data).unwrap(); // TODO: handle with ? or expect.
 
-                    let verify_result = TrustchainAPI::verify_dataset(
+                    let verify_result = TrustchainAPI::verify_data(
                         &bytes,
                         &credential,
                         None,
@@ -361,7 +361,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             handle_credential_error(cred_err);
                         }
                         _e @ Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
-                            println!("Digest... ❌ (mismatched dataset hash digests)");
+                            println!("Digest... ❌ (mismatched data hash digests)");
                         }
                         Ok(_) => {
                             println!("Proof.... ✅");

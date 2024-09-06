@@ -10,7 +10,12 @@ impl TrustchainVCAPI for TrustchainAPI {}
 impl TrustchainVPAPI for TrustchainAPI {}
 impl TrustchainDataAPI for TrustchainAPI {}
 
-pub(crate) const DATASET_CREDENTIAL_TEMPLATE: &str = r###"
+/// A template for data credentials.
+/// Uses the dataset attribute from schema.org.
+/// The context (i.e. "https://schema.org/") is checked by the SSI library against the list at:
+/// https://github.com/spruceid/ssi/blob/976e2607080c20cd5789b977e477e98b6417f8af/ssi-json-ld/src/lib.rs#L41
+/// with an exact string match. (Therefore the trailing "/" is required.)
+pub(crate) const DATA_CREDENTIAL_TEMPLATE: &str = r###"
 {
     "@context": [
       "https://www.w3.org/2018/credentials/v1",
@@ -27,4 +32,4 @@ pub(crate) const DATASET_CREDENTIAL_TEMPLATE: &str = r###"
     "issuanceDate": "2000-01-01T00:00:00.0Z"
 }
 "###;
-pub(crate) const DATASET_ATTRIBUTE: &str = "dataset";
+pub(crate) const DATA_ATTRIBUTE: &str = "dataset";
