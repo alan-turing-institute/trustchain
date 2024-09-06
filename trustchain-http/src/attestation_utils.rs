@@ -90,6 +90,9 @@ pub enum TrustchainCRError {
     // Failed to verify nonce
     #[error("Failed to verify nonce.")]
     FailedToVerifyNonce,
+    /// Wrapped IO error
+    #[error("IO error: {0}")]
+    IOError(std::io::Error),
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -253,6 +256,17 @@ impl IdentityCRInitiation {
     /// Note: temp_s_key is optional since only requester has it.
     pub fn is_complete(&self) -> bool {
         return self.temp_p_key.is_some() && self.requester_details.is_some();
+    }
+
+    pub fn temp_p_key(&self) -> Result<&Jwk, TrustchainCRError> {
+        self.temp_p_key
+            .as_ref()
+            .ok_or(TrustchainCRError::KeyNotFound)
+    }
+    pub fn temp_s_key(&self) -> Result<&Jwk, TrustchainCRError> {
+        self.temp_s_key
+            .as_ref()
+            .ok_or(TrustchainCRError::KeyNotFound)
     }
 }
 

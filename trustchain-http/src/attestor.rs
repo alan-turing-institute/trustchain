@@ -20,7 +20,6 @@ use log::info;
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::attestor::AttestorError;
-use trustchain_core::key_manager::KeyManagerError;
 use trustchain_core::verifier::Verifier;
 
 use std::collections::HashMap;
@@ -70,13 +69,12 @@ impl TrustchainAttestorHTTPHandler {
     /// is saved is determined by the temp public key of the attestation initiation.
     pub async fn post_identity_initiation(
         Json(attestation_initiation): Json<IdentityCRInitiation>,
-    ) -> impl IntoResponse {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         info!("Received attestation info: {:?}", attestation_initiation);
-        let temp_p_key_ssi =
-            josekit_to_ssi_jwk(attestation_initiation.temp_p_key.as_ref().unwrap());
-        let path = attestation_request_path(&temp_p_key_ssi.unwrap(), "attestor").unwrap();
+        let temp_p_key_ssi = josekit_to_ssi_jwk(attestation_initiation.temp_p_key()?);
+        let path = attestation_request_path(&temp_p_key_ssi.unwrap(), "attestor")?;
         // create directory and save attestation initation to file
-        let _ = std::fs::create_dir_all(&path);
+        std::fs::create_dir_all(&path).map_err(TrustchainCRError::IOError)?;
         let result = attestation_initiation.elementwise_serialize(&path);
         match result {
             Ok(_) => {
@@ -84,14 +82,14 @@ impl TrustchainAttestorHTTPHandler {
                     message: "Received attestation request. Please wait for operator to contact you through an alternative channel.".to_string(),
                     data: None,
                 };
-                (StatusCode::OK, Json(response))
+                Ok((StatusCode::OK, Json(response)))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Attestation request failed.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(response))
+                Ok((StatusCode::BAD_REQUEST, Json(response)))
             }
         }
     }
@@ -107,50 +105,54 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_identity_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> impl IntoResponse {
-        let pathbase = attestation_request_basepath("attestor").unwrap();
+    ) -> Result<impl IntoResponse, TrustchainCRError> {
+        let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(key_id);
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
         let mut identity_challenge = IdentityCRChallenge::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
         // get signing key from ION attestor
-        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let did = app_state
+            .config
+            .server_did
+            .as_ref()
+            .expect("CR requires server DID.")
+            .to_owned();
         let ion_attestor = IONAttestor::new(&did);
+        // TODO: impl From<KeyManagerError> for TrustchainCRError
         let signing_keys = ion_attestor.signing_keys().unwrap();
+        // TODO: consider passing a key_id, first key used as arbitrary choice currently
+        // Unwrap: ok since signing keys cannot be empty.
         let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
         // get temp public key
         let identity_initiation = IdentityCRInitiation::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
-        let temp_p_key = identity_initiation.temp_p_key.unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
+        let temp_p_key = identity_initiation.temp_p_key()?;
         // verify response
         let attestor = Entity {};
-        let payload = attestor
-            .decrypt_and_verify(response.clone(), &signing_key, &temp_p_key)
-            .unwrap();
+        let payload = attestor.decrypt_and_verify(response.clone(), &signing_key, &temp_p_key)?;
         let result = verify_nonce(payload, &path);
         match result {
             Ok(_) => {
                 identity_challenge.identity_response_signature = Some(response.clone());
-                identity_challenge.elementwise_serialize(&path).unwrap();
+                identity_challenge.elementwise_serialize(&path)?;
                 let response = CustomResponse {
                     message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
                     data: None
                 };
-                (StatusCode::OK, Json(response))
+                Ok((StatusCode::OK, Json(response)))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Verification failed. Please try again.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(response))
+                Ok((StatusCode::BAD_REQUEST, Json(response)))
             }
         }
     }
