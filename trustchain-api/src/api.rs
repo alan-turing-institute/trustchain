@@ -328,14 +328,14 @@ pub trait TrustchainDataAPI {
         };
         // Verify the data credential.
         TrustchainAPI::verify_credential(
-            &credential,
+            credential,
             linked_data_proof_options,
             root_event_time,
             verifier,
             context_loader,
         )
         .await
-        .map_err(|e| DataCredentialError::CredentialError(e))
+        .map_err(DataCredentialError::CredentialError)
     }
 }
 
@@ -429,7 +429,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Change credential to make signature invalid
-        vc_with_proof.expiration_date = Some(VCDateTime::try_from(now_ns()).unwrap());
+        vc_with_proof.expiration_date = Some(VCDateTime::from(now_ns()));
 
         // Verify: expect no warnings and a signature error as VC has changed
         let resolver = trustchain_resolver("http://localhost:3000/");
@@ -718,15 +718,15 @@ mod tests {
         let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
 
         let bytes = "test-data-content".as_bytes();
-        let expected_hash = hex::encode(Sha256::digest(&bytes));
+        let expected_hash = hex::encode(Sha256::digest(bytes));
 
-        let vc_with_proof = signed_data_credential(issuer_did, &bytes).await;
+        let vc_with_proof = signed_data_credential(issuer_did, bytes).await;
 
         let resolver = trustchain_resolver("http://localhost:3000/");
         let mut context_loader = ContextLoader::default();
 
         let res = TrustchainAPI::verify_data(
-            &bytes,
+            bytes,
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
@@ -742,7 +742,7 @@ mod tests {
         // Verify: expect no warnings and a MismatchedHashDigests error as the data has changed.
         let resolver = trustchain_resolver("http://localhost:3000/");
         let res = TrustchainAPI::verify_data(
-            &bytes,
+            bytes,
             &vc_with_proof,
             None,
             ROOT_EVENT_TIME_1,
