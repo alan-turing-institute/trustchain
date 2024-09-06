@@ -311,12 +311,18 @@ pub trait TrustchainDataAPI {
         let expected_hash = credential
             .credential_subject
             .to_single()
-            .unwrap() // TODO: handle error with ?
+            .ok_or(DataCredentialError::ManyCredentialSubject(
+                credential.credential_subject.clone(),
+            ))?
             .property_set
             .as_ref()
-            .unwrap() // TODO: handle error with ?
+            .ok_or(DataCredentialError::MissingAttribute(
+                "property_set".to_string(),
+            ))?
             .get(DATA_ATTRIBUTE)
-            .unwrap() // TODO: handle error with ?
+            .ok_or(DataCredentialError::MissingAttribute(
+                DATA_ATTRIBUTE.to_string(),
+            ))?
             .as_str()
             .expect("dataset attribute is a str");
 

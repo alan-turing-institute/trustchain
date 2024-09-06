@@ -362,6 +362,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
                             println!("Digest... ❌ (mismatched data hash digests)");
                         }
+                        Err(DataCredentialError::MissingAttribute(att)) => {
+                            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
+                        }
+                        Err(DataCredentialError::ManyCredentialSubject(subjects)) => {
+                            println!("Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})");
+                        }
                         Ok(_) => {
                             println!("Proof.... ✅");
                             println!("Issuer... ✅");
