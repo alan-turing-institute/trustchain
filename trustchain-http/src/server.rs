@@ -1,13 +1,10 @@
-use crate::attestation_utils::CustomResponse;
 use crate::attestor;
 use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{
     config::HTTPConfig, issuer, resolver, root, state::AppState, static_handlers, verifier,
 };
-use axum::extract::Path;
 use axum::routing::{post, IntoMakeService};
-use axum::Json;
 use axum::{middleware, routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use hyper::server::conn::AddrIncoming;
