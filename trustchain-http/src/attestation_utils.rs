@@ -17,7 +17,7 @@ use ssi::{did::Service, jwk::JWK};
 use ssi::{did::ServiceEndpoint, one_or_many::OneOrMany};
 use std::fs::OpenOptions;
 use thiserror::Error;
-use trustchain_core::{key_manager::KeyManagerError, TRUSTCHAIN_DATA};
+use trustchain_core::{attestor::AttestorError, key_manager::KeyManagerError, TRUSTCHAIN_DATA};
 
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {
@@ -96,6 +96,9 @@ pub enum TrustchainCRError {
     /// Wrapped KeyManager error
     #[error("KeyManager error: {0}")]
     KeyManagerError(#[from] KeyManagerError),
+    /// Wrapped Attestor error
+    #[error("Attestor error: {0}")]
+    AttestorError(#[from] AttestorError),
 }
 
 impl From<JoseError> for TrustchainCRError {
