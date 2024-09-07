@@ -17,7 +17,7 @@ use ssi::{did::Service, jwk::JWK};
 use ssi::{did::ServiceEndpoint, one_or_many::OneOrMany};
 use std::fs::OpenOptions;
 use thiserror::Error;
-use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_core::{key_manager::KeyManagerError, TRUSTCHAIN_DATA};
 
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {
@@ -87,12 +87,15 @@ pub enum TrustchainCRError {
     /// Field to respond
     #[error("Response to challenge failed.")]
     FailedToRespond(reqwest::Response),
-    // Failed to verify nonce
+    /// Failed to verify nonce
     #[error("Failed to verify nonce.")]
     FailedToVerifyNonce,
     /// Wrapped IO error
     #[error("IO error: {0}")]
     IOError(std::io::Error),
+    /// Wrapped KeyManager error
+    #[error("KeyManager error: {0}")]
+    KeyManagerError(#[from] KeyManagerError),
 }
 
 impl From<JoseError> for TrustchainCRError {
