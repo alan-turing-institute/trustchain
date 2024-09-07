@@ -1,5 +1,6 @@
 use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
+use josekit::JoseError;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
@@ -31,8 +32,8 @@ pub enum TrustchainHTTPError {
     #[error("Trustchain attestor error: {0}")]
     AttestorError(#[from] AttestorError),
     // TODO: once needed in http propagate
-    // #[error("Jose error: {0}")]
-    // JoseError(JoseError),
+    #[error("Jose error: {0}")]
+    JoseError(#[from] JoseError),
     #[error("Trustchain key manager error: {0}")]
     KeyManagerError(KeyManagerError),
     #[error("Trustchain challenge-response error: {0}")]
@@ -144,6 +145,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::KeyManagerError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::JoseError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CRError(_) => {

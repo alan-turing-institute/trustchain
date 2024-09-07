@@ -242,13 +242,13 @@ impl TrustchainAttestorHTTPHandler {
                 "No signing keys for ION attestor with DID: {did}"
             )))?;
 
-        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
 
         // sign and encrypt challenges
         let value: serde_json::Value =
             serde_json::to_value(challenges).map_err(TrustchainCRError::Serde)?;
         let mut payload = JwtPayload::new();
-        payload.set_claim("challenges", Some(value)).unwrap();
+        payload.set_claim("challenges", Some(value))?;
         let signed_encrypted_challenges = attestor.sign_and_encrypt_claim(
             &payload,
             &signing_key,
