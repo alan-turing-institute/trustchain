@@ -72,7 +72,7 @@ impl TrustchainAttestorHTTPHandler {
     ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         info!("Received attestation info: {:?}", attestation_initiation);
         let temp_p_key_ssi = josekit_to_ssi_jwk(attestation_initiation.temp_p_key()?);
-        let path = attestation_request_path(&temp_p_key_ssi.unwrap(), "attestor")?;
+        let path = attestation_request_path(&temp_p_key_ssi?, "attestor")?;
         // create directory and save attestation initation to file
         std::fs::create_dir_all(&path).map_err(TrustchainCRError::IOError)?;
         let result = attestation_initiation.elementwise_serialize(&path);
@@ -124,8 +124,11 @@ impl TrustchainAttestorHTTPHandler {
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys()?;
         // TODO: consider passing a key_id, first key used as arbitrary choice currently
-        // Unwrap: ok since signing keys cannot be empty.
-        let signing_key_ssi = signing_keys.first().unwrap();
+        let signing_key_ssi = signing_keys
+            .first()
+            .ok_or(AttestorError::NoSigningKey(format!(
+                "No signing keys for ION attestor with DID: {did}"
+            )))?;
         let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
         // get temp public key
         let identity_initiation = IdentityCRInitiation::new()
@@ -230,15 +233,15 @@ impl TrustchainAttestorHTTPHandler {
         // get public and secret keys
         let identity_cr_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)?
-            .unwrap();
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys()?;
         let signing_key_ssi = signing_keys
             .first()
             .ok_or(AttestorError::NoSigningKey(format!(
                 "No signing keys for ION attestor with DID: {did}"
-            )))
-            .unwrap();
+            )))?;
+
         let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
 
         // sign and encrypt challenges

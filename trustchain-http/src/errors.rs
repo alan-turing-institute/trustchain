@@ -3,8 +3,9 @@ use hyper::StatusCode;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, issuer::IssuerError, key_manager::KeyManagerError,
-    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
+    attestor::AttestorError, commitment::CommitmentError, issuer::IssuerError,
+    key_manager::KeyManagerError, resolver::ResolverError, vc::CredentialError,
+    verifier::VerifierError, vp::PresentationError,
 };
 use trustchain_ion::root::TrustchainRootError;
 
@@ -27,6 +28,8 @@ pub enum TrustchainHTTPError {
     RootError(TrustchainRootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
+    #[error("Trustchain attestor error: {0}")]
+    AttestorError(#[from] AttestorError),
     // TODO: once needed in http propagate
     // #[error("Jose error: {0}")]
     // JoseError(JoseError),
@@ -120,6 +123,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::IssuerError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::AttestorError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CommitmentError(_) => {
