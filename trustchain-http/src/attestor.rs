@@ -122,8 +122,7 @@ impl TrustchainAttestorHTTPHandler {
             .expect("CR requires server DID.")
             .to_owned();
         let ion_attestor = IONAttestor::new(&did);
-        // TODO: impl From<KeyManagerError> for TrustchainCRError
-        let signing_keys = ion_attestor.signing_keys().unwrap();
+        let signing_keys = ion_attestor.signing_keys()?;
         // TODO: consider passing a key_id, first key used as arbitrary choice currently
         // Unwrap: ok since signing keys cannot be empty.
         let signing_key_ssi = signing_keys.first().unwrap();
@@ -183,8 +182,8 @@ impl TrustchainAttestorHTTPHandler {
         // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
         let candidate_doc = match result {
-            Ok((_, doc, _)) => doc.unwrap(),
-            Err(_) => {
+            Ok((_, Some(doc), _)) => doc,
+            Ok((_, None, _)) | Err(_) => {
                 let response = CustomResponse {
                     message: "Resolution of candidate DID failed.".to_string(),
                     data: None,
