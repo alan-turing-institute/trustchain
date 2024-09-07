@@ -105,7 +105,7 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_identity_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> Result<impl IntoResponse, TrustchainCRError> {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(key_id);
         if !path.exists() {
@@ -135,15 +135,18 @@ impl TrustchainAttestorHTTPHandler {
         let temp_p_key = identity_initiation.temp_p_key()?;
         // verify response
         let attestor = Entity {};
-        let payload = attestor.decrypt_and_verify(response.clone(), &signing_key, &temp_p_key)?;
+        let payload = attestor.decrypt_and_verify(response.clone(), &signing_key, temp_p_key)?;
         let result = verify_nonce(payload, &path);
         match result {
             Ok(_) => {
                 identity_challenge.identity_response_signature = Some(response.clone());
                 identity_challenge.elementwise_serialize(&path)?;
                 let response = CustomResponse {
-                    message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
-                    data: None
+                    message: "\
+                    Verification successful. Please use the provided path to initiate the second \
+                    part of the attestation process."
+                        .to_string(),
+                    data: None,
                 };
                 Ok((StatusCode::OK, Json(response)))
             }
@@ -168,7 +171,7 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_content_initiation(
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> Result<(StatusCode, String), TrustchainHTTPError> {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(&key_id);
         let did = app_state

@@ -47,7 +47,7 @@ pub enum TrustchainHTTPError {
     #[error("Request does not exist.")]
     RequestDoesNotExist,
     #[error("Could not deserialize data: {0}")]
-    FailedToDeserialize(serde_json::Error),
+    FailedToDeserialize(#[from] serde_json::Error),
     #[error("Root event time not configured for verification.")]
     RootEventTimeNotSet,
     #[error("Attestation request failed.")]
