@@ -1,3 +1,4 @@
+pub mod attestation;
 pub mod attestation_encryption_utils;
 pub mod attestation_utils;
 pub mod attestor;

@@ -40,7 +40,8 @@ fn server_did(app_state: Arc<AppState>) -> String {
         .to_owned()
 }
 
-fn first_signing_key<'a>(
+// TODO: move to attestation.rs and remove `pub`.
+pub fn first_signing_key<'a>(
     signing_keys: &'a OneOrMany<JWK>,
     did: &str,
 ) -> Result<&'a JWK, AttestorError> {

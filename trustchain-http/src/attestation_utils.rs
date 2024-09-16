@@ -19,6 +19,8 @@ use std::fs::OpenOptions;
 use thiserror::Error;
 use trustchain_core::{attestor::AttestorError, key_manager::KeyManagerError, TRUSTCHAIN_DATA};
 
+use crate::{attestation::IdentityChallengePayload, ATTESTATION_FRAGMENT};
+
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {
     /// Serde JSON error.
@@ -176,6 +178,12 @@ impl From<serde_json::Error> for TrustchainCRError {
     }
 }
 
+// TODO: move to trustchain core?
+/// Gets the services for the given DID.
+pub fn get_services(did: &str) -> &[Service] {
+    todo!() // see tests/attestation.rs
+}
+
 /// Interface for serializing and deserializing each field of structs to/from files.
 pub trait ElementwiseSerializeDeserialize
 where
@@ -199,6 +207,7 @@ where
     fn elementwise_deserialize(self, path: &PathBuf) -> Result<Option<Self>, TrustchainCRError>
     where
         Self: Sized;
+
     /// Save data to file. If file already exists, do nothing.
     fn save_to_file(&self, path: &PathBuf, data: &str) -> Result<(), TrustchainCRError> {
         if path.exists() {
@@ -437,8 +446,16 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
     }
 }
 
+impl TryFrom<&IdentityChallengePayload> for JwtPayload {
+    type Error = TrustchainCRError;
+    fn try_from(value: &IdentityChallengePayload) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
 impl TryFrom<&IdentityCRChallenge> for JwtPayload {
     type Error = TrustchainCRError;
+
     fn try_from(value: &IdentityCRChallenge) -> Result<Self, Self::Error> {
         let mut payload = JwtPayload::new();
         payload.set_claim(
@@ -809,6 +826,29 @@ pub fn matching_endpoint(
     let mut endpoints = Vec::new();
     for service in services {
         if service.id.eq(fragment) {
+            match &service.service_endpoint {
+                Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {
+                    endpoints.push(uri.to_string());
+                }
+
+                _ => return Err(TrustchainCRError::InvalidServiceEndpoint),
+            }
+        }
+    }
+    if endpoints.len() != 1 {
+        return Err(TrustchainCRError::InvalidServiceEndpoint);
+    }
+    return Ok(endpoints[0].clone());
+}
+
+// TEMP ~DUPLICATE OF PRECEDING FUNCTION (FOR USE IN REFACTORED TYPE-STATE ATTESTATIONS).
+/// Returns endpoint found in the attestation fragment in the given DID document.
+/// Throws error if no or more than one matching endpoint is found.
+pub fn attestation_endpoint(did: &str) -> Result<String, TrustchainCRError> {
+    let services = get_services(did);
+    let mut endpoints = Vec::new();
+    for service in services {
+        if service.id.eq(ATTESTATION_FRAGMENT) {
             match &service.service_endpoint {
                 Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {
                     endpoints.push(uri.to_string());
