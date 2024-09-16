@@ -50,7 +50,7 @@ pub async fn initiate_identity_challenge(
 
     // get endpoint and uri
     let url_path = "/did/attestor/identity/initiate";
-    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
+    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT)?;
     let uri = format!("{}{}", endpoint, url_path);
 
     // make POST request to endpoint
@@ -60,7 +60,7 @@ pub async fn initiate_identity_challenge(
         .json(&identity_cr_initiation)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
 
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToInitiateCR);
@@ -87,32 +87,35 @@ pub async fn identity_response(
     attestor_p_key: &Jwk,
 ) -> Result<IdentityCRChallenge, TrustchainCRError> {
     // deserialise challenge struct from file
-    let result = IdentityCRChallenge::new().elementwise_deserialize(path);
-    let mut identity_challenge = result.unwrap().unwrap();
+    let mut identity_challenge = IdentityCRChallenge::new()
+        .elementwise_deserialize(path)?
+        .ok_or(TrustchainCRError::FailedToDeserialize)?;
     // get temp secret key from file
-    let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(path);
-    let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
-    let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key).unwrap();
+    let identity_initiation = IdentityCRInitiation::new()
+        .elementwise_deserialize(path)?
+        .ok_or(TrustchainCRError::FailedToDeserialize)?;
+    let temp_s_key = identity_initiation.temp_s_key()?;
+    let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key)?;
 
     // decrypt and verify challenge
     let requester = Entity {};
-    let decrypted_verified_payload = requester
-        .decrypt_and_verify(
-            identity_challenge
-                .identity_challenge_signature
-                .clone()
-                .unwrap(),
-            &temp_s_key,
-            &attestor_p_key,
-        )
-        .unwrap();
+    let decrypted_verified_payload = requester.decrypt_and_verify(
+        identity_challenge
+            .identity_challenge_signature
+            .clone()
+            .ok_or(TrustchainCRError::FieldNotFound)?,
+        &temp_s_key,
+        &attestor_p_key,
+    )?;
     // sign and encrypt response
-    let signed_encrypted_response = requester
-        .sign_and_encrypt_claim(&decrypted_verified_payload, &temp_s_key, &attestor_p_key)
-        .unwrap();
-    let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
+    let signed_encrypted_response = requester.sign_and_encrypt_claim(
+        &decrypted_verified_payload,
+        &temp_s_key,
+        &attestor_p_key,
+    )?;
+    let key_id = temp_s_key_ssi.to_public().thumbprint()?;
     // get uri for POST request response
-    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
+    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT)?;
     let url_path = "/did/attestor/identity/respond";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
     // POST response
@@ -129,9 +132,15 @@ pub async fn identity_response(
     // extract nonce
     let nonce_str = decrypted_verified_payload
         .claim("identity_nonce")
-        .unwrap()
+        .ok_or(TrustchainCRError::ClaimNotFound)?
         .as_str()
-        .unwrap();
+        .ok_or(TrustchainCRError::FailedToConvertToStr(
+            // Unwrap: not None since error would have propagated above if None
+            decrypted_verified_payload
+                .claim("identity_nonce")
+                .unwrap()
+                .clone(),
+        ))?;
     let nonce = Nonce::from(String::from(nonce_str));
     // update struct
     identity_challenge.update_p_key = Some(attestor_p_key.clone());
@@ -157,17 +166,16 @@ pub async fn initiate_content_challenge(
 ) -> Result<(ContentCRInitiation, ContentCRChallenge), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
-        .elementwise_deserialize(&path)
-        .unwrap()
-        .unwrap();
-    let temp_s_key_ssi = josekit_to_ssi_jwk(&identity_cr_initiation.temp_s_key.unwrap()).unwrap();
-    let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
+        .elementwise_deserialize(&path)?
+        .ok_or(TrustchainCRError::FailedToDeserialize)?;
+    let temp_s_key_ssi = josekit_to_ssi_jwk(&identity_cr_initiation.temp_s_key().cloned()?)?;
+    let key_id = temp_s_key_ssi.to_public().thumbprint()?;
 
     let content_cr_initiation = ContentCRInitiation {
         requester_did: Some(ddid.to_owned()),
     };
     // get uri for POST request response
-    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
+    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT)?;
     let url_path = "/did/attestor/content/initiate";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
     // make POST request to endpoint
@@ -187,7 +195,9 @@ pub async fn initiate_content_challenge(
         .json()
         .await
         .map_err(|err| TrustchainCRError::Reqwest(err))?;
-    let signed_encrypted_challenge = response_body.data.unwrap();
+    let signed_encrypted_challenge = response_body
+        .data
+        .ok_or(TrustchainCRError::ResponseMustContainData)?;
 
     // response
     let (nonces, response) = content_response(
@@ -223,79 +233,80 @@ pub async fn content_response(
     ddid: &String,
 ) -> Result<(HashMap<String, Nonce>, String), TrustchainCRError> {
     // get keys
-    let identity_initiation = IdentityCRInitiation::new().elementwise_deserialize(&path);
-    let temp_s_key = identity_initiation.unwrap().unwrap().temp_s_key.unwrap();
-    let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key).unwrap();
+    let identity_initiation = IdentityCRInitiation::new()
+        .elementwise_deserialize(path)?
+        .ok_or(TrustchainCRError::FailedToDeserialize)?;
+    let temp_s_key = identity_initiation.temp_s_key()?;
+    let temp_s_key_ssi = josekit_to_ssi_jwk(temp_s_key)?;
     // get endpoint
-    let key_id = temp_s_key_ssi.to_public().thumbprint().unwrap();
-    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT).unwrap();
+    let key_id = temp_s_key_ssi.to_public().thumbprint()?;
+    let endpoint = matching_endpoint(services, ATTESTATION_FRAGMENT)?;
     let url_path = "/did/attestor/content/respond";
     let uri = format!("{}{}/{}", endpoint, url_path, key_id);
 
     // decrypt and verify payload
     let requester = Entity {};
-    let decrypted_verified_payload = requester
-        .decrypt_and_verify(challenge.to_owned(), &temp_s_key, &attestor_p_key)
-        .unwrap();
+    let decrypted_verified_payload =
+        requester.decrypt_and_verify(challenge.to_owned(), &temp_s_key, &attestor_p_key)?;
     // extract map with decrypted nonces from payload and decrypt each nonce
     let challenges_map: HashMap<String, String> = serde_json::from_value(
         decrypted_verified_payload
             .claim("challenges")
-            .unwrap()
+            .ok_or(TrustchainCRError::ClaimNotFound)?
             .clone(),
-    )
-    .unwrap();
+    )?;
 
     // keymap with requester secret keys
     let ion_attestor = IONAttestor::new(&ddid);
-    let signing_keys = ion_attestor.signing_keys().unwrap();
-    // iterate over all keys, convert to Jwk (josekit) -> TODO: functional
-    // let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
-    // for key in signing_keys {
-    //     let key_id = key.thumbprint().unwrap();
-    //     let jwk = ssi_to_josekit_jwk(&key).unwrap();
-    //     signing_keys_map.insert(key_id, jwk);
-    // }
+    let signing_keys = ion_attestor.signing_keys()?;
+    // iterate over all keys, convert to Jwk (josekit)
+    let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
+    for key in signing_keys {
+        let key_id = key.thumbprint()?;
+        let jwk = ssi_to_josekit_jwk(&key)?;
+        signing_keys_map.insert(key_id, jwk);
+    }
 
-    let signing_keys_map = signing_keys
-        .into_iter()
-        .fold(HashMap::new(), |mut acc, key| {
-            let key_id = key.thumbprint().unwrap();
-            let jwk = ssi_to_josekit_jwk(&key).unwrap();
-            acc.insert(key_id, jwk);
-            acc
-        });
+    // TODO: make functional version work with error propagation for HashMap fold
+    // let signing_keys_map = signing_keys
+    //     .into_iter()
+    //     .fold(HashMap::new(), |mut acc, key| {
+    //         let key_id = key.thumbprint().unwrap();
+    //         let jwk = ssi_to_josekit_jwk(&key);
+    //         acc.insert(key_id, jwk);
+    //         acc
+    //     });
 
-    let decrypted_nonces: HashMap<String, Nonce> =
-        challenges_map
-            .iter()
-            .fold(HashMap::new(), |mut acc, (key_id, nonce)| {
-                acc.insert(
-                    String::from(key_id),
-                    Nonce::from(
-                        requester
-                            .decrypt(
-                                &Some(Value::from(nonce.clone())).unwrap(),
-                                signing_keys_map.get(key_id).unwrap(),
-                            )
-                            .unwrap()
-                            .claim("nonce")
-                            .unwrap()
-                            .as_str()
-                            .unwrap()
-                            .to_string(),
-                    ),
-                );
+    let mut decrypted_nonces: HashMap<String, Nonce> = HashMap::new();
+    for (key_id, nonce) in challenges_map.iter() {
+        let payload = requester.decrypt(
+            &Value::from(nonce.clone()),
+            signing_keys_map
+                .get(key_id)
+                .ok_or(TrustchainCRError::KeyNotFound)?,
+        )?;
+        decrypted_nonces.insert(
+            String::from(key_id),
+            Nonce::from(
+                payload
+                    .claim("nonce")
+                    .ok_or(TrustchainCRError::ClaimNotFound)?
+                    .as_str()
+                    .ok_or(TrustchainCRError::FailedToConvertToStr(
+                        // Unwrap: not None since error would have propagated above if None
+                        payload.claim("nonce").unwrap().clone(),
+                    ))?
+                    .to_string(),
+            ),
+        );
+    }
 
-                acc
-            });
     // sign and encrypt response
-    let value: serde_json::Value = serde_json::to_value(&decrypted_nonces).unwrap();
+    let value: serde_json::Value = serde_json::to_value(&decrypted_nonces)?;
     let mut payload = JwtPayload::new();
-    payload.set_claim("nonces", Some(value)).unwrap();
-    let signed_encrypted_response = requester
-        .sign_and_encrypt_claim(&payload, &temp_s_key, &attestor_p_key)
-        .unwrap();
+    payload.set_claim("nonces", Some(value))?;
+    let signed_encrypted_response =
+        requester.sign_and_encrypt_claim(&payload, &temp_s_key, &attestor_p_key)?;
     // post response to endpoint
     let client = reqwest::Client::new();
     let result = client

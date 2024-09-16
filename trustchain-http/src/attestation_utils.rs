@@ -99,6 +99,12 @@ pub enum TrustchainCRError {
     /// Wrapped Attestor error
     #[error("Attestor error: {0}")]
     AttestorError(#[from] AttestorError),
+    /// Wrapped SSI JWK error
+    #[error("SSI JWK error: {0}")]
+    SSIJwkError(#[from] ssi::jwk::Error),
+    /// Response from a `CustomResponse` must contain data
+    #[error("Must contain data but custom response contained no data")]
+    ResponseMustContainData,
 }
 
 impl From<JoseError> for TrustchainCRError {
