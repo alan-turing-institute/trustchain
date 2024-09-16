@@ -26,9 +26,7 @@ struct Initiated;
 struct IdentityChallengeShared;
 struct IdentityResponseShared;
 struct ContentChallengeShared;
-struct ContentResponseShared;
-struct ContentChallengeComplete;
-struct Complete; // Includes check that dDID is published?
+struct Complete;
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -84,9 +82,7 @@ struct Attestation<State = NotStarted> {
 /// State of the Attestion before the process has been initiated.
 impl Attestation<NotStarted> {
     // Requester side.
-    pub fn new(
-        requester_details: RequesterDetails,
-    ) -> Result<Attestation<NotStarted>, TrustchainCRError> {
+    pub fn new(requester_details: RequesterDetails) -> Result<Self, TrustchainCRError> {
         // Generate temporary keys for use throughout the attestion process.
         let temp_s_key_ssi = generate_key();
         let temp_p_key_ssi = temp_s_key_ssi.to_public();
@@ -116,6 +112,16 @@ impl Attestation<NotStarted> {
             content_response_signature: None,
             state: std::marker::PhantomData::<NotStarted>,
         })
+    }
+
+    // Static deserialisation constructor.
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
+        todo!();
+
+        // TODO: Read these parameters from file then call the `new` method:
+        // requester_details: RequesterDetails,
+        // temp_p_key_ssi: JWK,
+        // temp_p_key: Jwk,
     }
 
     // Requester side.
@@ -156,23 +162,15 @@ impl Attestation<NotStarted> {
         let path = self.attestation_request_path("requester")?;
         std::fs::create_dir_all(&path).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
 
-        let updated_attestation = Attestation {
-            requester_details: self.requester_details,
-            temp_p_key_ssi: self.temp_p_key_ssi,
-            temp_p_key: self.temp_p_key,
-            udid: Some(udid.to_string()),
-            update_p_key: None,
-            identity_nonce: None,
-            identity_challenge_signature: None,
-            identity_response_signature: None,
-            ddid: None,
-            content_nonces: None,
-            content_challenge_signature: None,
-            content_response_signature: None,
-            state: std::marker::PhantomData::<Initiated>,
-        };
+        // Construct the Attestation in the next state.
+        let updated_attestation = Attestation::<Initiated>::new(
+            self.requester_details,
+            self.temp_p_key_ssi,
+            self.temp_p_key,
+            udid.to_string(),
+        );
 
-        // TODO: serialise the initiated attestation (to update the persistent state on the requester side).
+        // TODO: serialise the Initiated attestation (to update the persistent state on the requester side).
 
         Ok(updated_attestation)
     }
@@ -197,32 +195,38 @@ impl Attestation<NotStarted> {
 
 /// State of the Attestation after the requester has made the initial request.
 impl Attestation<Initiated> {
+    pub fn new(
+        requester_details: RequesterDetails,
+        temp_p_key_ssi: JWK,
+        temp_p_key: Jwk,
+        udid: String,
+    ) -> Self {
+        Attestation {
+            requester_details,
+            temp_p_key_ssi,
+            temp_p_key,
+            udid: Some(udid),
+            update_p_key: None,
+            identity_nonce: None,
+            identity_challenge_signature: None,
+            identity_response_signature: None,
+            ddid: None,
+            content_nonces: None,
+            content_challenge_signature: None,
+            content_response_signature: None,
+            state: std::marker::PhantomData::<Initiated>,
+        }
+    }
+
     // Static deserialisation constructor.
-    pub fn deserialise(path: &PathBuf) -> Result<Attestation<Initiated>, TrustchainCRError> {
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
         todo!();
 
-        // Read these parameters from file:
+        // TODO: Read these parameters from file then call the `new` method:
         // requester_details: RequesterDetails,
         // temp_p_key_ssi: JWK,
         // temp_p_key: Jwk,
         // udid: String,
-
-        // // Return the Initiated Attestation.
-        // Ok(Attestation {
-        //     requester_details: self.requester_details,
-        //     temp_p_key_ssi: self.temp_p_key_ssi,
-        //     temp_p_key: self.temp_p_key,
-        //     udid: Some(udid.to_string()),
-        //     update_p_key: None,
-        //     identity_nonce: None,
-        //     identity_challenge_signature: None,
-        //     identity_response_signature: None,
-        //     ddid: None,
-        //     content_nonces: None,
-        //     content_challenge_signature: None,
-        //     content_response_signature: None,
-        //     state: std::marker::PhantomData::<Initiated>,
-        // })
     }
 
     // Attestor side.
@@ -273,23 +277,18 @@ impl Attestation<Initiated> {
             identity_response_signature: None,
         };
 
-        // TODO: SEND THE IDENTITY CHALLENGE TO THE REQUESTER *OUT-OF-BAND*.
+        // TODO: PROMPT USER TO SEND THE IDENTITY CHALLENGE TO THE REQUESTER *OUT-OF-BAND*.
 
-        let updated_attestation = Attestation {
-            requester_details: self.requester_details,
-            temp_p_key_ssi: self.temp_p_key_ssi,
-            temp_p_key: self.temp_p_key,
-            udid: Some(udid.to_string()),
-            update_p_key: Some(update_p_key),
-            identity_nonce: Some(identity_nonce),
-            identity_challenge_signature: Some(identity_challenge_signature),
-            identity_response_signature: None,
-            ddid: None,
-            content_nonces: None,
-            content_challenge_signature: None,
-            content_response_signature: None,
-            state: std::marker::PhantomData::<IdentityChallengeShared>,
-        };
+        // Construct the Attestation in the next state.
+        let updated_attestation = Attestation::<IdentityChallengeShared>::new(
+            self.requester_details,
+            self.temp_p_key_ssi,
+            self.temp_p_key,
+            udid.to_string(),
+            update_p_key,
+            identity_nonce,
+            identity_challenge_signature,
+        );
 
         // TODO: serialise the updated attestation (to update the persistent state on the attestor side).
 
@@ -310,21 +309,16 @@ impl Attestation<Initiated> {
         // TODO: Check the attestor's signature on the identity challenge using their public key
         // from the uDID.
 
-        let updated_attestation = Attestation {
-            requester_details: self.requester_details,
-            temp_p_key_ssi: self.temp_p_key_ssi,
-            temp_p_key: self.temp_p_key,
-            udid: self.udid,
-            update_p_key: Some(identity_challenge.payload.update_p_key),
-            identity_nonce: Some(identity_challenge.payload.identity_nonce),
-            identity_challenge_signature: Some(identity_challenge.identity_challenge_signature),
-            identity_response_signature: None,
-            ddid: None,
-            content_nonces: None,
-            content_challenge_signature: None,
-            content_response_signature: None,
-            state: std::marker::PhantomData::<IdentityChallengeShared>,
-        };
+        // Construct the Attestation in the next state.
+        let updated_attestation = Attestation::<IdentityChallengeShared>::new(
+            self.requester_details,
+            self.temp_p_key_ssi,
+            self.temp_p_key,
+            self.udid.expect("Some value guaranteed by state."),
+            identity_challenge.payload.update_p_key,
+            identity_challenge.payload.identity_nonce,
+            identity_challenge.identity_challenge_signature,
+        );
 
         // TODO: serialise the updated attestation (to update the persistent state on the requester side).
 
@@ -343,13 +337,37 @@ impl Attestation<Initiated> {
 /// State of the Attestation after the identity challenge has been shared by attestor and received
 /// (and admitted) by the requester.
 impl Attestation<IdentityChallengeShared> {
+    pub fn new(
+        requester_details: RequesterDetails,
+        temp_p_key_ssi: JWK,
+        temp_p_key: Jwk,
+        udid: String,
+        update_p_key: Jwk,
+        identity_nonce: Nonce,
+        identity_challenge_signature: String,
+    ) -> Self {
+        Attestation {
+            requester_details,
+            temp_p_key_ssi,
+            temp_p_key,
+            udid: Some(udid),
+            update_p_key: Some(update_p_key),
+            identity_nonce: Some(identity_nonce),
+            identity_challenge_signature: Some(identity_challenge_signature),
+            identity_response_signature: None,
+            ddid: None,
+            content_nonces: None,
+            content_challenge_signature: None,
+            content_response_signature: None,
+            state: std::marker::PhantomData::<IdentityChallengeShared>,
+        }
+    }
+
     // Static deserialisation constructor.
-    pub fn deserialise(
-        path: &PathBuf,
-    ) -> Result<Attestation<IdentityChallengeShared>, TrustchainCRError> {
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
         todo!();
 
-        // Read these parameters from file:
+        // TODO: Read these parameters from file then call the `new` method:
         // requester_details: RequesterDetails,
         // temp_p_key_ssi: JWK,
         // temp_p_key: Jwk,
@@ -357,23 +375,6 @@ impl Attestation<IdentityChallengeShared> {
         // update_p_key: Jwk,
         // identity_nonce: Nonce,
         // identity_challenge_signature: String,
-
-        // // Return the Attestation in state IdentityChallengeShared.
-        // Ok(Attestation {
-        //     requester_details: self.requester_details,
-        //     temp_p_key_ssi: self.temp_p_key_ssi,
-        //     temp_p_key: self.temp_p_key,
-        //     udid: Some(udid.to_string()),
-        //     update_p_key: Some(update_p_key),
-        //     identity_nonce: Some(identity_nonce),
-        //     identity_challenge_signature: Some(identity_challenge_signature),
-        //     identity_response_signature: None,
-        //     ddid: None,
-        //     content_nonces: None,
-        //     content_challenge_signature: None,
-        //     content_response_signature: None,
-        //     state: std::marker::PhantomData::<IdentityChallengeShared>,
-        // })
     }
 
     // Requester side.
@@ -427,21 +428,19 @@ impl Attestation<IdentityChallengeShared> {
             return Err(TrustchainCRError::FailedToRespond(result));
         }
 
-        let updated_attestation = Attestation {
-            requester_details: self.requester_details,
-            temp_p_key_ssi: self.temp_p_key_ssi,
-            temp_p_key: self.temp_p_key,
-            udid: self.udid,
-            update_p_key: self.update_p_key,
-            identity_nonce: self.identity_nonce,
-            identity_challenge_signature: self.identity_challenge_signature,
-            identity_response_signature: Some(identity_response_signature),
-            ddid: None,
-            content_nonces: None,
-            content_challenge_signature: None,
-            content_response_signature: None,
-            state: std::marker::PhantomData::<IdentityResponseShared>,
-        };
+        // Construct the Attestation in the next state.
+        let updated_attestation = Attestation::<IdentityResponseShared>::new(
+            self.requester_details,
+            self.temp_p_key_ssi,
+            self.temp_p_key,
+            self.udid.expect("Some value guaranteed by state."),
+            self.update_p_key.expect("Some value guaranteed by state."),
+            self.identity_nonce
+                .expect("Some value guaranteed by state."),
+            self.identity_challenge_signature
+                .expect("Some value guaranteed by state."),
+            identity_response_signature,
+        );
 
         // TODO: serialise the updated attestation (to update the persistent state on the attestor side).
 
@@ -479,13 +478,38 @@ impl Attestation<IdentityChallengeShared> {
 /// State of the Attestation after the identity response has been shared by requester and received
 /// (and admitted) by the attestor.
 impl Attestation<IdentityResponseShared> {
+    pub fn new(
+        requester_details: RequesterDetails,
+        temp_p_key_ssi: JWK,
+        temp_p_key: Jwk,
+        udid: String,
+        update_p_key: Jwk,
+        identity_nonce: Nonce,
+        identity_challenge_signature: String,
+        identity_response_signature: String,
+    ) -> Self {
+        Attestation {
+            requester_details,
+            temp_p_key_ssi,
+            temp_p_key,
+            udid: Some(udid),
+            update_p_key: Some(update_p_key),
+            identity_nonce: Some(identity_nonce),
+            identity_challenge_signature: Some(identity_challenge_signature),
+            identity_response_signature: Some(identity_response_signature),
+            ddid: None,
+            content_nonces: None,
+            content_challenge_signature: None,
+            content_response_signature: None,
+            state: std::marker::PhantomData::<IdentityResponseShared>,
+        }
+    }
+
     // Static deserialisation constructor.
-    pub fn deserialise(
-        path: &PathBuf,
-    ) -> Result<Attestation<IdentityResponseShared>, TrustchainCRError> {
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
         todo!();
 
-        // Read these parameters from file:
+        // TODO: Read these parameters from file then call the `new` method:
         // requester_details: RequesterDetails,
         // temp_p_key_ssi: JWK,
         // temp_p_key: Jwk,
@@ -494,23 +518,6 @@ impl Attestation<IdentityResponseShared> {
         // identity_nonce: Nonce,
         // identity_challenge_signature: String,
         // identity_response_signature: String
-
-        // // Return the Attestation in state IdentityResponseShared.
-        // Ok(Attestation {
-        //     requester_details: self.requester_details,
-        //     temp_p_key_ssi: self.temp_p_key_ssi,
-        //     temp_p_key: self.temp_p_key,
-        //     udid: Some(udid.to_string()),
-        //     update_p_key: Some(update_p_key),
-        //     identity_nonce: Some(identity_nonce),
-        //     identity_challenge_signature: Some(identity_challenge_signature),
-        //     identity_response_signature: Some(identity_response_signature),
-        //     ddid: None,
-        //     content_nonces: None,
-        //     content_challenge_signature: None,
-        //     content_response_signature: None,
-        //     state: std::marker::PhantomData::<IdentityChallengeShared>,
-        // })
     }
 
     // Attestor side.
@@ -559,7 +566,7 @@ impl Attestation<IdentityResponseShared> {
         self,
         udid: &str,
         ddid: &str,
-    ) -> Result<Attestation<ContentChallengeComplete>, TrustchainCRError> {
+    ) -> Result<Attestation<Complete>, TrustchainCRError> {
         // Get endpoint and URI. TODO: use URI type.
         let url_path = "/did/attestor/content/initiate";
         let endpoint = attestation_endpoint(&udid)?;
@@ -675,6 +682,8 @@ impl Attestation<IdentityResponseShared> {
         //     return Err(TrustchainCRError::FailedToRespond(result));
         // }
 
+        // Construct the Attestation in the next state.
+        // TODO: use the `new` method here.
         let updated_attestation = Attestation {
             requester_details: self.requester_details,
             temp_p_key_ssi: self.temp_p_key_ssi,
@@ -688,7 +697,7 @@ impl Attestation<IdentityResponseShared> {
             content_nonces: Some(content_nonces), // todo.
             content_challenge_signature: None,    // todo.
             content_response_signature: None,     // todo.
-            state: std::marker::PhantomData::<ContentChallengeComplete>,
+            state: std::marker::PhantomData::<Complete>,
         };
 
         // TODO: serialise the updated attestation (to update the persistent state on the requester side).
@@ -706,6 +715,89 @@ impl Attestation<IdentityResponseShared> {
     //         return Err(TrustchainCRError::FailedToVerifyNonce);
     //     }
     // }
+}
+
+/// State of the Attestation after the content challenge has been shared by the attestor.
+/// Note that this state is skipped on the requester side, which jumps directly from the
+/// IdentityResponseShared state to the Complete state.
+impl Attestation<ContentChallengeShared> {
+    pub fn new(
+        requester_details: RequesterDetails,
+        temp_p_key_ssi: JWK,
+        temp_p_key: Jwk,
+        udid: String,
+        update_p_key: Jwk,
+        identity_nonce: Nonce,
+        identity_challenge_signature: String,
+        identity_response_signature: String,
+        ddid: String,
+        content_nonces: HashMap<String, Nonce>,
+        content_challenge_signature: String,
+    ) -> Self {
+        Attestation {
+            requester_details,
+            temp_p_key_ssi,
+            temp_p_key,
+            udid: Some(udid),
+            update_p_key: Some(update_p_key),
+            identity_nonce: Some(identity_nonce),
+            identity_challenge_signature: Some(identity_challenge_signature),
+            identity_response_signature: Some(identity_response_signature),
+            ddid: Some(ddid),
+            content_nonces: Some(content_nonces),
+            content_challenge_signature: Some(content_challenge_signature),
+            content_response_signature: None,
+            state: std::marker::PhantomData::<ContentChallengeShared>,
+        }
+    }
+
+    // Static deserialisation constructor.
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
+        todo!();
+
+        // TODO: Read all relevant parameters from file then call the `new` method.
+    }
+}
+
+/// State of the Attestation after the process is complete.
+impl Attestation<Complete> {
+    pub fn new(
+        requester_details: RequesterDetails,
+        temp_p_key_ssi: JWK,
+        temp_p_key: Jwk,
+        udid: String,
+        update_p_key: Jwk,
+        identity_nonce: Nonce,
+        identity_challenge_signature: String,
+        identity_response_signature: String,
+        ddid: String,
+        content_nonces: HashMap<String, Nonce>,
+        content_challenge_signature: String,
+        content_response_signature: String,
+    ) -> Self {
+        Attestation {
+            requester_details,
+            temp_p_key_ssi,
+            temp_p_key,
+            udid: Some(udid),
+            update_p_key: Some(update_p_key),
+            identity_nonce: Some(identity_nonce),
+            identity_challenge_signature: Some(identity_challenge_signature),
+            identity_response_signature: Some(identity_response_signature),
+            ddid: Some(ddid),
+            content_nonces: Some(content_nonces),
+            content_challenge_signature: Some(content_challenge_signature),
+            content_response_signature: Some(content_response_signature),
+            state: std::marker::PhantomData::<Complete>,
+        }
+    }
+
+    // Static deserialisation constructor.
+    pub fn deserialise(path: &PathBuf) -> Result<Self, TrustchainCRError> {
+        todo!();
+
+        // TODO: Read all parameters from file then call the `new` method.
+    }
 }
 
 impl<State> Attestation<State> {
