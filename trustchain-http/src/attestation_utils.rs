@@ -481,15 +481,27 @@ impl TryFrom<&JwtPayload> for IdentityCRChallenge {
             identity_challenge_signature: None,
             identity_response_signature: None,
         };
-        challenge.update_p_key = Some(
-            serde_json::from_str(value.claim("update_p_key").unwrap().as_str().unwrap()).unwrap(),
-        );
+        challenge.update_p_key = Some(serde_json::from_str(
+            value
+                .claim("update_p_key")
+                .ok_or(TrustchainCRError::ClaimNotFound)?
+                .as_str()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(
+                    // Unwrap: not None since error would have propagated above if None
+                    value.claim("update_p_key").unwrap().clone(),
+                ))?,
+        )?);
         challenge.identity_nonce = Some(Nonce::from(
+            // TODO: refactor into function for a given payload and claim field,
+            // returns a Result<String>
             value
                 .claim("identity_nonce")
-                .unwrap()
+                .ok_or(TrustchainCRError::ClaimNotFound)?
                 .as_str()
-                .unwrap()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(
+                    // Unwrap: not None since error would have propagated above if None
+                    value.claim("identity_nonce").unwrap().clone(),
+                ))?
                 .to_string(),
         ));
         Ok(challenge)
