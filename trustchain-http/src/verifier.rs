@@ -1,3 +1,4 @@
+//! Handlers and trait for verifying VCs and VPs and providing presentation requests.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
@@ -163,8 +164,8 @@ impl TrustchainVerifierHTTPHandler {
                 let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
                     serde_json::to_string(&DIDQRCode {
                         did: app_state.config.server_did.as_ref().unwrap().to_owned(),
-                        route: "/vc/verifier/".to_string(),
-                        id: uid.to_owned(),
+                        service: "TrustchainHTTP".to_string(),
+                        relative_ref: Some(format!("/vc/verifier/{uid}")),
                     })
                     .unwrap()
                 } else {

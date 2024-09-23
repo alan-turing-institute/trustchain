@@ -1,3 +1,4 @@
+//! Error type and conversions.
 use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
 use josekit::JoseError;
@@ -12,6 +13,7 @@ use trustchain_ion::root::TrustchainRootError;
 
 use crate::attestation_utils::TrustchainCRError;
 
+/// Trustchain HTTP error type.
 // TODO: refine and add doc comments for error variants
 #[derive(Error, Debug)]
 pub enum TrustchainHTTPError {

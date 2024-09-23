@@ -1,5 +1,6 @@
-#![allow(dead_code)]
+//! Test fixtures.
 
+// TODO: check variable name
 pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS: &str = r##"
 {
    "authentication" : [

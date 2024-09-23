@@ -1,9 +1,8 @@
 [package]
 name = "trustchain-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
-
 
 [dependencies]
 ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", rev = "ec9386e125d87c5f54898b34fbe0883b3b36ffd4" }

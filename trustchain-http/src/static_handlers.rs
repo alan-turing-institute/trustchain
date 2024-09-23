@@ -1,3 +1,4 @@
+//! Static handlers for front-end.
 use axum::response::Html;
 
 pub async fn index() -> Html<String> {

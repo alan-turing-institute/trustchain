@@ -34,3 +34,6 @@ outputs/
 
 # Python venv
 .venv
+
+# OS
+.DS_Store

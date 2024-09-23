@@ -1,5 +1,5 @@
 //! Key management API with default implementations.
-use crate::TRUSTCHAIN_DATA;
+use crate::{JSON_FILE_EXTENSION, TRUSTCHAIN_DATA};
 use serde_json::{from_str, to_string_pretty as to_json};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
@@ -151,10 +151,10 @@ pub trait KeyManager {
     ) -> Result<PathBuf, KeyManagerError> {
         // Get the stem for the corresponding key type
         let file_name = match key_type {
-            KeyType::UpdateKey => "update_key.json",
-            KeyType::NextUpdateKey => "next_update_key.json",
-            KeyType::RecoveryKey => "recovery_key.json",
-            KeyType::SigningKey => "signing_key.json",
+            KeyType::UpdateKey => format!("update_key{}", JSON_FILE_EXTENSION),
+            KeyType::NextUpdateKey => format!("next_update_key{}", JSON_FILE_EXTENSION),
+            KeyType::RecoveryKey => format!("recovery_key{}", JSON_FILE_EXTENSION),
+            KeyType::SigningKey => format!("signing_key{}", JSON_FILE_EXTENSION),
         };
 
         // Get environment for TRUSTCHAIN_DATA

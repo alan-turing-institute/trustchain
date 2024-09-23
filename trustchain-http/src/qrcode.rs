@@ -1,3 +1,4 @@
+//! QR code functionality for encoding credential offers and presentation requests.
 use base64::engine::general_purpose;
 use base64::write::EncoderWriter;
 use image::Luma;
@@ -9,12 +10,12 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 /// QR code JSON type of verifiable content.
 pub(crate) struct DIDQRCode {
-    /// DID for issuance and/or verifier endpoint resolution.
+    /// DID
     pub did: String,
-    /// HTTP route for making issuer or verifer requests.
-    pub route: String,
-    /// ID for identifying credential offer or presentation request.
-    pub id: String,
+    /// DID `service` parameter (see [W3C spec](https://www.w3.org/TR/did-core/#did-parameters)).
+    pub service: String,
+    /// DID `relativeRef` parameter (see [W3C spec](https://www.w3.org/TR/did-core/#did-parameters)).
+    pub relative_ref: Option<String>,
 }
 
 pub fn image_to_base64_string(image: &DynamicImage) -> String {

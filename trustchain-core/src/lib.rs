@@ -1,4 +1,4 @@
-//! Trustchain library.
+//! Core traits and logic (data layer independent).
 pub mod attestor;
 pub mod chain;
 pub mod commitment;
@@ -30,3 +30,6 @@ pub const TRUSTCHAIN_PROOF_SERVICE_ID_VALUE: &str = "trustchain-controller-proof
 
 /// The value of the type for the service containing a Trustchain controller proof within a DID document.
 pub const TRUSTCHAIN_PROOF_SERVICE_TYPE_VALUE: &str = "TrustchainProofService";
+
+/// String slice for JSON file extension for consistency.
+pub const JSON_FILE_EXTENSION: &str = ".json";

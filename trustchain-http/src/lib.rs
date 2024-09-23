@@ -1,3 +1,4 @@
+//! Trustchain HTTP server functionality.
 pub mod attestation_encryption_utils;
 pub mod attestation_utils;
 pub mod attestor;

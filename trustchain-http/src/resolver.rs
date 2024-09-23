@@ -1,3 +1,4 @@
+//! Handlers and trait for resolving Trustchain DIDs, chains and bundles.
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;

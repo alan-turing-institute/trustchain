@@ -1,3 +1,4 @@
+//! Trustchain HTTP router shared state.
 use crate::root::RootCandidatesResult;
 use crate::store::CredentialStoreItem;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
@@ -13,7 +14,8 @@ use trustchain_ion::verifier::TrustchainVerifier;
 
 const DEFAULT_VERIFIER_ENDPOINT: &str = "http://localhost:3000/";
 
-/// A shared app state for handlers.
+/// A shared app state for the router providing configuration, verifier, credential offer store,
+/// presentation request store and root candidates cache for handlers.
 pub struct AppState<T = HTTPSidetreeDIDResolver<ION>>
 where
     T: DIDResolver + Send + Sync,

@@ -1,3 +1,4 @@
+//! Handlers and trait for issuing VCs and providing credential offers.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
 use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
@@ -145,8 +146,8 @@ impl TrustchainIssuerHTTPHandler {
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
                 did,
-                route: "/vc/issuer/".to_string(),
-                id,
+                service: "TrustchainHTTP".to_string(),
+                relative_ref: Some(format!("/vc/issuer/{id}")),
             })
             .unwrap()
         } else {
@@ -174,8 +175,8 @@ impl TrustchainIssuerHTTPHandler {
         let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
             serde_json::to_string(&DIDQRCode {
                 did,
-                route: "/vc_rss/issuer/".to_string(),
-                id,
+                service: "TrustchainHTTP".to_string(),
+                relative_ref: Some(format!("/vc_rss/issuer/{id}")),
             })
             .unwrap()
         } else {

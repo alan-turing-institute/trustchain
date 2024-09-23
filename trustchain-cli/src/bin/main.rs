@@ -6,15 +6,19 @@ use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
     io::{self, stdin, BufReader},
+    path::Path,
     path::PathBuf,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainVCAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
 use trustchain_cli::config::cli_config;
 use trustchain_core::{
-    utils::extract_keys, vc::CredentialError, verifier::Verifier, TRUSTCHAIN_DATA,
+    utils::extract_keys,
+    vc::{CredentialError, DataCredentialError},
+    verifier::Verifier,
+    JSON_FILE_EXTENSION, TRUSTCHAIN_DATA,
 };
 use trustchain_http::{
     attestation_encryption_utils::ssi_to_josekit_jwk,
@@ -29,6 +33,7 @@ use trustchain_ion::{
     create::{create_operation, create_operation_mnemonic},
     trustchain_resolver,
     verifier::TrustchainVerifier,
+    CREATE_OPERATION_FILENAME_PREFIX,
 };
 
 fn cli() -> Command {
@@ -41,7 +46,7 @@ fn cli() -> Command {
         .allow_external_subcommands(true)
         .subcommand(
             Command::new("did")
-                .about("DID functionality: create, attest, resolve.")
+                .about("DID functionality: create, attest, resolve, verify.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
@@ -84,14 +89,37 @@ fn cli() -> Command {
                         .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(--key_id <KEY_ID>).required(false)),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
+                ),
+        )
+        .subcommand(
+            Command::new("data")
+                .about("Data provenance functionality: sign and verify.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .allow_external_subcommands(true)
+                .subcommand(
+                    Command::new("sign")
+                        .about("Signs the data in the given file.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
+                        .arg(arg!(-d --did <DID>).required(true))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(true))
+                        .arg(arg!(--key_id <KEY_ID>).required(false)),
+                )
+                .subcommand(
+                    Command::new("verify")
+                        .about("Verifies a data credential.")
+                        .arg(arg!(-v - -verbose).action(ArgAction::Count))
+                        .arg(arg!(-f --data_file <DATA_FILE>).required(true))
+                        .arg(arg!(-c --credential_file <CREDENTIAL_FILE>).required(true))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
@@ -170,20 +198,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if mnemonic && file_path.is_some() {
                         panic!("Please use only one of '--file_path' and '--mnemonic'.")
                     }
-                    if !mnemonic {
+                    let filename = if !mnemonic {
                         // Read doc state from file path
                         let doc_state = if let Some(file_path) = file_path {
                             Some(serde_json::from_reader(File::open(file_path)?)?)
                         } else {
                             None
                         };
-                        create_operation(doc_state, verbose)?;
+                        create_operation(doc_state, verbose)?
                     } else {
                         let mut mnemonic = String::new();
                         println!("Enter a mnemonic:");
                         std::io::stdin().read_line(&mut mnemonic).unwrap();
-                        create_operation_mnemonic(&mnemonic, None)?;
-                    }
+                        create_operation_mnemonic(&mnemonic, None)?
+                    };
+                    println!(
+                        "Created new DID: {}",
+                        filename
+                            .strip_prefix(CREATE_OPERATION_FILENAME_PREFIX)
+                            .unwrap_or_else(|| &filename)
+                            .strip_suffix(JSON_FILE_EXTENSION)
+                            .unwrap_or_else(|| &filename)
+                    );
                 }
                 Some(("attest", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
@@ -291,35 +327,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        err @ Err(CredentialError::VerificationResultError(_)) => {
-                            println!("Proof... Invalid");
-                            err?;
-                        }
-                        err @ Err(CredentialError::NoProofPresent) => {
-                            println!("Proof... ❌ (missing proof)");
-                            err?;
-                        }
-                        err @ Err(CredentialError::MissingVerificationMethod) => {
-                            println!("Proof... ❌ (missing verification method)");
-                            err?;
-                        }
-                        err @ Err(CredentialError::NoIssuerPresent) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (missing issuer)");
-                            err?;
-                        }
-                        err @ Err(CredentialError::VerifierError(_)) => {
-                            println!("Proof... ✅");
-                            println!("Issuer... ❌ (with verifier error)");
-                            err?;
-                        }
-                        err @ Err(CredentialError::FailedToDecodeJWT) => {
-                            println!("Proof... ❌");
-                            println!("Issuer... ❌");
-                            err?;
+                        Err(cred_err) => {
+                            handle_credential_error(cred_err)?;
                         }
                         Ok(_) => {
-                            println!("Proof... ✅");
+                            println!("Proof.... ✅");
                             println!("Issuer... ✅");
                         }
                     }
@@ -540,7 +552,138 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             _ => panic!("Unrecognised CR subcommand."),
         },
+        Some(("data", sub_matches)) => {
+            let verifier = TrustchainVerifier::new(trustchain_resolver(&endpoint));
+            let resolver = verifier.resolver();
+            match sub_matches.subcommand() {
+                Some(("sign", sub_matches)) => {
+                    let did = sub_matches.get_one::<String>("did").unwrap();
+                    let key_id = sub_matches
+                        .get_one::<String>("key_id")
+                        .map(|string| string.as_str());
+                    let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    let bytes = std::fs::read(data)?;
+
+                    let data_with_proof = TrustchainAPI::sign_data(
+                        &bytes,
+                        did,
+                        None,
+                        key_id,
+                        resolver,
+                        &mut context_loader,
+                    )
+                    .await
+                    .expect("Failed to sign data.");
+                    println!("{}", &to_string_pretty(&data_with_proof).unwrap());
+                }
+                Some(("verify", sub_matches)) => {
+                    let verbose = sub_matches.get_one::<u8>("verbose");
+                    let root_event_time = match sub_matches.get_one::<String>("root_event_time") {
+                        Some(time) => time.parse::<u64>().unwrap(),
+                        None => cli_config().root_event_time.into(),
+                    };
+                    let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
+                    // Deserialize
+                    let credential: Credential =
+                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
+                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+                        } else {
+                            let buffer = BufReader::new(stdin());
+                            serde_json::from_reader(buffer).unwrap()
+                        };
+                    let bytes = std::fs::read(data)?;
+
+                    let verify_result = TrustchainAPI::verify_data(
+                        &bytes,
+                        &credential,
+                        None,
+                        root_event_time,
+                        &verifier,
+                        &mut context_loader,
+                    )
+                    .await;
+                    // Handle result
+                    match verify_result {
+                        Err(DataCredentialError::CredentialError(cred_err)) => {
+                            handle_credential_error(cred_err)?;
+                        }
+                        Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
+                            println!("Digest... ❌ (mismatched data hash digests)");
+                        }
+                        Err(DataCredentialError::MissingAttribute(att)) => {
+                            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
+                        }
+                        Err(DataCredentialError::ManyCredentialSubject(subjects)) => {
+                            println!("Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})");
+                        }
+                        Ok(_) => {
+                            println!("Proof.... ✅");
+                            println!("Issuer... ✅");
+                            println!("Digest... ✅");
+                        }
+                    };
+                    // Show chain
+                    if let Some(&verbose_count) = verbose {
+                        let issuer = credential
+                            .get_issuer()
+                            .expect("No issuer present in credential.");
+                        let chain = TrustchainAPI::verify(issuer, root_event_time, &verifier)
+                            .await
+                            // Can unwrap as already verified above.
+                            .unwrap();
+                        // TODO: avoid repetition (see vc subcommand above):
+                        if verbose_count > 1 {
+                            let (_, doc, doc_meta) =
+                                resolver.resolve_as_result(issuer).await.unwrap();
+                            println!("---");
+                            println!("Issuer DID doc:");
+                            println!("{}", &to_string_pretty(&doc.as_ref().unwrap()).unwrap());
+                            println!("---");
+                            println!("Issuer DID doc metadata:");
+                            println!(
+                                "{}",
+                                &to_string_pretty(&doc_meta.as_ref().unwrap()).unwrap()
+                            );
+                        }
+                        if verbose_count > 0 {
+                            println!("---");
+                            println!("Chain:");
+                            println!("{}", chain);
+                            println!("---");
+                        }
+                    }
+                }
+                _ => panic!("Unrecognised DATA subcommand."),
+            }
+        }
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
+}
+
+fn handle_credential_error(err: CredentialError) -> Result<(), CredentialError> {
+    match err {
+        CredentialError::VerificationResultError(_) => {
+            println!("Proof... ❌ Invalid");
+        }
+        CredentialError::NoProofPresent => {
+            println!("Proof... ❌ (missing proof)");
+        }
+        CredentialError::MissingVerificationMethod => {
+            println!("Proof... ❌ (missing verification method)");
+        }
+        CredentialError::NoIssuerPresent => {
+            println!("Proof.... ✅");
+            println!("Issuer... ❌ (missing issuer)");
+        }
+        CredentialError::VerifierError(_) => {
+            println!("Proof.... ✅");
+            println!("Issuer... ❌ (with verifier error)");
+        }
+        CredentialError::FailedToDecodeJWT => {
+            println!("Proof.... ❌");
+            println!("Issuer... ❌");
+        }
+    }
+    Err(err)
 }
