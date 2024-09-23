@@ -111,7 +111,7 @@ pub async fn identity_response(
     let signed_encrypted_response = requester.sign_and_encrypt_claim(
         &decrypted_verified_payload,
         &temp_s_key,
-        &attestor_p_key,
+        attestor_p_key,
     )?;
     let key_id = temp_s_key_ssi.to_public().thumbprint()?;
     // get uri for POST request response
@@ -125,7 +125,7 @@ pub async fn identity_response(
         .json(&signed_encrypted_response)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         return Err(TrustchainCRError::FailedToRespond(result));
     }
@@ -166,7 +166,7 @@ pub async fn initiate_content_challenge(
 ) -> Result<(ContentCRInitiation, ContentCRChallenge), TrustchainCRError> {
     // deserialise identity_cr_initiation and get key id
     let identity_cr_initiation = IdentityCRInitiation::new()
-        .elementwise_deserialize(&path)?
+        .elementwise_deserialize(path)?
         .ok_or(TrustchainCRError::FailedToDeserialize)?;
     let temp_s_key_ssi = josekit_to_ssi_jwk(&identity_cr_initiation.temp_s_key().cloned()?)?;
     let key_id = temp_s_key_ssi.to_public().thumbprint()?;
@@ -185,23 +185,20 @@ pub async fn initiate_content_challenge(
         .json(&ddid)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToRespond(result));
     }
 
-    let response_body: CustomResponse = result
-        .json()
-        .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+    let response_body: CustomResponse = result.json().await.map_err(TrustchainCRError::Reqwest)?;
     let signed_encrypted_challenge = response_body
         .data
         .ok_or(TrustchainCRError::ResponseMustContainData)?;
 
     // response
     let (nonces, response) = content_response(
-        &path,
+        path,
         &signed_encrypted_challenge.to_string(),
         services,
         attestor_p_key.clone(),
@@ -257,7 +254,7 @@ pub async fn content_response(
     )?;
 
     // keymap with requester secret keys
-    let ion_attestor = IONAttestor::new(&ddid);
+    let ion_attestor = IONAttestor::new(ddid);
     let signing_keys = ion_attestor.signing_keys()?;
     // iterate over all keys, convert to Jwk (josekit)
     let mut signing_keys_map: HashMap<String, Jwk> = HashMap::new();
@@ -314,7 +311,7 @@ pub async fn content_response(
         .json(&signed_encrypted_response)
         .send()
         .await
-        .map_err(|err| TrustchainCRError::Reqwest(err))?;
+        .map_err(TrustchainCRError::Reqwest)?;
     if result.status() != 200 {
         println!("Status code: {}", result.status());
         return Err(TrustchainCRError::FailedToRespond(result));

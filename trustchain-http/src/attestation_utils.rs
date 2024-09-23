@@ -60,6 +60,8 @@ pub enum TrustchainCRError {
     /// Failed deserialize from file.
     #[error("Failed to deserialize with error: {0}.")]
     FailedToDeserializeWithError(serde_json::Error),
+    #[error("Wrapped SSI JWK error: {0}.")]
+    WrappedSSIJWKError(ssi::jwk::Error),
     /// Failed to check CR status.
     #[error("Failed to determine CR status.")]
     FailedStatusCheck,
@@ -137,6 +139,12 @@ pub enum CurrentCRState {
 /// Nonce type for challenge-response.
 pub struct Nonce(String);
 
+impl Default for Nonce {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Nonce {
     pub fn new() -> Self {
         Self(
@@ -189,7 +197,7 @@ where
 {
     /// Serialize each field of the struct to a file.
     fn elementwise_serialize(&self, path: &PathBuf) -> Result<(), TrustchainCRError> {
-        let serialized = serde_json::to_value(&self)?;
+        let serialized = serde_json::to_value(self)?;
         if let Value::Object(fields) = serialized {
             for (field_name, field_value) in fields {
                 if !field_value.is_null() {
@@ -213,7 +221,12 @@ where
         }
 
         // Open the new file if it doesn't exist yet
-        let new_file = OpenOptions::new().create(true).write(true).open(path);
+        let new_file = OpenOptions::new()
+            .create(true)
+            .append(false)
+            .truncate(false)
+            .write(true)
+            .open(path);
 
         // Write key to file
         match new_file {
@@ -256,6 +269,12 @@ pub struct IdentityCRInitiation {
     pub requester_details: Option<RequesterDetails>,
 }
 
+impl Default for IdentityCRInitiation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IdentityCRInitiation {
     pub fn new() -> Self {
         Self {
@@ -267,7 +286,7 @@ impl IdentityCRInitiation {
     /// Returns true if all fields required for the initiation have a non-null value.
     /// Note: temp_s_key is optional since only requester has it.
     pub fn is_complete(&self) -> bool {
-        return self.temp_p_key.is_some() && self.requester_details.is_some();
+        self.temp_p_key.is_some() && self.requester_details.is_some()
     }
 
     pub fn temp_p_key(&self) -> Result<&Jwk, TrustchainCRError> {
@@ -289,7 +308,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         path: &PathBuf,
     ) -> Result<Option<IdentityCRInitiation>, TrustchainCRError> {
         let temp_p_key_path = path.join("temp_p_key.json");
-        self.temp_p_key = match File::open(&temp_p_key_path) {
+        self.temp_p_key = match File::open(temp_p_key_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)?;
@@ -309,7 +328,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         // self.temp_p_key = Some(deserialized);
 
         let temp_s_key_path = path.join("temp_s_key.json");
-        self.temp_s_key = match File::open(&temp_s_key_path) {
+        self.temp_s_key = match File::open(temp_s_key_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)?;
@@ -319,7 +338,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         };
 
         let requester_details_path = path.join("requester_details.json");
-        self.requester_details = match File::open(&requester_details_path) {
+        self.requester_details = match File::open(requester_details_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)?;
@@ -351,6 +370,12 @@ pub struct IdentityCRChallenge {
     pub identity_response_signature: Option<String>,
 }
 
+impl Default for IdentityCRChallenge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IdentityCRChallenge {
     pub fn new() -> Self {
         Self {
@@ -364,13 +389,13 @@ impl IdentityCRChallenge {
     /// Returns true if all fields required for the challenge have a non-null value.
     /// Note: update_s_key is optional since only attestor has it.
     fn challenge_complete(&self) -> bool {
-        return self.update_p_key.is_some()
+        self.update_p_key.is_some()
             && self.identity_nonce.is_some()
-            && self.identity_challenge_signature.is_some();
+            && self.identity_challenge_signature.is_some()
     }
     /// Returns true if challenge-response is complete.
     fn is_complete(&self) -> bool {
-        return self.challenge_complete() && self.identity_response_signature.is_some();
+        self.challenge_complete() && self.identity_response_signature.is_some()
     }
 }
 
@@ -382,7 +407,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRChallenge {
     ) -> Result<Option<IdentityCRChallenge>, TrustchainCRError> {
         // update public key
         let full_path = path.join("update_p_key.json");
-        self.update_p_key = match File::open(&full_path) {
+        self.update_p_key = match File::open(full_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)?;
@@ -520,6 +545,12 @@ pub struct ContentCRInitiation {
     pub requester_did: Option<String>,
 }
 
+impl Default for ContentCRInitiation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContentCRInitiation {
     pub fn new() -> Self {
         Self {
@@ -528,7 +559,7 @@ impl ContentCRInitiation {
     }
 
     fn is_complete(&self) -> bool {
-        return self.requester_did.is_some();
+        self.requester_did.is_some()
     }
 }
 
@@ -539,7 +570,7 @@ impl ElementwiseSerializeDeserialize for ContentCRInitiation {
         path: &PathBuf,
     ) -> Result<Option<ContentCRInitiation>, TrustchainCRError> {
         let requester_details_path = path.join("requester_did.json");
-        self.requester_did = match File::open(&requester_details_path) {
+        self.requester_did = match File::open(requester_details_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
                 let deserialized = serde_json::from_reader(reader)?;
@@ -564,6 +595,12 @@ pub struct ContentCRChallenge {
     pub content_response_signature: Option<String>,
 }
 
+impl Default for ContentCRChallenge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContentCRChallenge {
     pub fn new() -> Self {
         Self {
@@ -574,11 +611,11 @@ impl ContentCRChallenge {
     }
     /// Returns true if all fields required for the challenge have a non-null value.
     fn challenge_complete(&self) -> bool {
-        return self.content_nonce.is_some() && self.content_challenge_signature.is_some();
+        self.content_nonce.is_some() && self.content_challenge_signature.is_some()
     }
     /// Returns true if all fields required for the challenge-response have a non-null value.
     fn is_complete(&self) -> bool {
-        return self.challenge_complete() && self.content_response_signature.is_some();
+        self.challenge_complete() && self.content_response_signature.is_some()
     }
 }
 
@@ -642,6 +679,12 @@ pub struct CRState {
     pub content_challenge_response: Option<ContentCRChallenge>,
 }
 
+impl Default for CRState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CRState {
     pub fn new() -> Self {
         Self {
@@ -653,26 +696,18 @@ impl CRState {
     }
     /// Returns true if all fields are complete.
     pub fn is_complete(&self) -> bool {
-        if (self.identity_cr_initiation.is_some()
-            && self.identity_cr_initiation.as_ref().unwrap().is_complete())
-            && (self.identity_challenge_response.is_some()
-                && self
-                    .identity_challenge_response
-                    .as_ref()
-                    .unwrap()
-                    .is_complete())
-            && (self.content_cr_initiation.is_some()
-                && self.content_cr_initiation.as_ref().unwrap().is_complete())
-            && (self.content_challenge_response.is_some()
-                && self
-                    .content_challenge_response
-                    .as_ref()
-                    .unwrap()
-                    .is_complete())
-        {
-            return true;
+        if let (Some(ici), Some(icr), Some(cci), Some(ccr)) = (
+            self.identity_cr_initiation.as_ref(),
+            self.identity_challenge_response.as_ref(),
+            self.content_cr_initiation.as_ref(),
+            self.content_challenge_response.as_ref(),
+        ) {
+            return ici.is_complete()
+                && icr.is_complete()
+                && cci.is_complete()
+                && ccr.is_complete();
         }
-        return false;
+        false
     }
     /// Determines current status of the challenge response process and accordingly prints messages to the console.
     pub fn check_cr_status(&self) -> Result<CurrentCRState, TrustchainCRError> {
@@ -693,6 +728,7 @@ impl CRState {
 
         // Identity CR initation
         if self.identity_cr_initiation.is_none()
+            // Unwrap: first condition ensures is not None
             || !self.identity_cr_initiation.as_ref().unwrap().is_complete()
         {
             println!("{}", get_status_message(&current_state));
@@ -703,6 +739,7 @@ impl CRState {
 
         // Identity challenge
         if self.identity_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
             || !self
                 .identity_challenge_response
                 .as_ref()
@@ -715,7 +752,11 @@ impl CRState {
         println!("{}", get_status_message(&current_state));
 
         // Identity response
-        if !self
+        if self
+            .identity_challenge_response
+            .is_none()
+            // Unwrap: first condition ensures is not None
+            || !self
             .identity_challenge_response
             .as_ref()
             .unwrap()
@@ -727,6 +768,7 @@ impl CRState {
 
         // Content CR initation
         if self.content_cr_initiation.is_none()
+        // Unwrap: first condition ensures is not None
             || !self.content_cr_initiation.as_ref().unwrap().is_complete()
         {
             return Ok(current_state);
@@ -735,6 +777,7 @@ impl CRState {
 
         // Content challenge
         if self.content_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
             || !self
                 .content_challenge_response
                 .as_ref()
@@ -746,16 +789,18 @@ impl CRState {
         current_state = CurrentCRState::ContentChallengeComplete;
 
         // Content response
-        if !self
-            .content_challenge_response
-            .as_ref()
-            .unwrap()
-            .is_complete()
+        if self.content_challenge_response.is_none()
+            // Unwrap: first condition ensures is not None
+            || !self
+                .content_challenge_response
+                .as_ref()
+                .unwrap()
+                .is_complete()
         {
             return Ok(current_state);
         }
 
-        return Ok(current_state);
+        Ok(current_state)
     }
 }
 
@@ -795,25 +840,25 @@ impl ElementwiseSerializeDeserialize for CRState {
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
         CurrentCRState::NotStarted => {
-            return String::from("No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.");
+            String::from("No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.")
         }
         CurrentCRState::IdentityCRInitiated => {
-            return String::from("Identity challenge-response initiated. Await response.");
+            String::from("Identity challenge-response initiated. Await response.")
         }
         CurrentCRState::IdentityChallengeComplete => {
-            return String::from("Identity challenge has been presented. Await response.");
+            String::from("Identity challenge has been presented. Await response.")
         }
         CurrentCRState::IdentityResponseComplete => {
-            return String::from("Identity challenge-response complete.");
+            String::from("Identity challenge-response complete.")
         }
         CurrentCRState::ContentCRInitiated => {
-            return String::from("Content challenge-response initiated. Await response.");
+            String::from("Content challenge-response initiated. Await response.")
         }
         CurrentCRState::ContentChallengeComplete => {
-            return String::from("Content challenge has been presented. Await response.");
+            String::from("Content challenge has been presented. Await response.")
         }
         CurrentCRState::ContentResponseComplete => {
-            return String::from("Challenge-response complete.");
+            String::from("Challenge-response complete.")
         }
     }
 }
@@ -839,25 +884,22 @@ pub fn matching_endpoint(
     if endpoints.len() != 1 {
         return Err(TrustchainCRError::InvalidServiceEndpoint);
     }
-    return Ok(endpoints[0].clone());
+    Ok(endpoints[0].clone())
 }
 
 /// Returns unique path name for a specific attestation request derived from public key for the interaction.
 pub fn attestation_request_path(key: &JWK, prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
-    let path = attestation_request_basepath(prefix)
-        .map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
-    let key_id = key
-        .thumbprint()
-        .map_err(|_| TrustchainCRError::MissingJWK)?; // Use hash of temp_pub_key
+    let path = attestation_request_basepath(prefix)?;
+    let key_id = key.thumbprint()?; // Use hash of temp_pub_key
     Ok(path.join(key_id))
 }
 
 /// Returns the root path for storing attestation requests.
 pub fn attestation_request_basepath(prefix: &str) -> Result<PathBuf, TrustchainCRError> {
     // Root path in TRUSTCHAIN_DATA
-    let path: String =
-        std::env::var(TRUSTCHAIN_DATA).map_err(|_| TrustchainCRError::FailedAttestationRequest)?;
+    let path: String = std::env::var(TRUSTCHAIN_DATA)
+        .expect("`TRUSTCHAIN_DATA` environment variable must be set.");
     Ok(Path::new(path.as_str())
         .join(prefix)
         .join("attestation_requests"))
@@ -931,11 +973,11 @@ mod tests {
         // write to file
         let path = tempdir().unwrap().into_path();
         let result = cr_state.elementwise_serialize(&path);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
 
         // try to write to file again
         let result = cr_state.elementwise_serialize(&path);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -966,7 +1008,7 @@ mod tests {
         // Test case 3: Both json files exist and can be deserialized
         let cr_initiation = IdentityCRInitiation::new();
         let requester_details_path = temp_path.join("requester_details.json");
-        let requester_details_file = File::create(&requester_details_path).unwrap();
+        let requester_details_file = File::create(requester_details_path).unwrap();
         let requester_details = RequesterDetails {
             requester_org: String::from("My Org"),
             operator_name: String::from("John Doe"),
@@ -1001,7 +1043,7 @@ mod tests {
 
         // Test case 2: Only one json file exists and can be deserialized
         let update_p_key_path = temp_path.join("update_p_key.json");
-        let update_p_key_file = File::create(&update_p_key_path).unwrap();
+        let update_p_key_file = File::create(update_p_key_path).unwrap();
         let update_p_key: Jwk = serde_json::from_str(TEST_UPDATE_KEY).unwrap();
         serde_json::to_writer(update_p_key_file, &update_p_key).unwrap();
         let identity_challenge = IdentityCRChallenge::new();
@@ -1015,7 +1057,7 @@ mod tests {
 
         // Test case 3: One file exists but cannot be deserialized
         let identity_nonce_path = temp_path.join("identity_nonce.json");
-        let identity_nonce_file = File::create(&identity_nonce_path).unwrap();
+        let identity_nonce_file = File::create(identity_nonce_path).unwrap();
         serde_json::to_writer(identity_nonce_file, &42).unwrap();
         let identity_challenge = IdentityCRChallenge::new();
         let result = identity_challenge.elementwise_deserialize(&temp_path);
@@ -1099,7 +1141,7 @@ mod tests {
 
         // Test case 2: one file cannot be deserialized
         let identity_nonce_path = path.join("content_nonce.json");
-        let identity_nonce_file = File::create(&identity_nonce_path).unwrap();
+        let identity_nonce_file = File::create(identity_nonce_path).unwrap();
         serde_json::to_writer(identity_nonce_file, &42).unwrap();
         let challenge_state = CRState::new().elementwise_deserialize(&path);
         assert!(challenge_state.is_err());

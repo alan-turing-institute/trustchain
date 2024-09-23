@@ -31,3 +31,6 @@ outputs/
 
 # dist paths
 **/dist
+
+# Python venv
+.venv

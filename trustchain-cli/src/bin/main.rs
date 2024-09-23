@@ -436,7 +436,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let temp_p_key = identity_initiation.unwrap().temp_p_key.unwrap();
 
                     // call function to present challenge
-                    let identity_challenge = present_identity_challenge(&did, &temp_p_key)?;
+                    let identity_challenge = present_identity_challenge(did, &temp_p_key)?;
 
                     // print signed and encrypted payload to terminal
                     let payload = identity_challenge
@@ -510,7 +510,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let services = &doc.service.unwrap();
 
                     let (content_initiation, content_challenge) =
-                        initiate_content_challenge(&path, ddid, &services, &attestor_public_key)
+                        initiate_content_challenge(&path, ddid, services, &attestor_public_key)
                             .await?;
                     content_initiation.elementwise_serialize(&path)?;
                     content_challenge.elementwise_serialize(&path)?;
