@@ -26,6 +26,7 @@ struct Initiated;
 struct IdentityChallengeShared;
 struct IdentityResponseShared;
 struct ContentChallengeShared;
+struct ContentResponseShared;
 struct Complete;
 
 #[skip_serializing_none]
@@ -73,6 +74,8 @@ struct Attestation<State = NotStarted> {
     content_challenge_signature: Option<String>,
     content_response_signature: Option<String>,
 
+    attestation_signature: Option<String>,
+
     state: std::marker::PhantomData<State>,
     // TODO: consider using a non-zero size State type, then implement a get_state() method
     // in impl<Stat> Attestation<State> {} that returns the state of the attestation process.
@@ -110,6 +113,7 @@ impl Attestation<NotStarted> {
             content_nonces: None,
             content_challenge_signature: None,
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<NotStarted>,
         })
     }
@@ -135,6 +139,8 @@ impl Attestation<NotStarted> {
         self,
         udid: &str,
     ) -> Result<Attestation<Initiated>, TrustchainCRError> {
+        // TODO: verify the uDID.
+
         // Get endpoint and URI. TODO: use URI type.
         let url_path = "/did/attestor/identity/initiate";
         let endpoint = attestation_endpoint(&udid)?;
@@ -144,6 +150,8 @@ impl Attestation<NotStarted> {
             temp_p_key: self.temp_p_key.clone(),
             requester_details: self.requester_details(),
         };
+
+        // TODO: encrypt the attestation request with public key from the uDID.
 
         // Make POST request to endpoint.
         let client = reqwest::Client::new();
@@ -214,6 +222,7 @@ impl Attestation<Initiated> {
             content_nonces: None,
             content_challenge_signature: None,
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<Initiated>,
         }
     }
@@ -325,6 +334,10 @@ impl Attestation<Initiated> {
         Ok(updated_attestation)
     }
 
+    // TODO NEXT: remove this as superfluous. Instead pass in the identity challenge parameters as
+    // arguments to the `admit_identity_challenge` method, and have the POST handler call that method.
+    // Then (with similar changes throughout), we will not need any data structures except for Attestation.
+    //
     // Requester side.
     /// Reads the identity challenge from disk. Returns an error if called by the attestor.
     fn read_identity_challenge(&self) -> Result<IdentityChallenge, TrustchainCRError> {
@@ -359,6 +372,7 @@ impl Attestation<IdentityChallengeShared> {
             content_nonces: None,
             content_challenge_signature: None,
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<IdentityChallengeShared>,
         }
     }
@@ -466,6 +480,7 @@ impl Attestation<IdentityChallengeShared> {
             content_nonces: None,
             content_challenge_signature: None,
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<IdentityResponseShared>,
         };
 
@@ -501,6 +516,7 @@ impl Attestation<IdentityResponseShared> {
             content_nonces: None,
             content_challenge_signature: None,
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<IdentityResponseShared>,
         }
     }
@@ -697,6 +713,7 @@ impl Attestation<IdentityResponseShared> {
             content_nonces: Some(content_nonces), // todo.
             content_challenge_signature: None,    // todo.
             content_response_signature: None,     // todo.
+            attestation_signature: None,
             state: std::marker::PhantomData::<Complete>,
         };
 
@@ -747,6 +764,7 @@ impl Attestation<ContentChallengeShared> {
             content_nonces: Some(content_nonces),
             content_challenge_signature: Some(content_challenge_signature),
             content_response_signature: None,
+            attestation_signature: None,
             state: std::marker::PhantomData::<ContentChallengeShared>,
         }
     }
@@ -774,6 +792,7 @@ impl Attestation<Complete> {
         content_nonces: HashMap<String, Nonce>,
         content_challenge_signature: String,
         content_response_signature: String,
+        attestation_signature: String,
     ) -> Self {
         Attestation {
             requester_details,
@@ -788,6 +807,7 @@ impl Attestation<Complete> {
             content_nonces: Some(content_nonces),
             content_challenge_signature: Some(content_challenge_signature),
             content_response_signature: Some(content_response_signature),
+            attestation_signature: Some(attestation_signature),
             state: std::marker::PhantomData::<Complete>,
         }
     }
