@@ -909,7 +909,7 @@ pub fn attestation_request_basepath(prefix: &str) -> Result<PathBuf, TrustchainC
 #[cfg(test)]
 mod tests {
     use crate::attestation_encryption_utils::extract_key_ids_and_jwk;
-    use crate::data::{TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_TEMP_KEY, TEST_UPDATE_KEY};
+    use crate::data::{TEST_CANDIDATE_DDID_DOCUMENT, TEST_TEMP_KEY, TEST_UPDATE_KEY};
     use ssi::did::Document;
     use tempfile::tempdir;
 
@@ -943,7 +943,7 @@ mod tests {
             requester_did: Some("did:example:123456789abcdefghi".to_string()),
         };
         // get signing keys for DE from did document
-        let doc: Document = serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let doc: Document = serde_json::from_str(TEST_CANDIDATE_DDID_DOCUMENT).unwrap();
         let test_keys_map = extract_key_ids_and_jwk(&doc).unwrap();
 
         // generate map with unencrypted nonces so UE can store them for later verification

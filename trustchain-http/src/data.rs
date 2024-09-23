@@ -1,7 +1,6 @@
 //! Test fixtures.
 
-// TODO: check variable name
-pub const TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS: &str = r##"
+pub const TEST_CANDIDATE_DDID_DOCUMENT: &str = r##"
 {
    "authentication" : [
       "#bZdi2pQK5dk6YF8uVKz_P7SvRgZJ6DUT1KcsLM7L1QA",

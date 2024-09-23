@@ -139,9 +139,7 @@ pub fn extract_key_ids_and_jwk(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::{
-        TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2,
-    };
+    use crate::data::{TEST_CANDIDATE_DDID_DOCUMENT, TEST_SIGNING_KEY_1, TEST_SIGNING_KEY_2};
     #[test]
     fn test_sign_encrypt_and_decrypt_verify() {
         let entity = Entity {};
@@ -173,8 +171,7 @@ mod tests {
 
     #[test]
     fn test_extract_key_ids_and_jwk() {
-        let document: Document =
-            serde_json::from_str(TEST_SIDETREE_DOCUMENT_MULTIPLE_KEYS).unwrap();
+        let document: Document = serde_json::from_str(TEST_CANDIDATE_DDID_DOCUMENT).unwrap();
         let key_ids_and_jwk = extract_key_ids_and_jwk(&document).unwrap();
         assert_eq!(key_ids_and_jwk.len(), 2);
     }
