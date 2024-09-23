@@ -202,7 +202,7 @@ pub async fn initiate_content_challenge(
         &signed_encrypted_challenge.to_string(),
         services,
         attestor_p_key.clone(),
-        &ddid.to_owned(),
+        ddid,
     )
     .await?;
     let content_challenge = ContentCRChallenge {
@@ -227,7 +227,7 @@ pub async fn content_response(
     challenge: &str,
     services: &[Service],
     attestor_p_key: Jwk,
-    ddid: &String,
+    ddid: &str,
 ) -> Result<(HashMap<String, Nonce>, String), TrustchainCRError> {
     // get keys
     let identity_initiation = IdentityCRInitiation::new()

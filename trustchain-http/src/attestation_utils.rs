@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     fs::{self, File},
     io::{BufWriter, Write},
     path::{Path, PathBuf},
@@ -163,9 +164,9 @@ impl AsRef<str> for Nonce {
     }
 }
 
-impl ToString for Nonce {
-    fn to_string(&self) -> String {
-        self.0.clone()
+impl Display for Nonce {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
