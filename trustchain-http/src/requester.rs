@@ -95,7 +95,7 @@ pub async fn identity_response(
         .elementwise_deserialize(path)?
         .ok_or(TrustchainCRError::FailedToDeserialize)?;
     let temp_s_key = identity_initiation.temp_s_key()?;
-    let temp_s_key_ssi = josekit_to_ssi_jwk(&temp_s_key)?;
+    let temp_s_key_ssi = josekit_to_ssi_jwk(temp_s_key)?;
 
     // decrypt and verify challenge
     let requester = Entity {};
@@ -104,13 +104,13 @@ pub async fn identity_response(
             .identity_challenge_signature
             .clone()
             .ok_or(TrustchainCRError::FieldNotFound)?,
-        &temp_s_key,
-        &attestor_p_key,
+        temp_s_key,
+        attestor_p_key,
     )?;
     // sign and encrypt response
     let signed_encrypted_response = requester.sign_and_encrypt_claim(
         &decrypted_verified_payload,
-        &temp_s_key,
+        temp_s_key,
         attestor_p_key,
     )?;
     let key_id = temp_s_key_ssi.to_public().thumbprint()?;
@@ -244,7 +244,7 @@ pub async fn content_response(
     // decrypt and verify payload
     let requester = Entity {};
     let decrypted_verified_payload =
-        requester.decrypt_and_verify(challenge.to_owned(), &temp_s_key, &attestor_p_key)?;
+        requester.decrypt_and_verify(challenge.to_owned(), temp_s_key, &attestor_p_key)?;
     // extract map with decrypted nonces from payload and decrypt each nonce
     let challenges_map: HashMap<String, String> = serde_json::from_value(
         decrypted_verified_payload
@@ -303,7 +303,7 @@ pub async fn content_response(
     let mut payload = JwtPayload::new();
     payload.set_claim("nonces", Some(value))?;
     let signed_encrypted_response =
-        requester.sign_and_encrypt_claim(&payload, &temp_s_key, &attestor_p_key)?;
+        requester.sign_and_encrypt_claim(&payload, temp_s_key, &attestor_p_key)?;
     // post response to endpoint
     let client = reqwest::Client::new();
     let result = client

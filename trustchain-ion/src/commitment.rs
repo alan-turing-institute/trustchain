@@ -463,14 +463,8 @@ impl IONCommitment {
         block_header: Vec<u8>,
     ) -> CommitmentResult<Self> {
         // Extract the public keys and endpoints as the expected data.
-        let keys = match did_doc.get_keys() {
-            Some(x) => x,
-            None => vec![],
-        };
-        let endpoints = match did_doc.get_endpoints() {
-            Some(x) => x,
-            None => vec![],
-        };
+        let keys = did_doc.get_keys().unwrap_or_default();
+        let endpoints = did_doc.get_endpoints().unwrap_or_default();
         let expected_data = json!([keys, endpoints]);
 
         // Construct the core index file commitment first, to get the index of the chunk file delta for this DID.
