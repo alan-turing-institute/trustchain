@@ -1,10 +1,12 @@
 use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
+use josekit::JoseError;
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    commitment::CommitmentError, issuer::IssuerError, key_manager::KeyManagerError,
-    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
+    attestor::AttestorError, commitment::CommitmentError, issuer::IssuerError,
+    key_manager::KeyManagerError, resolver::ResolverError, vc::CredentialError,
+    verifier::VerifierError, vp::PresentationError,
 };
 use trustchain_ion::root::TrustchainRootError;
 
@@ -27,9 +29,11 @@ pub enum TrustchainHTTPError {
     RootError(TrustchainRootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
+    #[error("Trustchain attestor error: {0}")]
+    AttestorError(#[from] AttestorError),
     // TODO: once needed in http propagate
-    // #[error("Jose error: {0}")]
-    // JoseError(JoseError),
+    #[error("Jose error: {0}")]
+    JoseError(#[from] JoseError),
     #[error("Trustchain key manager error: {0}")]
     KeyManagerError(KeyManagerError),
     #[error("Trustchain challenge-response error: {0}")]
@@ -47,7 +51,7 @@ pub enum TrustchainHTTPError {
     #[error("Request does not exist.")]
     RequestDoesNotExist,
     #[error("Could not deserialize data: {0}")]
-    FailedToDeserialize(serde_json::Error),
+    FailedToDeserialize(#[from] serde_json::Error),
     #[error("Root event time not configured for verification.")]
     RootEventTimeNotSet,
     #[error("Attestation request failed.")]
@@ -122,6 +126,9 @@ impl IntoResponse for TrustchainHTTPError {
             err @ TrustchainHTTPError::IssuerError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
+            err @ TrustchainHTTPError::AttestorError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
             err @ TrustchainHTTPError::CommitmentError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
@@ -138,6 +145,9 @@ impl IntoResponse for TrustchainHTTPError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::KeyManagerError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainHTTPError::JoseError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainHTTPError::CRError(_) => {

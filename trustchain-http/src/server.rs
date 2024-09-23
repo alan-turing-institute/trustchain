@@ -130,12 +130,12 @@ impl TrustchainRouter {
                 )
                 .route(
                     "/did/attestor/identity/respond/:key_id",
-                    // post(attestor::TrustchainAttestorHTTPHandler::post_response),
                     post({
                         let state = shared_state.clone();
-                        move |key_id| {
+                        move |(key_id, response)| {
                             attestor::TrustchainAttestorHTTPHandler::post_identity_response(
-                                key_id, state,
+                                (key_id, response),
+                                state,
                             )
                         }
                     }),

@@ -17,7 +17,7 @@ use ssi::{did::Service, jwk::JWK};
 use ssi::{did::ServiceEndpoint, one_or_many::OneOrMany};
 use std::fs::OpenOptions;
 use thiserror::Error;
-use trustchain_core::TRUSTCHAIN_DATA;
+use trustchain_core::{attestor::AttestorError, key_manager::KeyManagerError, TRUSTCHAIN_DATA};
 
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {
@@ -89,9 +89,24 @@ pub enum TrustchainCRError {
     /// Field to respond
     #[error("Response to challenge failed.")]
     FailedToRespond(reqwest::Response),
-    // Failed to verify nonce
+    /// Failed to verify nonce
     #[error("Failed to verify nonce.")]
     FailedToVerifyNonce,
+    /// Wrapped IO error
+    #[error("IO error: {0}")]
+    IOError(std::io::Error),
+    /// Wrapped KeyManager error
+    #[error("KeyManager error: {0}")]
+    KeyManagerError(#[from] KeyManagerError),
+    /// Wrapped Attestor error
+    #[error("Attestor error: {0}")]
+    AttestorError(#[from] AttestorError),
+    /// Wrapped SSI JWK error
+    #[error("SSI JWK error: {0}")]
+    SSIJwkError(#[from] ssi::jwk::Error),
+    /// Response from a `CustomResponse` must contain data
+    #[error("Must contain data but custom response contained no data")]
+    ResponseMustContainData,
 }
 
 impl From<JoseError> for TrustchainCRError {
@@ -172,12 +187,6 @@ impl TryFrom<&Nonce> for JwtPayload {
 impl From<serde_json::Error> for TrustchainCRError {
     fn from(value: serde_json::Error) -> Self {
         TrustchainCRError::FailedToDeserializeWithError(value)
-    }
-}
-
-impl From<ssi::jwk::Error> for TrustchainCRError {
-    fn from(value: ssi::jwk::Error) -> Self {
-        TrustchainCRError::WrappedSSIJWKError(value)
     }
 }
 
@@ -278,6 +287,17 @@ impl IdentityCRInitiation {
     /// Note: temp_s_key is optional since only requester has it.
     pub fn is_complete(&self) -> bool {
         self.temp_p_key.is_some() && self.requester_details.is_some()
+    }
+
+    pub fn temp_p_key(&self) -> Result<&Jwk, TrustchainCRError> {
+        self.temp_p_key
+            .as_ref()
+            .ok_or(TrustchainCRError::KeyNotFound)
+    }
+    pub fn temp_s_key(&self) -> Result<&Jwk, TrustchainCRError> {
+        self.temp_s_key
+            .as_ref()
+            .ok_or(TrustchainCRError::KeyNotFound)
     }
 }
 
@@ -492,20 +512,27 @@ impl TryFrom<&JwtPayload> for IdentityCRChallenge {
             identity_challenge_signature: None,
             identity_response_signature: None,
         };
-        let claim = value
-            .claim("update_p_key")
-            .ok_or(TrustchainCRError::ClaimNotFound)?;
-        challenge.update_p_key =
-            Some(serde_json::from_str(claim.as_str().ok_or(
-                TrustchainCRError::FailedToConvertToStr(claim.clone()),
-            )?)?);
-        let claim = value
-            .claim("identity_nonce")
-            .ok_or(TrustchainCRError::ClaimNotFound)?;
-        challenge.identity_nonce = Some(Nonce::from(
-            claim
+        challenge.update_p_key = Some(serde_json::from_str(
+            value
+                .claim("update_p_key")
+                .ok_or(TrustchainCRError::ClaimNotFound)?
                 .as_str()
-                .ok_or(TrustchainCRError::FailedToConvertToStr(claim.clone()))?
+                .ok_or(TrustchainCRError::FailedToConvertToStr(
+                    // Unwrap: not None since error would have propagated above if None
+                    value.claim("update_p_key").unwrap().clone(),
+                ))?,
+        )?);
+        challenge.identity_nonce = Some(Nonce::from(
+            // TODO: refactor into function for a given payload and claim field,
+            // returns a Result<String>
+            value
+                .claim("identity_nonce")
+                .ok_or(TrustchainCRError::ClaimNotFound)?
+                .as_str()
+                .ok_or(TrustchainCRError::FailedToConvertToStr(
+                    // Unwrap: not None since error would have propagated above if None
+                    value.claim("identity_nonce").unwrap().clone(),
+                ))?
                 .to_string(),
         ));
         Ok(challenge)

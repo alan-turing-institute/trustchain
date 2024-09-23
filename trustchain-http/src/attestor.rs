@@ -17,6 +17,8 @@ use josekit::jwk::Jwk;
 use josekit::jwt::JwtPayload;
 use log::info;
 
+use ssi::jwk::JWK;
+use ssi::vc::OneOrMany;
 use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::attestor::AttestorError;
@@ -28,6 +30,26 @@ use std::sync::Arc;
 
 use trustchain_core::utils::generate_key;
 use trustchain_ion::attestor::IONAttestor;
+
+fn server_did(app_state: Arc<AppState>) -> String {
+    app_state
+        .config
+        .server_did
+        .as_ref()
+        .expect("Server DID must be set for challenge-response content initiation.")
+        .to_owned()
+}
+
+fn first_signing_key<'a>(
+    signing_keys: &'a OneOrMany<JWK>,
+    did: &str,
+) -> Result<&'a JWK, AttestorError> {
+    signing_keys
+        .first()
+        .ok_or(AttestorError::NoSigningKey(format!(
+            "No signing keys for ION attestor with DID: {did}"
+        )))
+}
 
 // Encryption: https://github.com/hidekatsu-izuno/josekit-rs#signing-a-jwt-by-ecdsa
 
@@ -69,13 +91,12 @@ impl TrustchainAttestorHTTPHandler {
     /// is saved is determined by the temp public key of the attestation initiation.
     pub async fn post_identity_initiation(
         Json(attestation_initiation): Json<IdentityCRInitiation>,
-    ) -> impl IntoResponse {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         info!("Received attestation info: {:?}", attestation_initiation);
-        let temp_p_key_ssi =
-            josekit_to_ssi_jwk(attestation_initiation.temp_p_key.as_ref().unwrap());
-        let path = attestation_request_path(&temp_p_key_ssi.unwrap(), "attestor").unwrap();
+        let temp_p_key_ssi = josekit_to_ssi_jwk(attestation_initiation.temp_p_key()?);
+        let path = attestation_request_path(&temp_p_key_ssi?, "attestor")?;
         // create directory and save attestation initation to file
-        let _ = std::fs::create_dir_all(&path);
+        std::fs::create_dir_all(&path).map_err(TrustchainCRError::IOError)?;
         let result = attestation_initiation.elementwise_serialize(&path);
         match result {
             Ok(_) => {
@@ -83,14 +104,14 @@ impl TrustchainAttestorHTTPHandler {
                     message: "Received attestation request. Please wait for operator to contact you through an alternative channel.".to_string(),
                     data: None,
                 };
-                (StatusCode::OK, Json(response))
+                Ok((StatusCode::OK, Json(response)))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Attestation request failed.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(response))
+                Ok((StatusCode::BAD_REQUEST, Json(response)))
             }
         }
     }
@@ -106,50 +127,50 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_identity_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> impl IntoResponse {
-        let pathbase = attestation_request_basepath("attestor").unwrap();
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
+        let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(key_id);
         if !path.exists() {
             panic!("Provided attestation request not found. Path does not exist.");
         }
         let mut identity_challenge = IdentityCRChallenge::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
         // get signing key from ION attestor
-        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let did = server_did(app_state);
         let ion_attestor = IONAttestor::new(&did);
-        let signing_keys = ion_attestor.signing_keys().unwrap();
-        let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
+        let signing_keys = ion_attestor.signing_keys()?;
+        // TODO: consider passing a key_id, first key used as arbitrary choice currently
+        let signing_key_ssi = first_signing_key(&signing_keys, &did)?;
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
         // get temp public key
         let identity_initiation = IdentityCRInitiation::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
-        let temp_p_key = identity_initiation.temp_p_key.unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
+        let temp_p_key = identity_initiation.temp_p_key()?;
         // verify response
         let attestor = Entity {};
-        let payload = attestor
-            .decrypt_and_verify(response.clone(), &signing_key, &temp_p_key)
-            .unwrap();
+        let payload = attestor.decrypt_and_verify(response.clone(), &signing_key, temp_p_key)?;
         let result = verify_nonce(payload, &path);
         match result {
             Ok(_) => {
                 identity_challenge.identity_response_signature = Some(response.clone());
-                identity_challenge.elementwise_serialize(&path).unwrap();
+                identity_challenge.elementwise_serialize(&path)?;
                 let response = CustomResponse {
-                    message: "Verification successful. Please use the provided path to initiate the second part of the attestation process.".to_string(),
-                    data: None
+                    message: "\
+                    Verification successful. Please use the provided path to initiate the second \
+                    part of the attestation process."
+                        .to_string(),
+                    data: None,
                 };
-                (StatusCode::OK, Json(response))
+                Ok((StatusCode::OK, Json(response)))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Verification failed. Please try again.".to_string(),
                     data: None,
                 };
-                (StatusCode::BAD_REQUEST, Json(response))
+                Ok((StatusCode::BAD_REQUEST, Json(response)))
             }
         }
     }
@@ -165,7 +186,7 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_content_initiation(
         (Path(key_id), Json(ddid)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> Result<(StatusCode, String), TrustchainHTTPError> {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(&key_id);
         let did = app_state
@@ -177,8 +198,8 @@ impl TrustchainAttestorHTTPHandler {
         // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
         let candidate_doc = match result {
-            Ok((_, doc, _)) => doc.unwrap(),
-            Err(_) => {
+            Ok((_, Some(doc), _)) => doc,
+            Ok((_, None, _)) | Err(_) => {
                 let response = CustomResponse {
                     message: "Resolution of candidate DID failed.".to_string(),
                     data: None,
@@ -225,26 +246,21 @@ impl TrustchainAttestorHTTPHandler {
         // get public and secret keys
         let identity_cr_initiation = IdentityCRInitiation::new()
             .elementwise_deserialize(&path)?
-            .unwrap();
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
         let ion_attestor = IONAttestor::new(&did);
         let signing_keys = ion_attestor.signing_keys()?;
-        let signing_key_ssi = signing_keys
-            .first()
-            .ok_or(AttestorError::NoSigningKey(format!(
-                "No signing keys for ION attestor with DID: {did}"
-            )))
-            .unwrap();
-        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
+        let signing_key_ssi = first_signing_key(&signing_keys, &did)?;
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
 
         // sign and encrypt challenges
         let value: serde_json::Value =
             serde_json::to_value(challenges).map_err(TrustchainCRError::Serde)?;
         let mut payload = JwtPayload::new();
-        payload.set_claim("challenges", Some(value)).unwrap();
+        payload.set_claim("challenges", Some(value))?;
         let signed_encrypted_challenges = attestor.sign_and_encrypt_claim(
             &payload,
             &signing_key,
-            &identity_cr_initiation.temp_p_key.unwrap(),
+            identity_cr_initiation.temp_p_key()?,
         );
 
         match signed_encrypted_challenges {
@@ -254,22 +270,19 @@ impl TrustchainAttestorHTTPHandler {
                     content_challenge_signature: Some(signed_encrypted_challenges.clone()),
                     content_response_signature: None,
                 };
-                content_challenge.elementwise_serialize(&path).unwrap();
+                content_challenge.elementwise_serialize(&path)?;
                 let response = CustomResponse {
                     message: "Challenges generated successfully.".to_string(),
                     data: Some(signed_encrypted_challenges),
                 };
-                Ok((StatusCode::OK, serde_json::to_string(&response).unwrap()))
+                Ok((StatusCode::OK, serde_json::to_string(&response)?))
             }
             Err(_) => {
                 let response = CustomResponse {
                     message: "Failed to generate challenges.".to_string(),
                     data: None,
                 };
-                Ok((
-                    StatusCode::BAD_REQUEST,
-                    serde_json::to_string(&response).unwrap(),
-                ))
+                Ok((StatusCode::BAD_REQUEST, serde_json::to_string(&response)?))
             }
         }
     }
@@ -283,53 +296,56 @@ impl TrustchainAttestorHTTPHandler {
     pub async fn post_content_response(
         (Path(key_id), Json(response)): (Path<String>, Json<String>),
         app_state: Arc<AppState>,
-    ) -> impl IntoResponse {
+    ) -> Result<impl IntoResponse, TrustchainHTTPError> {
         // deserialise expected nonce map
-        let pathbase = attestation_request_basepath("attestor").unwrap();
+        let pathbase = attestation_request_basepath("attestor")?;
         let path = pathbase.join(key_id);
         let identity_cr_initiation = IdentityCRInitiation::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
         let mut content_challenge = ContentCRChallenge::new()
-            .elementwise_deserialize(&path)
-            .unwrap()
-            .unwrap();
-        let expected_nonces = content_challenge.content_nonce.clone().unwrap();
+            .elementwise_deserialize(&path)?
+            .ok_or(TrustchainCRError::FailedToDeserialize)?;
+        let expected_nonces = content_challenge
+            .content_nonce
+            .clone()
+            .ok_or(TrustchainCRError::FieldNotFound)?;
         // get signing key from ION attestor
-        let did = app_state.config.server_did.as_ref().unwrap().to_owned();
+        let did = server_did(app_state);
         let ion_attestor = IONAttestor::new(&did);
-        let signing_keys = ion_attestor.signing_keys().unwrap();
-        let signing_key_ssi = signing_keys.first().unwrap();
-        let signing_key = ssi_to_josekit_jwk(signing_key_ssi).unwrap();
+        let signing_keys = ion_attestor.signing_keys()?;
+        let signing_key_ssi = first_signing_key(&signing_keys, &did)?;
+        let signing_key = ssi_to_josekit_jwk(signing_key_ssi)?;
 
         // decrypt and verify response => nonces map
         let attestor = Entity {};
-        let payload = attestor
-            .decrypt_and_verify(
-                response.clone(),
-                &signing_key,
-                &identity_cr_initiation.temp_p_key.unwrap(),
-            )
-            .unwrap();
-        let nonces_map: HashMap<String, Nonce> =
-            serde_json::from_value(payload.claim("nonces").unwrap().clone()).unwrap();
+        let payload = attestor.decrypt_and_verify(
+            response.clone(),
+            &signing_key,
+            identity_cr_initiation.temp_p_key()?,
+        )?;
+        let nonces_map: HashMap<String, Nonce> = serde_json::from_value(
+            payload
+                .claim("nonces")
+                .ok_or(TrustchainCRError::ClaimNotFound)?
+                .clone(),
+        )?;
         // verify nonces
         if nonces_map.eq(&expected_nonces) {
             content_challenge.content_response_signature = Some(response.clone());
-            content_challenge.elementwise_serialize(&path).unwrap();
+            content_challenge.elementwise_serialize(&path)?;
             let response = CustomResponse {
                 message: "Attestation request successful.".to_string(),
                 data: None,
             };
-            return (StatusCode::OK, Json(response));
+            return Ok((StatusCode::OK, Json(response)));
         }
 
         let response = CustomResponse {
             message: "Verification failed. Attestation request unsuccessful.".to_string(),
             data: None,
         };
-        (StatusCode::BAD_REQUEST, Json(response))
+        Ok((StatusCode::BAD_REQUEST, Json(response)))
     }
 }
 
@@ -362,12 +378,12 @@ pub fn present_identity_challenge(
     };
 
     // make payload
-    let payload = JwtPayload::try_from(&identity_challenge).unwrap();
+    let payload = JwtPayload::try_from(&identity_challenge)?;
 
     // get signing key from ION attestor
     let ion_attestor = IONAttestor::new(did);
-    let signing_keys = ion_attestor.signing_keys().unwrap();
-    let signing_key_ssi = signing_keys.first().unwrap();
+    let signing_keys = ion_attestor.signing_keys()?;
+    let signing_key_ssi = first_signing_key(&signing_keys, did)?;
     let signing_key =
         ssi_to_josekit_jwk(signing_key_ssi).map_err(|_| TrustchainCRError::FailedToGenerateKey)?;
 
@@ -387,13 +403,22 @@ pub fn present_identity_challenge(
 /// nonce from the file and compares it with the nonce from the payload.
 fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRError> {
     // get nonce from payload
-    let nonce = payload.claim("identity_nonce").unwrap().as_str().unwrap();
+    let nonce = payload
+        .claim("identity_nonce")
+        .ok_or(TrustchainCRError::ClaimNotFound)?
+        .as_str()
+        .ok_or(TrustchainCRError::FailedToConvertToStr(
+            // Unwrap: not None since error would have propagated above if None
+            payload.claim("identity_nonce").unwrap().clone(),
+        ))?;
     // deserialise expected nonce
     let identity_challenge = IdentityCRChallenge::new()
-        .elementwise_deserialize(path)
-        .unwrap()
-        .unwrap();
-    let expected_nonce = identity_challenge.identity_nonce.unwrap().to_string();
+        .elementwise_deserialize(path)?
+        .ok_or(TrustchainCRError::FailedToDeserialize)?;
+    let expected_nonce = identity_challenge
+        .identity_nonce
+        .ok_or(TrustchainCRError::FieldNotFound)?
+        .to_string();
     if nonce != expected_nonce {
         return Err(TrustchainCRError::FailedToVerifyNonce);
     }
