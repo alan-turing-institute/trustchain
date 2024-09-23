@@ -308,6 +308,7 @@ impl ElementwiseSerializeDeserialize for IdentityCRInitiation {
         path: &PathBuf,
     ) -> Result<Option<IdentityCRInitiation>, TrustchainCRError> {
         let temp_p_key_path = path.join("temp_p_key.json");
+        // TODO: refactor with e.g. std::fs::read_to_string
         self.temp_p_key = match File::open(temp_p_key_path) {
             Ok(file) => {
                 let reader = std::io::BufReader::new(file);
