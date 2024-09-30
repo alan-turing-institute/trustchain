@@ -45,7 +45,7 @@ impl From<TrustchainMongodbError> for TrustchainRootError {
 }
 
 /// Struct representing a root DID candidate.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Eq, Ord)]
 #[serde(rename_all = "camelCase")]
 pub struct RootCandidate {
     pub did: String,
@@ -120,13 +120,20 @@ pub async fn root_did_candidates(
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
 
     #[tokio::test]
     #[ignore = "Integration test requires Bitcoin & MongoDB"]
     async fn test_root_did_candidates() {
         let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = root_did_candidates(date).await.unwrap();
+        let result = root_did_candidates(date)
+            .await
+            .unwrap()
+            .into_iter()
+            .sorted()
+            .collect_vec();
 
         // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
         // The block height range on that date is (2377360, 2377519).
@@ -136,33 +143,33 @@ mod tests {
 
         assert_eq!(
             result[0].did,
-            "did:ion:test:EiAcmytgsm-AUWtmJ9cioW-MWq-DnjIUfGYdIVUnrpg6kw"
+            "did:ion:test:EiA6m4-V4fW_l1xEu3jH9xvXt1JyynmO7I_rkBpFulEAuQ"
         );
         assert_eq!(
             result[0].txid,
-            "1fae017f2c9f14cec0487a04b3f1d1b7336bd38547f755748beb635296de3ee8"
+            "b698c0919a91a161bc141cd395788296edb85d19415a6d29a13a220a8f2249e0"
         );
-        assert_eq!(result[0].block_height, 2377360);
+        assert_eq!(result[0].block_height, 2377410);
 
         // This is the root DID used in testing:
         assert_eq!(
-            result[16].did,
+            result[26].did,
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
         );
         assert_eq!(
-            result[16].txid,
+            result[26].txid,
             "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
         );
-        assert_eq!(result[16].block_height, 2377445);
+        assert_eq!(result[26].block_height, 2377445);
 
         assert_eq!(
             result[37].did,
-            "did:ion:test:EiBbes2IRKhGauhQc5r4T30i06S6dEWgzCKx-WCKT3x0Lw"
+            "did:ion:test:EiDz_zvUa2FUIgLUvBia9wUJakhrrW889nDdGlr1-RTAWw"
         );
         assert_eq!(
             result[37].txid,
-            "502f1a418eff99e50b91aea33e43e4c270af05eb0381d57ca4f48f16d7efe9e1"
+            "c369dd566a0dd5c2f381c1ab9c8e96b4f6b4fd323f5c1ed68dbb2a1bfb9cb48f"
         );
-        assert_eq!(result[37].block_height, 2377514);
+        assert_eq!(result[37].block_height, 2377416);
     }
 }
