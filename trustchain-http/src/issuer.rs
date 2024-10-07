@@ -249,6 +249,7 @@ mod tests {
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
     use std::{collections::HashMap, sync::Arc};
+    use trustchain_core::utils::init;
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
@@ -337,6 +338,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
+        init();
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
@@ -390,6 +392,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_rss_credential() {
+        init();
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
             serde_json::from_str(CREDENTIALS).unwrap(),
