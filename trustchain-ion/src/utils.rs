@@ -331,7 +331,7 @@ pub fn time_at_block_height(
 /// Returns the unix timestamp at 00h:00m:00s UTC on the given date.
 fn first_unixtime_on(date: NaiveDate) -> i64 {
     let datetime = date.and_hms_opt(0, 0, 0).unwrap();
-    datetime.timestamp()
+    datetime.and_utc().timestamp()
 }
 
 /// Returns the height of the last block mined before the given date.

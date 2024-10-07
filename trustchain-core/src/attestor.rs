@@ -23,7 +23,7 @@ pub enum AttestorError {
     SigningError(String, String),
 }
 
-/// An upstream entity that attests to a downstream DID.
+/// An upstream entity that attests to a downstream DID (attestor).
 pub trait Attestor: Subject {
     /// Attests to a DID Document. Subject attests to a DID document by signing the document with (one of) its private signing key(s).
     /// It doesn't matter which signing key you use, there's the option to pick one using the key index.

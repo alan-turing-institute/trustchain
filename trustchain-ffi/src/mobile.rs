@@ -277,6 +277,7 @@ pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
 mod tests {
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::utils::canonicalize_str;
+    use trustchain_http::utils::init_http;
 
     use crate::config::parse_toml;
 
@@ -418,6 +419,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_resolve() {
+        init_http();
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         did_resolve(did, ffi_opts).unwrap();
@@ -426,6 +428,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_verify() {
+        init_http();
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         did_verify(did, ffi_opts).unwrap();
@@ -434,6 +437,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vc_verify_credential() {
+        init_http();
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
@@ -506,6 +510,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vp_verify_presentation() {
+        init_http();
         let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         vp_verify_presentation(TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
     }

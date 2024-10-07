@@ -13,6 +13,7 @@ crate-type = ["cdylib", "staticlib", "lib"]
 trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
+trustchain-http = { path = "../trustchain-http" }
 
 anyhow = "1.0"
 chrono = "0.4.26"
