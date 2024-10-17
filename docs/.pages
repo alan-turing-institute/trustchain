@@ -1,6 +1,7 @@
 nav:
     - index.md
     - use-cases.md
+    - demo.md
     - roles.md
     - getting-started.md
     - usage.md
