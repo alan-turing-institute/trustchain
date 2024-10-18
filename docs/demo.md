@@ -4,7 +4,7 @@ This page outlines a demonstration of the Verifiable Credentials use case. To ru
 
 ## Scenario
 
-For this demonstration, we assume a scenario in which Trustchain is deployed at a national scale, to support a trustworthy and privacy-preserving digital identity system. The corresponding network of decentralised identifiers (DIDs) is depicted in the following figure.
+For this demonstration we assume a scenario in which Trustchain is deployed at a national scale, to support a trustworthy and privacy-preserving digital identity system. The corresponding network of decentralised identifiers (DIDs) is depicted in the following figure.
 
 In this scenario, the central government is the natural choice for the legal entity represented in the root DID. We stress, however, that this choice is merely an example intended to make for an easily relatable demonstration. In practice any organisation, public or private, may play this role.
 
@@ -108,7 +108,7 @@ All credentials received by the app are automatically checked for authenticity.
 This involves verifying not only the signature of the issuing authority (and the credential expiry date), but also the attestation signatures on the chain of downstream DIDs and the timestamp on the root DID. 
 The root DID timestamp is compared to the configured root event date (and the confirmation code). Only if all of these checks pass is the credential deemed valid.
 
-For maximum transparency, the user is also able to view the chain of downstream DIDs leading from the credential user back to the root entity. Each of the legal entities represented in this chain ought to be recognisable to the user, who can judge for themselves the level of trust they are willing to place in them, and the extent to which they are the appropriate entities to be involved in the issuance of the particular credential type.
+For maximum transparency, the user is also able to view the chain of downstream DIDs leading from the credential issuer back to the root entity. Each of the legal entities represented in this chain ought to be recognisable to the users, who can judge for themselves the level of trust they are willing to place in them, and the extent to which they are the appropriate authorities to be involved in the issuance of that particular type of credential.
 
 
 ### Verifiable Presentation
