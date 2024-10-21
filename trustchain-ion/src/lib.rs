@@ -27,9 +27,9 @@ use thiserror::Error;
 // for better handling of URLs.
 pub type URL = String;
 
-/// Full client zero sized type for marker in `IONVerifier`.
+/// Full client zero sized type for marker in `TrustchainVerifier`.
 pub struct FullClient;
-/// Light client zero sized type for marker in `IONVerifier`.
+/// Light client zero sized type for marker in `TrustchainVerifier`.
 pub struct LightClient;
 
 /// Type for representing an endpoint as a base URL and port.
@@ -166,6 +166,10 @@ pub enum TrustchainBitcoinError {
 
 // DID
 pub const CONTROLLER_KEY: &str = "controller";
+pub const CREATE_OPERATION_FILENAME_PREFIX: &str = "create_operation_";
+pub const ATTEST_OPERATION_FILENAME_PREFIX: &str = "attest_operation_";
+// TODO: uncomment when update operation functionality merged
+// pub const UPDATE_OPERATION_FILENAME_PREFIX: &str = "update_operation_";
 
 // ION
 pub const ION_METHOD: &str = "ion";

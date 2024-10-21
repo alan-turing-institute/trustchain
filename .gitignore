@@ -31,3 +31,9 @@ outputs/
 
 # dist paths
 **/dist
+
+# Python venv
+.venv
+
+# OS
+.DS_Store

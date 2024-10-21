@@ -62,7 +62,7 @@ fn read_chains(chains: &Vec<DIDChain>, label_width: usize) -> DiGraph<String, St
             }
 
             // Update did
-            did = ddid.to_owned();
+            ddid.clone_into(&mut did);
             level += 1;
         }
     }

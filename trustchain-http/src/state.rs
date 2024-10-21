@@ -38,7 +38,7 @@ impl AppState {
                 .unwrap_or_default()
                 .as_slice(),
         )
-        .expect("Credential cache could not be deserialized.");
+        .unwrap_or_default();
         let root_candidates = RwLock::new(HashMap::new());
         let presentation_requests: HashMap<String, PresentationRequest> = serde_json::from_reader(
             std::fs::read(std::path::Path::new(&path).join("presentations/requests/cache.json"))
@@ -46,7 +46,7 @@ impl AppState {
                 .unwrap_or_default()
                 .as_slice(),
         )
-        .expect("Presentation cache could not be deserialized.");
+        .unwrap_or_default();
         Self {
             config,
             verifier,
