@@ -35,11 +35,13 @@ impl IONAttestor {
         }
     }
     /// Gets the signing keys of the attestor.
+    // TODO: made public to use in challenge-response. Consider refactoring key manager.
     pub fn signing_keys(&self) -> Result<OneOrMany<JWK>, KeyManagerError> {
         self.read_signing_keys(self.did_suffix())
     }
 
     /// Gets the signing key with ID `key_id` of the attestor.
+    // TODO: made public to use in challenge-response. Consider refactoring key manager.
     pub fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
         let keys = self.signing_keys()?;
         // If no key_id is given, return the first available key.

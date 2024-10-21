@@ -463,14 +463,8 @@ impl IONCommitment {
         block_header: Vec<u8>,
     ) -> CommitmentResult<Self> {
         // Extract the public keys and endpoints as the expected data.
-        let keys = match did_doc.get_keys() {
-            Some(x) => x,
-            None => vec![],
-        };
-        let endpoints = match did_doc.get_endpoints() {
-            Some(x) => x,
-            None => vec![],
-        };
+        let keys = did_doc.get_keys().unwrap_or_default();
+        let endpoints = did_doc.get_endpoints().unwrap_or_default();
         let expected_data = json!([keys, endpoints]);
 
         // Construct the core index file commitment first, to get the index of the chunk file delta for this DID.
@@ -931,7 +925,7 @@ mod tests {
 
         // The first one commits to the chunk file CID and is expected
         // to contain the same data as the iterated commitment.
-        let chunk_file_commitment = commitments.get(0).unwrap();
+        let chunk_file_commitment = commitments.first().unwrap();
         assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
         assert_eq!(expected_data, chunk_file_commitment.expected_data());
 

@@ -268,15 +268,15 @@ pub async fn locate_transaction(
         .parse::<u32>()
         .map_err(|_| VerifierError::FailureToGetDIDOperation(suffix.to_owned()))?;
 
-    // If call to get_network_info fails, return error
+    // If call to get_network_info fails, return error.
     client
         .get_network_info()
-        .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
+        .map_err(|_| VerifierError::LedgerClientError("getnetworkinfo".to_string()))?;
 
     // Convert the block height to a block hash.
     let block_hash = client
         .get_block_hash(u64::from(block_height))
-        .map_err(|_| VerifierError::InvalidBlockHeight(block_height.into()))?;
+        .map_err(|_| VerifierError::LedgerClientError("getblockhash".to_string()))?;
 
     Ok((block_hash, tx_index))
 }

@@ -1,5 +1,6 @@
 //! ION operation for DID attestation.
 use crate::ion::IONTest as ION;
+use crate::ATTEST_OPERATION_FILENAME_PREFIX;
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
@@ -10,6 +11,7 @@ use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
+use trustchain_core::JSON_FILE_EXTENSION;
 use trustchain_core::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
 use crate::controller::IONController;
@@ -103,8 +105,10 @@ pub async fn attest_operation(
     // operation_manager.save(operation, OperationType::Update)?;
     let path = get_operations_path()?;
     let path = path.join(format!(
-        "attest_operation_{}.json",
-        controller.controlled_did_suffix()
+        "{}{}{}",
+        ATTEST_OPERATION_FILENAME_PREFIX,
+        controller.controlled_did_suffix(),
+        JSON_FILE_EXTENSION
     ));
     std::fs::write(path, to_json(&operation).unwrap())?;
 

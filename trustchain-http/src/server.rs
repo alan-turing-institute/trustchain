@@ -1,4 +1,6 @@
 //! Trustchain HTTP router type and functionality for spawning HTTP and HTTPS servers.
+
+use crate::attestor;
 use crate::config::http_config;
 use crate::middleware::validate_did;
 use crate::{
@@ -103,6 +105,46 @@ impl TrustchainRouter {
                     post({
                         let state = shared_state.clone();
                         move |operation| crate::ion::post_operation(operation, state)
+                    }),
+                )
+                .route(
+                    "/did/attestor/identity/initiate",
+                    post(attestor::TrustchainAttestorHTTPHandler::post_identity_initiation),
+                )
+                .route(
+                    "/did/attestor/identity/respond/:key_id",
+                    post({
+                        let state = shared_state.clone();
+                        move |(key_id, response)| {
+                            attestor::TrustchainAttestorHTTPHandler::post_identity_response(
+                                (key_id, response),
+                                state,
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/did/attestor/content/initiate/:key_id",
+                    // post(attestor::TrustchainAttestorHTTPHandler::post_content_initiation),
+                    post({
+                        let state = shared_state.clone();
+                        move |(key_id, ddid)| {
+                            attestor::TrustchainAttestorHTTPHandler::post_content_initiation(
+                                (key_id, ddid),
+                                state,
+                            )
+                        }
+                    }),
+                )
+                .route(
+                    "/did/attestor/content/respond/:key_id",
+                    post({
+                        let state = shared_state.clone();
+                        move |key_id| {
+                            attestor::TrustchainAttestorHTTPHandler::post_content_response(
+                                key_id, state,
+                            )
+                        }
                     }),
                 )
                 .with_state(shared_state),

@@ -154,6 +154,7 @@ mod tests {
     use super::*;
     use crate::{config::HTTPConfig, server::TrustchainRouter};
     use axum_test_helper::TestClient;
+    use itertools::Itertools;
 
     #[tokio::test]
     #[ignore = "requires MongoDB and Bitcoin RPC"]
@@ -178,13 +179,13 @@ mod tests {
         let result: RootCandidatesResult = serde_json::from_str(&response.text().await).unwrap();
 
         assert_eq!(result.date, NaiveDate::from_ymd_opt(2022, 10, 20).unwrap());
-
+        let sorted_root_candidates = result.root_candidates.into_iter().sorted().collect_vec();
         assert_eq!(
-            result.root_candidates[16].did,
+            sorted_root_candidates[26].did,
             "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
         );
         assert_eq!(
-            result.root_candidates[16].txid,
+            sorted_root_candidates[26].txid,
             "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
         );
     }

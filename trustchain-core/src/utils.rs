@@ -36,6 +36,9 @@ pub fn init() {
         // Include test signing keys for two resolvable DIDs
         let root_plus_1_did_suffix = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let root_plus_2_candidate_did_suffix = "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
+        // TODO: move to data as for the other keys
+        let root_plus_2_candidate_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#;
         let root_plus_1_signing_jwk: JWK = serde_json::from_str(ROOT_PLUS_1_SIGNING_KEY).unwrap();
         let root_plus_2_signing_jwks: Vec<JWK> =
             serde_json::from_str(ROOT_PLUS_2_SIGNING_KEYS).unwrap();
@@ -55,6 +58,8 @@ pub fn init() {
                 false,
             )
             .unwrap();
+        let root_plus_2_candidate_signing_jwk: JWK = serde_json::from_str(root_plus_2_candidate_signing_key).unwrap();
+        utils_key_manager.save_keys(root_plus_2_candidate_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_candidate_signing_jwk), false).unwrap();
     });
 }
 
@@ -299,18 +304,6 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
 /// Generates a new cryptographic key.
 pub fn generate_key() -> JWK {
     JWK::generate_secp256k1().expect("Could not generate key.")
-}
-
-#[allow(dead_code)]
-pub fn set_panic_hook() {
-    // When the `console_error_panic_hook` feature is enabled, we can call the
-    // `set_panic_hook` function at least once during initialization, and then
-    // we will get better error messages if our code ever panics.
-    //
-    // For more details see
-    // <https://github.com/rustwasm/console_error_panic_hook#readme>
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
 }
 
 #[cfg(test)]
