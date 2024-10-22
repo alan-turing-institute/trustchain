@@ -136,7 +136,7 @@ $ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
 and set appropriate user permissions:
 ```console
-$ chmod 640 $TRUSTCHAIN_CONFIG/trustchain_config.toml
+$ chmod 640 $TRUSTCHAIN_CONFIG
 ```
 
 Then open your copy of `trustchain_config.toml` in a text editor:
