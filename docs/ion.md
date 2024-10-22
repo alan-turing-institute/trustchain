@@ -610,7 +610,7 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     Blocks: 2868427
     Headers: 2868427
     Verification progress: 99.9997%
-    Difficulty: 3.620365071432086
+    Difficulty: 205023102.4598488
 
     Network: in 0, out 10, total 10
     Version: 240001
@@ -640,11 +640,11 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
 
     === "Linux"
         ```console
-        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
     === "macOS"
         ```console
-        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
     Now repeat the attempt to start the ION Bitcoin microservice:
