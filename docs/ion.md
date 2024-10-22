@@ -507,7 +507,7 @@ The final configuration step is to set the `bitcoinWalletOrImportString` paramet
     ```console
     $ bitcoin-cli listwallets
     [
-    "sidetreeDefaultWallet"
+      "sidetreeDefaultWallet"
     ]
     ```
     Next create a wallet address with this command:
