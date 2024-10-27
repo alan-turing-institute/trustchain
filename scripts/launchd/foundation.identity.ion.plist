@@ -16,6 +16,8 @@
       <string>{{IPFS_LAUNCHD}}</string>
       <key>MONGODB_LAUNCHD</key>
       <string>{{MONGODB_LAUNCHD}}</string>
+      <key>BITCOIN_LAUNCHD</key>
+      <string>{{BITCOIN_LAUNCHD}}</string>
     </dict>
     <key>ProgramArguments</key>
     <array>

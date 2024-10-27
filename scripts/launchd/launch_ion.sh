@@ -13,4 +13,7 @@ launchctl load $IPFS_LAUNCHD
 echo "Starting MongoDB"
 launchctl load $MONGODB_LAUNCHD
 
-# TODO: start bitcoind and ION microservices.
+echo "Starting Bitcoind"
+launchctl load $BITCOIN_LAUNCHD
+
+# TODO: start ION microservices.

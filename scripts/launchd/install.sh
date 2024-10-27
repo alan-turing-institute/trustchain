@@ -13,6 +13,13 @@ if [ -z $ION_CONFIG ]; then
   exit 1
 fi
 
+# Check the $BITCOIN_DATA env variable is set.
+if [ -z $BITCOIN_DATA ]; then
+  echo "BITCOIN_DATA is unset";
+  exit 1
+fi
+
+
 # Get the directory containing this script.
 src_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 escaped_src_dir=$(echo $src_dir|sed 's/\//\\\//g')
@@ -24,7 +31,6 @@ mkdir -p "$plist_dir"
 ###
 ### Edit the IPFS plist file and write it to the plist directory.
 ###
-
 ipfs_plist=tech.ipfs.daemon.plist
 ipfs_launchd="$plist_dir/$ipfs_plist"
 escaped_ipfs_launchd=$(echo $ipfs_launchd|sed 's/\//\\\//g')
@@ -41,6 +47,30 @@ sed -e 's/{{IPFS_PATH}}/'"$escaped_ipfs_path"'/g' \
   -e 's/{{IPFS_BIN}}/'"$escaped_ipfs_bin"'/g' \
   "$src_dir/$ipfs_plist" \
   > "$ipfs_launchd"
+
+###
+### Edit the Bitcoin plist file and write it to the plist directory.
+###
+bitcoin_plist=org.bitcoin.daemon.plist
+bitcoin_launchd="$plist_dir/$bitcoin_plist"
+escaped_bitcoin_launchd=$(echo $bitcoin_launchd|sed 's/\//\\\//g')
+
+# Discover bitcoind path and binary.
+BITCOIN_BIN=$(find /Applications/bitcoin-*/bin -name "bitcoind")
+if [ -z $BITCOIN_BIN ]; then
+  echo "Error: failed to find bitcoind";
+  exit 1
+fi
+escaped_bitcoin_bin=$(echo $BITCOIN_BIN|sed 's/\//\\\//g')
+
+BITCOIN_CONF="$BITCOIN_DATA/bitcoin.conf"
+escaped_bitcoin_conf=$(echo $BITCOIN_CONF|sed 's/\//\\\//g')
+
+# Replace tokens in the plist file and write to the plist directory.
+sed -e 's/{{BITCOIN_BIN}}/'"$escaped_bitcoin_bin"'/g' \
+  -e 's/{{BITCOIN_CONF}}/'"$escaped_bitcoin_conf"'/g' \
+  "$src_dir/$bitcoin_plist" \
+  > "$bitcoin_launchd"
 
 ###
 ### Edit the ION plist file and write it to the plist directory.
@@ -65,6 +95,7 @@ escaped_mongodb_launchd=$(echo $mongodb_launchd|sed 's/\//\\\//g')
 sed -e 's/{{ION_BIN}}/'"$escaped_ion_bin"'/g' \
   -e 's/{{IPFS_LAUNCHD}}/'"$escaped_ipfs_launchd"'/g' \
   -e 's/{{MONGODB_LAUNCHD}}/'"$escaped_mongodb_launchd"'/g' \
+  -e 's/{{BITCOIN_LAUNCHD}}/'"$escaped_bitcoin_launchd"'/g' \
   -e 's/{{STDOUT_DIR}}/'"$escaped_ion_config"'/g' \
   -e 's/{{STDERR_DIR}}/'"$escaped_ion_config"'/g' \
   "$src_dir/$ion_plist" \
