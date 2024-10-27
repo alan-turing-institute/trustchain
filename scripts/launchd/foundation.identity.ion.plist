@@ -7,9 +7,9 @@
     <key>Label</key>
     <string>foundation.identity.ion</string>
     <key>StandardOutPath</key>
-    <string>{{STDOUT_DIR}}/stdout.log</string>
+    <string>{{ION_LOGGING_DIR}}/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>{{STDERR_DIR}}/stderr.log</string>
+    <string>{{ION_LOGGING_DIR}}/stderr.log</string>
     <key>EnvironmentVariables</key>
     <dict>
       <key>IPFS_LAUNCHD</key>
@@ -18,11 +18,17 @@
       <string>{{MONGODB_LAUNCHD}}</string>
       <key>BITCOIN_LAUNCHD</key>
       <string>{{BITCOIN_LAUNCHD}}</string>
+      <key>ION_BITCOIN_LAUNCHD</key>
+      <string>{{ION_BITCOIN_LAUNCHD}}</string>
+      <key>ION_CORE_LAUNCHD</key>
+      <string>{{ION_CORE_LAUNCHD}}</string>
     </dict>
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
       <string>{{ION_BIN}}</string>
-  </array>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
   </dict>
 </plist>

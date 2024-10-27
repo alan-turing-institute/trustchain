@@ -16,4 +16,8 @@ launchctl load $MONGODB_LAUNCHD
 echo "Starting Bitcoind"
 launchctl load $BITCOIN_LAUNCHD
 
-# TODO: start ION microservices.
+echo "Starting ION bitcoin microservice"
+launchctl load $ION_BITCOIN_LAUNCHD
+
+echo "Starting ION core microservice"
+launchctl load $ION_CORE_LAUNCHD

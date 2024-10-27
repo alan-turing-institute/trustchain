@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>KeepAlive</key>
+    <true/>
+    <key>Label</key>
+    <string>foundation.identity.ion.core</string>
+    <key>StandardOutPath</key>
+    <string>{{ION_LOGGING_DIR}}/ion_core.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{ION_LOGGING_DIR}}/ion_core_err.log</string>
+    <key>WorkingDirectory</key>
+    <string>{{ION_REPO}}</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>ION_CORE_CONFIG_FILE_PATH</key>
+      <string>{{ION_CORE_CONFIG_FILE_PATH}}</string>
+      <key>ION_CORE_VERSIONING_CONFIG_FILE_PATH</key>
+      <string>{{ION_CORE_VERSIONING_CONFIG_FILE_PATH}}</string>
+    </dict>
+    <key>ProgramArguments</key>
+    <array>
+      <string>{{NODE_BIN}}</string>
+      <string>{{ION_REPO}}/dist/src/core.js</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+  </dict>
+</plist>
