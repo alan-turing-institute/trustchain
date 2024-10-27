@@ -16,7 +16,7 @@
       <key>IPFS_PATH</key>
       <string>{{IPFS_PATH}}</string>
     </dict>
-    <!-- <key>RunAtLoad</key>
-    <true/> -->
+    <key>RunAtLoad</key>
+    <true/>
   </dict>
 </plist>
