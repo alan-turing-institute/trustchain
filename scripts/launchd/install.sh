@@ -122,11 +122,6 @@ escaped_ion_log_dir=$(echo $ion_log_dir|sed 's/\//\\\//g')
 
 mkdir -p "$ion_log_dir"
 
-# ION_BITCOIN_LOG="$ION_CONFIG/ion_bitcoin.log"
-# escaped_ion_bitcoin_log=$(echo $ION_BITCOIN_LOG|sed 's/\//\\\//g')
-# ION_CORE_LOG="$ION_CONFIG/ion_core.log"
-# escaped_ion_core_log=$(echo $ION_CORE_LOG|sed 's/\//\\\//g')
-
 escaped_ion_bitcoin_config=$(echo $ION_BITCOIN_CONFIG_FILE_PATH|sed 's/\//\\\//g')
 escaped_ion_bitcoin_versioning_config=$(echo $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH|sed 's/\//\\\//g')
 
