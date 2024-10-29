@@ -78,11 +78,16 @@ sed -e 's/{{IPFS_PATH}}/'"$escaped_ipfs_path"'/g' \
   > "$ipfs_launchd"
 
 ###
+### Refer to the MongoDB plist file already created by Homebrew.
+###
+mongodb_plist=homebrew.mxcl.mongodb-community.plist
+mongodb_launchd="$plist_dir/$mongodb_plist"
+
+###
 ### Edit the Bitcoin plist file and write it to the plist directory.
 ###
 bitcoin_plist=org.bitcoin.daemon.plist
 bitcoin_launchd="$plist_dir/$bitcoin_plist"
-escaped_bitcoin_launchd=$(echo $bitcoin_launchd|sed 's/\//\\\//g')
 
 # Discover bitcoind path and binary.
 BITCOIN_BIN=$(find /Applications/bitcoin-*/bin -name "bitcoind")
@@ -108,8 +113,6 @@ ion_bitcoin_plist=foundation.identity.ion.bitcoin.plist
 ion_core_plist=foundation.identity.ion.core.plist
 ion_bitcoin_launchd="$plist_dir/$ion_bitcoin_plist"
 ion_core_launchd="$plist_dir/$ion_core_plist"
-escaped_ion_bitcoin_launchd=$(echo $ion_bitcoin_launchd|sed 's/\//\\\//g')
-escaped_ion_core_launchd=$(echo $ion_core_launchd|sed 's/\//\\\//g')
 
 # Discover npm path and binary.
 NODE_BIN=$(which node || echo node)
@@ -146,35 +149,24 @@ sed -e 's/{{NODE_BIN}}/'"$escaped_node_bin"'/g' \
   > "$ion_core_launchd"
 
 ###
-### Edit the ION plist file and write it to the plist directory.
+### Load the user agents.
 ###
-ion_plist=foundation.identity.ion.plist
 
-launch_script=launch_ion.sh
+# NOTE:
+# These launchctl commands will take effect in macOS only if /bin/bash has been
+# given Full Disk Access permission. To do this, open Security & Privacy settings,
+# choose 'Full Disk Access', click the lock to make changes and enter your password.
+# Then click the + button. Then hit cmd+shift+G, type `/bin/bash` and hit Enter.
+# See: https://stackoverflow.com/questions/58442951/how-to-fix-operation-not-permitted-when-i-use-launchctl-in-macos-catalina
 
-# Replace the ION_BIN token in the plist file.
-ion_bin="$src_dir/$launch_script"
-escaped_ion_bin=$(echo $ion_bin|sed 's/\//\\\//g')
+launchctl load $ipfs_launchd
+launchctl load $mongodb_launchd
+launchctl load $bitcoin_launchd
+launchctl load $ion_bitcoin_launchd
+launchctl load $ion_core_launchd
 
-# Replace the MONGODB_LAUNCHD token in the plist file.
-mongodb_plist=homebrew.mxcl.mongodb-community.plist
-mongodb_launchd="$plist_dir/$mongodb_plist"
-escaped_mongodb_launchd=$(echo $mongodb_launchd|sed 's/\//\\\//g')
+# Make the `stop_ion.sh` script executable.
+chmod u+x "$src_dir/stop_ion.sh"
 
-# Replace tokens in the ION plist file and write to the plist directory.
-# Write stdout & stderr to the ION_CONFIG directory.
-sed -e 's/{{ION_BIN}}/'"$escaped_ion_bin"'/g' \
-  -e 's/{{IPFS_LAUNCHD}}/'"$escaped_ipfs_launchd"'/g' \
-  -e 's/{{MONGODB_LAUNCHD}}/'"$escaped_mongodb_launchd"'/g' \
-  -e 's/{{BITCOIN_LAUNCHD}}/'"$escaped_bitcoin_launchd"'/g' \
-  -e 's/{{ION_BITCOIN_LAUNCHD}}/'"$escaped_ion_bitcoin_launchd"'/g' \
-  -e 's/{{ION_CORE_LAUNCHD}}/'"$escaped_ion_core_launchd"'/g' \
-  -e 's/{{ION_LOG_DIR}}/'"$escaped_ion_log_dir"'/g' \
-  "$src_dir/$ion_plist" \
-  > "$plist_dir/$ion_plist"
-
-echo "Installed ION User Agent in $plist_dir"
-echo "ION logs will be written to: $ION_CONFIG"
-
-# Make the ION launch script executable by launchd.
-chmod a+x "$ion_bin"
+echo "Installed & loaded ION User Agents in: $plist_dir"
+echo "ION logs will be written to: $ion_log_dir"
