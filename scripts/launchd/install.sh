@@ -12,7 +12,6 @@ if [ -z $ION_CONFIG ]; then
   echo "ION_CONFIG is unset";
   exit 1
 fi
-escaped_ion_config=$(echo $ION_CONFIG|sed 's/\//\\\//g')
 
 # Check the $BITCOIN_DATA env variable is set.
 if [ -z $BITCOIN_DATA ]; then
@@ -118,10 +117,15 @@ escaped_node_bin=$(echo $NODE_BIN|sed 's/\//\\\//g')
 
 escaped_ion_repo=$(echo $ION_REPO|sed 's/\//\\\//g')
 
-ION_BITCOIN_LOG="$ION_CONFIG/ion_bitcoin.log"
-escaped_ion_bitcoin_log=$(echo $ION_BITCOIN_LOG|sed 's/\//\\\//g')
-ION_CORE_LOG="$ION_CONFIG/ion_core.log"
-escaped_ion_core_log=$(echo $ION_CORE_LOG|sed 's/\//\\\//g')
+ion_log_dir="$ION_CONFIG/log"
+escaped_ion_log_dir=$(echo $ion_log_dir|sed 's/\//\\\//g')
+
+mkdir -p "$ion_log_dir"
+
+# ION_BITCOIN_LOG="$ION_CONFIG/ion_bitcoin.log"
+# escaped_ion_bitcoin_log=$(echo $ION_BITCOIN_LOG|sed 's/\//\\\//g')
+# ION_CORE_LOG="$ION_CONFIG/ion_core.log"
+# escaped_ion_core_log=$(echo $ION_CORE_LOG|sed 's/\//\\\//g')
 
 escaped_ion_bitcoin_config=$(echo $ION_BITCOIN_CONFIG_FILE_PATH|sed 's/\//\\\//g')
 escaped_ion_bitcoin_versioning_config=$(echo $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH|sed 's/\//\\\//g')
@@ -132,7 +136,7 @@ escaped_ion_core_versioning_config=$(echo $ION_CORE_VERSIONING_CONFIG_FILE_PATH|
 # Replace tokens in the plist files and write to the plist directory.
 sed -e 's/{{NODE_BIN}}/'"$escaped_node_bin"'/g' \
   -e 's/{{ION_REPO}}/'"$escaped_ion_repo"'/g' \
-  -e 's/{{ION_LOGGING_DIR}}/'"$escaped_ion_config"'/g' \
+  -e 's/{{ION_LOG_DIR}}/'"$escaped_ion_log_dir"'/g' \
   -e 's/{{ION_BITCOIN_CONFIG_FILE_PATH}}/'"$escaped_ion_bitcoin_config"'/g' \
   -e 's/{{ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH}}/'"$escaped_ion_bitcoin_versioning_config"'/g' \
   "$src_dir/$ion_bitcoin_plist" \
@@ -140,7 +144,7 @@ sed -e 's/{{NODE_BIN}}/'"$escaped_node_bin"'/g' \
 
 sed -e 's/{{NODE_BIN}}/'"$escaped_node_bin"'/g' \
   -e 's/{{ION_REPO}}/'"$escaped_ion_repo"'/g' \
-  -e 's/{{ION_LOGGING_DIR}}/'"$escaped_ion_config"'/g' \
+  -e 's/{{ION_LOG_DIR}}/'"$escaped_ion_log_dir"'/g' \
   -e 's/{{ION_CORE_CONFIG_FILE_PATH}}/'"$escaped_ion_core_config"'/g' \
   -e 's/{{ION_CORE_VERSIONING_CONFIG_FILE_PATH}}/'"$escaped_ion_core_versioning_config"'/g' \
   "$src_dir/$ion_core_plist" \
@@ -170,7 +174,7 @@ sed -e 's/{{ION_BIN}}/'"$escaped_ion_bin"'/g' \
   -e 's/{{BITCOIN_LAUNCHD}}/'"$escaped_bitcoin_launchd"'/g' \
   -e 's/{{ION_BITCOIN_LAUNCHD}}/'"$escaped_ion_bitcoin_launchd"'/g' \
   -e 's/{{ION_CORE_LAUNCHD}}/'"$escaped_ion_core_launchd"'/g' \
-  -e 's/{{ION_LOGGING_DIR}}/'"$escaped_ion_config"'/g' \
+  -e 's/{{ION_LOG_DIR}}/'"$escaped_ion_log_dir"'/g' \
   "$src_dir/$ion_plist" \
   > "$plist_dir/$ion_plist"
 

@@ -7,9 +7,9 @@
     <key>Label</key>
     <string>foundation.identity.ion.core</string>
     <key>StandardOutPath</key>
-    <string>{{ION_LOGGING_DIR}}/ion_core.log</string>
+    <string>{{ION_LOG_DIR}}/ion_core.log</string>
     <key>StandardErrorPath</key>
-    <string>{{ION_LOGGING_DIR}}/ion_core_err.log</string>
+    <string>{{ION_LOG_DIR}}/ion_core_err.log</string>
     <key>WorkingDirectory</key>
     <string>{{ION_REPO}}</string>
     <key>EnvironmentVariables</key>

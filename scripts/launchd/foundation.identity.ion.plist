@@ -7,9 +7,9 @@
     <key>Label</key>
     <string>foundation.identity.ion</string>
     <key>StandardOutPath</key>
-    <string>{{ION_LOGGING_DIR}}/stdout.log</string>
+    <string>{{ION_LOG_DIR}}/stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>{{ION_LOGGING_DIR}}/stderr.log</string>
+    <string>{{ION_LOG_DIR}}/stderr.log</string>
     <key>EnvironmentVariables</key>
     <dict>
       <key>IPFS_LAUNCHD</key>
