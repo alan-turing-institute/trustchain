@@ -1,0 +1,22 @@
+[Unit]
+Description=ION bitcoin microservice
+After=network.target
+
+[Service]
+Environment=NODE_PORT=3002
+Type=simple
+User={{USER}}
+ExecStart=/usr/bin/node {{ION_REPO}}/dist/src/bitcoin.js
+Restart=on-failure
+
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=ION_BITCOIN_CONFIG_FILE_PATH={{ION_BITCOIN_CONFIG_FILE_PATH}}
+Environment=ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH={{ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH}}
+
+# Output to syslog
+StandardOutput=file:{{ION_LOG_DIR}}/ion-bitcoin.log
+StandardError=file:{{ION_LOG_DIR}}/ion-bitcoin-err.log
+SyslogIdentifier=ion-bitcoin
+
+[Install]
+WantedBy=multi-user.target

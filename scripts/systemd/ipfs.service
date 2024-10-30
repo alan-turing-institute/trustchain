@@ -1,0 +1,53 @@
+# Trustchain: systemd template for IPFS
+# Based on:
+# https://git.shivering-isles.com/github-mirror/ipfs/go-ipfs/-/tree/master/misc/systemd
+
+[Unit]
+Description=InterPlanetary File System (IPFS) daemon
+Documentation=https://docs.ipfs.tech/
+After=network.target
+
+[Service]
+# hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+PrivateDevices=true
+DevicePolicy=closed
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+ProtectHostname=true
+PrivateTmp=true
+ProtectClock=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+ProtectHome=true
+RemoveIPC=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+#don't use swap
+MemorySwapMax=0
+
+# Don't timeout on startup. Opening the IPFS repo can take a long time in some cases (e.g., when
+# badger is recovering) and migrations can delay startup.
+TimeoutStartSec=infinity
+
+Type=notify
+User={{USER}}
+Group={{USER}}
+StateDirectory=ipfs
+Environment=IPFS_PATH={{HOME}}
+ExecStart=/usr/local/bin/ipfs daemon --init --migrate
+Restart=on-failure
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target

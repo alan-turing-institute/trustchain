@@ -1,0 +1,22 @@
+[Unit]
+Description=ION core microservice
+After=network.target
+
+[Service]
+Environment=NODE_PORT=3000
+Type=simple
+User={{USER}}
+ExecStart=/usr/bin/node {{ION_REPO}}/dist/src/core.js
+Restart=on-failure
+
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=ION_CORE_CONFIG_FILE_PATH={{ION_CORE_CONFIG_FILE_PATH}}
+Environment=ION_CORE_VERSIONING_CONFIG_FILE_PATH={{ION_CORE_VERSIONING_CONFIG_FILE_PATH}}
+
+# Output to syslog
+StandardOutput=file:{{ION_LOG_DIR}}/ion-core.log
+StandardError=file:{{ION_LOG_DIR}}/ion-core-err.log
+SyslogIdentifier=ion-core
+
+[Install]
+WantedBy=multi-user.target
