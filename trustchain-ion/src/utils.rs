@@ -1,8 +1,10 @@
 //! ION-related utilities.
+use crate::data::{SAMPLE_CID, SAMPLE_DID_MAINNET, SAMPLE_DID_TESTNET};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
 use bitcoin::{BlockHash, BlockHeader, Transaction};
+use bitcoincore_rpc::json::GetBlockchainInfoResult;
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
@@ -12,12 +14,14 @@ use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::io::Read;
 use std::{cmp::Ordering, collections::HashMap};
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
-    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
-    HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION,
-    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
+    trustchain_resolver, TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError,
+    BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS,
+    MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY,
+    VERSION_KEY,
 };
 
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";
@@ -167,6 +171,18 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     )
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
     .unwrap()
+}
+
+/// Gets Bitcoin blockchain info via the RPC API.
+pub fn blockchain_info(
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<GetBlockchainInfoResult, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return blockchain_info(Some(&rpc_client));
+    };
+    Ok(client.unwrap().get_blockchain_info()?)
 }
 
 /// Gets a Bitcoin block header via the RPC API.
@@ -391,6 +407,57 @@ pub fn block_height_range_on_date(
     let next_date = date.succ_opt().unwrap();
     let last_block = last_block_height_before(next_date, Some(first_block), client)?;
     Ok((first_block, last_block))
+}
+
+#[derive(Debug)]
+pub enum BitcoindStatus {
+    Ok(bool),
+    Synching(u64, u64),
+    Error(TrustchainBitcoinError),
+}
+
+/// Returns the current status of bitcoind.
+pub async fn bitcoind_status() -> BitcoindStatus {
+    let info = blockchain_info(None);
+    if info.is_err() {
+        return BitcoindStatus::Error(info.err().unwrap());
+    }
+    let info = info.unwrap();
+    if info.blocks == info.headers {
+        return BitcoindStatus::Ok(info.chain == "main");
+    }
+    BitcoindStatus::Synching(info.blocks, info.headers)
+}
+
+/// Returns true if the IPFS daemon is running on the expected port.
+pub async fn ipfs_ok() -> bool {
+    query_ipfs(SAMPLE_CID, &IpfsClient::default()).await.is_ok()
+}
+
+/// Returns true if the MongoDB daemon is running on the expected port.
+pub async fn mongodb_ok(is_mainnet: bool) -> bool {
+    query_mongodb(get_did_suffix(&sample_did(is_mainnet)))
+        .await
+        .is_ok()
+}
+
+// pub async fn is_mainnet() -> Result<bool, TrustchainBitcoinError> {
+//     let info = blockchain_info(None)?;
+//     Ok(info.chain == "main")
+// }
+pub fn sample_did(is_mainnet: bool) -> String {
+    match is_mainnet {
+        true => SAMPLE_DID_MAINNET.to_string(),
+        false => SAMPLE_DID_TESTNET.to_string(),
+    }
+}
+
+/// Returns true if the ION Core microservice is running on the expected port.
+pub async fn ion_ok(is_mainnet: bool) -> bool {
+    // TODO: get ion_port from trustchain_config.toml
+    let resolver = trustchain_resolver("http://localhost:3000/");
+    let result = resolver.resolve_as_result(&sample_did(is_mainnet)).await;
+    result.is_ok()
 }
 
 #[cfg(test)]
@@ -746,5 +813,11 @@ mod tests {
         // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
         // The last testnet block mined on 2022-10-20 (UTC) was at height 2377519.
         assert_eq!(result, (2377360, 2377519));
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires Bitcoin"]
+    async fn test_bitcoind_status() {
+        let _ = bitcoind_status().await;
     }
 }

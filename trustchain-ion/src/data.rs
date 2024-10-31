@@ -1,6 +1,12 @@
 //! Test fixtures for crate.
 #![allow(dead_code)]
 
+pub(crate) const SAMPLE_CID: &str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+pub(crate) const SAMPLE_DID_TESTNET: &str =
+    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+pub(crate) const SAMPLE_DID_MAINNET: &str =
+    "did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w";
+
 // Note on test fixtures:
 //
 // This file contains samples of content from the three ION file types written to IPFS:
