@@ -1,3 +1,4 @@
+use config::cli_config;
 use trustchain_ion::{
     utils::{bitcoind_status, ion_ok, ipfs_ok, mongodb_ok, BitcoindStatus},
     TrustchainBitcoinError,
@@ -41,7 +42,8 @@ pub async fn print_status() {
 
     let str = "ION.......... ".to_string();
     let msg = Some("ION DID resolution attempt failed");
-    println!("{}", status_str(str, ion_ok(is_mainnet).await, msg));
+    let is_ok = ion_ok(is_mainnet, cli_config().ion_endpoint.port).await;
+    println!("{}", status_str(str, is_ok, msg));
 
     // TODO: check trustchain-http server status (report only if positive).
 }

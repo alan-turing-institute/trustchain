@@ -453,9 +453,8 @@ pub fn sample_did(is_mainnet: bool) -> String {
 }
 
 /// Returns true if the ION Core microservice is running on the expected port.
-pub async fn ion_ok(is_mainnet: bool) -> bool {
-    // TODO: get ion_port from trustchain_config.toml
-    let resolver = trustchain_resolver("http://localhost:3000/");
+pub async fn ion_ok(is_mainnet: bool, ion_port: u16) -> bool {
+    let resolver = trustchain_resolver(&format!("http://localhost:{}/", ion_port));
     let result = resolver.resolve_as_result(&sample_did(is_mainnet)).await;
     result.is_ok()
 }
