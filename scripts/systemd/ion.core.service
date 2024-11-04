@@ -5,7 +5,6 @@ After=network.target
 [Service]
 Environment=NODE_PORT=3000
 Type=simple
-User={{USER}}
 ExecStart=/usr/bin/node {{ION_REPO}}/dist/src/core.js
 Restart=on-failure
 

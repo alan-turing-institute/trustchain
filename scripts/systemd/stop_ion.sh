@@ -1,13 +1,13 @@
 #!/bin/bash
 
-systemctl stop ipfs.service
-systemctl stop mongodb.service
-systemctl stop bitcoind.service
-systemctl stop ion.bitcoin.service
-systemctl stop ion.core.service
+systemctl --user stop ipfs
+systemctl --user stop mongod
+systemctl --user stop bitcoind
+systemctl --user stop ion.bitcoin
+systemctl --user stop ion.core
 
-systemctl disable ipfs.service
-systemctl disable mongodb.service
-systemctl disable bitcoind.service
-systemctl disable ion.bitcoin.service
-systemctl disable ion.core.service
+systemctl --user disable ipfs
+systemctl --user disable mongod
+systemctl --user disable bitcoind
+systemctl --user disable ion.bitcoin
+systemctl --user disable ion.core
