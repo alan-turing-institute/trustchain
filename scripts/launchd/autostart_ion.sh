@@ -51,7 +51,6 @@ fi
 
 # Get the directory containing this script.
 src_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-escaped_src_dir=$(echo $src_dir|sed 's/\//\\\//g')
 
 # Get the User Agents (plist) directory.
 plist_dir="$HOME/Library/LaunchAgents"
