@@ -7,6 +7,13 @@ pub(crate) const SAMPLE_DID_TESTNET: &str =
 pub(crate) const SAMPLE_DID_MAINNET: &str =
     "did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w";
 
+pub fn sample_did(is_mainnet: bool) -> String {
+    match is_mainnet {
+        true => SAMPLE_DID_MAINNET.to_string(),
+        false => SAMPLE_DID_TESTNET.to_string(),
+    }
+}
+
 // Note on test fixtures:
 //
 // This file contains samples of content from the three ION file types written to IPFS:

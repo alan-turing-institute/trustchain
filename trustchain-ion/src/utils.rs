@@ -1,5 +1,5 @@
 //! ION-related utilities.
-use crate::data::{SAMPLE_CID, SAMPLE_DID_MAINNET, SAMPLE_DID_TESTNET};
+use crate::data::{sample_did, SAMPLE_CID};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
@@ -439,17 +439,6 @@ pub async fn mongodb_ok(is_mainnet: bool) -> bool {
     query_mongodb(get_did_suffix(&sample_did(is_mainnet)))
         .await
         .is_ok()
-}
-
-// pub async fn is_mainnet() -> Result<bool, TrustchainBitcoinError> {
-//     let info = blockchain_info(None)?;
-//     Ok(info.chain == "main")
-// }
-pub fn sample_did(is_mainnet: bool) -> String {
-    match is_mainnet {
-        true => SAMPLE_DID_MAINNET.to_string(),
-        false => SAMPLE_DID_TESTNET.to_string(),
-    }
 }
 
 /// Returns true if the ION Core microservice is running on the expected port.
