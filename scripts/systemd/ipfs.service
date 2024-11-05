@@ -15,10 +15,9 @@ MemorySwapMax=0
 # badger is recovering) and migrations can delay startup.
 TimeoutStartSec=infinity
 
-Type=notify
 StateDirectory=ipfs
 Environment=IPFS_PATH={{HOME}}
-ExecStart=/usr/local/bin/ipfs daemon --init --migrate
+ExecStart=/usr/local/bin/ipfs daemon
 Restart=on-failure
 KillSignal=SIGINT
 
