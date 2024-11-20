@@ -28,7 +28,7 @@ To do this, run the following command:
 ```console
 $ echo "export SHELL_CONFIG=" $(find ~/.*shrc -maxdepth 0 | head -n 1) | sed 's/= /=/g' >> $(find ~/.*shrc -maxdepth 0 | head -n 1)
 ```
-Then close and reopen the Terminal window that you're working in, so that the change takes effect. Now check that the new environment variable exists:
+**Then close and reopen the Terminal window that you're working in**, so that the change takes effect. Now check that the new environment variable exists:
 ```console
 $ echo $SHELL_CONFIG
 ```
