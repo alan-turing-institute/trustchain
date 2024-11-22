@@ -10,14 +10,7 @@ keywords = ["pki", "did", "vc", "vp"]
 edition = "2021"
 
 [workspace]
-members = [
-    "trustchain-api",
-    "trustchain-cli",
-    "trustchain-core",
-    "trustchain-ffi",
-    "trustchain-http",
-    "trustchain-ion",
-]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -73,8 +66,8 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 [dependencies]
-trustchain-api = { path = "./trustchain-api", version = "0.1.0" }
-trustchain-core = { path = "./trustchain-core", version = "0.2.0" }
-trustchain-ffi = { path = "./trustchain-ffi", version = "0.1.0" }
-trustchain-http = { path = "./trustchain-http", version = "0.1.0" }
-trustchain-ion = { path = "./trustchain-ion", version = "0.2.0" }
+trustchain-api = { path = "crates/trustchain-api", version = "0.1.0" }
+trustchain-core = { path = "crates/trustchain-core", version = "0.2.0" }
+trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0" }
+trustchain-http = { path = "crates/trustchain-http", version = "0.1.0" }
+trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0" }
