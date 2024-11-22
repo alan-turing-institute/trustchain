@@ -15,40 +15,36 @@ trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 trustchain-api = { path = "../trustchain-api" }
 
-async-trait = "0.1"
-axum = "0.6"
-axum-server = { version = "0.5.1", features = ["tls-rustls"] }
+async-trait = { workspace = true }
+axum = { workspace = true }
+axum-server = { workspace = true, features = ["tls-rustls"] }
 base64 = "0.21.0"
-chrono = "^0.4"
-did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
-hyper = "0.14.26"
-image = "0.23.14"
-is_empty = "0.2.0"
-josekit = "0.8"
-lazy_static = "1.4.0"
-log = "0.4"
-qrcode = "0.12.0"
-rand = "0.8"
-reqwest = { version = "0.11.16", features = ["stream"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+chrono = { workspace = true }
+did-ion = { workspace = true }
+hyper = { workspace = true }
+image = { workspace = true }
+is_empty = { workspace = true }
+josekit = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+qrcode = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 # sha2 = "0.10"
-shellexpand = "3.1.0"
-ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5", features = [
-    "http-did",
-    "secp256k1",
-    "rss",
-] }
-thiserror = "1.0"
-tokio = { version = "1.20.1", features = ["full"] }
-tower = "0.4"
-toml = "0.7.2"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-serde_with = "3.4.0"
+shellexpand = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tower = { workspace = true }
+toml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_with = { workspace = true }
 
 [dev-dependencies]
-axum-test-helper = "0.2.0"
-itertools = "0.13.0"
-mockall = "0.11.4"
-tempfile = "3.9.0"
+axum-test-helper = { workspace = true }
+itertools = { workspace = true }
+mockall = { workspace = true }
+tempfile = { workspace = true }
