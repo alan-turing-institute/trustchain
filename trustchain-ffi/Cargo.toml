@@ -6,14 +6,9 @@ edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "staticlib", "lib"]
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-trustchain-core = { path = "../trustchain-core" }
-trustchain-ion = { path = "../trustchain-ion" }
-trustchain-api = { path = "../trustchain-api" }
-trustchain-http = { path = "../trustchain-http" }
 
 anyhow = { workspace = true }
 chrono = { workspace = true }
@@ -27,3 +22,7 @@ ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 toml = { workspace = true }
+trustchain-api = { path = "../trustchain-api" }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-http = { path = "../trustchain-http" }
+trustchain-ion = { path = "../trustchain-ion" }

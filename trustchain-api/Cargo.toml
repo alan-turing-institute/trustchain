@@ -4,20 +4,19 @@ version = "0.1.0"
 authors = ["Trustchain Devs"]
 edition = "2021"
 
-
 [dependencies]
-trustchain-core = { path = "../trustchain-core" }
-trustchain-ion = { path = "../trustchain-ion" }
-ps_sig = { workspace = true }
 
 async-trait = { workspace = true }
 chrono = { workspace = true }
-serde_json = { workspace = true }
-sha2 = { workspace = true }
-ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 did-ion = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
+ps_sig = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

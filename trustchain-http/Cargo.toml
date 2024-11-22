@@ -2,18 +2,13 @@
 name = "trustchain-http"
 version = "0.1.0"
 edition = "2021"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 
 [[bin]]
 name = "trustchain-http"
 path = "src/bin/main.rs"
 
 [dependencies]
-trustchain-core = { path = "../trustchain-core" }
-trustchain-ion = { path = "../trustchain-ion" }
-trustchain-api = { path = "../trustchain-api" }
 
 async-trait = { workspace = true }
 axum = { workspace = true }
@@ -32,16 +27,18 @@ rand = { workspace = true }
 reqwest = { workspace = true, features = ["stream"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-# sha2 = "0.10"
+serde_with = { workspace = true }
 shellexpand = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-tower = { workspace = true }
 toml = { workspace = true }
+tower = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-serde_with = { workspace = true }
+trustchain-api = { path = "../trustchain-api" }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]
 axum-test-helper = { workspace = true }

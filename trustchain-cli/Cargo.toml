@@ -9,11 +9,6 @@ name = "trustchain-cli"
 path = "src/bin/main.rs"
 
 [dependencies]
-trustchain-core = { path = "../trustchain-core" }
-trustchain-ion = { path = "../trustchain-ion" }
-trustchain-api = { path = "../trustchain-api" }
-trustchain-http = { path = "../trustchain-http" }
-
 
 clap = { workspace = true, features = ["derive", "cargo"] }
 lazy_static = { workspace = true }
@@ -22,3 +17,7 @@ serde_json = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
+trustchain-api = { path = "../trustchain-api" }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-http = { path = "../trustchain-http" }
+trustchain-ion = { path = "../trustchain-ion" }
