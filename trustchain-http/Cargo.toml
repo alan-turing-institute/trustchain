@@ -20,11 +20,7 @@ axum = "0.6"
 axum-server = { version = "0.5.1", features = ["tls-rustls"] }
 base64 = "0.21.0"
 chrono = "^0.4"
-clap = { version = "^4", features = ["derive", "env", "cargo"] }
 did-ion = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223a384ee71df1333bbce04af445e852eab5" }
-execute = "0.2.11"
-gloo-console = "0.2.3"
-hex = "0.4.3"
 hyper = "0.14.26"
 image = "0.23.14"
 is_empty = "0.2.0"
@@ -35,7 +31,6 @@ qrcode = "0.12.0"
 rand = "0.8"
 reqwest = { version = "0.11.16", features = ["stream"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_jcs = "0.1.0"
 serde_json = "1.0"
 # sha2 = "0.10"
 shellexpand = "3.1.0"
@@ -47,12 +42,10 @@ ssi = { git = "https://github.com/alan-turing-institute/ssi.git", rev = "1aa3223
 thiserror = "1.0"
 tokio = { version = "1.20.1", features = ["full"] }
 tower = "0.4"
-tower-http = { version = "0.4.0", features = ["map-request-body", "util"] }
 toml = "0.7.2"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 serde_with = "3.4.0"
-uuid = { version = "1.2.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [dev-dependencies]
 axum-test-helper = "0.2.0"
