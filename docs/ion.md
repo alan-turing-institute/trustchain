@@ -59,17 +59,17 @@ In all cases, administrator privileges are required.
 
 ### Prerequisites
 
+!!! info "Create the `SHELL_CONFIG` environment variable"
+
+    Before continuing, make sure you have created the `SHELL_CONFIG` environment variable by following the instructions on the [Getting Started](getting-started.md#environment-variables) page.
+
 Run the following commands to set up your environment.
 
 === "Linux"
 
-    Update the package lists on your machine:
+    Update the package lists on your machine and install essential build tools:
     ```console
-    $ sudo apt update
-    ```
-    and install essential build tools:
-    ```console
-    $ sudo apt install build-essential
+    $ sudo apt update && sudo apt install build-essential
     ```
     Install Git:
     ```console
