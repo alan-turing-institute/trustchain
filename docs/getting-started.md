@@ -26,9 +26,9 @@ Environment variables are defined in your Terminal configuration file. Since we 
 
 To do this, run the following command:
 ```console
-$ echo "export SHELL_CONFIG=" $(find ~/.*shrc -maxdepth 0 | head -n 1) | sed 's/= /=/g' >> $(find ~/.*shrc -maxdepth 0 | head -n 1)
+$ SHELL_CONFIG=$(find ~/.*shrc -maxdepth 0 | head -n 1) && echo "export SHELL_CONFIG=$SHELL_CONFIG" >> $SHELL_CONFIG
 ```
-**Then close and reopen the Terminal window that you're working in**, so that the change takes effect. Now check that the new environment variable exists:
+Now check that the new environment variable exists:
 ```console
 $ echo $SHELL_CONFIG
 ```
