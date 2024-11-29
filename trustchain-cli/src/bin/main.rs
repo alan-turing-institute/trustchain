@@ -13,7 +13,7 @@ use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
     TrustchainAPI,
 };
-use trustchain_cli::config::cli_config;
+use trustchain_cli::{config::cli_config, print_status};
 use trustchain_core::{
     utils::extract_keys,
     vc::{CredentialError, DataCredentialError},
@@ -44,6 +44,13 @@ fn cli() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
+        .subcommand(
+            Command::new("status")
+                .about("Trustchain node status.")
+                .subcommand_required(false)
+                .arg_required_else_help(false)
+                .allow_external_subcommands(false)
+        )
         .subcommand(
             Command::new("did")
                 .about("DID functionality: create, attest, resolve, verify.")
@@ -189,6 +196,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let resolver = verifier.resolver();
     let mut context_loader = ContextLoader::default();
     match matches.subcommand() {
+        Some(("status", _)) => {
+            // TODO: update the trustchain-api crate.
+            print_status().await;
+        }
         Some(("did", sub_matches)) => {
             match sub_matches.subcommand() {
                 Some(("create", sub_matches)) => {
