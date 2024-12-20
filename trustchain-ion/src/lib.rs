@@ -16,6 +16,7 @@ pub mod verifier;
 
 use crate::ion::IONTest as ION;
 use crate::resolver::HTTPTrustchainResolver;
+use bitcoin::Network;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
@@ -147,6 +148,9 @@ impl From<ParseIntError> for TrustchainBitcoinError {
 /// An error relating to a Bitcoin RPC API call.
 #[derive(Error, Debug)]
 pub enum TrustchainBitcoinError {
+    /// Unsupported network.
+    #[error("Unsupported network.")]
+    UnsupportedNetwork(Network),
     /// Failed to convert block header timestamp hex.
     #[error("Failed to convert block header timestamp hex: {0}")]
     BlockHeaderConversionError(ParseIntError),

@@ -1,7 +1,7 @@
 use crate::ion::IONTest as ION;
 use bip39::Mnemonic;
+use bitcoin::bip32::{DerivationPath, Xpriv};
 use bitcoin::secp256k1::Secp256k1;
-use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use did_ion::sidetree::Sidetree;
 use ed25519_dalek_bip32::derivation_path::DerivationPath as Ed25519DerivationPath;
 use ed25519_dalek_bip32::derivation_path::DerivationPathParseError;
@@ -19,7 +19,7 @@ use crate::{
 pub enum MnemonicError {
     /// Invalid BIP32 derivation path.
     #[error("Invalid BIP32 derivation path: {0}")]
-    InvalidDerivationPath(bitcoin::util::bip32::Error),
+    InvalidDerivationPath(bitcoin::bip32::Error),
     /// Invalid BIP32 derivation path.
     #[error("Wrapped ed25519_dalek_bip32 error: {0}")]
     Ed25519DalekBip32Error(ed25519_dalek_bip32::Error),
@@ -34,8 +34,8 @@ pub enum MnemonicError {
     FailedToConvertECParams,
 }
 
-impl From<bitcoin::util::bip32::Error> for MnemonicError {
-    fn from(err: bitcoin::util::bip32::Error) -> Self {
+impl From<bitcoin::bip32::Error> for MnemonicError {
+    fn from(err: bitcoin::bip32::Error) -> Self {
         MnemonicError::InvalidDerivationPath(err)
     }
 }
@@ -83,7 +83,7 @@ fn generate_secp256k1_key(
     index: Option<u32>,
 ) -> Result<JWK, MnemonicError> {
     let seed = mnemonic.to_seed("");
-    let m = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed)?;
+    let m = Xpriv::new_master(bitcoin::Network::Bitcoin, &seed)?;
     let secp = Secp256k1::new();
     let derivation_path = secp256k1_derivation_path(path, index)?;
     let xpriv = m.derive_priv(&secp, &derivation_path)?;
@@ -106,7 +106,7 @@ fn derivation_path(path: &str, index: Option<u32>) -> Result<String, MnemonicErr
     // Handle case index > 2^31 - 1.
     if index > 2u32.pow(31) - 1 {
         return Err(MnemonicError::InvalidDerivationPath(
-            bitcoin::util::bip32::Error::InvalidChildNumber(index),
+            bitcoin::bip32::Error::InvalidChildNumber(index),
         ));
     }
     Ok(format!("{}/{index}'", path.replace('h', "'")))
@@ -170,8 +170,8 @@ pub fn generate_keys(mnemonic: &Mnemonic, index: Option<u32>) -> Result<IONKeys,
 mod tests {
     use super::*;
 
+    use bitcoin::bip32::{DerivationPath, Xpriv};
     use bitcoin::secp256k1::Secp256k1;
-    use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
     use bitcoin::Address;
     use ssi::jwk::ECParams;
     use ssi::jwk::JWK;
@@ -231,11 +231,24 @@ mod tests {
         );
 
         let derivation_path = DerivationPath::from_str("m/1h/0h").unwrap();
-        let expected = "m/1'/0'";
+        // let expected = "m/1'/0'";
+        let expected = "1'/0'";
         assert_eq!(expected, derivation_path.to_string());
 
         let derivation_path = DerivationPath::from_str("m/1'/0'").unwrap();
-        let expected = "m/1'/0'";
+        // let expected = "m/1'/0'";
+        let expected = "1'/0'";
+        assert_eq!(expected, derivation_path.to_string());
+
+        // Note: the fmt::Display implementation for DerivationPath changed in
+        // rust-bitcoin version 0.32.0-rc1 to omit the leading "m" character.
+        // Here we test the round-trip.
+        let derivation_path = DerivationPath::from_str("1h/0'").unwrap();
+        let expected = "1'/0'";
+        assert_eq!(expected, derivation_path.to_string());
+
+        let derivation_path = DerivationPath::from_str("1'/0'").unwrap();
+        let expected = "1'/0'";
         assert_eq!(expected, derivation_path.to_string());
     }
 
@@ -348,13 +361,13 @@ mod tests {
         let path = "m/0'/0'";
 
         // Using rust bitcoin crate:
-        let m = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed)?;
+        let m = Xpriv::new_master(bitcoin::Network::Bitcoin, &seed)?;
         let secp = Secp256k1::new();
         let derivation_path = DerivationPath::from_str(path)?;
         let xpriv = m.derive_priv(&secp, &derivation_path)?;
 
         let private_key = xpriv.to_priv();
-        let public_key: bitcoin::util::key::PublicKey = private_key.public_key(&secp);
+        let public_key: bitcoin::key::PublicKey = private_key.public_key(&secp);
         let address = Address::p2pkh(&public_key, bitcoin::Network::Bitcoin);
 
         // This matches the address generated at https://learnmeabitcoin.com/technical/derivation-paths

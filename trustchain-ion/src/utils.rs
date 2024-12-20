@@ -3,7 +3,8 @@ use crate::data::{sample_did, SAMPLE_CID};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
-use bitcoin::{BlockHash, BlockHeader, Transaction};
+use bitcoin::Network;
+use bitcoin::{block::Header, BlockHash, Transaction};
 use bitcoincore_rpc::json::GetBlockchainInfoResult;
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
@@ -69,10 +70,12 @@ fn tx_to_op_return_data(tx: &Transaction) -> Result<String, VerifierError> {
         .collect();
 
     match extracted.len() {
-        0 => Err(VerifierError::NoDIDContentIdentifier(tx.txid().to_string())),
+        0 => Err(VerifierError::NoDIDContentIdentifier(
+            tx.compute_txid().to_string(),
+        )),
         1 => Ok(extracted.first().unwrap().to_string()),
         _ => Err(VerifierError::MultipleDIDContentIdentifiers(
-            tx.txid().to_string(),
+            tx.compute_txid().to_string(),
         )),
     }
 }
@@ -189,7 +192,7 @@ pub fn blockchain_info(
 pub fn block_header(
     block_hash: &BlockHash,
     client: Option<&bitcoincore_rpc::Client>,
-) -> Result<BlockHeader, TrustchainBitcoinError> {
+) -> Result<Header, TrustchainBitcoinError> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
         let rpc_client = rpc_client();
@@ -310,7 +313,7 @@ pub fn merkle_proof(
     }
     Ok(client
         .unwrap()
-        .get_tx_out_proof(&[tx.txid()], Some(block_hash))?)
+        .get_tx_out_proof(&[tx.compute_txid()], Some(block_hash))?)
 }
 
 pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
@@ -430,10 +433,13 @@ pub async fn bitcoind_status() -> BitcoindStatus {
     }
     let info = info.unwrap();
     if info.blocks == info.headers {
-        if info.chain == "main" {
+        if info.chain == Network::Bitcoin {
             return BitcoindStatus::Ok(BitcoinNetwork::Mainnet);
         }
-        return BitcoindStatus::Ok(BitcoinNetwork::Testnet3);
+        if info.chain == Network::Testnet {
+            return BitcoindStatus::Ok(BitcoinNetwork::Testnet3);
+        }
+        return BitcoindStatus::Error(TrustchainBitcoinError::UnsupportedNetwork(info.chain));
     }
     BitcoindStatus::Synching(info.blocks, info.headers)
 }
@@ -707,11 +713,11 @@ mod tests {
 
         // Expected transaction ID:
         let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.txid().to_string(), expected);
+        assert_eq!(tx.compute_txid().to_string(), expected);
 
         // Expect a different transaction ID to fail.
         let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_ne!(tx.txid().to_string(), not_expected);
+        assert_ne!(tx.compute_txid().to_string(), not_expected);
     }
 
     #[tokio::test]
