@@ -8,44 +8,38 @@ pub mod config;
 
 /// Prints the current status of ION and its dependencies.
 pub async fn print_status() {
-    let bitcoind_status = bitcoind_status().await;
-    let mut is_mainnet = false;
-    if let BitcoindStatus::Ok(x) = bitcoind_status {
-        is_mainnet = x;
-    }
-
     let str = "IPFS......... ".to_string();
     let msg = Some("IPFS daemon not found");
     println!("{}", status_str(str, ipfs_ok().await, msg));
 
-    let str = "MongoDB...... ".to_string();
-    let msg = Some("Mongo daemon not found");
-    println!("{}", status_str(str, mongodb_ok(is_mainnet).await, msg));
-
-    let str = "Bitcoin...... ".to_string();
+    // Check bitcoind status to determine network (mainnet or testnet).
+    let bitcoind_status = bitcoind_status().await;
+    let bitcoin_str = "Bitcoin...... ".to_string();
     match bitcoind_status {
-        BitcoindStatus::Ok(_) => {
-            println!("{}", status_str(str, true, None));
+        BitcoindStatus::Ok(network) => {
+            let mongo_str = "MongoDB...... ".to_string();
+            let msg = Some("Mongo daemon not found");
+            println!("{}", status_str(mongo_str, mongodb_ok(&network).await, msg));
+
+            println!("{}", status_str(bitcoin_str, true, None));
+
+            let ion_str = "ION.......... ".to_string();
+            let msg = Some("ION DID resolution attempt failed");
+            let is_ok = ion_ok(&network, cli_config().ion_endpoint.port).await;
+            println!("{}", status_str(ion_str, is_ok, msg));
         }
         BitcoindStatus::Synching(blocks, headers) => {
             let msg = Some(format!("Synching blocks: {}/{}", blocks, headers));
-            println!("{}", status_str(str, false, msg.as_deref()));
+            println!("{}", status_str(bitcoin_str, false, msg.as_deref()));
         }
         BitcoindStatus::Error(e) => {
             let msg = match e {
                 err @ TrustchainBitcoinError::BitcoinCoreRPCError(_) => err.to_string(),
                 _ => "Bitcoin RPC returned an error".to_string(),
             };
-            println!("{}", status_str(str, false, Some(&msg)));
+            println!("{}", status_str(bitcoin_str, false, Some(&msg)));
         }
     };
-
-    let str = "ION.......... ".to_string();
-    let msg = Some("ION DID resolution attempt failed");
-    let is_ok = ion_ok(is_mainnet, cli_config().ion_endpoint.port).await;
-    println!("{}", status_str(str, is_ok, msg));
-
-    // TODO: check trustchain-http server status (report only if positive).
 }
 
 pub fn status_str(mut str: String, is_ok: bool, details: Option<&str>) -> String {

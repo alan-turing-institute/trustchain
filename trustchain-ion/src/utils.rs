@@ -409,9 +409,15 @@ pub fn block_height_range_on_date(
     Ok((first_block, last_block))
 }
 
+#[derive(Debug, Clone)]
+pub enum BitcoinNetwork {
+    Mainnet,
+    Testnet3,
+}
+
 #[derive(Debug)]
 pub enum BitcoindStatus {
-    Ok(bool),
+    Ok(BitcoinNetwork),
     Synching(u64, u64),
     Error(TrustchainBitcoinError),
 }
@@ -424,7 +430,10 @@ pub async fn bitcoind_status() -> BitcoindStatus {
     }
     let info = info.unwrap();
     if info.blocks == info.headers {
-        return BitcoindStatus::Ok(info.chain == "main");
+        if info.chain == "main" {
+            return BitcoindStatus::Ok(BitcoinNetwork::Mainnet);
+        }
+        return BitcoindStatus::Ok(BitcoinNetwork::Testnet3);
     }
     BitcoindStatus::Synching(info.blocks, info.headers)
 }
@@ -435,16 +444,16 @@ pub async fn ipfs_ok() -> bool {
 }
 
 /// Returns true if the MongoDB daemon is running on the expected port.
-pub async fn mongodb_ok(is_mainnet: bool) -> bool {
-    query_mongodb(get_did_suffix(&sample_did(is_mainnet)))
+pub async fn mongodb_ok(network: &BitcoinNetwork) -> bool {
+    query_mongodb(get_did_suffix(&sample_did(network)))
         .await
         .is_ok()
 }
 
 /// Returns true if the ION Core microservice is running on the expected port.
-pub async fn ion_ok(is_mainnet: bool, ion_port: u16) -> bool {
+pub async fn ion_ok(network: &BitcoinNetwork, ion_port: u16) -> bool {
     let resolver = trustchain_resolver(&format!("http://localhost:{}/", ion_port));
-    let result = resolver.resolve_as_result(&sample_did(is_mainnet)).await;
+    let result = resolver.resolve_as_result(&sample_did(network)).await;
     result.is_ok()
 }
 
