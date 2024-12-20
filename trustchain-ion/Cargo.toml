@@ -11,8 +11,8 @@ trustchain-core = { path = "../trustchain-core" }
 anyhow = "1.0"
 async-trait = "0.1"
 bip39 = "2.0.0"
-bitcoin = "0.29.2"
-bitcoincore-rpc = "0.16.0"
+bitcoin = "0.32.5"
+bitcoincore-rpc = "0.19.0"
 canonical_json = "0.4.0"
 chrono = "0.4"
 clap = { version = "^4.1", features = ["derive", "cargo"] }

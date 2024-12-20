@@ -1,5 +1,4 @@
 //! Implementation of `Commitment` API for ION DID method.
-use bitcoin::util::psbt::serialize::Deserialize;
 use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
 use ipfs_hasher::IpfsHasher;
@@ -230,7 +229,7 @@ impl<T> TrivialCommitment for TxCommitment<T> {
     fn hasher(&self) -> fn(&[u8]) -> CommitmentResult<String> {
         // Candidate data is a Bitcoin transaction, whose hash is the transaction ID.
         |x| {
-            let tx: Transaction = match Deserialize::deserialize(x) {
+            let tx: Transaction = match bitcoin::consensus::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::FailedToComputeHash(format!(
@@ -239,7 +238,7 @@ impl<T> TrivialCommitment for TxCommitment<T> {
                     )));
                 }
             };
-            Ok(tx.txid().to_string())
+            Ok(tx.compute_txid().to_string())
         }
     }
 
@@ -252,7 +251,7 @@ impl<T> TrivialCommitment for TxCommitment<T> {
     fn decode_candidate_data(&self) -> fn(&[u8]) -> CommitmentResult<Value> {
         |x| {
             // Deserialize the transaction from the candidate data.
-            let tx: Transaction = match Deserialize::deserialize(x) {
+            let tx: Transaction = match bitcoin::consensus::deserialize(x) {
                 Ok(tx) => tx,
                 Err(e) => {
                     return Err(CommitmentError::DataDecodingError(format!(
@@ -618,7 +617,6 @@ impl TimestampCommitment for BlockTimestampCommitment {}
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::util::psbt::serialize::Serialize;
     use bitcoin::BlockHash;
     use ipfs_api_backend_hyper::IpfsClient;
     use std::str::FromStr;
@@ -743,7 +741,7 @@ mod tests {
         let cid_str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid_str);
         let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
-        let candidate_data = Serialize::serialize(&tx);
+        let candidate_data = bitcoin::consensus::serialize(&tx);
 
         let commitment = TxCommitment::<Complete>::new(candidate_data, expected_data);
         assert!(commitment.verify(target).is_ok());
@@ -760,7 +758,7 @@ mod tests {
         let bad_cid_str = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
         let bad_expected_data: serde_json::Value = serde_json::from_str(&bad_expected_str).unwrap();
-        let candidate_data = Serialize::serialize(&tx);
+        let candidate_data = bitcoin::consensus::serialize(&tx);
         let commitment = TxCommitment::<Complete>::new(candidate_data, bad_expected_data);
         assert!(commitment.verify(target).is_err());
         match commitment.verify(target) {
@@ -891,7 +889,7 @@ mod tests {
         let block_hash = BlockHash::from_str(block_hash_str).unwrap();
         let tx_index = 3;
         let tx = transaction(&block_hash, tx_index, None).unwrap();
-        let transaction = Serialize::serialize(&tx);
+        let transaction = bitcoin::consensus::serialize(&tx);
 
         let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
 
