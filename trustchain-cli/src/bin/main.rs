@@ -197,7 +197,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut context_loader = ContextLoader::default();
     match matches.subcommand() {
         Some(("status", _)) => {
-            // TODO: update the trustchain-api crate.
             print_status().await;
         }
         Some(("did", sub_matches)) => {
