@@ -141,7 +141,7 @@ where
         let (did_doc, did_doc_meta) = self.resolve_did(did).await?;
         let (block_hash, tx_index) = locate_transaction(did, self.rpc_client()).await?;
         let tx = self.fetch_transaction(&block_hash, tx_index)?;
-        let transaction = bitcoin::util::psbt::serialize::Serialize::serialize(&tx);
+        let transaction = bitcoin::consensus::serialize(&tx);
         let cid = self.op_return_cid(&tx)?;
         let core_index_file = self.fetch_core_index_file(&cid).await?;
         let provisional_index_file = self.fetch_prov_index_file(&core_index_file).await?;
@@ -260,7 +260,7 @@ where
         tx: &Transaction,
     ) -> Result<Vec<u8>, VerifierError> {
         self.rpc_client()
-            .get_tx_out_proof(&[tx.txid()], Some(block_hash))
+            .get_tx_out_proof(&[tx.compute_txid()], Some(block_hash))
             .map_err(|e| {
                 VerifierError::ErrorFetchingVerificationMaterial(
                     "Failed to fetch Merkle proof via RPC.".to_string(),
@@ -568,7 +568,7 @@ mod tests {
         },
         trustchain_resolver,
     };
-    use bitcoin::{BlockHeader, MerkleBlock};
+    use bitcoin::{block::Header, MerkleBlock};
     use flate2::read::GzDecoder;
     use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
@@ -734,10 +734,9 @@ mod tests {
     #[test]
     fn test_tx_deserialize() {
         let bytes = hex::decode(TEST_TRANSACTION_HEX).unwrap();
-        let tx: Transaction =
-            bitcoin::util::psbt::serialize::Deserialize::deserialize(&bytes).unwrap();
+        let tx: Transaction = bitcoin::consensus::deserialize(&bytes).unwrap();
         let expected_txid = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.txid().to_string(), expected_txid);
+        assert_eq!(tx.compute_txid().to_string(), expected_txid);
     }
 
     #[test]
@@ -753,7 +752,7 @@ mod tests {
     #[test]
     fn test_block_header_deserialize() {
         let bytes = hex::decode(TEST_BLOCK_HEADER_HEX).unwrap();
-        let header: BlockHeader = bitcoin::consensus::deserialize(&bytes).unwrap();
+        let header: Header = bitcoin::consensus::deserialize(&bytes).unwrap();
         let expected_merkle_root =
             "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
         assert_eq!(header.merkle_root.to_string(), expected_merkle_root);
