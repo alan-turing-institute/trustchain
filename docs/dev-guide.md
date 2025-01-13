@@ -113,7 +113,7 @@ Where required, configurable variables within crates are managed according to th
 ### trustchain-cli
 Install with:
 ```bash
-cargo install --path trustchain-cli
+cargo install --path crates/trustchain-cli
 ```
 
 
@@ -308,7 +308,7 @@ rsync -azvuv --prune-empty-dirs \
 ##### Running the HTTP server on the VM over https
 - Go trustchain repo, install from branch you would like to serve:
 ```
-cargo install --path trustchain-http
+cargo install --path crates/trustchain-http
 ```
 - Allow the binary to access 443 without sudo:
 ```
