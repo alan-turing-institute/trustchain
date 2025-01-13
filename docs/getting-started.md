@@ -26,9 +26,9 @@ Environment variables are defined in your Terminal configuration file. Since we 
 
 To do this, run the following command:
 ```console
-$ echo "export SHELL_CONFIG=" $(find ~/.*shrc -maxdepth 0 | head -n 1) | sed 's/= /=/g' >> $(find ~/.*shrc -maxdepth 0 | head -n 1)
+$ SHELL_CONFIG=$(find ~/.*shrc -maxdepth 0 | head -n 1) && echo "export SHELL_CONFIG=$SHELL_CONFIG" >> $SHELL_CONFIG
 ```
-Then close and reopen the Terminal window that you're working in, so that the change takes effect. Now check that the new environment variable exists:
+Now check that the new environment variable exists:
 ```console
 $ echo $SHELL_CONFIG
 ```
@@ -94,7 +94,7 @@ Finally, we install the Trustchain command line interface (CLI):
 $ cargo install --path trustchain-cli
 ```
 
-!!! info "This step is optional."
+!!! info "Trustchain HTTP server (this step is optional)"
 
     Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials via an HTTP API. It can also respond to requests made by the Trustchain mobile app.
 
@@ -134,6 +134,10 @@ Copy the template configuration file from the Trustchain repository to the data 
 ```console
 $ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
+and set appropriate user permissions:
+```console
+$ chmod 640 $TRUSTCHAIN_CONFIG
+```
 
 Then open your copy of `trustchain_config.toml` in a text editor:
 ```console
@@ -141,7 +145,7 @@ $ open $TRUSTCHAIN_CONFIG
 ```
 and edit the following configuration parameters:
 
-- In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you [installed](ion.md#install-bitcoin-core) Bitcoin Core.
+- In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
 - If you intend to act as an issuer of digital credentials, and you already have you own DID for this purpose, add it in the `[http]` section to the `issuer_did` parameter value. Otherwise, the `[http]` section can be ignored.
 - If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format, e.g.:
 ```

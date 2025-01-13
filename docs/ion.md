@@ -59,29 +59,29 @@ In all cases, administrator privileges are required.
 
 ### Prerequisites
 
+!!! info "Create the `SHELL_CONFIG` environment variable"
+
+    Before continuing, make sure you have created the `SHELL_CONFIG` environment variable by following the instructions on the [Getting Started](getting-started.md#environment-variables) page.
+
 Run the following commands to set up your environment.
 
 === "Linux"
 
-    Update the package lists on your machine:
+    Update the package lists on your machine and install essential build tools:
     ```console
-    $ sudo apt update
+    $ sudo apt update && sudo apt install build-essential
     ```
-    and install essential build tools:
+    Install Git:
     ```console
-    $ sudo apt install build-essential
+    $ sudo apt install git
     ```
-    Install Snap ... (assumes Debian-based Linux distro):
+    Install Node.js:
     ```console
-    $ sudo apt install snapd
+    $ sudo apt install nodejs
     ```
-    Add the Snap binaries to the `PATH` environment variable:
+    and the Node package manager:
     ```console
-    $ echo 'export PATH="$PATH:/snap/bin"' >> $SHELL_CONFIG; source $SHELL_CONFIG
-    ```
-    Install Node.js version 14:
-    ```console
-    $ sudo snap install node --classic --channel=14
+    $ sudo apt install npm
     ```
 
 === "macOS"
@@ -110,23 +110,25 @@ IPFS is the InterPlanetary File System, a peer-to-peer protocol and network used
     $ brew install ipfs
     ```
 
-    Initialise with:
-    ```console
-    $ ipfs init
-    ```
-    Check the installation was successful by running:
-    ```console
-    $ ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
-    ```
-    which should output a welcome message.
+Then initialise your IPFS node:
+```console
+$ ipfs init
+```
+To check the installation was successful, open a new Terminal window and start the IPFS daemon:
+```console
+$ ipfs daemon
+```
+Then (back in the original Terminal window) run:
+```console
+$ ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme
+```
+which should output a welcome message.
 
 ### Install MongoDB
 
 === "Linux"
 
-    Open the [MongoDB Community Server Download](https://www.mongodb.com/try/download/community) page and download the package for your platform.
-
-    Then following [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/) to install MongoDB on Linux
+    Follow [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/) to install MongoDB on Linux
 
 
 === "macOS"
@@ -156,13 +158,13 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
     $ shasum -a 256 ~/Downloads/bitcoin-24.0.1-*.tar.gz
     ```
 
-    Unzip the archive: TODO: UNZIP COMMAND IS SPECIFIC TO ARCHITECTURE.
+    Unzip the archive:
     ```console
-    $ (cd ~/Downloads && tar xvzf bitcoin-27.0-x86_64-linux-gnu.tar.gz)
+    $ (cd ~/Downloads && tar xvzf bitcoin-24.0.1-*.tar.gz)
     ```
     and install Bitcoin Core:
     ```console
-    $ sudo install -m 0755 -t /usr/local/bin bitcoin-24.0.1/bin/*
+    $ sudo install -m 0755 -t /usr/local/bin ~/Downloads/bitcoin-24.0.1/bin/*
     ```
     The installation includes an executable file named `bitcoind` which we will run to start Bitcoin Core.
 
@@ -178,9 +180,9 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
     $ shasum -a 256 ~/Downloads/bitcoin-24.0.1-*.tar.gz
     ```
 
-    Unzip the archive: TODO: UNZIP COMMAND IS SPECIFIC TO ARCHITECTURE.
+    Unzip the archive:
     ```console
-    $ (cd ~/Downloads && tar xvzf bitcoin-24.0.1-arm64-apple-darwin.tar.gz)
+    $ (cd ~/Downloads && tar xvzf bitcoin-24.0.1-*.tar.gz)
     ```
     and move the contents to the `/Applications` folder:
     ```console
@@ -231,7 +233,7 @@ $ mkdir $BITCOIN_DATA
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
     The following command creates that file with the required parameters and user permissions:
     ```console
-    $ echo "server=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
+    $ printf "server=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
@@ -251,7 +253,7 @@ $ mkdir $BITCOIN_DATA
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
     The following command creates that file with the required parameters and user permissions:
     ```console
-    $ echo "testnet=1\nserver=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
+    $ printf "testnet=1\nserver=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
@@ -273,54 +275,9 @@ $ mkdir $BITCOIN_DATA
 
     The example given in the official [ION install guide](https://identity.foundation/ion/install-guide/) does use this shorthand, which causes an error, so beware of this issue if you are following that guide and/or editing the `bitcoin.conf` file manually.
 
-When we start Bitcoin Core we will need to make sure it uses the correct configuration file that was created above. To make this more convenient, let's create an alias in our `SHELL_CONFIG` file:
+### Configure Bitcoin CLI
 
-=== "Linux"
-
-    ```console
-    $ echo 'alias bitcoind="/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
-    ```
-
-    Now we can use the following simple command to start Bitcoin Core:
-    ```console
-    $ bitcoind
-    ```
-
-=== "macOS"
-
-    ```console
-    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
-    ```
-
-    Now we can use the following simple command to start Bitcoin Core:
-    ```console
-    $ bitcoind
-    ```
-    The first time your run this command, you will see the following pop-up message:
-
-    ![bitcoind macOS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
-
-    You need to tell macOS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
-
-    ![bitcoind macOS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
-
-    Now re-run the command to start Bitcoin Core:
-    ```console
-    $ bitcoind
-    ```
-    Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
-
-    You should now see the message "Bitcoin Core starting" in the Terminal.
-
-!!! warning "Bitcoin synchronisation"
-
-    When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
-
-    **The synchronisation process may take several hours, or even days, to complete.** You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
-
-### Bitcoin CLI
-
-Now that your Bitcoin Core node is up and running, you will want to be able to communicate with it. Bitcoin Core provides a command line interface (CLI) for this purpose.
+When your Bitcoin Core node is up and running, you will want to be able to communicate with it. Bitcoin Core provides a command line interface (CLI) for this purpose.
 
 Run the following command to create an alias, making to easy to access the CLI:
 
@@ -345,12 +302,19 @@ Run the following command to create an alias, making to easy to access the CLI:
     $ RPC_PASSWORD="<password>"
     ```
     Now run the following command to add the username and password to the `bitcoin.conf` file:
-    ```console
-    $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" /Applications/bitcoin-24.0.1/bitcoin.conf
-    ```
+
+    === "Linux"
+        ```console
+        $ sed -i "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" $BITCOIN_DATA/bitcoin.conf
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" $BITCOIN_DATA/bitcoin.conf
+        ```
+
     To confirm these changes were made correctly, check the first two lines in the `bitcoin.conf` file by running:
     ```console
-    $ head -n 2 /Applications/bitcoin-24.0.1/bitcoin.conf
+    $ head -n 2 $BITCOIN_DATA/bitcoin.conf
     ```
     You should see these lines printed to the Terminal (with your chosen password):
     ```
@@ -358,9 +322,54 @@ Run the following command to create an alias, making to easy to access the CLI:
     rpcpassword=<password>
     ```
 
+### Start Bitcoin Core
 
+Before we start Bitcoin Core, we need to make sure it can find the correct configuration file that was created above. To make this convenient, let's create an alias in our `SHELL_CONFIG` file:
 
-Now, whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`. A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/).
+=== "Linux"
+
+    ```console
+    $ echo 'alias bitcoind="/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+    Now, use the following simple command to start Bitcoin Core:
+    ```console
+    $ bitcoind
+    ```
+
+=== "macOS"
+
+    ```console
+    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    ```
+
+    Now, use the following simple command to start Bitcoin Core:
+    ```console
+    $ bitcoind
+    ```
+    The first time your run this command, you will see the following pop-up message:
+
+    ![bitcoind macOS pop-up](assets/bitcoind-macOS-pop-up.png){: style="height:250px"}
+
+    You need to tell macOS that this is not malicious software. To do this, open the "Security & Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":
+
+    ![bitcoind macOS pop-up](assets/bitcoind-allow-anyway.png){: style="height:350px"}
+
+    Now re-run the command to start Bitcoin Core:
+    ```console
+    $ bitcoind
+    ```
+    Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.
+
+You should now see the message "Bitcoin Core starting" in the Terminal.
+
+!!! warning "Bitcoin synchronisation"
+
+    When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
+
+    **The synchronisation process may take several hours, or even days, to complete.** You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
+
+Whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`. A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/).
 
 One useful example is the following `-getinfo` command. It reports information about the state of your Bitcoin node, including whether it is fully synchronised:
 ```console
@@ -371,8 +380,19 @@ $ bitcoin-cli -getinfo
 
     Before using ION you must create a Bitcoin wallet by running the following CLI command:
     ```console
-    $ bitcoin-cli createwallet "sidetreeDefaultWallet"
+    $ bitcoin-cli -named createwallet wallet_name="sidetreeDefaultWallet" descriptors=false
     ```
+    Expected output:
+    ```json
+    {
+      "name": "sidetreeDefaultWallet",
+      "warnings": [
+        "Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future."
+      ]
+    }
+    ```
+    Note that we have chosen to create a "legacy" Bitcoin wallet, for compatibility with ION.
+
 
 ### Configure ION
 
@@ -398,100 +418,156 @@ $ cd ion
 
 We will need a folder for storing ION configuration files. For convenience, we'll also create an environment variable for that folder.
 
-!!! tip "Create the `ION_CONFIG` environment variable"
+!!! tip "Create the `ION_CONFIG` environment variables"
 
     Our convention is to use the folder `~/.ion` for ION configuration files. If you want to use a different folder, just change the path in the following command:
     ```console
     $ echo "export ION_CONFIG=~/.ion" >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
+    We also need environment variables for each of the four files that will be stored in the ION config folder, so ION can find them when it starts up. The following command creates all four environment variables:
+
+    === "Mainnet"
+        ```console
+        $ printf "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
+        ```
+    === "Testnet"
+        ```console
+        $ printf "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
+        ```
 
 Having defined the `ION_CONFIG` environment variable (above), use it to create the folder itself:
 ```console
 $ mkdir $ION_CONFIG
 ```
 
-=== "Mainnet"
+Next, copy the template ION configuration files to your `ION_CONFIG` directory:
 
-    Next, copy the template ION configuration files to your `ION_CONFIG` directory:
+=== "Mainnet"
     ```console
     $ cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG
     ```
-    and set appropriate user permissions:
+=== "Testnet"
     ```console
-    $ chmod 640 $ION_CONFIG/mainnet-bitcoin-config.json $ION_CONFIG/mainnet-bitcoin-versioning.json $ION_CONFIG/mainnet-core-config.json $ION_CONFIG/mainnet-core-versioning.json
+    $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
     ```
 
-    The following commands will edit some of the configuration parameters inside the file named `mainnet-bitcoin-config.json`.
+and set appropriate user permissions:
+```console
+$ chmod 640 $ION_BITCOIN_CONFIG_FILE_PATH $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH $ION_CORE_CONFIG_FILE_PATH $ION_CORE_VERSIONING_CONFIG_FILE_PATH
+```
+
+Having made copies of the template configuration files, we now edit some of their parameters to match our Bitcoin Core configuration.
+
+=== "Mainnet"
 
     Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+=== "Testnet"
+
+    Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+Next we shall set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
+
+We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
+
+=== "Linux"
     ```console
-    $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    $ sed -i 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+    ```
+=== "macOS"
+    ```console
+    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
 
-    Set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
+For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
+```console
+$ RPC_PASSWORD="<password>"
+```
 
-    We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
+Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
+
+=== "Linux"
     ```console
-    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    $ sed -i 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+    ```
+=== "macOS"
+    ```console
+    $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
 
-    For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
+The final configuration step is to set the `bitcoinWalletOrImportString` parameter.
+
+=== "Mainnet"
+
+    This must be a mainnet-compatible private key in wallet import format (WIF).
+
+    If you do **not** intend to use Trustchain to write your own DID operations, you can use [this tool](https://learnmeabitcoin.com/technical/wif) to randomly generate a WIF string without any bitcoin.
+
+    If you are intending to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. To do this, first check that `sidetreeDefaultWallet` (that was created [earlier](#configure-bitcoin-core)) is loaded. You should see the following output when running this command:
     ```console
-    $ RPC_PASSWORD="<password>"
+    $ bitcoin-cli listwallets
+    [
+      "sidetreeDefaultWallet"
+    ]
     ```
-
-    Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
+    Next create a wallet address with this command:
     ```console
-    $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
+    $ bitcoin-cli getnewaddress
+    bc1qr5f53xkgfehq3tr0rjg478kvxdjfkc5tatma3u
     ```
+    This command will output a new address (similar to the example above, but a different string of characters).
 
-    Set the `bitcoinWalletImportString` parameter. This must be a mainnet-compatible key in wallet import format (WIF). If you intend to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. Otherwise, you can use [this tool](https://learnmeabitcoin.com/technical/wif) to generate a WIF string without any bitcoin.
+    Now, to get the private key for this Bitcoin address, run the following command but with `<address>` replaced with the output from the previous step:
+    ```console
+    $ bitcoin-cli dumpprivkey <address>
+    L1eokPoQRzBXEddxWAyejiR49FopMj5iKyEZNSMaQKMqcZWFVLR5
+    ```
+    Once again, the output will look similar to the above, but with different characters. This is the WIF string to be used in the following command.
 
-    Copy and paste the following command into the Terminal and then change `<wif>` to your WIF string:
+    !!! warning "Never share your Bitcoin private keys"
+
+        The output from the previous command is the Bitcoin private key corresponding to your wallet address. Anyone who has access to this private key can spend the bitcoins in that address, so you should be careful to keep it secret.
+
+        In the following step we will copy the private key into an ION configuration file, to enable ION to execute the Bitcoin transactions necessary to create and update DIDs. The permissions on this configuration file have already been set (above) so that only the user and their group can read the file contents.
+
+    Copy and paste this command into the Terminal and then change `<wif>` to your WIF string:
     ```console
     $ WIF="<wif>"
     ```
 
-    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
-    ```console
-    $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/mainnet-bitcoin-config.json
-    ```
+    Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
 
 === "Testnet"
 
-    Next, copy the template ION configuration files to your `ION_CONFIG` directory:
-    ```console
-    $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
-    ```
-    and set appropriate user permissions:
-    ```console
-    $ chmod 640 $ION_CONFIG/testnet-bitcoin-config.json $ION_CONFIG/testnet-bitcoin-versioning.json $ION_CONFIG/testnet-core-config.json $ION_CONFIG/testnet-core-versioning.json
-    ```
-
-    The following commands will edit some of the configuration parameters inside the file named `testnet-bitcoin-config.json`.
-
-    Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
-    ```console
-    $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'testnet3/"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
-
-    Set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
-
-    We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
-    ```console
-    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
-
-    For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
-    ```console
-    $ RPC_PASSWORD="<password>"
-    ```
-
-    Then run this command to update the `bitcoinRpcPassword` parameter in the ION config file:
-    ```console
-    $ sed -i '' 's|"bitcoinRpcPassword": ".*"|"bitcoinRpcPassword": "'$RPC_PASSWORD'"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
+    On Testnet, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
 
 ### Build ION
 
@@ -518,7 +594,7 @@ $ npm run build
 
 ### Test ION
 
-Before running ION for the first time, make sure that you have started IPFS, MongoDB and Bitcoin Core (by following the instructions above). Also make sure that Bitcoin Core is fully synchronised by running:
+Before running ION for the first time, **make sure that you have started IPFS, MongoDB and Bitcoin Core** (by following the instructions above or using the command summary in the [Running ION](#running-ion) section). Also make sure that Bitcoin Core is fully synchronised by running:
 ```console
 $ bitcoin-cli -getinfo
 ```
@@ -527,10 +603,11 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
 
 === "Mainnet"
     ```sh
+    Chain: main
     Blocks: 852429
     Headers: 852429
-    Verification progress: ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 100%
-    Difficulty: 79.620365071432086
+    Verification progress: 99.9997%
+    Difficulty: 82047728459932.75
 
     Network: in 0, out 10, total 10
     Version: 240001
@@ -551,8 +628,8 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     Chain: test
     Blocks: 2868427
     Headers: 2868427
-    Verification progress: ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 100%
-    Difficulty: 3.620365071432086
+    Verification progress: 99.9997%
+    Difficulty: 205023102.4598488
 
     Network: in 0, out 10, total 10
     Version: 240001
@@ -578,25 +655,31 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     $ WIF="<wif>"
     ```
 
-    Then run this command to update the `bitcoinWalletImportString` parameter in the ION config file:
-    ```console
-    $ sed -i '' 's|"bitcoinWalletImportString": ".*"|"bitcoinWalletImportString": "'$WIF'"|g' $ION_CONFIG/testnet-bitcoin-config.json
-    ```
+    Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
 
     Now repeat the attempt to start the ION Bitcoin microservice:
     ```console
     $ (cd $ION_REPO && npm run bitcoin)
     ```
 
-??? tip "Troubleshooting Tip"
-
-    - If you see an `ECONNREFUSED` error message when starting the ION Bitcoin microservice, this indicates that it has failed to communicate with Bitcoin Core. In this case, make sure that Bitcoin Core started successfully.
-
 !!! warning "ION synchronisation"
 
     When the ION Bitcoin microservice starts for the first time, it will begin scanning the Bitcoin blockchain for ION DID operations, by making calls to the Bitcoin Core RPC interface.
 
     **The synchronisation process may take >1 hour to complete.** Wait until it has finished before running the ION Core microservice in the following step.
+
+??? tip "Troubleshooting Tip"
+
+    - If you see an `ECONNREFUSED` error message when starting the ION Bitcoin microservice, this indicates that it has failed to communicate with Bitcoin Core. In this case, make sure that Bitcoin Core started successfully.
 
 In another new Terminal, start the ION Core microservice with:
 ```console
@@ -605,7 +688,7 @@ $ (cd $ION_REPO && npm run core)
 
 ??? tip "Troubleshooting Tip"
 
-    If you see an `ECONNREFUSED` error message when starting the ION Core microservice, this indicates that it has failed to communicate with the ION Bitcoin microservice. In this case, make sure that the ION Bitcoin microservice started successfully.
+    If you see an `ECONNREFUSED` error message when starting the ION Core microservice, this indicates that it has failed to communicate with the ION Bitcoin microservice. In this case, make sure that the ION Bitcoin microservice started successfully and is fully synchronised.
 
 Finally, to confirm that ION is working properly, open yet another new Terminal and resolve a sample DID:
 
