@@ -45,6 +45,7 @@ log = "0.4"
 mockall = "0.11.4"
 mongodb = "2.3.1"
 petgraph = "0.6"
+port_check = "0.2.1"
 ps_sig = { git = "https://github.com/alan-turing-institute/RSS.git", rev = "ec9386e125d87c5f54898b34fbe0883b3b36ffd4" }
 qrcode = "0.12.0"
 rand = "0.8"

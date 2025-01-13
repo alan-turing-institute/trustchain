@@ -44,4 +44,5 @@ trustchain-ion = { path = "../trustchain-ion" }
 axum-test-helper = { workspace = true }
 itertools = { workspace = true }
 mockall = { workspace = true }
+port_check = { workspace = true }
 tempfile = { workspace = true }

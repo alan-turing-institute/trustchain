@@ -1,4 +1,5 @@
-/// Integration test for attestation challenge-response process.
+//! Integration test for attestation challenge-response process.
+use port_check::is_port_reachable;
 use tokio::runtime::Runtime;
 use trustchain_core::verifier::Verifier;
 use trustchain_http::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
@@ -27,6 +28,10 @@ pub trait AttestationUtils {
 
 fn init_http() {
     init();
+    assert!(
+        !is_port_reachable("127.0.0.1:8081"),
+        "Port 8081 is required for Challenge-Response integration test but 8081 is already in use."
+    );
     let http_config = HTTPConfig {
         host: "127.0.0.1".parse().unwrap(),
         port: 8081,
