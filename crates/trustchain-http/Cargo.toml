@@ -1,0 +1,47 @@
+[package]
+name = "trustchain-http"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "trustchain-http"
+path = "src/bin/main.rs"
+
+[dependencies]
+
+async-trait = { workspace = true }
+axum = { workspace = true }
+axum-server = { workspace = true, features = ["tls-rustls"] }
+base64 = "0.21.0"
+chrono = { workspace = true }
+did-ion = { workspace = true }
+hyper = { workspace = true }
+image = { workspace = true }
+is_empty = { workspace = true }
+josekit = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+qrcode = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+shellexpand = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+trustchain-api = { path = "../trustchain-api" }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-ion = { path = "../trustchain-ion" }
+
+[dev-dependencies]
+axum-test-helper = { workspace = true }
+itertools = { workspace = true }
+mockall = { workspace = true }
+tempfile = { workspace = true }
