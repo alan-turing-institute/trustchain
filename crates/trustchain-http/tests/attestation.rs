@@ -1,4 +1,6 @@
-/// Integration test for attestation challenge-response process.
+//! Integration test for attestation challenge-response process.
+use port_check::is_port_reachable;
+use tokio::runtime::Runtime;
 use trustchain_core::verifier::Verifier;
 use trustchain_http::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
 use trustchain_http::attestation_utils::{
@@ -6,22 +8,47 @@ use trustchain_http::attestation_utils::{
     IdentityCRInitiation,
 };
 use trustchain_http::attestor::present_identity_challenge;
+use trustchain_http::config::HTTPConfig;
 use trustchain_http::requester::{
     identity_response, initiate_content_challenge, initiate_identity_challenge,
 };
 
-use trustchain_http::utils::init_http;
 use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
 // The root event time of DID documents used in integration test below.
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
 
 use mockall::automock;
-use trustchain_core::utils::extract_keys;
+use trustchain_core::utils::{extract_keys, init};
 
 #[automock]
 pub trait AttestationUtils {
     fn attestation_request_path(&self) -> String;
+}
+
+fn init_http() {
+    init();
+    assert!(
+        !is_port_reachable("127.0.0.1:8081"),
+        "Port 8081 is required for Challenge-Response integration test but 8081 is already in use."
+    );
+    let http_config = HTTPConfig {
+        host: "127.0.0.1".parse().unwrap(),
+        port: 8081,
+        server_did: Some("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_owned()),
+        root_event_time: Some(1666265405),
+        ..Default::default()
+    };
+
+    // Run test server in own thread
+    std::thread::spawn(|| {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            trustchain_http::server::http_server(http_config)
+                .await
+                .unwrap();
+        });
+    });
 }
 
 #[tokio::test]
