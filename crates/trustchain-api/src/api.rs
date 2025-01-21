@@ -351,12 +351,11 @@ mod tests {
         TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATA_CREDENTIAL_TEMPLATE,
     };
     use crate::TrustchainAPI;
-    use did_ion::sidetree::PublicKeyEntry;
     use sha2::{Digest, Sha256};
     use ssi::jsonld::ContextLoader;
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime, URI};
+    use ssi::vc::{Credential, CredentialOrJWT, Presentation, VCDateTime, URI};
     use trustchain_core::utils::init;
     use trustchain_core::vc::{CredentialError, DataCredentialError};
     use trustchain_core::vp::PresentationError;
