@@ -248,8 +248,8 @@ pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use ssi::vc::CredentialOrJWT;
-    use trustchain_core::utils::canonicalize_str;
-    use trustchain_http::utils::init_http;
+    use trustchain_core::utils::{canonicalize_str, init};
+    use trustchain_http::config::HTTPConfig;
 
     use crate::config::parse_toml;
 
@@ -376,29 +376,63 @@ mod tests {
         "did": "did:ion:test:EiA1dZD7jVkS5ZP7JJO01t6HgTU3eeLpbKEV1voOFWJV0g"
     }"#;
 
+    fn init_http_ephemeral() -> u16 {
+        init();
+        // Create channel to receive port number from the thread with the server
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let http_config = HTTPConfig {
+                host: "127.0.0.1".parse().unwrap(),
+                port: 0,
+                server_did: Some(
+                    "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_owned(),
+                ),
+                root_event_time: Some(1666265405),
+                ..Default::default()
+            };
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let server = trustchain_http::server::http_server(http_config);
+                // Send assigned ephemeral port number to receiver
+                tx.send(server.local_addr().port()).unwrap();
+                server.await.unwrap();
+            });
+        });
+        // Receive port number to return for client
+        rx.recv().unwrap()
+    }
+
+    fn ffi_opts_with_port(ffi_config: &str, port: u16) -> String {
+        let mut ffi_config = parse_toml(ffi_config);
+        ffi_config
+            .endpoint_options
+            .as_mut()
+            .unwrap()
+            .trustchain_endpoint
+            .port = port;
+        serde_json::to_string(&ffi_config).unwrap()
+    }
+
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_resolve() {
-        init_http();
+        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         did_resolve(did, ffi_opts).unwrap();
     }
 
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_verify() {
-        init_http();
+        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
         let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
         did_verify(did, ffi_opts).unwrap();
     }
 
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vc_verify_credential() {
-        init_http();
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
     }
@@ -406,7 +440,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vp_issue_presentation() {
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
         let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         let root_plus_1_did: &str = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
         let presentation: Presentation = Presentation {
@@ -446,8 +480,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vp_verify_presentation() {
-        init_http();
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
+        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
         vp_verify_presentation(TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
     }
 

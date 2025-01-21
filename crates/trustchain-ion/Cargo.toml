@@ -1,0 +1,38 @@
+[package]
+name = "trustchain-ion"
+version = "0.2.0"
+authors = ["Trustchain Devs"]
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+bip39 = { workspace = true }
+bitcoin = { workspace = true }
+bitcoincore-rpc = { workspace = true }
+chrono = { workspace = true }
+did-ion = { workspace = true }
+ed25519-dalek-bip32 = { workspace = true }
+flate2 = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true }
+ipfs-api-backend-hyper = { workspace = true, features = ["with-send-sync"] }
+ipfs-hasher = { workspace = true }
+k256 = { workspace = true }
+lazy_static = { workspace = true }
+mongodb = { workspace = true }
+reqwest = { workspace = true }
+secp256k1 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+toml = { workspace = true }
+trustchain-core = { path = "../trustchain-core" }
+
+[dev-dependencies]
+glob = { workspace = true }
+itertools = { workspace = true }
+mockall = { workspace = true }
