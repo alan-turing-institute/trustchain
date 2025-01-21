@@ -68,6 +68,12 @@ tracing-subscriber = "0.3"
 [dependencies]
 trustchain-api = { path = "crates/trustchain-api", version = "0.1.0" }
 trustchain-core = { path = "crates/trustchain-core", version = "0.2.0" }
-trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0" }
-trustchain-http = { path = "crates/trustchain-http", version = "0.1.0" }
-trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0" }
+trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0", optional = true }
+trustchain-http = { path = "crates/trustchain-http", version = "0.1.0", optional = true }
+trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0", optional = true }
+
+[features]
+default = []
+http = ["dep:trustchain-http"]
+ion = ["dep:trustchain-ion"]
+ffi = ["dep:trustchain-ffi"]
