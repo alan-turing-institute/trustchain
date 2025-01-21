@@ -13,7 +13,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_jcs = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
-ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+ssi = { workspace = true, features = ["http-did", "secp256k1"] }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 

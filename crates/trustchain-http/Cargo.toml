@@ -29,7 +29,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 shellexpand = { workspace = true }
-ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+ssi = { workspace = true, features = ["http-did", "secp256k1"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
