@@ -1,8 +1,12 @@
 [package]
 name = "trustchain-ion"
 version = "0.2.0"
-authors = ["Trustchain Devs"]
-edition = "2021"
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Trustchain implementation for ION DID method."
 
 [dependencies]
 anyhow = { workspace = true }

@@ -1,8 +1,12 @@
 [package]
 name = "trustchain-core"
 version = "0.2.0"
-authors = ["Trustchain Devs"]
-edition = "2021"
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Core Trustchain functionality."
 
 [dependencies]
 async-trait = { workspace = true }

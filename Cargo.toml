@@ -1,6 +1,18 @@
 [package]
 name = "trustchain"
 version = "0.2.0"
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Trustchain decentralised PKI reference implementation."
+
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
 authors = ["Trustchain Devs"]
 license = "MIT OR Apache-2.0"
 description = "Trustchain decentralised PKI reference implementation."
@@ -8,10 +20,6 @@ homepage = "https://alan-turing-institute.github.io/trustchain/"
 repository = "https://github.com/alan-turing-institute/trustchain/"
 keywords = ["pki", "did", "vc", "vp"]
 edition = "2021"
-
-[workspace]
-members = ["crates/*"]
-resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0"
