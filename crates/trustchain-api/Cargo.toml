@@ -18,8 +18,8 @@ hex = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1"] }
-trustchain-core = { path = "../trustchain-core" }
-trustchain-ion = { path = "../trustchain-ion" }
+trustchain-core = { path = "../trustchain-core", version = "0.2.0" }
+trustchain-ion = { path = "../trustchain-ion", version = "0.2.0" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
