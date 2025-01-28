@@ -3,3 +3,4 @@
 # changelog_config = "config/git-cliff.toml" # use a custom git-cliff configuration
 changelog_update = false   # disable changelog updates
 dependencies_update = true # update dependencies with `cargo update`
+release_always = false
