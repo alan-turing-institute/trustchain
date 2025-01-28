@@ -72,16 +72,22 @@ toml = "0.7.2"
 tower = "0.4"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-
-[dependencies]
 trustchain-api = { path = "crates/trustchain-api", version = "0.1.0" }
 trustchain-core = { path = "crates/trustchain-core", version = "0.2.0" }
-trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0", optional = true }
-trustchain-http = { path = "crates/trustchain-http", version = "0.1.0", optional = true }
-trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0", optional = true }
+trustchain-ffi = { path = "crates/trustchain-ffi", version = "0.1.0" }
+trustchain-http = { path = "crates/trustchain-http", version = "0.1.0" }
+trustchain-ion = { path = "crates/trustchain-ion", version = "0.2.0" }
+
+[dependencies]
+trustchain-api = { workspace = true, optional = true }
+trustchain-core = { workspace = true }
+trustchain-ffi = { workspace = true, optional = true }
+trustchain-http = { workspace = true, optional = true }
+trustchain-ion = { workspace = true, optional = true }
 
 [features]
-default = []
-http = ["dep:trustchain-http"]
+default = ["api", "ion"]
+http = ["api", "dep:trustchain-http"]
+api = ["ion", "dep:trustchain-api"]
 ion = ["dep:trustchain-ion"]
-ffi = ["dep:trustchain-ffi"]
+ffi = ["http", "dep:trustchain-ffi"]

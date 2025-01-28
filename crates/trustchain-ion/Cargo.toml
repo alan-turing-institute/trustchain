@@ -34,7 +34,7 @@ ssi = { workspace = true, features = ["http-did", "secp256k1"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
-trustchain-core = { path = "../trustchain-core" }
+trustchain-core = { workspace = true }
 
 [dev-dependencies]
 glob = { workspace = true }
