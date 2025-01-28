@@ -1,5 +1,6 @@
 //! Trustchain reference implementation.
 
+#[cfg(feature = "api")]
 pub use trustchain_api as api;
 pub use trustchain_core as core;
 #[cfg(feature = "ffi")]

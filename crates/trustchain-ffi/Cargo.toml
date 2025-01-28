@@ -26,7 +26,7 @@ ssi = { workspace = true, features = ["http-did", "secp256k1"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 toml = { workspace = true }
-trustchain-api = { path = "../trustchain-api" }
-trustchain-core = { path = "../trustchain-core" }
-trustchain-http = { path = "../trustchain-http" }
-trustchain-ion = { path = "../trustchain-ion" }
+trustchain-api = { workspace = true }
+trustchain-core = { workspace = true }
+trustchain-http = { workspace = true }
+trustchain-ion = { workspace = true }

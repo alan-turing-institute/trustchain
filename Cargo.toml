@@ -86,8 +86,8 @@ trustchain-http = { workspace = true, optional = true }
 trustchain-ion = { workspace = true, optional = true }
 
 [features]
-default = ["api"]
+default = ["api", "ion"]
 http = ["api", "dep:trustchain-http"]
 api = ["ion", "dep:trustchain-api"]
 ion = ["dep:trustchain-ion"]
-ffi = ["api", "dep:trustchain-ffi"]
+ffi = ["http", "dep:trustchain-ffi"]
