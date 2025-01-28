@@ -91,7 +91,7 @@ $ cargo build
 
 Finally, we install the Trustchain command line interface (CLI):
 ```console
-$ cargo install --path trustchain-cli
+$ cargo install --path crates/trustchain-cli
 ```
 
 !!! info "Trustchain HTTP server (this step is optional)"
@@ -100,7 +100,7 @@ $ cargo install --path trustchain-cli
 
     To install the Trustchain HTTP server, run:
     ```console
-    $ cargo install --path trustchain-http
+    $ cargo install --path crates/trustchain-http
     ```
 
 ## Configuration

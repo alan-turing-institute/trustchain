@@ -136,7 +136,7 @@ mod tests {
     fn test_display() -> Result<(), GraphError> {
         let chains = vec![test_chain(), test_chain()];
         let graph = TrustchainGraph::new(&chains, DEFAULT_LABEL_WIDTH)?;
-        format!("{}", graph);
+        let _ = format!("{}", graph);
         Ok(())
     }
 }

@@ -1,0 +1,25 @@
+[package]
+name = "trustchain-core"
+version = "0.2.0"
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Core Trustchain functionality."
+
+[dependencies]
+async-trait = { workspace = true }
+base64 = "0.13"
+did-method-key = { workspace = true }
+petgraph = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_jcs = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1"] }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+mockall = { workspace = true }

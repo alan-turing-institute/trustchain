@@ -1,0 +1,32 @@
+[package]
+name = "trustchain-ffi"
+version = "0.1.0"
+authors = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "FFI for Trustchain."
+
+[lib]
+crate-type = ["cdylib", "staticlib", "lib"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+anyhow = { workspace = true }
+chrono = { workspace = true }
+did-ion = { workspace = true }
+# Fixed to same version used to generate bridge: `flutter_rust_bridge_codegen@1.64.0`
+flutter_rust_bridge = { workspace = true }
+lazy_static = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+ssi = { workspace = true, features = ["http-did", "secp256k1"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+toml = { workspace = true }
+trustchain-api = { path = "../trustchain-api" }
+trustchain-core = { path = "../trustchain-core" }
+trustchain-http = { path = "../trustchain-http" }
+trustchain-ion = { path = "../trustchain-ion" }
