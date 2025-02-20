@@ -84,8 +84,8 @@ The root DID subject is the legal entity (or group of entities) whose DID appear
 
 The root DID sits at the top of the hierarchical DID structure. Therefore the root DID subject is not a downstream DID subject and there is no signature of attestation on the root DID document. Instead, the contents of the root DID document are verified by checking that it was published on a particular date, as explained in the [FAQs](faq.md#q-why-is-independently-verifiable-timestamping-important-in-trustchain).
 
-!!! example "Example: Central govenment"
+!!! example "Example: Central government"
 
-    In a national digital ID system the central government would be a natural choice for **root DID subject**.
+    In a national digital ID system the central government would be a natural choice for **root DID subject**. They would act as the first dDID issuer and would issue a dDID to each government department, including the Department for Transport.
 
 &nbsp;
