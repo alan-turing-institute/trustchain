@@ -19,7 +19,7 @@ This page discusses the different roles that exist within a Trustchain user grou
 
 ## User Roles Example
 
-To illustrate the various user roles, we use the concrete example of an individual holding a **digital driver's licence** issued by their national vehicle licensing agency. The holder of this credential will use it to provide proof of their registered driver status to a car hire company.
+To illustrate the various user roles, we use the concrete example of an individual holding a **digital driver's licence** issued by a national vehicle licensing agency. The holder of this credential will use it to provide proof of their registered driver status to a car rental company.
 
 ## Credential Holder
 
