@@ -18,7 +18,7 @@ $ trustchain-cli
 ```
 You should see a list of available commands and some usage hints.
 
-If instead you get an error that `trustchain-cli` command is not found, make sure you have followed all of the installation steps on the [Getting Started](getting-started.md) page.
+If instead you get an error that the `trustchain-cli` command is not found, make sure you have followed all of the installation steps on the [Getting Started](getting-started.md) page.
 
 The CLI is organised into a set of subcommands for different types of operation:
 
@@ -27,6 +27,7 @@ The CLI is organised into a set of subcommands for different types of operation:
 | `did`         | DID functionality: create, attest, resolve, verify.   |
 | `vc`          | Verifiable credential functionality: sign and verify. |
 | `data`        | Data provenance functionality: sign and verify.       |
+| `cr`          | Challenge-response functionality for dDID issuance.   |
 
 To get help with a particular subcommand, use the `--help` flag (or `-h` for short). For example, to get help with the CLI commands relating to DIDs:
 ```console
@@ -37,7 +38,7 @@ $ trustchain-cli did --help
 
 DID Resolution is a process defined in the [W3C standard](https://www.w3.org/TR/did-core/#did-resolution) for Decentralised Identifiers (DIDs).
 
-It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity referred to by the DID.
+It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity that is the DID subject. DID document metadata is also returned.
 
 To resolve a DID using the Trustchain CLI, execute this command replacing `<DID>` with the DID of interest:
 ```console
@@ -67,17 +68,22 @@ If the DID is found, the complete DID document (and document metadata) will be p
 
 ## DID Issuance
 
-With the Trustchain CLI, you can create and publish your own Decentralised Identifiers. This process must be carried out by the DID subject, that is, the legal entity to whom the DID will refer.
+With the Trustchain CLI, you can create and publish your own Decentralised Identifiers. This process must be carried out by the DID subject because it involves generating new public-private key pairs.
 
 #### DID document content
 
-Use the template below to create a fragment that will be included in your new DID document. This fragment may include either, or both, of the `services` in the template. Services are part of the W3C DID specification. A service is an endpoint (URL)
+Use the template below to create a JSON object that will be included in your new DID document. This JSON object may include either or both of the `services` in the template.
 
-The first service has type `Identity` and is used to identify the subject of the DID by their Web domain.
+Services are part of the W3C [DID specification](https://www.w3.org/TR/did-1.0/#services). They are used in DID documents to express ways of communicating with the DID subject via a service endpoint (URL), and can relate to any type of service the DID subject wants to advertise.
 
-The second services has type `CredentialEndpoint`. Include this service
+In the template below:
 
-Using a text editor, make a copy of the following template, remove any services that you do not wish to include in your DID, and then save the file.
+ - the first service has type `Identity` and is used to identify the DID subject by their Web domain,
+ - the second service has type `CredentialEndpoint` and can be used by credential issuing authorities to advertise their issuance endpoint (URL).
+
+Other services may also be included, at the DID subject's discretion.
+
+Using a text editor, make a copy of the following template and modify it so it contains the services and endpoints that you wish to include in your DID, then save the file.
 
 The file can be saved anywhere, but we recommend storing it in a directory named `doc_states` inside the `TRUSTCHAIN_DATA` directory. That way it will be easy to find later, when you use it to create your DID document.
 
@@ -100,7 +106,7 @@ The file can be saved anywhere, but we recommend storing it in a directory named
 
 #### Create the DID
 
-Having defined the content of the DID document, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing `<DID_CONTENT_FILE>` with the path to the DID document content file (from the previous step):
+Having defined the document content, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing `<DID_CONTENT_FILE>` with the path to the DID document content file (from the previous step):
 ```console
 $ trustchain-cli did create --file_path <DID_CONTENT_FILE>
 ```
@@ -119,24 +125,24 @@ It also creates a new file inside the folder `$TRUSTCHAIN_DATA/operations/`. To 
 $ cat $TRUSTCHAIN_DATA/operations/create_operation_<DID>.json
 ```
 
-Inside this file you will be able to see the services copied from the DID document content file (previous step).
+Inside this file you will be able to see the services inserted from the DID document content file.
 
 You will also see a public key of type `JsonWebSignature2020`. This public key was generated automatically by the Trustchain CLI and inserted into the file, so it will be part of the published DID document content.
 
-The counterpart private key was saved at `$TRUSTCHAIN_DATA/key_manager/` in a subfolder with the same name as the DID. This private key will enable the DID subject to perform signing operations, such as attesting to downsteam DIDs or digital credentials. Anyone will be able to verify those digital signatures by obtaining the public key from the published DID document.
+The counterpart private key was saved at `$TRUSTCHAIN_DATA/key_manager/` in a subfolder with the same name as the DID. This private key will enable the DID subject to perform signing operations, such as attesting to downsteam DIDs or digital credentials. Anyone will be able to verify those digital signatures by obtaining the corresponding public key from the published DID document.
 
-In fact, four private key were generated by the CLI when the DID was created. All are contained in teh same subfolder which will now contain the following files:
+In fact, four private key were generated by the CLI when the DID was created. All are contained in the same subfolder which will now contain the following files:
 
 | Filename    | Description       |
 | ----------------------- | ----------------- |
 | `signing_key.json`      | Private key counterpart to the public key in the DID document. |
-| `update_key.json`       | Private key required to make the next update the DID document. |
+| `update_key.json`       | Private key required to make the next update to the DID document. |
 | `next_update_key.json`  | Private key required to make the next-but-one update to the DID document. |
 | `recovery_key.json`     | Private key required to recover the DID (in case other keys are lost/compromised). |
 
-??? question "Can my DID document contain multiple keys?"
+??? question "Can my DID document contain multiple signing keys?"
 
-    By default, a single public-private key pair is automatcially generated for all signing/attestation purposes. However, Trustchain allows for multiple keys to be contained in a single DID document.
+    By default, a single public-private key pair is automatically generated for all signing/attestation purposes. However, it is possible to include multiple keys in a single DID document.
 
     This can be useful if different keys are intended to be used for different purposes, or if the DID refers to an organisation in which different individuals or departments wish to hold their own keys.
 
@@ -215,12 +221,19 @@ In fact, four private key were generated by the CLI when the DID was created. Al
 
     Publishing a Trustchain DID involves embedding information into a Bitcoin transaction and broadcasting it to the Bitcoin network. This makes the information accessible to everyone, globally, via the Bitcoin transaction ledger.
 
-    This will be taken care of by the Trustchain CLI, via the embedded ION node which itself contains a node on the Bitcoin network. However, since each Bitcoin transaction includes a processing fee, **you must have funds in your Bitcoin wallet before issuing any DIDs**.
+    This process will be taken care of by the Trustchain CLI, via the embedded ION node which itself contains a node on the Bitcoin network. However, since each Bitcoin transaction includes a processing fee, **you must have funds in your Bitcoin wallet before publishing any DIDs**.
 
-    For instructions on how to fund your Bitcoin wallet, see the [ION](ion.md#funding-your-bitcoin-wallet) page.
+    Instructions on how to fund your Bitcoin wallet are available [here](ion.md#funding-your-bitcoin-wallet).
 
 
-TODO: this is currently a manual step (to be built into the CLI in future). You need to run the `publish.sh` shell script that is found in the `scripts/` subdirectory inside the Trustchain repository. This script will attempt to publish all of the DID operations that are found in the `$TRUSTCHAIN_DATA/operations/` directory.
+When you are ready to publish your DID, execute the `publish.sh` script by running the following command:
+```console
+$ "$TRUSTCHAIN_REPO"/scripts/publish.sh
+```
+
+This script will attempt to publish all of the DID operations that are found in the `$TRUSTCHAIN_DATA/operations/` directory.
+
+Support for publishing via the Trustchain CLI will be added in a future version.
 
 !!! tip "Tip: Batching DID operations"
 
@@ -228,13 +241,13 @@ TODO: this is currently a manual step (to be built into the CLI in future). You 
 
     To perform batching, simply repeat the create operation as many times as you like before running the `publish.sh` script. Then run the script once to publish all operations in a single batch.
 
-    The only exception to this rule is that the **root DID must not be published in a batched transaction**. It must be the unique DID operation associated with the transaction in which it is published.
+    The only exception to this rule is that **the root DID must not be published in a batched transaction**. It must be the unique DID operation associated with the transaction in which it is published. The reason for this condition is to enable fast and efficient scanning of the Bitcoin blockchain to identify potential root DID operations.
 
-After running the `publish.sh` script, wait for the transaction to be published and processed by the Bitcoin network, then check that it was successfully published by attempting to resolve the DID (or DIDs, if more than one operation was published) with the CLI.
+After running the `publish.sh` script, wait for the transaction to be [processed](https://bitcoin.org/en/how-it-works#processing) by the Bitcoin network, then check that it was successfully published by attempting to resolve the DID (or DIDs, if more than one was published) [using the CLI](#did-resolution).
 
-Then there is a further manual step required: once you have confirmed that the DID(s) can be resolved, clean up the `.trustchain/operations/` folder by running this command to move all operations files to the `sent/` subdirectory:
+Once you have confirmed that the DID(s) can be resolved, you can clean up the `.trustchain/operations/` folder by running this command to move all operations files to the `sent/` subdirectory:
 ```console
-$ mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
+$ mv $TRUSTCHAIN_DATA/operations/*.json* $TRUSTCHAIN_DATA/operations/sent/./
 ```
 
 !!! info "Network processing time"
@@ -243,19 +256,19 @@ $ mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
 
     Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI `resolve` command.
 
-    Typically, the processing time will be around 10 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network, and the size of the fee inserted in the relevant transaction.
+    Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.
 
 ## Downstream DID Issuance
 
-This process must be carried out by the DID controller, that is, the legal entity that will attest to the downstream DID. The DID controller must itself be the subject of another DID document that is already published. We refer to the controller's DID as the *upstream DID* (uDID).
+This process must be carried out by the DID controller, that is, the legal entity whose attestation will appear on the downstream DID. The DID controller must itself be the subject of another DID document that is already published. We refer to the controller's DID as the *upstream DID* (uDID).
 
 !!! info "Challenge-response protocol"
 
     The interaction between the upstream and downstream entities, when issuing a new downstream DID, must be performed carefully so that the dDID controller (upstream entity) can be confident that the information included in the downstream DID document is correct, before attesting to it.
 
-    The proper way to manage this interaction is via a challenge-response protocol, that includes a rigorous checks of both the identity of the legal entities involved and of the dDID document content.
+    The proper way to manage this interaction is via a challenge-response protocol, that includes rigorous checks of both the identity of the legal entities involved and of the dDID document content.
 
-    A future version of Trustchain will include such a challenge-response protocol. In the meantime, dDID issuance is a manual process, as described here.
+    The latest version of the Trustchain CLI includes such a challenge-response protocol. In earlier versions, dDID issuance is a manual process, as described here.
 
 Issuing a downstream DID is a two-step process. The first step is for the dDID subject to publish their (regular) DID by following the steps in the [DID Issuance](#did-issuance) section above.
 
@@ -296,20 +309,20 @@ $ trustchain-cli did verify --did <dDID>
 The Trustchain CLI will perform the following verification process and report the result:
 
  1. Resolve the given dDID document.
- 2. Identify the controller's uDID from the dDID metadata (if no controller is found, the verification fails).
+ 2. Identify the controller's uDID from the dDID metadata. If no controller is found, the verification fails.
  3. If the uDID is itself a downstream DID, repeat steps 1 & 2 until reaching the root DID.
- 4. Verify that the timestamp on the root DID exactly matches the [configured](getting-started.md#trustchain-configuration-file) `root_event_time` parameter.
- 5. Starting at the root DID, descend down the DID chain and verify each attestation signature using the public key from the next upstream DID document (if any signature is invalid, the verification fails).
+ 4. Verify that the timestamp on the root DID exactly matches the [configured](getting-started.md#trustchain-configuration-file) `root_event_time` parameter. If the timestamp does not match, the verification fails.
+ 5. Starting at the root DID, descend down the DID chain and verify each attestation signature using the public key from the next upstream DID document. If any signature is invalid, the verification fails.
  6. If all of the attestation signatures in the chain are valid, the verification is successful.
 
  This process ensures that the exact content of the downstream DID (including the public keys of the downstream legal entity) has been attested to by a recognised upstream entity, whose own public keys have themselves been attested to in a chain of signatures leading back to the root DID, whose exact time of publication has also been verified.
 
 ## Credential Issuance
 
-TODO.
+This section is under construction.
 
 ## Credential Verification
 
-TODO.
+This section is under construction.
 
 &nbsp;
