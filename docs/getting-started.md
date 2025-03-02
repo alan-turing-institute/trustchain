@@ -94,15 +94,6 @@ Finally, we install the Trustchain command line interface (CLI):
 $ cargo install --path crates/trustchain-cli
 ```
 
-!!! info "Trustchain HTTP server (this step is optional)"
-
-    Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials via an HTTP API. It can also respond to requests made by the Trustchain mobile app.
-
-    To install the Trustchain HTTP server, run:
-    ```console
-    $ cargo install --path crates/trustchain-http
-    ```
-
 ## Configuration
 
 ### Trustchain data directory
@@ -139,9 +130,9 @@ and set appropriate user permissions:
 $ chmod 640 $TRUSTCHAIN_CONFIG
 ```
 
-Then open your copy of `trustchain_config.toml` in a text editor:
+Then open your copy of `trustchain_config.toml` for editing:
 ```console
-$ open $TRUSTCHAIN_CONFIG
+$ nano $TRUSTCHAIN_CONFIG
 ```
 and edit the following configuration parameters:
 
