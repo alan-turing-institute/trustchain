@@ -35,7 +35,7 @@ Under the section headed `[http]`, add or edit the following configuration param
 
 !!! example "Example HTTP server configuration"
 
-    After completing the above steps, the `[http]` section of `trustchain_config.toml` should look similar the following example:
+    After completing the above steps, the `[http]` section of `trustchain_config.toml` should look similar to the following example:
     ```bash
     [http]
     root_event_time = 1697213008
