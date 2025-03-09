@@ -904,7 +904,7 @@ Then use this command to list the receiving addresses for this wallet (with thei
 $ bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
 ```
 
-To fund your wallet, send Bitcoins to the **first** receive address in this list.
+To fund your wallet, send Bitcoins to the **first address** in this list.
 
 === "Mainnet"
 
