@@ -569,6 +569,24 @@ The final configuration step is to set the `bitcoinWalletOrImportString` paramet
 
     On Testnet, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
 
+!!! tip "Tip: Set the `requestMaxRetries` configuration parameter"
+
+    This step is optional but is strongly recommended because it may significantly speed up the synchronisation process which takes place when ION runs for the first time.
+
+    When ION requests information from the local Bitcoin node it may have to retry several times before receiving a response. This is particularly common during its initial synchronisation, when many requests are made at high frequency.
+
+    After several failed requests ION will stop trying and the synchronisation process will restart, forfeiting the progress already made. By default this will happen after only three failed attempts, but this can be increased by setting the `requestMaxRetries` config parameter.
+
+    Run the following command to increase the maximum number of retry attempts:
+    === "Linux"
+        ```console
+        $ N=$(grep -n '\"port\"' $ION_BITCOIN_CONFIG_FILE_PATH | cut -d':' -f1); sed -i "$((N+1))"'i\'$'\n''  "requestMaxRetries": 6,'$'\n' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ N=$(grep -n '\"port\"' $ION_BITCOIN_CONFIG_FILE_PATH | cut -d':' -f1); sed -i '' "$((N+1))"'i\'$'\n''  "requestMaxRetries": 6,'$'\n' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
 ### Build ION
 
 Change directory into the ION repository:
@@ -886,7 +904,7 @@ Then use this command to list the receiving addresses for this wallet (with thei
 $ bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
 ```
 
-To fund your wallet, send Bitcoins to the **first** receive address in this list.
+To fund your wallet, send Bitcoins to the **first address** in this list.
 
 === "Mainnet"
 
