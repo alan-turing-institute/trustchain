@@ -17,6 +17,7 @@ serde_json = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
+url = { workspace = true, features = ["serde"] }
 trustchain-api = { path = "../trustchain-api" }
 trustchain-core = { path = "../trustchain-core" }
 trustchain-http = { path = "../trustchain-http" }

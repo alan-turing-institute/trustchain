@@ -183,7 +183,7 @@ fn cli() -> Command {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = cli().get_matches();
-    let endpoint = cli_config().ion_endpoint.to_address();
+    let endpoint = cli_config().ion_endpoint.as_str().to_string();
     let root_event_time: u32 = cli_config().root_event_time;
     let verifier = TrustchainVerifier::new(trustchain_resolver(&endpoint));
     let resolver = verifier.resolver();

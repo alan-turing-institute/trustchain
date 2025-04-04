@@ -65,6 +65,7 @@ toml = "0.7.2"
 tower = "0.4"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+url = "2.5.4"
 
 [dependencies]
 trustchain-api = { path = "crates/trustchain-api", version = "0.1.0" }

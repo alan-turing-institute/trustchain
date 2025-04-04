@@ -83,8 +83,7 @@ pub fn greet() -> String {
 pub fn did_resolve(did: String, opts: String) -> Result<String> {
     let mobile_opts: FFIConfig = opts.parse()?;
     let endpoint_opts = mobile_opts.endpoint()?;
-    let resolver =
-        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
+    let resolver = trustchain_resolver_light_client(endpoint_opts.trustchain_endpoint().as_str());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         Ok(TrustchainAPI::resolve(&did, &resolver)
@@ -105,8 +104,8 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = TrustchainVerifier::with_endpoint(
-            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
-            endpoint_opts.trustchain_endpoint().to_address(),
+            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().as_str()),
+            endpoint_opts.trustchain_endpoint().as_str().to_string(),
         );
         Ok(TrustchainAPI::verify(&did, root_event_time, &verifier)
             .await
@@ -127,8 +126,8 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = TrustchainVerifier::with_endpoint(
-            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
-            endpoint_opts.trustchain_endpoint().to_address(),
+            trustchain_resolver_light_client(endpoint_opts.trustchain_endpoint().as_str()),
+            endpoint_opts.trustchain_endpoint().as_str().to_string(),
         );
         let root_event_time = trustchain_opts.root_event_time;
 
@@ -168,8 +167,7 @@ pub fn vc_redact(
     let cred_sub: CredentialSubject = serde_json::from_str(&credential_subject_mask)?;
     let mut masked_copy = o_cred.clone();
     masked_copy.credential_subject = OneOrMany::One(cred_sub);
-    let resolver =
-        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
+    let resolver = trustchain_resolver_light_client(endpoint_opts.trustchain_endpoint().as_str());
 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
@@ -201,8 +199,7 @@ pub fn vp_issue_presentation(
     let mut presentation: Presentation =
         serde_json::from_str(&presentation).map_err(FFIMobileError::FailedToDeserialize)?;
     let jwk: JWK = serde_json::from_str(&jwk_json)?;
-    let resolver =
-        trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
+    let resolver = trustchain_resolver_light_client(endpoint_opts.trustchain_endpoint().as_str());
     let rt = Runtime::new().unwrap();
     let proof = rt
         .block_on(async {
@@ -236,8 +233,8 @@ pub fn vp_verify_presentation(presentation: String, opts: String) -> Result<()> 
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let verifier = TrustchainVerifier::with_endpoint(
-            trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address()),
-            endpoint_opts.trustchain_endpoint().to_address(),
+            trustchain_resolver_light_client(endpoint_opts.trustchain_endpoint().as_str()),
+            endpoint_opts.trustchain_endpoint().as_str().to_string(),
         );
         let root_event_time = trustchain_opts.root_event_time;
         Ok(TrustchainAPI::verify_presentation(
@@ -288,8 +285,7 @@ mod tests {
     signatureOnly = false
 
     [ffi.endpointOptions]
-    trustchainEndpoint.host = "127.0.0.1"
-    trustchainEndpoint.port = 8081
+    trustchainEndpoint = "http://127.0.0.1:8081"
     "#;
 
     const TEST_FFI_CONFIG_RSS: &str = r#"
@@ -298,8 +294,7 @@ mod tests {
     signatureOnly = false
 
     [ffi.endpointOptions]
-    trustchainEndpoint.host = "127.0.0.1"
-    trustchainEndpoint.port = 8081
+    trustchainEndpoint = "http://127.0.0.1:8081"
     "#;
 
     const TEST_CREDENTIAL: &str = r#"
@@ -444,12 +439,12 @@ mod tests {
 
     fn ffi_opts_with_port(ffi_config: &str, port: u16) -> String {
         let mut ffi_config = parse_toml(ffi_config);
-        ffi_config
+        let _ = ffi_config
             .endpoint_options
             .as_mut()
             .unwrap()
             .trustchain_endpoint
-            .port = port;
+            .set_port(Some(port));
         serde_json::to_string(&ffi_config).unwrap()
     }
 

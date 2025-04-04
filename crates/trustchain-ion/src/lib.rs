@@ -17,7 +17,6 @@ pub mod verifier;
 use crate::ion::IONTest as ION;
 use crate::resolver::HTTPTrustchainResolver;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
-use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
 use thiserror::Error;
@@ -32,26 +31,26 @@ pub struct FullClient;
 /// Light client zero sized type for marker in `TrustchainVerifier`.
 pub struct LightClient;
 
-/// Type for representing an endpoint as a base URL and port.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct Endpoint {
-    pub host: String,
-    pub port: u16,
-}
+// /// Type for representing an endpoint as a base URL and port.
+// #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct Endpoint {
+//     pub host: String,
+//     pub port: u16,
+// }
 
-impl Endpoint {
-    pub fn new(url: String, port: u16) -> Self {
-        Self { host: url, port }
-    }
-    // TODO: add more flexible address handling
-    pub fn to_address(&self) -> String {
-        match self.host.starts_with("http") {
-            true => format!("{}:{}/", self.host, self.port),
-            false => format!("http://{}:{}/", self.host, self.port),
-        }
-    }
-}
+// impl Endpoint {
+//     pub fn new(url: String, port: u16) -> Self {
+//         Self { host: url, port }
+//     }
+//     // TODO: add more flexible address handling
+//     pub fn to_address(&self) -> String {
+//         match self.host.starts_with("http") {
+//             true => format!("{}:{}/", self.host, self.port),
+//             false => format!("http://{}:{}/", self.host, self.port),
+//         }
+//     }
+// }
 
 /// ION DID resolver.
 pub fn http_resolver(endpoint: &str) -> HTTPSidetreeDIDResolver<ION> {

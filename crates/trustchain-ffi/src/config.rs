@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use ssi::vc::LinkedDataProofOptions;
 use std::{fs, str::FromStr};
 use trustchain_core::{verifier::Timestamp, TRUSTCHAIN_CONFIG};
-use trustchain_ion::{Endpoint, URL};
+use url::Url;
 
 use crate::mobile::FFIMobileError;
 
@@ -37,11 +37,11 @@ struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EndpointOptions {
-    pub trustchain_endpoint: Endpoint,
+    pub trustchain_endpoint: Url,
 }
 
 impl EndpointOptions {
-    pub fn trustchain_endpoint(&self) -> &Endpoint {
+    pub fn trustchain_endpoint(&self) -> &Url {
         &self.trustchain_endpoint
     }
 }
@@ -49,7 +49,7 @@ impl EndpointOptions {
 impl Default for EndpointOptions {
     fn default() -> Self {
         Self {
-            trustchain_endpoint: Endpoint::new(URL::from("http://127.0.0.1"), 8081),
+            trustchain_endpoint: Url::parse("http://127.0.0.1:8081").unwrap(),
         }
     }
 }
@@ -109,10 +109,7 @@ mod tests {
 
     const TEST_ENDPOINT_OPTIONS: &str = r#"
         {
-            "trustchainEndpoint": {
-                "host": "http://127.0.0.1",
-                "port": 8081
-            }
+            "trustchainEndpoint": "http://127.0.0.1:8081"
         }
     "#;
 
@@ -131,9 +128,8 @@ mod tests {
     "#;
 
     const TEST_FFI_OPTIONS: &str = r#"
-    [ffi.endpointOptions.trustchainEndpoint]
-    host="http://127.0.0.1"
-    port=8081
+    [ffi.endpointOptions]
+    trustchainEndpoint="http://127.0.0.1:8081"
 
     [ffi.trustchainOptions]
     "signatureOnly"= false
@@ -178,7 +174,8 @@ mod tests {
                 .endpoint()
                 .unwrap()
                 .trustchain_endpoint()
-                .port,
+                .port()
+                .unwrap(),
             8081
         );
         assert_eq!(

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use toml;
 use trustchain_core::TRUSTCHAIN_CONFIG;
-use trustchain_ion::Endpoint;
+use url::Url;
 
 lazy_static! {
     /// Lazy static reference to cli configuration loaded from `trustchain_config.toml`.
@@ -30,7 +30,7 @@ pub fn cli_config() -> &'static CLI_CONFIG {
 pub struct CLIConfig {
     /// Root event unix time for first Trustchain root on testnet.
     pub root_event_time: u32,
-    pub ion_endpoint: Endpoint,
+    pub ion_endpoint: Url,
 }
 
 /// Wrapper struct for parsing the `cli` table.
@@ -49,8 +49,7 @@ mod tests {
         let config_string = r#"
         [cli]
         root_event_time = 1666971942
-        ion_endpoint.host = "http://127.0.0.1"
-        ion_endpoint.port = 3000
+        ion_endpoint = "http://127.0.0.1:3000"
 
         [non_core]
         key = "value"
@@ -62,7 +61,7 @@ mod tests {
             config,
             CLIConfig {
                 root_event_time: 1666971942,
-                ion_endpoint: Endpoint::new("http://127.0.0.1".to_string(), 3000)
+                ion_endpoint: Url::parse("http://127.0.0.1:3000").unwrap()
             }
         );
     }
