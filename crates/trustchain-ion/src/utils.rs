@@ -2,12 +2,14 @@
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
+use bitcoin::Network;
 use bitcoin::{block::Header, blockdata::block::BlockHash, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
+use lazy_static::lazy_static;
 use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
 use std::io::Read;
@@ -23,6 +25,11 @@ use crate::{
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";
 const ION_OPERATION_COUNT_DELIMITER: &str = ".";
 const DID_DELIMITER: &str = ":";
+
+lazy_static! {
+    /// Lazy static reference to the Bitcoin blockchain network.
+    pub static ref BITCOIN_NETWORK: Result<Network, TrustchainBitcoinError> = bitcoin_network(None);
+}
 
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
@@ -169,6 +176,18 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     )
     // Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.
     .unwrap()
+}
+
+/// Gets the Bitcoin chain via the RPC API.
+pub fn bitcoin_network(
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<Network, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return bitcoin_network(Some(&rpc_client));
+    };
+    Ok(client.unwrap().get_blockchain_info()?.chain)
 }
 
 /// Gets a Bitcoin block header via the RPC API.
