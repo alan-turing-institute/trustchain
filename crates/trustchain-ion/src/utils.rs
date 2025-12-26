@@ -651,24 +651,58 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_transaction() {
-        // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
-        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
+                // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+                let block_hash = BlockHash::from_str(
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f",
+                )
                 .unwrap();
-        let tx_index = 3;
-        let result = transaction(&block_hash, tx_index, None);
+                let tx_index = 3;
+                let result = transaction(&block_hash, tx_index, None);
 
-        assert!(result.is_ok());
-        let tx = result.unwrap();
+                assert!(result.is_ok());
+                let tx = result.unwrap();
 
-        // Expected transaction ID:
-        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.compute_txid().to_string(), expected);
+                // Expected transaction ID:
+                let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert_eq!(tx.compute_txid().to_string(), expected);
 
-        // Expect a different transaction ID to fail.
-        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_ne!(tx.compute_txid().to_string(), not_expected);
+                // Expect a different transaction ID to fail.
+                let not_expected =
+                    "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert_ne!(tx.compute_txid().to_string(), not_expected);
+            }
+            Network::Testnet4 => {
+                // The transaction can be found on-chain inside this block (indexed 66, starting from 0):
+                // https://mempool.space/testnet4/block/0000000000000000a2d13f2c71c739e9e61e576bb3a0759c71befae09a5a8f40
+                let block_hash = BlockHash::from_str(
+                    "0000000000000000a2d13f2c71c739e9e61e576bb3a0759c71befae09a5a8f40",
+                )
+                .unwrap();
+                let tx_index = 66;
+                let result = transaction(&block_hash, tx_index, None);
+
+                assert!(result.is_ok());
+                let tx = result.unwrap();
+
+                // Expected transaction ID:
+                let expected = "7d0413f646550b8ac6b4a82346b8f78df1f7d451f892bf2533893ba9558b082b";
+                assert_eq!(tx.compute_txid().to_string(), expected);
+
+                // Expect a different transaction ID to fail.
+                let not_expected =
+                    "7d4ef05d7e83c2731bebb6ce1fe739bb9c994bb6063bb87606b029462faec3a1";
+                assert_ne!(tx.compute_txid().to_string(), not_expected);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
