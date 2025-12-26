@@ -100,7 +100,7 @@ pub async fn root_did_candidates(
             if tx.is_err() {
                 return None;
             }
-            let txid = tx.unwrap().txid().to_string();
+            let txid = tx.unwrap().compute_txid().to_string();
 
             let block_height = doc
                 .get_i32(MONGO_FILTER_TXN_TIME)

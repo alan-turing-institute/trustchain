@@ -973,7 +973,7 @@ mod tests {
             content_challenge_response: Some(content_challenge_response),
         };
         // write to file
-        let path = tempdir().unwrap().into_path();
+        let path = tempdir().unwrap().keep();
         let result = cr_state.elementwise_serialize(&path);
         assert!(result.is_ok());
 
@@ -985,7 +985,7 @@ mod tests {
     #[test]
     fn test_elementwise_deserialize_initiation() {
         let cr_initiation = IdentityCRInitiation::new();
-        let temp_path = tempdir().unwrap().into_path();
+        let temp_path = tempdir().unwrap().keep();
 
         // Test case 1: None of the json files exist
         let result = cr_initiation.elementwise_deserialize(&temp_path);
@@ -1035,7 +1035,7 @@ mod tests {
     #[test]
     fn test_elementwise_deserialize_identity_challenge() {
         let identity_challenge = IdentityCRChallenge::new();
-        let temp_path = tempdir().unwrap().into_path();
+        let temp_path = tempdir().unwrap().keep();
 
         // Test case 1: None of the json files exist
         let result = identity_challenge.elementwise_deserialize(&temp_path);
@@ -1070,7 +1070,7 @@ mod tests {
     #[test]
     fn test_elementwise_deserialize_content_challenge() {
         let content_challenge = ContentCRChallenge::new();
-        let temp_path = tempdir().unwrap().into_path();
+        let temp_path = tempdir().unwrap().keep();
 
         // Test case 1: None of the json files exist
         let result = content_challenge.elementwise_deserialize(&temp_path);
@@ -1101,7 +1101,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_challenge_state() {
-        let path = tempdir().unwrap().into_path();
+        let path = tempdir().unwrap().keep();
         let challenge_state = CRState::new();
 
         // Test case 1: some files exist and can be deserialised
