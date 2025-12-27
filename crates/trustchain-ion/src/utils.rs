@@ -953,8 +953,8 @@ mod tests {
                 let date = NaiveDate::from_ymd_opt(2024, 11, 16).unwrap();
                 let result = last_block_height_before(date, None, None).unwrap();
 
-                // The first Testnet4 block mined on 2023-11-16 (UTC) was at height 54534.
-                assert_eq!(result, 54533);
+                // The first Testnet4 block mined on 2023-11-16 (UTC) was at height 54540.
+                assert_eq!(result, 54539);
 
                 let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
                 let result = last_block_height_before(date, None, None);
