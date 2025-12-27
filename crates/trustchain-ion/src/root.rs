@@ -120,56 +120,104 @@ pub async fn root_did_candidates(
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::Network;
     use itertools::Itertools;
+
+    use crate::utils::BITCOIN_NETWORK;
 
     use super::*;
 
     #[tokio::test]
     #[ignore = "Integration test requires Bitcoin & MongoDB"]
     async fn test_root_did_candidates() {
-        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = root_did_candidates(date)
-            .await
-            .unwrap()
-            .into_iter()
-            .sorted()
-            .collect_vec();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+                let result = root_did_candidates(date)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .sorted()
+                    .collect_vec();
 
-        // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
-        // The block height range on that date is (2377360, 2377519).
-        // The relevant mongosh query is:
-        // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 2377359, $lt: 2377520}}).count()
-        assert_eq!(result.len(), 38);
+                // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
+                // The block height range on that date is (2377360, 2377519).
+                // The relevant mongosh query is:
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 2377359, $lt: 2377520}}).count()
+                assert_eq!(result.len(), 38);
 
-        assert_eq!(
-            result[0].did,
-            "did:ion:test:EiA6m4-V4fW_l1xEu3jH9xvXt1JyynmO7I_rkBpFulEAuQ"
-        );
-        assert_eq!(
-            result[0].txid,
-            "b698c0919a91a161bc141cd395788296edb85d19415a6d29a13a220a8f2249e0"
-        );
-        assert_eq!(result[0].block_height, 2377410);
+                assert_eq!(
+                    result[0].did,
+                    "did:ion:test:EiA6m4-V4fW_l1xEu3jH9xvXt1JyynmO7I_rkBpFulEAuQ"
+                );
+                assert_eq!(
+                    result[0].txid,
+                    "b698c0919a91a161bc141cd395788296edb85d19415a6d29a13a220a8f2249e0"
+                );
+                assert_eq!(result[0].block_height, 2377410);
 
-        // This is the root DID used in testing:
-        assert_eq!(
-            result[26].did,
-            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
-        );
-        assert_eq!(
-            result[26].txid,
-            "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
-        );
-        assert_eq!(result[26].block_height, 2377445);
+                // This is the root DID used in testing:
+                assert_eq!(
+                    result[26].did,
+                    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+                );
+                assert_eq!(
+                    result[26].txid,
+                    "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
+                );
+                assert_eq!(result[26].block_height, 2377445);
 
-        assert_eq!(
-            result[37].did,
-            "did:ion:test:EiDz_zvUa2FUIgLUvBia9wUJakhrrW889nDdGlr1-RTAWw"
-        );
-        assert_eq!(
-            result[37].txid,
-            "c369dd566a0dd5c2f381c1ab9c8e96b4f6b4fd323f5c1ed68dbb2a1bfb9cb48f"
-        );
-        assert_eq!(result[37].block_height, 2377416);
+                assert_eq!(
+                    result[37].did,
+                    "did:ion:test:EiDz_zvUa2FUIgLUvBia9wUJakhrrW889nDdGlr1-RTAWw"
+                );
+                assert_eq!(
+                    result[37].txid,
+                    "c369dd566a0dd5c2f381c1ab9c8e96b4f6b4fd323f5c1ed68dbb2a1bfb9cb48f"
+                );
+                assert_eq!(result[37].block_height, 2377416);
+            }
+            Network::Testnet4 => {
+                let date = NaiveDate::from_ymd_opt(2025, 04, 01).unwrap();
+                let result = root_did_candidates(date)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .sorted()
+                    .collect_vec();
+
+                // There were 2 Testnet4 ION create operations with opIndex 0 on 1st Apr 2025.
+                // The block height range on that date is (75430, 75549).
+                // The relevant mongosh query is:
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 75430, $lt: 75549}}).count()
+                assert_eq!(result.len(), 2);
+
+                assert_eq!(
+                    result[0].did,
+                    "did:ion:test:EiAsi4efXUijeTw7OTEeETzcBC5hZJJ8u9ybzjGeMcXdIA"
+                );
+                assert_eq!(
+                    result[0].txid,
+                    "b393f90038914de514312168a250112587c553a2ecb775777436dc6bd6c02dc4"
+                );
+                assert_eq!(result[0].block_height, 75432);
+
+                assert_eq!(
+                    result[1].did,
+                    "did:ion:test:EiBwLicw_9QrVr88Yam8snI2iAvTovJqL8maYxGKZjy8mg"
+                );
+                assert_eq!(
+                    result[1].txid,
+                    "87a5f2c328c2ae41fdc77ca0346b8bf0453cf15b3d4ca39c9d360d3aa429208f"
+                );
+                assert_eq!(result[1].block_height, 75535);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 }
