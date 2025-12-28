@@ -617,15 +617,18 @@ impl TimestampCommitment for BlockTimestampCommitment {}
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::BlockHash;
+    use bitcoin::{BlockHash, Network};
     use ipfs_api_backend_hyper::IpfsClient;
     use std::str::FromStr;
-    use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
+    use trustchain_core::{
+        data::{TESTNET4_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT},
+        utils::json_contains,
+    };
 
     use super::*;
     use crate::{
         data::TEST_BLOCK_HEADER_HEX,
-        utils::{block_header, merkle_proof, query_ipfs, transaction},
+        utils::{block_header, merkle_proof, query_ipfs, transaction, BITCOIN_NETWORK},
     };
 
     #[test]
@@ -730,283 +733,615 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_tx_commitment() {
-        let target = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let target = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
 
-        // Get the Bitcoin transaction.
-        let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
-        let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-        let tx = transaction(&block_hash, 3, None).unwrap();
+                // Get the Bitcoin transaction.
+                let block_hash_str =
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx = transaction(&block_hash, 3, None).unwrap();
 
-        // We expect to find the IPFS CID for the ION core index file in the OP_RETURN data.
-        let cid_str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid_str);
-        let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
-        let candidate_data = bitcoin::consensus::serialize(&tx);
+                // We expect to find the IPFS CID for the ION core index file in the OP_RETURN data.
+                let cid_str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+                let expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid_str);
+                let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&tx);
 
-        let commitment = TxCommitment::<Complete>::new(candidate_data, expected_data);
-        assert!(commitment.verify(target).is_ok());
+                let commitment = TxCommitment::<Complete>::new(candidate_data, expected_data);
+                assert!(commitment.verify(target).is_ok());
 
-        // We do *not* expect a different target to succeed.
-        let bad_target = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert!(commitment.verify(bad_target).is_err());
-        match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification(..)) => (),
-            _ => panic!("Expected FailedHashVerification error."),
-        };
+                // We do *not* expect a different target to succeed.
+                let bad_target = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
 
-        // We do *not* expect to find a different IPFS CID in the OP_RETURN data.
-        let bad_cid_str = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
-        let bad_expected_data: serde_json::Value = serde_json::from_str(&bad_expected_str).unwrap();
-        let candidate_data = bitcoin::consensus::serialize(&tx);
-        let commitment = TxCommitment::<Complete>::new(candidate_data, bad_expected_data);
-        assert!(commitment.verify(target).is_err());
-        match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification(..)) => (),
-            _ => panic!("Expected FailedContentVerification error."),
-        };
+                // We do *not* expect to find a different IPFS CID in the OP_RETURN data.
+                let bad_cid_str = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+                let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
+                let bad_expected_data: serde_json::Value =
+                    serde_json::from_str(&bad_expected_str).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&tx);
+                let commitment = TxCommitment::<Complete>::new(candidate_data, bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
+            }
+            Network::Testnet4 => {
+                let target = "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+
+                // Get the Bitcoin transaction.
+                let block_hash_str =
+                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx = transaction(&block_hash, 586, None).unwrap();
+
+                // We expect to find the IPFS CID for the ION core index file in the OP_RETURN data.
+                let cid_str = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
+                let expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, cid_str);
+                let expected_data: serde_json::Value = serde_json::from_str(&expected_str).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&tx);
+
+                let commitment = TxCommitment::<Complete>::new(candidate_data, expected_data);
+                assert!(commitment.verify(target).is_ok());
+
+                // We do *not* expect a different target to succeed.
+                let bad_target = "f6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
+
+                // We do *not* expect to find a different IPFS CID in the OP_RETURN data.
+                let bad_cid_str = "PmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+                let bad_expected_str = format!(r#"{{"{}":"{}"}}"#, CID_KEY, bad_cid_str);
+                let bad_expected_data: serde_json::Value =
+                    serde_json::from_str(&bad_expected_str).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&tx);
+                let commitment = TxCommitment::<Complete>::new(candidate_data, bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_merkle_root_commitment() {
-        // The commitment target is the Merkle root from the block header.
-        // For the testnet block at height 2377445, the Merkle root is:
-        let target = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        // and the block hash is:
-        let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The commitment target is the Merkle root from the block header.
+                // For the testnet block at height 2377445, the Merkle root is:
+                let target = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                // and the block hash is:
+                let block_hash_str =
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
 
-        // We expect to find the transaction ID in the Merkle proof (candidate data):
-        let txid_str = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        let expected_data = serde_json::json!(txid_str);
+                // We expect to find the transaction ID in the Merkle proof (candidate data):
+                let txid_str = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                let expected_data = serde_json::json!(txid_str);
 
-        // Get the Bitcoin transaction.
-        let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-        let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, None).unwrap();
+                // Get the Bitcoin transaction.
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx_index = 3;
+                let tx = transaction(&block_hash, tx_index, None).unwrap();
 
-        // The candidate data is a serialized Merkle proof.
-        let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
-        let candidate_data = candidate_data_.clone();
+                // The candidate data is a serialized Merkle proof.
+                let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
+                let candidate_data = candidate_data_.clone();
 
-        let commitment = MerkleRootCommitment::<Complete>::new(candidate_data, expected_data);
-        assert!(commitment.verify(target).is_ok());
+                let commitment =
+                    MerkleRootCommitment::<Complete>::new(candidate_data, expected_data);
+                assert!(commitment.verify(target).is_ok());
 
-        // We do *not* expect a different target to succeed.
-        let bad_target = "8dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        assert!(commitment.verify(bad_target).is_err());
-        match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification(..)) => (),
-            _ => panic!("Expected FailedHashVerification error."),
-        };
+                // We do *not* expect a different target to succeed.
+                let bad_target = "8dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
 
-        // We do *not* expect to find an arbitrary transaction ID.
-        let bad_txid_str = "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        let bad_expected_data = serde_json::json!(bad_txid_str);
-        let candidate_data = candidate_data_;
-        let commitment = MerkleRootCommitment::<Complete>::new(candidate_data, bad_expected_data);
-        assert!(commitment.verify(target).is_err());
-        match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification(..)) => (),
-            _ => panic!("Expected FailedContentVerification error."),
-        };
+                // We do *not* expect to find an arbitrary transaction ID.
+                let bad_txid_str =
+                    "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                let bad_expected_data = serde_json::json!(bad_txid_str);
+                let candidate_data = candidate_data_;
+                let commitment =
+                    MerkleRootCommitment::<Complete>::new(candidate_data, bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
+            }
+            Network::Testnet4 => {
+                // The commitment target is the Merkle root from the block header.
+                // For the Testnet4 block at height 92219, the Merkle root is:
+                let target = "34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                // and the block hash is:
+                let block_hash_str =
+                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+
+                // We expect to find the transaction ID in the Merkle proof (candidate data):
+                let txid_str = "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+                let expected_data = serde_json::json!(txid_str);
+
+                // Get the Bitcoin transaction with index 586, for the DID:
+                // did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA.
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx_index = 586;
+                let tx = transaction(&block_hash, tx_index, None).unwrap();
+
+                // The candidate data is a serialized Merkle proof.
+                let candidate_data_ = merkle_proof(&tx, &block_hash, None).unwrap();
+                let candidate_data = candidate_data_.clone();
+
+                let commitment =
+                    MerkleRootCommitment::<Complete>::new(candidate_data, expected_data);
+                assert!(commitment.verify(target).is_ok());
+
+                // We do *not* expect a different target to succeed.
+                let bad_target = "44e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
+
+                // We do *not* expect to find an arbitrary transaction ID.
+                let bad_txid_str =
+                    "2dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                let bad_expected_data = serde_json::json!(bad_txid_str);
+                let candidate_data = candidate_data_;
+                let commitment =
+                    MerkleRootCommitment::<Complete>::new(candidate_data, bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin Core"]
     fn test_block_hash_commitment() {
-        // The commitment target is the block hash.
-        let target = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
-        let block_hash = BlockHash::from_str(target).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The commitment target is the block hash.
+                let target = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+                let block_hash = BlockHash::from_str(target).unwrap();
 
-        // We expect to find the Merkle root in the block header.
-        // For the testnet block at height 2377445, the Merkle root is:
-        let merkle_root_str = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let expected_data = json!(merkle_root_str);
+                // We expect to find the Merkle root in the block header.
+                // For the testnet block at height 2377445, the Merkle root is:
+                let merkle_root_str =
+                    "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                let expected_data = json!(merkle_root_str);
 
-        // The candidate data is the serialized block header.
-        let block_header = block_header(&block_hash, None).unwrap();
-        let candidate_data = bitcoin::consensus::serialize(&block_header);
-        let commitment =
-            BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
-        commitment.verify(target).unwrap();
+                // The candidate data is the serialized block header.
+                let block_header = block_header(&block_hash, None).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&block_header);
+                let commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
+                commitment.verify(target).unwrap();
 
-        // We do *not* expect a different target to succeed.
-        let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
-        assert!(commitment.verify(bad_target).is_err());
-        match commitment.verify(bad_target) {
-            Err(CommitmentError::FailedHashVerification(..)) => (),
-            _ => panic!("Expected FailedHashVerification error."),
-        };
+                // We do *not* expect a different target to succeed.
+                let bad_target = "100000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
 
-        // We do *not* expect to find a different Merkle root.
-        let bad_merkle_root_str =
-            "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        let bad_expected_data = json!(bad_merkle_root_str);
-        let commitment =
-            BlockHashCommitment::<Complete>::new(candidate_data.clone(), bad_expected_data);
-        assert!(commitment.verify(target).is_err());
-        match commitment.verify(target) {
-            Err(CommitmentError::FailedContentVerification(..)) => (),
-            _ => panic!("Expected FailedContentVerification error."),
-        };
+                // We do *not* expect to find a different Merkle root.
+                let bad_merkle_root_str =
+                    "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                let bad_expected_data = json!(bad_merkle_root_str);
+                let commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
 
-        // We do *not* expect the (correct) timestamp to be valid expected data,
-        // since the candidate data is filtered to contain only the Merkle root field.
-        let wrong_expected_data_commitment =
-            BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1666265405));
-        assert!(wrong_expected_data_commitment.verify(target).is_err());
+                // We do *not* expect the (correct) timestamp to be valid expected data,
+                // since the candidate data is filtered to contain only the Merkle root field.
+                let wrong_expected_data_commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1666265405));
+                assert!(wrong_expected_data_commitment.verify(target).is_err());
 
-        // Also test as timestamp commitment
-        let expected_data = 1666265405;
-        let commitment =
-            BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
-        commitment.verify_content().unwrap();
-        commitment.verify(target).unwrap();
-        let bad_expected_data = 1666265406;
-        let commitment = BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
-        assert!(commitment.verify_content().is_err());
-        assert!(commitment.verify(target).is_err());
+                // Also test as timestamp commitment
+                let expected_data = 1666265405;
+                let commitment =
+                    BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
+                commitment.verify_content().unwrap();
+                commitment.verify(target).unwrap();
+                let bad_expected_data = 1666265406;
+                let commitment =
+                    BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
+                assert!(commitment.verify_content().is_err());
+                assert!(commitment.verify(target).is_err());
+            }
+            Network::Testnet4 => {
+                // The commitment target is the block hash.
+                let target = "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                let block_hash = BlockHash::from_str(target).unwrap();
+
+                // We expect to find the Merkle root in the block header.
+                // For the Testnet4 block at height 92219, the Merkle root is:
+                let merkle_root_str =
+                    "34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                let expected_data = json!(merkle_root_str);
+
+                // The candidate data is the serialized block header.
+                let block_header = block_header(&block_hash, None).unwrap();
+                let candidate_data = bitcoin::consensus::serialize(&block_header);
+                let commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), expected_data);
+                commitment.verify(target).unwrap();
+
+                // We do *not* expect a different target to succeed.
+                let bad_target = "1000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                assert!(commitment.verify(bad_target).is_err());
+                match commitment.verify(bad_target) {
+                    Err(CommitmentError::FailedHashVerification(..)) => (),
+                    _ => panic!("Expected FailedHashVerification error."),
+                };
+
+                // We do *not* expect to find a different Merkle root.
+                let bad_merkle_root_str =
+                    "6dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                let bad_expected_data = json!(bad_merkle_root_str);
+                let commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), bad_expected_data);
+                assert!(commitment.verify(target).is_err());
+                match commitment.verify(target) {
+                    Err(CommitmentError::FailedContentVerification(..)) => (),
+                    _ => panic!("Expected FailedContentVerification error."),
+                };
+
+                // We do *not* expect the (correct) timestamp to be valid expected data,
+                // since the candidate data is filtered to contain only the Merkle root field.
+                let wrong_expected_data_commitment =
+                    BlockHashCommitment::<Complete>::new(candidate_data.clone(), json!(1753028520));
+                assert!(wrong_expected_data_commitment.verify(target).is_err());
+
+                // Also test as timestamp commitment
+                let expected_data = 1753028520;
+                let commitment =
+                    BlockTimestampCommitment::new(candidate_data.clone(), expected_data).unwrap();
+                commitment.verify_content().unwrap();
+                commitment.verify(target).unwrap();
+                let bad_expected_data = 1753028521;
+                let commitment =
+                    BlockTimestampCommitment::new(candidate_data, bad_expected_data).unwrap();
+                assert!(commitment.verify_content().is_err());
+                assert!(commitment.verify(target).is_err());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
     #[ignore = "Integration test requires IPFS and Bitcoin Core"]
     async fn test_ion_commitment() {
-        let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let did_doc = Document::from_json(TEST_ROOT_DOCUMENT).unwrap();
 
-        let ipfs_client = IpfsClient::default();
+                let ipfs_client = IpfsClient::default();
 
-        let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
-        let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
+                let chunk_file_cid = "QmWeK5PbKASyNjEYKJ629n6xuwmarZTY6prd19ANpt6qyN";
+                let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
 
-        let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
-        let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
+                let prov_index_file_cid = "QmfXAa2MsHspcTSyru4o1bjPQELLi62sr2pAKizFstaxSs";
+                let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
 
-        let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
+                let core_index_file_cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+                let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
 
-        let block_hash_str = "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
-        let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-        let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, None).unwrap();
-        let transaction = bitcoin::consensus::serialize(&tx);
+                let block_hash_str =
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f";
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx_index = 3;
+                let tx = transaction(&block_hash, tx_index, None).unwrap();
+                let transaction = bitcoin::consensus::serialize(&tx);
 
-        let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
+                let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
 
-        let block_header = block_header(&block_hash, None).unwrap();
-        let block_header = bitcoin::consensus::serialize(&block_header);
+                let block_header = block_header(&block_hash, None).unwrap();
+                let block_header = bitcoin::consensus::serialize(&block_header);
 
-        let commitment = IONCommitment::new(
-            did_doc,
-            chunk_file,
-            prov_index_file,
-            core_index_file,
-            transaction,
-            merkle_proof,
-            block_header,
-        )
-        .unwrap();
+                let commitment = IONCommitment::new(
+                    did_doc,
+                    chunk_file,
+                    prov_index_file,
+                    core_index_file,
+                    transaction,
+                    merkle_proof,
+                    block_header,
+                )
+                .unwrap();
 
-        let expected_data = commitment.chained_commitment.expected_data();
+                let expected_data = commitment.chained_commitment.expected_data();
 
-        println!("{:?}", expected_data);
-        // The expected data contains public keys and service endpoints.
-        match expected_data {
-            serde_json::Value::Array(arr) => {
-                assert_eq!(arr.len(), 2);
+                println!("{:?}", expected_data);
+                // The expected data contains public keys and service endpoints.
+                match expected_data {
+                    serde_json::Value::Array(arr) => {
+                        assert_eq!(arr.len(), 2);
+                    }
+                    _ => panic!("Expected JSON Array."),
+                }
+
+                // Check each individual commitment.
+                let commitments = commitment.chained_commitment.commitments();
+
+                // The first one commits to the chunk file CID and is expected
+                // to contain the same data as the iterated commitment.
+                let chunk_file_commitment = commitments.first().unwrap();
+                assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
+                assert_eq!(expected_data, chunk_file_commitment.expected_data());
+
+                // Verify the chunk file commitment.
+                assert!(&chunk_file_commitment.verify(chunk_file_cid).is_ok());
+
+                // The second one commits to the provisional index file CID
+                // and is expected to contain the chunk file CID.
+                let prov_index_file_commitment = commitments.get(1).unwrap();
+                assert_eq!(
+                    prov_index_file_commitment.hash().unwrap(),
+                    prov_index_file_cid
+                );
+                assert!(json_contains(
+                    &json!(chunk_file_cid),
+                    prov_index_file_commitment.expected_data()
+                ));
+
+                // Verify the provisional index file commitment.
+                assert!(&prov_index_file_commitment
+                    .verify(prov_index_file_cid)
+                    .is_ok());
+
+                // The third one commits to the core index file CID
+                // and is expected to contain the provision index file CID.
+                let core_index_file_commitment = commitments.get(2).unwrap();
+                assert_eq!(
+                    core_index_file_commitment.hash().unwrap(),
+                    core_index_file_cid
+                );
+                assert!(json_contains(
+                    &json!(prov_index_file_cid),
+                    core_index_file_commitment.expected_data()
+                ));
+
+                // Verify the core index file commitment.
+                assert!(&core_index_file_commitment
+                    .verify(core_index_file_cid)
+                    .is_ok());
+
+                // The fourth one commits to the Bitcoin transaction ID
+                // and is expected to contain the core index file CID.
+                let tx_commitment = commitments.get(3).unwrap();
+                let tx_id = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert_eq!(tx_commitment.hash().unwrap(), tx_id);
+                assert!(json_contains(
+                    &json!(core_index_file_cid),
+                    tx_commitment.expected_data()
+                ));
+
+                // Verify the transaction ID commitment.
+                assert!(&tx_commitment.verify(tx_id).is_ok());
+
+                // The fifth one commits to the Merkle root in the block header
+                // and is expected to contain the Bitcoin transaction ID.
+                let merkle_root_commitment = commitments.get(4).unwrap();
+                let merkle_root =
+                    "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
+                assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
+                assert!(json_contains(
+                    &json!(tx_id),
+                    merkle_root_commitment.expected_data()
+                ));
+
+                // Verify the Merkle root commitment.
+                assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+                // Finally, the sixth one commits to the block hash (PoW)
+                // and is expected to contain the Merkle root.
+                let block_hash_commitment = commitments.get(5).unwrap();
+                assert_eq!(block_hash_commitment.hash().unwrap(), block_hash_str);
+                assert!(json_contains(
+                    &json!(merkle_root),
+                    block_hash_commitment.expected_data()
+                ));
+
+                // Verify the Merkle root commitment.
+                assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+                // Verify the iterated commitment content (i.e. the expected_data).
+                assert!(commitment.chained_commitment.verify_content().is_ok());
+                assert!(commitment.chained_commitment.verify(block_hash_str).is_ok());
+
+                // Verify the IONCommitment itself.
+                assert!(commitment.verify(block_hash_str).is_ok());
             }
-            _ => panic!("Expected JSON Array."),
+            Network::Testnet4 => {
+                let did_doc = Document::from_json(TESTNET4_ROOT_DOCUMENT).unwrap();
+
+                let ipfs_client = IpfsClient::default();
+
+                let chunk_file_cid = "QmTaZyaXzhb91nGEDMWdPh9zmPaDhXUYpNFp2RBm6kdMaX";
+                let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
+
+                let prov_index_file_cid = "QmezRahkqbVJUcj3t5uvHVnBRow4NUxVg3KUaqWp2cj4e4";
+                let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
+
+                let core_index_file_cid = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
+                let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
+
+                let block_hash_str =
+                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                let block_hash = BlockHash::from_str(block_hash_str).unwrap();
+                let tx_index = 586;
+                let tx = transaction(&block_hash, tx_index, None).unwrap();
+                let transaction = bitcoin::consensus::serialize(&tx);
+
+                let merkle_proof = merkle_proof(&tx, &block_hash, None).unwrap();
+
+                let block_header = block_header(&block_hash, None).unwrap();
+                let block_header = bitcoin::consensus::serialize(&block_header);
+
+                let commitment = IONCommitment::new(
+                    did_doc,
+                    chunk_file,
+                    prov_index_file,
+                    core_index_file,
+                    transaction,
+                    merkle_proof,
+                    block_header,
+                )
+                .unwrap();
+
+                let expected_data = commitment.chained_commitment.expected_data();
+
+                println!("{:?}", expected_data);
+                // The expected data contains public keys and service endpoints.
+                match expected_data {
+                    serde_json::Value::Array(arr) => {
+                        assert_eq!(arr.len(), 2);
+                    }
+                    _ => panic!("Expected JSON Array."),
+                }
+
+                // Check each individual commitment.
+                let commitments = commitment.chained_commitment.commitments();
+
+                // The first one commits to the chunk file CID and is expected
+                // to contain the same data as the iterated commitment.
+                let chunk_file_commitment = commitments.first().unwrap();
+                assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
+                assert_eq!(expected_data, chunk_file_commitment.expected_data());
+
+                // Verify the chunk file commitment.
+                assert!(&chunk_file_commitment.verify(chunk_file_cid).is_ok());
+
+                // The second one commits to the provisional index file CID
+                // and is expected to contain the chunk file CID.
+                let prov_index_file_commitment = commitments.get(1).unwrap();
+                assert_eq!(
+                    prov_index_file_commitment.hash().unwrap(),
+                    prov_index_file_cid
+                );
+                assert!(json_contains(
+                    &json!(chunk_file_cid),
+                    prov_index_file_commitment.expected_data()
+                ));
+
+                // Verify the provisional index file commitment.
+                assert!(&prov_index_file_commitment
+                    .verify(prov_index_file_cid)
+                    .is_ok());
+
+                // The third one commits to the core index file CID
+                // and is expected to contain the provision index file CID.
+                let core_index_file_commitment = commitments.get(2).unwrap();
+                assert_eq!(
+                    core_index_file_commitment.hash().unwrap(),
+                    core_index_file_cid
+                );
+                assert!(json_contains(
+                    &json!(prov_index_file_cid),
+                    core_index_file_commitment.expected_data()
+                ));
+
+                // Verify the core index file commitment.
+                assert!(&core_index_file_commitment
+                    .verify(core_index_file_cid)
+                    .is_ok());
+
+                // The fourth one commits to the Bitcoin transaction ID
+                // and is expected to contain the core index file CID.
+                let tx_commitment = commitments.get(3).unwrap();
+                let tx_id = "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+                assert_eq!(tx_commitment.hash().unwrap(), tx_id);
+                assert!(json_contains(
+                    &json!(core_index_file_cid),
+                    tx_commitment.expected_data()
+                ));
+
+                // Verify the transaction ID commitment.
+                assert!(&tx_commitment.verify(tx_id).is_ok());
+
+                // The fifth one commits to the Merkle root in the block header
+                // and is expected to contain the Bitcoin transaction ID.
+                let merkle_root_commitment = commitments.get(4).unwrap();
+                let merkle_root =
+                    "34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
+                assert!(json_contains(
+                    &json!(tx_id),
+                    merkle_root_commitment.expected_data()
+                ));
+
+                // Verify the Merkle root commitment.
+                assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+                // Finally, the sixth one commits to the block hash (PoW)
+                // and is expected to contain the Merkle root.
+                let block_hash_commitment = commitments.get(5).unwrap();
+                assert_eq!(block_hash_commitment.hash().unwrap(), block_hash_str);
+                assert!(json_contains(
+                    &json!(merkle_root),
+                    block_hash_commitment.expected_data()
+                ));
+
+                // Verify the Merkle root commitment.
+                assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
+
+                // Verify the iterated commitment content (i.e. the expected_data).
+                assert!(commitment.chained_commitment.verify_content().is_ok());
+                assert!(commitment.chained_commitment.verify(block_hash_str).is_ok());
+
+                // Verify the IONCommitment itself.
+                assert!(commitment.verify(block_hash_str).is_ok());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
         }
-
-        // Check each individual commitment.
-        let commitments = commitment.chained_commitment.commitments();
-
-        // The first one commits to the chunk file CID and is expected
-        // to contain the same data as the iterated commitment.
-        let chunk_file_commitment = commitments.first().unwrap();
-        assert_eq!(chunk_file_commitment.hash().unwrap(), chunk_file_cid);
-        assert_eq!(expected_data, chunk_file_commitment.expected_data());
-
-        // Verify the chunk file commitment.
-        assert!(&chunk_file_commitment.verify(chunk_file_cid).is_ok());
-
-        // The second one commits to the provisional index file CID
-        // and is expected to contain the chunk file CID.
-        let prov_index_file_commitment = commitments.get(1).unwrap();
-        assert_eq!(
-            prov_index_file_commitment.hash().unwrap(),
-            prov_index_file_cid
-        );
-        assert!(json_contains(
-            &json!(chunk_file_cid),
-            prov_index_file_commitment.expected_data()
-        ));
-
-        // Verify the provisional index file commitment.
-        assert!(&prov_index_file_commitment
-            .verify(prov_index_file_cid)
-            .is_ok());
-
-        // The third one commits to the core index file CID
-        // and is expected to contain the provision index file CID.
-        let core_index_file_commitment = commitments.get(2).unwrap();
-        assert_eq!(
-            core_index_file_commitment.hash().unwrap(),
-            core_index_file_cid
-        );
-        assert!(json_contains(
-            &json!(prov_index_file_cid),
-            core_index_file_commitment.expected_data()
-        ));
-
-        // Verify the core index file commitment.
-        assert!(&core_index_file_commitment
-            .verify(core_index_file_cid)
-            .is_ok());
-
-        // The fourth one commits to the Bitcoin transaction ID
-        // and is expected to contain the core index file CID.
-        let tx_commitment = commitments.get(3).unwrap();
-        let tx_id = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx_commitment.hash().unwrap(), tx_id);
-        assert!(json_contains(
-            &json!(core_index_file_cid),
-            tx_commitment.expected_data()
-        ));
-
-        // Verify the transaction ID commitment.
-        assert!(&tx_commitment.verify(tx_id).is_ok());
-
-        // The fifth one commits to the Merkle root in the block header
-        // and is expected to contain the Bitcoin transaction ID.
-        let merkle_root_commitment = commitments.get(4).unwrap();
-        let merkle_root = "7dce795209d4b5051da3f5f5293ac97c2ec677687098062044654111529cad69";
-        assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
-        assert!(json_contains(
-            &json!(tx_id),
-            merkle_root_commitment.expected_data()
-        ));
-
-        // Verify the Merkle root commitment.
-        assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
-
-        // Finally, the sixth one commits to the block hash (PoW)
-        // and is expected to contain the Merkle root.
-        let block_hash_commitment = commitments.get(5).unwrap();
-        assert_eq!(block_hash_commitment.hash().unwrap(), block_hash_str);
-        assert!(json_contains(
-            &json!(merkle_root),
-            block_hash_commitment.expected_data()
-        ));
-
-        // Verify the Merkle root commitment.
-        assert!(&merkle_root_commitment.verify(merkle_root).is_ok());
-
-        // Verify the iterated commitment content (i.e. the expected_data).
-        assert!(commitment.chained_commitment.verify_content().is_ok());
-        assert!(commitment.chained_commitment.verify(block_hash_str).is_ok());
-
-        // Verify the IONCommitment itself.
-        assert!(commitment.verify(block_hash_str).is_ok());
     }
 }

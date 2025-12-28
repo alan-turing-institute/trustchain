@@ -443,6 +443,53 @@ pub const TEST_ROOT_DOCUMENT: &str = r##"
 }
 "##;
 
+pub const TESTNET4_ROOT_DOCUMENT: &str = r##"
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    {
+      "@base": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA"
+    }
+  ],
+  "id": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+  "verificationMethod": [
+    {
+      "id": "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE",
+      "type": "JsonWebSignature2020",
+      "controller": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+      "publicKeyJwk": {
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "o5Zbg68eP5sroe0omH9RmgHhKbwOVrP8rFp_yOgQYr8",
+        "y": "u9TQxs77CP1gmJWW5Jp2cv1qRQ17wybWzbH_qPOqpQM"
+      }
+    }
+  ],
+  "authentication": [
+    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+  ],
+  "assertionMethod": [
+    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+  ],
+  "keyAgreement": [
+    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+  ],
+  "capabilityInvocation": [
+    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+  ],
+  "capabilityDelegation": [
+    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+  ],
+    "service": [
+    {
+      "id": "#TrustchainID",
+      "type": "Identity",
+      "serviceEndpoint": "https://www.gov.uk"
+    }
+  ]
+}        
+"##;
+
 pub const TEST_ROOT_PLUS_1_DOCUMENT: &str = r##"
 {
    "@context": [
