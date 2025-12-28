@@ -563,12 +563,14 @@ mod tests {
     use super::*;
     use crate::{
         data::{
-            TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
-            TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX, TEST_TRANSACTION_HEX,
+            TESTNET4_PROVISIONAL_INDEX_FILE_HEX, TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX,
+            TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX,
+            TEST_TRANSACTION_HEX,
         },
         trustchain_resolver,
+        utils::BITCOIN_NETWORK,
     };
-    use bitcoin::{block::Header, MerkleBlock};
+    use bitcoin::{block::Header, MerkleBlock, Network};
     use flate2::read::GzDecoder;
     use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
@@ -581,19 +583,46 @@ mod tests {
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
 
-        // The transaction, including OP_RETURN data, can be found on-chain:
-        // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
-        let expected = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The transaction, including OP_RETURN data, can be found on-chain:
+                // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
+                let expected = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
 
-        // Block 2377445.
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                // Block 2377445.
+                let block_hash = BlockHash::from_str(
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f",
+                )
                 .unwrap();
-        let tx_index = 3;
-        let tx = transaction(&block_hash, tx_index, Some(target.rpc_client())).unwrap();
+                let tx_index = 3;
+                let tx = transaction(&block_hash, tx_index, Some(target.rpc_client())).unwrap();
 
-        let actual = target.op_return_cid(&tx).unwrap();
-        assert_eq!(expected, actual);
+                let actual = target.op_return_cid(&tx).unwrap();
+                assert_eq!(expected, actual);
+            }
+            Network::Testnet4 => {
+                // The transaction, including OP_RETURN data, can be found on-chain:
+                // https://mempool.space/testnet4/tx/e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c
+                let expected = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
+
+                // Block 92219.
+                let block_hash = BlockHash::from_str(
+                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993",
+                )
+                .unwrap();
+                let tx_index = 586;
+                let tx = transaction(&block_hash, tx_index, Some(target.rpc_client())).unwrap();
+
+                let actual = target.op_return_cid(&tx).unwrap();
+                assert_eq!(expected, actual);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -602,9 +631,25 @@ mod tests {
         // Use a SidetreeClient for the resolver in this case, as we need to resolve a DID.
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let result = target.resolve_did(did).await;
-        assert!(result.is_ok());
+
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+                let result = target.resolve_did(did).await;
+                assert!(result.is_ok());
+            }
+            Network::Testnet4 => {
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                let result = target.resolve_did(did).await;
+                assert!(result.is_ok());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -613,20 +658,78 @@ mod tests {
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
 
-        let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
-        let result = target.fetch_chunk_file(&prov_index_file).await;
-        assert!(result.is_ok());
-        let chunk_file_bytes = result.unwrap();
+                let result = target.fetch_chunk_file(&prov_index_file).await;
+                assert!(result.is_ok());
+                let chunk_file_bytes = result.unwrap();
 
-        let mut decoder = GzDecoder::new(&*chunk_file_bytes);
-        let mut ipfs_content_str = String::new();
-        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
-            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
-            Err(_) => panic!(),
-        };
-        assert!(value.is_object());
-        assert!(value.as_object().unwrap().contains_key("deltas"));
+                let mut decoder = GzDecoder::new(&*chunk_file_bytes);
+                let mut ipfs_content_str = String::new();
+                let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+                    Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+                    Err(_) => panic!(),
+                };
+                assert!(value.is_object());
+                assert!(value.as_object().unwrap().contains_key("deltas"));
+            }
+            Network::Testnet4 => {
+                let prov_index_file = hex::decode(TESTNET4_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+
+                let result = target.fetch_chunk_file(&prov_index_file).await;
+                assert!(result.is_ok());
+                let chunk_file_bytes = result.unwrap();
+
+                let mut decoder = GzDecoder::new(&*chunk_file_bytes);
+                let mut ipfs_content_str = String::new();
+                let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+                    Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+                    Err(_) => panic!(),
+                };
+                assert!(value.is_object());
+                assert!(value.as_object().unwrap().contains_key("deltas"));
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
+    }
+
+    // NEW FOR TESTNET4:
+    #[tokio::test]
+    #[ignore = "Integration test requires IPFS"]
+    async fn test_fetch_prov_index_file() {
+        let resolver = trustchain_resolver(ENDPOINT);
+        let target = TrustchainVerifier::new(resolver);
+
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet4 => {
+                let cid = "QmezRahkqbVJUcj3t5uvHVnBRow4NUxVg3KUaqWp2cj4e4";
+                let result = target.fetch_core_index_file(cid).await;
+                assert!(result.is_ok());
+                let prov_index_file_bytes = result.unwrap();
+
+                let mut decoder = GzDecoder::new(&*prov_index_file_bytes);
+                let mut ipfs_content_str = String::new();
+                let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+                    Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+                    Err(_) => panic!(),
+                };
+                assert!(value.is_object());
+                assert!(value.as_object().unwrap().contains_key("chunks"));
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -635,22 +738,50 @@ mod tests {
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
 
-        let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
-        let result = target.fetch_core_index_file(cid).await;
-        assert!(result.is_ok());
-        let core_index_file_bytes = result.unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let cid = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+                let result = target.fetch_core_index_file(cid).await;
+                assert!(result.is_ok());
+                let core_index_file_bytes = result.unwrap();
 
-        let mut decoder = GzDecoder::new(&*core_index_file_bytes);
-        let mut ipfs_content_str = String::new();
-        let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
-            Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
-            Err(_) => panic!(),
-        };
-        assert!(value.is_object());
-        assert!(value
-            .as_object()
-            .unwrap()
-            .contains_key("provisionalIndexFileUri"));
+                let mut decoder = GzDecoder::new(&*core_index_file_bytes);
+                let mut ipfs_content_str = String::new();
+                let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+                    Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+                    Err(_) => panic!(),
+                };
+                assert!(value.is_object());
+                assert!(value
+                    .as_object()
+                    .unwrap()
+                    .contains_key("provisionalIndexFileUri"));
+            }
+            Network::Testnet4 => {
+                let cid = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
+                let result = target.fetch_core_index_file(cid).await;
+                assert!(result.is_ok());
+                let core_index_file_bytes = result.unwrap();
+
+                let mut decoder = GzDecoder::new(&*core_index_file_bytes);
+                let mut ipfs_content_str = String::new();
+                let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {
+                    Ok(_) => serde_json::from_str(&ipfs_content_str).unwrap(),
+                    Err(_) => panic!(),
+                };
+                assert!(value.is_object());
+                assert!(value
+                    .as_object()
+                    .unwrap()
+                    .contains_key("provisionalIndexFileUri"));
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -660,13 +791,32 @@ mod tests {
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
 
-        assert!(target.bundles.lock().unwrap().is_empty());
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        target.fetch_bundle(did).await.unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                assert!(target.bundles.lock().unwrap().is_empty());
+                let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+                target.fetch_bundle(did).await.unwrap();
 
-        assert!(!target.bundles.lock().unwrap().is_empty());
-        assert_eq!(target.bundles.lock().unwrap().len(), 1);
-        assert!(target.bundles.lock().unwrap().contains_key(did));
+                assert!(!target.bundles.lock().unwrap().is_empty());
+                assert_eq!(target.bundles.lock().unwrap().len(), 1);
+                assert!(target.bundles.lock().unwrap().contains_key(did));
+            }
+            Network::Testnet4 => {
+                assert!(target.bundles.lock().unwrap().is_empty());
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                target.fetch_bundle(did).await.unwrap();
+
+                assert!(!target.bundles.lock().unwrap().is_empty());
+                assert_eq!(target.bundles.lock().unwrap().len(), 1);
+                assert!(target.bundles.lock().unwrap().contains_key(did));
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -676,17 +826,40 @@ mod tests {
         let resolver = trustchain_resolver(ENDPOINT);
         let target = TrustchainVerifier::new(resolver);
 
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
 
-        assert!(target.bundles.lock().unwrap().is_empty());
-        let result = target.did_commitment(did).await.unwrap();
+                assert!(target.bundles.lock().unwrap().is_empty());
+                let result = target.did_commitment(did).await.unwrap();
 
-        // Check that the verification bundle for the commitment is now stored in the Verifier.
-        assert!(!target.bundles.lock().unwrap().is_empty());
-        assert_eq!(target.bundles.lock().unwrap().len(), 1);
-        let bundle = target.bundles.lock().unwrap().get(did).cloned().unwrap();
-        let commitment = construct_commitment(bundle).unwrap();
-        assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
+                // Check that the verification bundle for the commitment is now stored in the Verifier.
+                assert!(!target.bundles.lock().unwrap().is_empty());
+                assert_eq!(target.bundles.lock().unwrap().len(), 1);
+                let bundle = target.bundles.lock().unwrap().get(did).cloned().unwrap();
+                let commitment = construct_commitment(bundle).unwrap();
+                assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
+            }
+            Network::Testnet4 => {
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+
+                assert!(target.bundles.lock().unwrap().is_empty());
+                let result = target.did_commitment(did).await.unwrap();
+
+                // Check that the verification bundle for the commitment is now stored in the Verifier.
+                assert!(!target.bundles.lock().unwrap().is_empty());
+                assert_eq!(target.bundles.lock().unwrap().len(), 1);
+                let bundle = target.bundles.lock().unwrap().get(did).cloned().unwrap();
+                let commitment = construct_commitment(bundle).unwrap();
+                assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
