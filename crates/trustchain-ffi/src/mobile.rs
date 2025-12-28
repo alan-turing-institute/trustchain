@@ -275,9 +275,11 @@ pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::Network;
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::utils::{canonicalize_str, init};
     use trustchain_http::config::HTTPConfig;
+    use trustchain_ion::utils::BITCOIN_NETWORK;
 
     use crate::config::parse_toml;
 
@@ -285,6 +287,16 @@ mod tests {
     const TEST_FFI_CONFIG: &str = r#"
     [ffi.trustchainOptions]
     rootEventTime = 1666265405
+    signatureOnly = false
+
+    [ffi.endpointOptions]
+    trustchainEndpoint.host = "127.0.0.1"
+    trustchainEndpoint.port = 8081
+    "#;
+
+    const TESTNET4_FFI_CONFIG: &str = r#"
+    [ffi.trustchainOptions]
+    rootEventTime = 1753028520
     signatureOnly = false
 
     [ffi.endpointOptions]
@@ -457,16 +469,45 @@ mod tests {
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_resolve() {
         let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
-        did_resolve(did, ffi_opts).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+                did_resolve(did, ffi_opts).unwrap();
+            }
+            Network::Testnet4 => {
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA".to_string();
+                did_resolve(did, ffi_opts).unwrap();
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_verify() {
-        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-        let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
-        did_verify(did, ffi_opts).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
+                let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+                did_verify(did, ffi_opts).unwrap();
+            }
+            Network::Testnet4 => {
+                let ffi_opts = ffi_opts_with_port(TESTNET4_FFI_CONFIG, init_http_ephemeral());
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA".to_string();
+                did_verify(did, ffi_opts).unwrap();
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
