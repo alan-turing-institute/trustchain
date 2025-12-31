@@ -1,4 +1,5 @@
 //! ION-related utilities.
+use crate::data::{ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS, TESTNET4_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_ROOT_PLUS_2_SIGNING_KEYS};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
@@ -18,7 +19,6 @@ use std::io::Read;
 use std::path::Path;
 use std::sync::Once;
 use std::{cmp::Ordering, collections::HashMap};
-use trustchain_core::data::{ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS};
 use trustchain_core::key_manager::{KeyManager, KeyType};
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
@@ -59,14 +59,45 @@ pub fn init() {
         // Manually drop here so additional writes in the init call are not removed
         drop(tempdir);
         // Include test signing keys for two resolvable DIDs
-        let root_plus_1_did_suffix = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-        let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let (root_plus_1_did_suffix, root_plus_2_did_suffix) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+                "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            ),
+            Network::Testnet4 => (
+                "EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
+                "EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let (root_plus_1_did_signing_key, root_plus_2_did_signing_keys) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                ROOT_PLUS_1_SIGNING_KEY,
+                ROOT_PLUS_2_SIGNING_KEYS,
+            ),
+            Network::Testnet4 => (
+                TESTNET4_ROOT_PLUS_1_SIGNING_KEY,
+                TESTNET4_ROOT_PLUS_2_SIGNING_KEYS,
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        // Dummy DID suffix and signing key as candidate for testing.
         let root_plus_2_candidate_did_suffix = "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
-        // TODO: move to data as for the other keys
         let root_plus_2_candidate_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#;
-        let root_plus_1_signing_jwk: JWK = serde_json::from_str(ROOT_PLUS_1_SIGNING_KEY).unwrap();
+        let root_plus_1_signing_jwk: JWK = serde_json::from_str(root_plus_1_did_signing_key).unwrap();
         let root_plus_2_signing_jwks: Vec<JWK> =
-            serde_json::from_str(ROOT_PLUS_2_SIGNING_KEYS).unwrap();
+            serde_json::from_str(root_plus_2_did_signing_keys).unwrap();
         utils_key_manager
             .save_keys(
                 root_plus_1_did_suffix,
@@ -84,7 +115,13 @@ pub fn init() {
             )
             .unwrap();
         let root_plus_2_candidate_signing_jwk: JWK = serde_json::from_str(root_plus_2_candidate_signing_key).unwrap();
-        utils_key_manager.save_keys(root_plus_2_candidate_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_candidate_signing_jwk), false).unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_2_candidate_did_suffix, 
+                KeyType::SigningKey, 
+                &OneOrMany::One(root_plus_2_candidate_signing_jwk), 
+                false,
+            ).unwrap();
     });
 }
 
