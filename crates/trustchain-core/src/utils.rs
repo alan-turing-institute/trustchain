@@ -1,66 +1,14 @@
 //! Core utilities.
-use crate::data::{ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS};
-use crate::key_manager::KeyManager;
-use crate::key_manager::KeyType;
 use crate::TRUSTCHAIN_DATA;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use ssi::did::{Document, ServiceEndpoint, VerificationMethod, VerificationMethodMap};
 use ssi::jwk::JWK;
-use ssi::one_or_many::OneOrMany;
 use std::path::{Path, PathBuf};
-
-use std::sync::Once;
 
 /// Gets the type of an object as a String. For diagnostic purposes (debugging) only.
 pub fn type_of<T>(_: &T) -> String {
     std::any::type_name::<T>().to_string()
-}
-
-/// Utility key manager.
-struct UtilsKeyManager;
-
-impl KeyManager for UtilsKeyManager {}
-
-/// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
-// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-static INIT: Once = Once::new();
-pub fn init() {
-    INIT.call_once(|| {
-        let utils_key_manager = UtilsKeyManager;
-        // initialization code here
-        let tempdir = tempfile::tempdir().unwrap();
-        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
-        // Manually drop here so additional writes in the init call are not removed
-        drop(tempdir);
-        // Include test signing keys for two resolvable DIDs
-        let root_plus_1_did_suffix = "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-        let root_plus_2_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-        let root_plus_2_candidate_did_suffix = "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
-        // TODO: move to data as for the other keys
-        let root_plus_2_candidate_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#;
-        let root_plus_1_signing_jwk: JWK = serde_json::from_str(ROOT_PLUS_1_SIGNING_KEY).unwrap();
-        let root_plus_2_signing_jwks: Vec<JWK> =
-            serde_json::from_str(ROOT_PLUS_2_SIGNING_KEYS).unwrap();
-        utils_key_manager
-            .save_keys(
-                root_plus_1_did_suffix,
-                KeyType::SigningKey,
-                &OneOrMany::One(root_plus_1_signing_jwk),
-                false,
-            )
-            .unwrap();
-        utils_key_manager
-            .save_keys(
-                root_plus_2_did_suffix,
-                KeyType::SigningKey,
-                &OneOrMany::Many(root_plus_2_signing_jwks),
-                false,
-            )
-            .unwrap();
-        let root_plus_2_candidate_signing_jwk: JWK = serde_json::from_str(root_plus_2_candidate_signing_key).unwrap();
-        utils_key_manager.save_keys(root_plus_2_candidate_did_suffix, KeyType::SigningKey, &OneOrMany::One(root_plus_2_candidate_signing_jwk), false).unwrap();
-    });
 }
 
 /// Extracts a vec of public keys from a DID document.

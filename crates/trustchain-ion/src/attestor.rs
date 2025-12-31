@@ -230,10 +230,12 @@ impl Holder for IONAttestor {
 mod tests {
     use super::*;
     use crate::trustchain_resolver;
+    use crate::utils::init;
+    use crate::utils::BITCOIN_NETWORK;
+    use bitcoin::Network;
     use ssi::did::Document;
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::data::{TEST_CREDENTIAL, TEST_SIGNING_KEYS, TEST_TRUSTCHAIN_DOCUMENT};
-    use trustchain_core::utils::init;
 
     #[test]
     fn test_try_from() -> Result<(), Box<dyn std::error::Error>> {
@@ -350,10 +352,19 @@ mod tests {
         .unwrap();
 
         // 3. Read credential and set issuer field
+        let issuer_did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            Network::Testnet4 => "did:ion:test:EiAhwHOB5rQX8yPvJW6NI7wvppM1TiMuvnJ5oW5_AkxbNg",
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let mut vc: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        vc.issuer = Some(ssi::vc::Issuer::URI(URI::String(
-            "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string(),
-        )));
+        vc.issuer = Some(ssi::vc::Issuer::URI(URI::String(issuer_did.to_string())));
 
         // Sign credential (expect failure).
         // Note: Signing a vc with a Some() issuer field requires a running ion node
@@ -376,8 +387,24 @@ mod tests {
     async fn test_attest_presentation() {
         init();
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
-        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
+
+        let (issuer_did, holder_did) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            ),
+            Network::Testnet4 => (
+                "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
+                "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }; // (root+1, root+2)
+
         let issuer = IONAttestor::new(issuer_did);
         let holder = IONAttestor::new(holder_did);
 

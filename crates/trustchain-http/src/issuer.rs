@@ -249,8 +249,8 @@ mod tests {
         vc::{Credential, CredentialSubject, Issuer, URI},
     };
     use std::{collections::HashMap, sync::Arc};
-    use trustchain_core::utils::init;
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
+    use trustchain_ion::utils::init;
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
     const ISSUER_DID: &str = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";

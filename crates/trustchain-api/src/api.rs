@@ -357,12 +357,12 @@ mod tests {
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
     use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime, URI};
-    use trustchain_core::utils::init;
     use trustchain_core::vc::{CredentialError, DataCredentialError};
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::trustchain_resolver;
+    use trustchain_ion::utils::init;
     use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.

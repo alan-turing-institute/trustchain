@@ -213,11 +213,11 @@ impl IONController {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::init;
     use trustchain_core::data::{
         TEST_RECOVERY_KEY, TEST_SIDETREE_DOCUMENT_METADATA, TEST_TRUSTCHAIN_DOCUMENT_METADATA,
         TEST_UPDATE_KEY,
     };
-    use trustchain_core::utils::init;
 
     // Make an IONController using this test function
     fn test_controller(

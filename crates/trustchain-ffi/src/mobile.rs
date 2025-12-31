@@ -277,8 +277,9 @@ pub fn create_operation_mnemonic(mnemonic: String) -> Result<String> {
 mod tests {
     use bitcoin::Network;
     use ssi::vc::CredentialOrJWT;
-    use trustchain_core::utils::{canonicalize_str, init};
+    use trustchain_core::utils::canonicalize_str;
     use trustchain_http::config::HTTPConfig;
+    use trustchain_ion::utils::init;
     use trustchain_ion::utils::BITCOIN_NETWORK;
 
     use crate::config::parse_toml;
