@@ -351,6 +351,7 @@ mod tests {
         TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATA_CREDENTIAL_TEMPLATE,
     };
     use crate::TrustchainAPI;
+    use bitcoin::Network;
     use did_ion::sidetree::PublicKeyEntry;
     use sha2::{Digest, Sha256};
     use ssi::jsonld::ContextLoader;
@@ -362,11 +363,12 @@ mod tests {
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::trustchain_resolver;
-    use trustchain_ion::utils::init;
+    use trustchain_ion::utils::{init, BITCOIN_NETWORK};
     use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
     const ROOT_EVENT_TIME_1: u64 = 1666265405;
+    const TESTNET4_ROOT_EVENT_TIME_1: u64 = 1766953540;
 
     const TEST_UNSIGNED_VC: &str = r#"{
         "@context": [
@@ -376,6 +378,26 @@ mod tests {
         ],
         "type": ["VerifiableCredential"],
         "issuer": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+        "credentialSubject": {
+          "givenName": "Jane",
+          "familyName": "Doe",
+          "degree": {
+            "type": "BachelorDegree",
+            "name": "Bachelor of Science and Arts",
+            "college": "College of Engineering"
+          }
+        }
+      }
+      "#;
+
+    const TESTNET4_TEST_UNSIGNED_VC: &str = r#"{
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://www.w3.org/2018/credentials/examples/v1",
+          "https://w3id.org/citizenship/v1"
+        ],
+        "type": ["VerifiableCredential"],
+        "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
         "credentialSubject": {
           "givenName": "Jane",
           "familyName": "Doe",
@@ -419,7 +441,30 @@ mod tests {
     #[tokio::test]
     async fn test_verify_credential() {
         init();
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+
+        let issuer_did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
+            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        // let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
         let resolver = trustchain_resolver("http://localhost:3000/");
@@ -427,7 +472,7 @@ mod tests {
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
@@ -442,7 +487,7 @@ mod tests {
         let res = TrustchainAPI::verify_credential(
             &vc_with_proof,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
@@ -562,8 +607,23 @@ mod tests {
     #[tokio::test]
     async fn test_verify_presentation() {
         init();
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
-        let holder_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"; // root+2
+
+        let (issuer_did, holder_did) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            ),
+            Network::Testnet4 => (
+                "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
+                "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }; // (root+1, root+2)
 
         let issuer = IONAttestor::new(issuer_did);
         let holder = IONAttestor::new(holder_did);
@@ -622,10 +682,22 @@ mod tests {
             .await
             .unwrap();
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
+
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let res = TrustchainAPI::verify_presentation(
             &presentation,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
@@ -639,7 +711,17 @@ mod tests {
     // No signature from holder in presentation (unauthenticated)
     async fn test_verify_presentation_unauthenticated() {
         init();
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+
+        let issuer_did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
+            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let issuer = IONAttestor::new(issuer_did);
 
         let vc_with_proof = signed_credential(issuer).await;
@@ -651,12 +733,23 @@ mod tests {
             ..Default::default()
         };
 
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         println!("{}", serde_json::to_string_pretty(&presentation).unwrap());
         assert!(matches!(
             TrustchainAPI::verify_presentation(
                 &presentation,
                 None,
-                ROOT_EVENT_TIME_1,
+                root_event_time,
                 &TrustchainVerifier::new(resolver),
                 &mut ContextLoader::default()
             )
@@ -668,7 +761,17 @@ mod tests {
     // Helper function to create a signed credential given an attesor.
     async fn signed_credential(attestor: IONAttestor) -> Credential {
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let vc: Credential = serde_json::from_str(TEST_UNSIGNED_VC).unwrap();
+
+        let vc: Credential = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => serde_json::from_str(TEST_UNSIGNED_VC).unwrap(),
+            Network::Testnet4 => serde_json::from_str(TESTNET4_TEST_UNSIGNED_VC).unwrap(),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         attestor
             .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
             .await
@@ -721,7 +824,17 @@ mod tests {
     #[tokio::test]
     async fn test_verify_data() {
         init();
-        let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
+
+        let issuer_did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
+            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
 
         let bytes = "test-data-content".as_bytes();
         let expected_hash = hex::encode(Sha256::digest(bytes));
@@ -731,11 +844,22 @@ mod tests {
         let resolver = trustchain_resolver("http://localhost:3000/");
         let mut context_loader = ContextLoader::default();
 
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let res = TrustchainAPI::verify_data(
             bytes,
             &vc_with_proof,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
@@ -751,7 +875,7 @@ mod tests {
             bytes,
             &vc_with_proof,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &TrustchainVerifier::new(resolver),
             &mut context_loader,
         )
