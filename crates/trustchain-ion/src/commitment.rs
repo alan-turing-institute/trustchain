@@ -1204,19 +1204,19 @@ mod tests {
 
                 let ipfs_client = IpfsClient::default();
 
-                let chunk_file_cid = "QmTaZyaXzhb91nGEDMWdPh9zmPaDhXUYpNFp2RBm6kdMaX";
+                let chunk_file_cid = "QmRWkDcsN2xALUjumGxAYtLERv5Y87k9VrQBbAnoMjvyya";
                 let chunk_file = query_ipfs(chunk_file_cid, &ipfs_client).await.unwrap();
 
-                let prov_index_file_cid = "QmezRahkqbVJUcj3t5uvHVnBRow4NUxVg3KUaqWp2cj4e4";
+                let prov_index_file_cid = "QmYRfJDasMA3QMVmd555FcMamfoib7Re2SQnLem7oRGErA";
                 let prov_index_file = query_ipfs(prov_index_file_cid, &ipfs_client).await.unwrap();
 
-                let core_index_file_cid = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
+                let core_index_file_cid = "QmQCWW4wTbtZWGjksTno3yWfpmqw5YpjPGo6SJzHFAeceb";
                 let core_index_file = query_ipfs(core_index_file_cid, &ipfs_client).await.unwrap();
 
                 let block_hash_str =
-                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                    "00000000eae3c2b2e336d66e390f622bfe817ab524cfe08eff03189640ded9ec";
                 let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-                let tx_index = 586;
+                let tx_index = 1;
                 let tx = transaction(&block_hash, tx_index, None).unwrap();
                 let transaction = bitcoin::consensus::serialize(&tx);
 
@@ -1296,7 +1296,7 @@ mod tests {
                 // The fourth one commits to the Bitcoin transaction ID
                 // and is expected to contain the core index file CID.
                 let tx_commitment = commitments.get(3).unwrap();
-                let tx_id = "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+                let tx_id = "45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57";
                 assert_eq!(tx_commitment.hash().unwrap(), tx_id);
                 assert!(json_contains(
                     &json!(core_index_file_cid),
@@ -1310,7 +1310,7 @@ mod tests {
                 // and is expected to contain the Bitcoin transaction ID.
                 let merkle_root_commitment = commitments.get(4).unwrap();
                 let merkle_root =
-                    "34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                    "74e098540b229cb59b770867d3e3993d4721cf439a78e929fc51d6301b37a13b";
                 assert_eq!(merkle_root_commitment.hash().unwrap(), merkle_root);
                 assert!(json_contains(
                     &json!(tx_id),

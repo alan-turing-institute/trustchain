@@ -17,7 +17,7 @@
 // ROOT+1 DID:  did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A
 // ROOT+2 DID:  did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q
 //
-// The OP_RETURN data for the create operation is:
+// The OP_RETURN data for the root create operation is:
 // ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97
 //
 // The Bitcoin transaction containing this OP_RETURN data has TxID:
@@ -29,6 +29,8 @@
 //
 // The IPFS CID (for the coreIndexFile) is:
 // QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97
+//
+// The root DID Unix timestamp is 1666265405.
 //
 // The DID Document and Document Metadata are test fixtures in trustchain-core
 // named TEST_ROOT_DOCUMENT and TEST_ROOT_DOCUMENT_METADATA. They are as follows:
@@ -182,21 +184,25 @@ pub(crate) const TEST_RSS_VM_JSON: &str = r#"
 // This file contains sample content from one of the three ION file types written to IPFS:
 // - provisionalIndexFile
 //
-// The samples contain content associated with the following DID:
-// ROOT DID:    did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA
+// The samples contain content associated with the following DIDs:
+// ROOT DID:    did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA
+// ROOT+1 DID:  did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw
+// ROOT+2 DID:  did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg
 //
-// The OP_RETURN data for the create operation is:
-// ion:1.QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW
+// The OP_RETURN data for the root create operation is:
+// ion:1.QmQCWW4wTbtZWGjksTno3yWfpmqw5YpjPGo6SJzHFAeceb
 //
 // The Bitcoin transaction containing this OP_RETURN data has TxID:
-// e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c
-// and is the transaction with index 586 in Testnet4 block 92219 with hash:
-// 0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993
+// 45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57
+// and is the transaction with index 1 in Testnet4 block 115709 with hash:
+// 00000000eae3c2b2e336d66e390f622bfe817ab524cfe08eff03189640ded9ec
 // The transaction Merkle root for that block is:
-// 34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09
+// 74e098540b229cb59b770867d3e3993d4721cf439a78e929fc51d6301b37a13b
 //
 // The IPFS CID (for the coreIndexFile) is:
-// QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW
+// QmQCWW4wTbtZWGjksTno3yWfpmqw5YpjPGo6SJzHFAeceb
+//
+// The root DID Unix timestamp is 1766953540.
 //
 // The DID Document is a test fixture in trustchain-core
 // named TESTNET4_ROOT_DOCUMENT.

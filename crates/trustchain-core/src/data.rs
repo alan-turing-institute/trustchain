@@ -448,46 +448,46 @@ pub const TESTNET4_ROOT_DOCUMENT: &str = r##"
   "@context": [
     "https://www.w3.org/ns/did/v1",
     {
-      "@base": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA"
+      "@base": "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA"
     }
   ],
-  "id": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+  "id": "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA",
   "verificationMethod": [
     {
-      "id": "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE",
+      "id": "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI",
       "type": "JsonWebSignature2020",
-      "controller": "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+      "controller": "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA",
       "publicKeyJwk": {
         "kty": "EC",
         "crv": "secp256k1",
-        "x": "o5Zbg68eP5sroe0omH9RmgHhKbwOVrP8rFp_yOgQYr8",
-        "y": "u9TQxs77CP1gmJWW5Jp2cv1qRQ17wybWzbH_qPOqpQM"
+        "x": "xk-u_6PDvV5Mv7AHNsVKy0jmtEFfXOMfdn7cbVIgJUg",
+        "y": "oXJO1GARKVlnsJLqbd7PriNwYg9FxMUsvNMY4s5IuhQ"
       }
     }
   ],
   "authentication": [
-    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+    "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI"
   ],
   "assertionMethod": [
-    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+    "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI"
   ],
   "keyAgreement": [
-    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+    "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI"
   ],
   "capabilityInvocation": [
-    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+    "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI"
   ],
   "capabilityDelegation": [
-    "#EPKcqGLCmcIWArv8PArTIB-YBkmQNtDhaMXH2MLdaQE"
+    "#qIMVDRMWoSs9s9oANCITO9lIyMYxZ8AdM30tAEluZBI"
   ],
-    "service": [
+  "service": [
     {
       "id": "#TrustchainID",
       "type": "Identity",
-      "serviceEndpoint": "https://www.gov.uk"
+      "serviceEndpoint": "https://alan-turing-institute.github.io/trustchain/"
     }
   ]
-}        
+}
 "##;
 
 pub const TEST_ROOT_PLUS_1_DOCUMENT: &str = r##"
