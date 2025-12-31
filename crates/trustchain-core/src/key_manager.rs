@@ -310,6 +310,9 @@ pub mod tests {
 
     #[test]
     fn test_read_update_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
+        init();
+
         // Make path for this test
         let did_suffix = "test_read_update_key";
 
@@ -333,6 +336,9 @@ pub mod tests {
 
     #[test]
     fn test_read_recovery_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
+        init();
+
         // Make path for this test
         let did_suffix = "test_read_recovery_key";
 
@@ -384,6 +390,7 @@ pub mod tests {
 
     #[test]
     fn test_keys_exist() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
         init();
 
         let target = TestKeyManager;
@@ -414,6 +421,9 @@ pub mod tests {
 
     #[test]
     fn test_save_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
+        init();
+
         // Make path for this test
         let did_suffix = "test_save_key";
 
@@ -435,6 +445,9 @@ pub mod tests {
 
     #[test]
     fn test_save_keys() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
+        init();
+
         // Make path for this test
         let did_suffix = "test_save_keys";
 
@@ -456,6 +469,7 @@ pub mod tests {
 
     #[test]
     fn test_apply_next_update_key() -> Result<(), Box<dyn std::error::Error>> {
+        // Init env
         init();
 
         // Make path for this test
