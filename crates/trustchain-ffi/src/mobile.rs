@@ -295,9 +295,9 @@ mod tests {
     trustchainEndpoint.port = 8081
     "#;
 
-    const TESTNET4_FFI_CONFIG: &str = r#"
+    const TESTNET4_TEST_FFI_CONFIG: &str = r#"
     [ffi.trustchainOptions]
-    rootEventTime = 1753028520
+    rootEventTime = 1766953540
     signatureOnly = false
 
     [ffi.endpointOptions]
@@ -340,6 +340,36 @@ mod tests {
           "verificationMethod": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q#ePyXsaNza8buW6gNXaoGZ07LMTxgLC9K7cbaIjIizTI",
           "created": "2023-07-28T12:53:28.645Z",
           "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..a3bK-CKwhX0jIKNAv_aBjHxBNe3qf_Szc6aUTFagYa8ipWV2a13wipHNxfP3Nq5bM10P3khgdH4hR0d45s1qDA"
+        }
+    }
+    "#;
+
+    const TESTNET4_TEST_CREDENTIAL: &str = r#"
+    {
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1",
+            "https://www.w3.org/2018/credentials/examples/v1"
+        ],
+        "id": "urn:uuid:481935de-f93d-11ed-a309-d7ec1d02e89c",
+        "type": [
+            "VerifiableCredential"
+        ],
+        "credentialSubject": {
+            "givenName": "Jane",
+            "degree": {
+            "college": "University of Oxbridge",
+            "name": "Master of Science",
+            "type": "MastersDegree"
+            },
+            "familyName": "Smith"
+        },
+        "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+        "proof": {
+            "type": "EcdsaSecp256k1Signature2019",
+            "proofPurpose": "assertionMethod",
+            "verificationMethod": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg#KVoW6IB4I755jphzGhxW4jD3hpznyFjcd_WJ3uc8aUQ",
+            "created": "2025-12-31T23:40:48.010898770Z",
+            "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..ZkGy4GFOSJhLHHqJVoi6_ROFek1u7hylUbvGLcs2Wth8lRkEUA7FszrLCNP-YIxxtDSPBOmZHplMTTPXfFZqmQ"
         }
     }
     "#;
@@ -387,6 +417,53 @@ mod tests {
         },
         "holder": "did:key:z6MkhG98a8j2d3jqia13vrWqzHwHAgKTv9NjYEgdV3ndbEdD"
     }
+    "#;
+
+    // TODO: holder's signature is copied from the Testnet3 TEST_PRESENTATION but that's invalid for the signed message.
+    const TESTNET4_TEST_PRESENTATION: &str = r#"
+    {
+        "@context": [
+            "https://www.w3.org/2018/credentials/v1"
+        ],
+        "type": "VerifiablePresentation",
+        "verifiableCredential": [
+            {
+            "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1",
+                "https://w3id.org/citizenship/v1"
+            ],
+            "type": [
+                "VerifiableCredential"
+            ],
+            "credentialSubject": {
+                "givenName": "Jane",
+                "familyName": "Doe",
+                "degree": {
+                "type": "BachelorDegree",
+                "name": "Bachelor of Science and Arts",
+                "college": "College of Engineering"
+                }
+            },
+            "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+            "proof": {
+                "type": "EcdsaSecp256k1Signature2019",
+                "proofPurpose": "assertionMethod",
+                "verificationMethod": "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw#ZWXNr31cpZX62JBSR91Nc-rEYdoI4kDFsqf6IBtv6Dk",
+                "created": "2026-01-01T10:28:59.434794679Z",
+                "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..y2B14mRiLPlJUg6o-vxaz92taE8FjmxDc6J-BQuXdxt7J4Z13R-v1ofL9UTTFEuX8BOv3ugV9UmoHVTjFBy_aw"
+            }
+          }
+      ],
+      "proof": {
+          "type": "EcdsaSecp256k1Signature2019",
+          "proofPurpose": "authentication",
+          "verificationMethod": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg#KVoW6IB4I755jphzGhxW4jD3hpznyFjcd_WJ3uc8aUQ",
+          "created": "2026-01-01T10:28:59.867852442Z",
+          "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..lVKHpEJOnkPvJ6GRe2G6W5eyzbjRkDhQ1wkmIwp8UpBqx27jx-89POGWQ6Io-0IZ5_-FVkO5TM7SNe4Vxed2wg"
+      },
+      "holder": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg"
+      }    
     "#;
 
     const TEST_ION_CREATE_OPERATION: &str = r#"
@@ -501,8 +578,8 @@ mod tests {
                 did_verify(did, ffi_opts).unwrap();
             }
             Network::Testnet4 => {
-                let ffi_opts = ffi_opts_with_port(TESTNET4_FFI_CONFIG, init_http_ephemeral());
-                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA".to_string();
+                let ffi_opts = ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG, init_http_ephemeral());
+                let did = "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg".to_string();
                 did_verify(did, ffi_opts).unwrap();
             }
             network @ _ => {
@@ -514,9 +591,27 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vc_verify_credential() {
-        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
+                let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+                vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts)
+                    .unwrap();
+            }
+            Network::Testnet4 => {
+                let ffi_opts = ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG, init_http_ephemeral());
+                let credential: Credential =
+                    serde_json::from_str(TESTNET4_TEST_CREDENTIAL).unwrap();
+                vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts)
+                    .unwrap();
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
@@ -546,21 +641,55 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vp_issue_presentation() {
-        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG_RSS, init_http_ephemeral());
-        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
-        let root_plus_1_did: &str = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
-        let presentation: Presentation = Presentation {
-            verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(credential))),
-            holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
-            ..Default::default()
-        };
-        let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
-        let presentation = vp_issue_presentation(
-            serde_json::to_string(&presentation).unwrap(),
-            ffi_opts,
-            root_plus_1_signing_key.to_string(),
-        );
-        println!("{}", presentation.unwrap());
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG_RSS, init_http_ephemeral());
+                let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+                let root_plus_1_did: &str =
+                    "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+                let presentation: Presentation = Presentation {
+                    verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(
+                        credential,
+                    ))),
+                    holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
+                    ..Default::default()
+                };
+                let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"aApKobPO8H8wOv-oGT8K3Na-8l-B1AE3uBZrWGT6FJU","y":"dspEqltAtlTKJ7cVRP_gMMknyDPqUw-JHlpwS2mFuh0","d":"HbjLQf4tnwJR6861-91oGpERu8vmxDpW8ZroDCkmFvY"}"#;
+                let presentation = vp_issue_presentation(
+                    serde_json::to_string(&presentation).unwrap(),
+                    ffi_opts,
+                    root_plus_1_signing_key.to_string(),
+                );
+                println!("{}", presentation.unwrap());
+            }
+            Network::Testnet4 => {
+                let ffi_opts = ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG, init_http_ephemeral());
+                let credential: Credential =
+                    serde_json::from_str(TESTNET4_TEST_CREDENTIAL).unwrap();
+                let root_plus_1_did: &str =
+                    "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw";
+                let presentation: Presentation = Presentation {
+                    verifiable_credential: Some(OneOrMany::One(CredentialOrJWT::Credential(
+                        credential,
+                    ))),
+                    holder: Some(ssi::vc::URI::String(root_plus_1_did.to_string())),
+                    ..Default::default()
+                };
+                let root_plus_1_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"LHdUjoN7l4TEPrpyumQnDim36faTAbcSKyK7_L8QYpc","y":"kjg9wS4s9W1WQWTl1zDCucqGi-Ho5r8Ne-Hca7TIWuc","d":"h0nN-wziAiuDd5IM6aAkBSCTrQxVAfubMxBplqCmxSU"}"#;
+                let presentation = vp_issue_presentation(
+                    serde_json::to_string(&presentation).unwrap(),
+                    ffi_opts,
+                    root_plus_1_signing_key.to_string(),
+                );
+                println!("{}", presentation.unwrap());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
@@ -586,8 +715,22 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_vp_verify_presentation() {
-        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-        vp_verify_presentation(TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
+                vp_verify_presentation(TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
+            }
+            Network::Testnet4 => {
+                let ffi_opts = ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG, init_http_ephemeral());
+                vp_verify_presentation(TESTNET4_TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
