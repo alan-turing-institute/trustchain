@@ -240,6 +240,7 @@ mod tests {
         config::HTTPConfig, errors::TrustchainHTTPError, server::TrustchainRouter, state::AppState,
     };
     use axum_test_helper::TestClient;
+    use bitcoin::Network;
     use hyper::StatusCode;
     use lazy_static::lazy_static;
     use serde_json::json;
@@ -250,7 +251,7 @@ mod tests {
     };
     use std::{collections::HashMap, sync::Arc};
     use trustchain_core::{utils::canonicalize, verifier::Verifier};
-    use trustchain_ion::utils::init;
+    use trustchain_ion::utils::{init, BITCOIN_NETWORK};
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
     const ISSUER_DID: &str = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
@@ -265,6 +266,32 @@ mod tests {
     const CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
             "did": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            "credential": {
+                "@context" : [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1"
+                ],
+                "id": "urn:uuid:46cb84e2-fa10-11ed-a0d4-bbb4e61d1556",
+                "credentialSubject" : {
+                "degree" : {
+                    "college" : "University of Oxbridge",
+                    "name" : "Bachelor of Arts",
+                    "type" : "BachelorDegree"
+                },
+                "familyName" : "Bloggs",
+                "givenName" : "Jane"
+                },
+                "type" : [
+                "VerifiableCredential"
+                ]
+            }
+        }
+    }
+    "#;
+
+    const TESTNET4_CREDENTIALS: &str = r#"{
+        "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
+            "did": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
             "credential": {
                 "@context" : [
                 "https://www.w3.org/2018/credentials/v1",
@@ -339,9 +366,21 @@ mod tests {
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_post_issuer_credential() {
         init();
+
+        let credentials = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => CREDENTIALS,
+            Network::Testnet4 => TESTNET4_CREDENTIALS,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let app = TrustchainRouter::from(Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
-            serde_json::from_str(CREDENTIALS).unwrap(),
+            serde_json::from_str(credentials).unwrap(),
             HashMap::new(),
         )))
         .into_router();
@@ -380,10 +419,21 @@ mod tests {
             .await;
         assert!(verify_credential_result.errors.is_empty());
 
+        let expected_timestamp = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => 1666265405,
+            Network::Testnet4 => 1766953540,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         // Test valid Trustchain issuer DID
         match credential.issuer {
             Some(Issuer::URI(URI::String(issuer))) => {
-                assert!(verifier.verify(&issuer, 1666265405).await.is_ok())
+                assert!(verifier.verify(&issuer, expected_timestamp).await.is_ok())
             }
             _ => panic!("No issuer present."),
         }
