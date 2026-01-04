@@ -397,7 +397,7 @@ mod tests {
           "https://w3id.org/citizenship/v1"
         ],
         "type": ["VerifiableCredential"],
-        "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+        "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
         "credentialSubject": {
           "givenName": "Jane",
           "familyName": "Doe",
@@ -437,6 +437,33 @@ mod tests {
         }
       }"###;
 
+    const TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
+        "@context": [
+          "https://www.w3.org/2018/credentials/v1",
+          "https://w3id.org/vdl/v1"
+        ],
+        "type": [
+          "VerifiableCredential",
+          "Iso18013DriversLicense"
+        ],
+        "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+        "issuanceDate": "2025-11-23T11:43:26.806224Z",
+        "credentialSubject": {
+          "id": "did:example:12347abcd",
+          "Iso18013DriversLicense": {
+            "height": 1.8,
+            "weight": 70,
+            "nationality": "France",
+            "given_name": "Test",
+            "family_name": "A",
+            "issuing_country": "US",
+            "birth_date": "1958-07-17",
+            "age_in_years": 30,
+            "age_birth_year": 1958
+          }
+        }
+      }"###;
+
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
     async fn test_verify_credential() {
@@ -446,13 +473,12 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
-            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            Network::Testnet => "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q", // root+2
+            Network::Testnet4 => "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw", // root+2
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
         };
-
         let root_event_time = match BITCOIN_NETWORK
             .as_ref()
             .expect("Integration test requires Bitcoin")
@@ -464,7 +490,6 @@ mod tests {
             }
         };
 
-        // let issuer_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A"; // root+1
         let issuer = IONAttestor::new(issuer_did);
         let mut vc_with_proof = signed_credential(issuer).await;
         let resolver = trustchain_resolver("http://localhost:3000/");
@@ -504,29 +529,68 @@ mod tests {
     async fn test_verify_rss_credential() {
         init();
 
-        // DID with RSS verification method
-        let issuer_did_suffix = "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
-        let attestor = IONAttestor::new(issuer_did_suffix);
 
+        // DID with RSS verification method
+        let issuer_did_suffix = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            Network::Testnet4 => "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let vc: Credential = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap(),
+            Network::Testnet4 => {
+                serde_json::from_str(TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let key_id = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
+            Network::Testnet4 => Some("xkjf51yGCM4efFqvKD5z6fs04ZwY8zwtvK7TWUc89j8"),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let attestor = IONAttestor::new(issuer_did_suffix);
         let signed_vc = attestor
-            .sign(
-                &vc,
-                None,
-                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
-                &resolver,
-                &mut ContextLoader::default(),
-            )
+            .sign(&vc, None, key_id, &resolver, &mut ContextLoader::default())
             .await
             .unwrap();
-        println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+
+        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let mut context_loader = ContextLoader::default();
         let verifier = TrustchainVerifier::new(resolver);
         let res = TrustchainAPI::verify_credential(
             &signed_vc,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &verifier,
             &mut context_loader,
         )
@@ -541,19 +605,44 @@ mod tests {
         init();
 
         // DID with RSS verification method
-        let issuer_did_suffix = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
+        let issuer_did_suffix = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            Network::Testnet4 => "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let key_id = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
+            Network::Testnet4 => Some("xkjf51yGCM4efFqvKD5z6fs04ZwY8zwtvK7TWUc89j8"),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let vc: Credential = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap(),
+            Network::Testnet4 => {
+                serde_json::from_str(TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let resolver = trustchain_resolver("http://localhost:3000/");
-        let vc: Credential = serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap();
         let attestor = IONAttestor::new(issuer_did_suffix);
 
         let mut signed_vc = attestor
-            .sign(
-                &vc,
-                None,
-                Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
-                &resolver,
-                &mut ContextLoader::default(),
-            )
+            .sign(&vc, None, key_id, &resolver, &mut ContextLoader::default())
             .await
             .unwrap();
         // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
@@ -591,10 +680,21 @@ mod tests {
             .unwrap();
         // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
 
+        let root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => ROOT_EVENT_TIME_1,
+            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let res = TrustchainAPI::verify_credential(
             &signed_vc,
             None,
-            ROOT_EVENT_TIME_1,
+            root_event_time,
             &verifier,
             &mut context_loader,
         )
@@ -618,7 +718,7 @@ mod tests {
             ),
             Network::Testnet4 => (
                 "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-                "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+                "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

@@ -283,32 +283,32 @@ mod tests {
     {
         "presentationOrCredential": {
           "credential": {
-                "@context": [
-                    "https://www.w3.org/2018/credentials/v1",
-                    "https://www.w3.org/2018/credentials/examples/v1"
-                ],
-                "id": "urn:uuid:481935de-f93d-11ed-a309-d7ec1d02e89c",
-                "type": [
-                    "VerifiableCredential"
-                ],
-                "credentialSubject": {
-                    "givenName": "Jane",
-                    "degree": {
-                    "college": "University of Oxbridge",
-                    "name": "Master of Science",
-                    "type": "MastersDegree"
-                    },
-                    "familyName": "Smith"
+            "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1",
+                "https://w3id.org/citizenship/v1"
+            ],
+            "type": [
+                "VerifiableCredential"
+            ],
+            "credentialSubject": {
+                "familyName": "Doe",
+                "degree": {
+                "type": "BachelorDegree",
+                "name": "Bachelor of Science and Arts",
+                "college": "College of Engineering"
                 },
-                "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
-                "proof": {
-                    "type": "EcdsaSecp256k1Signature2019",
-                    "proofPurpose": "assertionMethod",
-                    "verificationMethod": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg#KVoW6IB4I755jphzGhxW4jD3hpznyFjcd_WJ3uc8aUQ",
-                    "created": "2025-12-31T23:40:48.010898770Z",
-                    "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..ZkGy4GFOSJhLHHqJVoi6_ROFek1u7hylUbvGLcs2Wth8lRkEUA7FszrLCNP-YIxxtDSPBOmZHplMTTPXfFZqmQ"
-                }
+                "givenName": "Jane"
+            },
+            "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            "proof": {
+                "type": "EcdsaSecp256k1Signature2019",
+                "proofPurpose": "assertionMethod",
+                "verificationMethod": "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw#ZWXNr31cpZX62JBSR91Nc-rEYdoI4kDFsqf6IBtv6Dk",
+                "created": "2026-01-03T18:31:22.932100183Z",
+                "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..ozHpmgUU25J6S09yh7qsjQDojumanIPYe7tGrfCZojMmwo0AN2GFCFq3n1tQG7zPsE0bckBc7akspiWIRFrKtw"
             }
+          }
         },
         "rootEventTime": 1766953540
     }
@@ -367,7 +367,6 @@ mod tests {
     }
     "#;
 
-    // todo:
     const TESTNET4_TEST_POST_VERIFIER_PRESENTATION: &str = r#"
     {
         "presentationOrCredential": {
@@ -387,32 +386,32 @@ mod tests {
                         "VerifiableCredential"
                     ],
                     "credentialSubject": {
-                        "givenName": "Jane",
                         "familyName": "Doe",
                         "degree": {
                         "type": "BachelorDegree",
                         "name": "Bachelor of Science and Arts",
                         "college": "College of Engineering"
-                        }
+                        },
+                        "givenName": "Jane"
                     },
-                    "issuer": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+                    "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
                     "proof": {
                         "type": "EcdsaSecp256k1Signature2019",
                         "proofPurpose": "assertionMethod",
                         "verificationMethod": "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw#ZWXNr31cpZX62JBSR91Nc-rEYdoI4kDFsqf6IBtv6Dk",
-                        "created": "2026-01-01T10:28:59.434794679Z",
-                        "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..y2B14mRiLPlJUg6o-vxaz92taE8FjmxDc6J-BQuXdxt7J4Z13R-v1ofL9UTTFEuX8BOv3ugV9UmoHVTjFBy_aw"
+                        "created": "2026-01-03T18:35:01.214812423Z",
+                        "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..7UpBr38iKOZcTBzPX4R4CWbOxDb1Sj5EbO3Ne0LK9vxZ60pB-1jvYcapL8cszIY-T-1hLvzeKsP7rsTQyLf3BQ"
                     }
-                }
-            ],
-            "proof": {
-                "type": "EcdsaSecp256k1Signature2019",
-                "proofPurpose": "authentication",
-                "verificationMethod": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg#KVoW6IB4I755jphzGhxW4jD3hpznyFjcd_WJ3uc8aUQ",
-                "created": "2026-01-01T10:28:59.867852442Z",
-                "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..lVKHpEJOnkPvJ6GRe2G6W5eyzbjRkDhQ1wkmIwp8UpBqx27jx-89POGWQ6Io-0IZ5_-FVkO5TM7SNe4Vxed2wg"
-            },
-            "holder": "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg"
+                    }
+                ],
+                "proof": {
+                    "type": "EcdsaSecp256k1Signature2019",
+                    "proofPurpose": "authentication",
+                    "verificationMethod": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw#HpzXYjTYoo7WX4QTP_KhpGoeym29F8SUUi4yRS--714",
+                    "created": "2026-01-03T18:35:01.685401626Z",
+                    "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..s1tvxb3xkcZ-RQB58YQ0yVPZQduRsKd5UwcWwLOYiq4-p1b4hgDfYvSFzHe4zHu6dNbV6ctOrj0bUkDqBrlXig"
+                },
+                "holder": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw"
             }
         },
         "rootEventTime": 1666265405

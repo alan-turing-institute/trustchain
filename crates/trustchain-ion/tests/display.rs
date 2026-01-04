@@ -30,7 +30,7 @@ async fn trustchain_graph() {
         Network::Testnet4 => vec![
             "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA",
             "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-            "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+            "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
         ],
         network @ _ => {
             panic!("No test fixtures for network: {:?}", network);

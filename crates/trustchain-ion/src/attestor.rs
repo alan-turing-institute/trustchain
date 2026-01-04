@@ -398,7 +398,7 @@ mod tests {
             ),
             Network::Testnet4 => (
                 "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-                "did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+                "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

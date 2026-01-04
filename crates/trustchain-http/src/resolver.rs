@@ -209,7 +209,7 @@ mod tests {
                 "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()
             }
             Network::Testnet4 => {
-                "/did/did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg".to_string()
+                "/did/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw".to_string()
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -255,7 +255,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/chain/did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg?root_event_time=1766953540"),
+            Network::Testnet4 => format!("/did/chain/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1766953540"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -291,7 +291,7 @@ mod tests {
             "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1234500"
         ).to_string(),
             Network::Testnet4 => format!(
-            "/did/chain/did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg?root_event_time=1234500"
+            "/did/chain/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1234500"
         ).to_string(),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -318,7 +318,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => format!("/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg?root_event_time=1766953540"),
+            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1766953540"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }

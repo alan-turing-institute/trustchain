@@ -69,7 +69,7 @@ pub fn init() {
             ),
             Network::Testnet4 => (
                 "EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-                "EiCMPaKNeI1AMj_tdPXRtV2PmAA3FemrqsTexloHKyTybg",
+                "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw"
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
