@@ -237,6 +237,16 @@ This script will attempt to publish all of the DID operations that are found in 
 * We are completely uploaded and fine
 ```
 
+The output should also include the HTTP status code from the response. A successful publication will show:
+
+```
+< HTTP/1.1 200 OK
+```
+
+Any HTTP status code other than 200 indicates failure, and the Bitcoin transaction will not have been sent. For example:
+
+- `< HTTP/1.1 400 Bad Request` usually indicates that the ION server rejected the JSON content, often due to invalid data in the DID operation (e.g., an invalid update commitment reveal value).
+
 After the `publish.sh` script has run, there will be some delay before the newly-published DID can be resolved. This is due to i) the ION publication mechanism, which supports batching of DID operations to reduce transaction fees, and ii) the Bitcoin network processing time. For more details, see the information panels below.
 
 === "Mainnet"
