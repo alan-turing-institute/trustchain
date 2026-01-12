@@ -1,5 +1,8 @@
 //! ION-related utilities.
-use crate::data::{ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS, TESTNET4_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_ROOT_PLUS_2_SIGNING_KEYS};
+use crate::data::{
+    ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS, TESTNET4_ROOT_PLUS_1_SIGNING_KEY,
+    TESTNET4_ROOT_PLUS_2_SIGNING_KEYS,
+};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
@@ -132,9 +135,9 @@ pub fn init() {
         let root_plus_2_candidate_signing_jwk: JWK = serde_json::from_str(root_plus_2_candidate_signing_key).unwrap();
         utils_key_manager
             .save_keys(
-                root_plus_2_candidate_did_suffix, 
-                KeyType::SigningKey, 
-                &OneOrMany::One(root_plus_2_candidate_signing_jwk), 
+                root_plus_2_candidate_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::One(root_plus_2_candidate_signing_jwk),
                 false,
             ).unwrap();
     });

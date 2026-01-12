@@ -476,7 +476,7 @@ mod tests {
             "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..MOghyY8s8jL0q8w9frySb7WaXEc7sKUAaHeAEzNkj2dpnfqiZrQ13MLLAoEae1xcAOrcv5zRsxFvBOlkNDsRnQ"
         },
         "holder": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw"
-      }    
+      }
     "#;
 
     const TEST_ION_CREATE_OPERATION: &str = r#"
