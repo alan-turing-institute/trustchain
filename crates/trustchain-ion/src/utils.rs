@@ -68,8 +68,8 @@ pub fn init() {
                 "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
             ),
             Network::Testnet4 => (
-                "EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-                "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw"
+                "EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
+                "EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og"
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -93,8 +93,23 @@ pub fn init() {
             }
         };
         // Dummy DID suffix and signing key as candidate for testing.
-        let root_plus_2_candidate_did_suffix = "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
-        let root_plus_2_candidate_signing_key: &str = r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#;
+        let (root_plus_2_candidate_did_suffix, root_plus_2_candidate_signing_key) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA",
+                r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#,
+            ),
+            Network::Testnet4 => (
+                "EiDvLBa5H7kG76UJLRwqDkXzMnMoY82amD0b4KPd5Z3zmw",
+                r#"{"kty":"EC","crv":"secp256k1","x":"l_JNJd4cpmkysnF5YxGBpPvFcDuAe1JOb9DMLeyjtbY","y":"NGaFgg9R4vn09AJWJrc4KgmuoztmEWPDKDsXq8APaSc","d":"4J3Qh101l3pBUspcp-0LEhUzqT67TV1zq6Oqi61r3wM"}"#,
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let root_plus_1_signing_jwk: JWK = serde_json::from_str(root_plus_1_did_signing_key).unwrap();
         let root_plus_2_signing_jwks: Vec<JWK> =
             serde_json::from_str(root_plus_2_did_signing_keys).unwrap();

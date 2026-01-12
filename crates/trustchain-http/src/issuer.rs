@@ -295,7 +295,7 @@ mod tests {
 
     const TESTNET4_CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
-            "did": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            "did": "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             "credential": {
                 "@context" : [
                 "https://www.w3.org/2018/credentials/v1",

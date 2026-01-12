@@ -397,7 +397,7 @@ mod tests {
           "https://w3id.org/citizenship/v1"
         ],
         "type": ["VerifiableCredential"],
-        "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+        "issuer": "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
         "credentialSubject": {
           "givenName": "Jane",
           "familyName": "Doe",
@@ -446,7 +446,7 @@ mod tests {
           "VerifiableCredential",
           "Iso18013DriversLicense"
         ],
-        "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+        "issuer": "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
         "issuanceDate": "2025-11-23T11:43:26.806224Z",
         "credentialSubject": {
           "id": "did:example:12347abcd",
@@ -474,7 +474,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q", // root+2
-            Network::Testnet4 => "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw", // root+2
+            Network::Testnet4 => "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og", // root+2
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -537,7 +537,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-            Network::Testnet4 => "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            Network::Testnet4 => "EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -560,7 +560,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
-            Network::Testnet4 => Some("xkjf51yGCM4efFqvKD5z6fs04ZwY8zwtvK7TWUc89j8"),
+            Network::Testnet4 => Some("nNW6wsf4UdHKtjnEC7SerqCZI0CarVaxDwrxyhLJl0I"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -572,7 +572,7 @@ mod tests {
             .await
             .unwrap();
 
-        // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
+        // println!("{}", serde_json::to_string(&signed_vc).unwrap());
 
         let root_event_time = match BITCOIN_NETWORK
             .as_ref()
@@ -610,7 +610,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-            Network::Testnet4 => "EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            Network::Testnet4 => "EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -620,7 +620,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => Some("QDsGIX_7NfNEaXdEeV7PJ5e_CwoH5LlF3srsCp5dcHA"),
-            Network::Testnet4 => Some("xkjf51yGCM4efFqvKD5z6fs04ZwY8zwtvK7TWUc89j8"),
+            Network::Testnet4 => Some("nNW6wsf4UdHKtjnEC7SerqCZI0CarVaxDwrxyhLJl0I"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -717,8 +717,8 @@ mod tests {
                 "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
             ),
             Network::Testnet4 => (
-                "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
-                "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+                "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
+                "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -817,7 +817,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
-            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            Network::Testnet4 => "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q", // root+1
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -930,7 +930,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A", // root+1
-            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw", // root+1
+            Network::Testnet4 => "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q", // root+1
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
