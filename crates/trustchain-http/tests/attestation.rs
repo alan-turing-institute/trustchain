@@ -1,4 +1,5 @@
 //! Integration test for attestation challenge-response process.
+use bitcoin::Network;
 use port_check::is_port_reachable;
 use tokio::runtime::Runtime;
 use trustchain_core::verifier::Verifier;
@@ -17,10 +18,11 @@ use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
 // The root event time of DID documents used in integration test below.
 const ROOT_EVENT_TIME_1: u64 = 1666265405;
+const TESTNET4_ROOT_EVENT_TIME_1: u64 = 1766953540;
 
 use mockall::automock;
 use trustchain_core::utils::extract_keys;
-use trustchain_ion::utils::init;
+use trustchain_ion::utils::{init, BITCOIN_NETWORK};
 
 #[automock]
 pub trait AttestationUtils {
@@ -33,12 +35,32 @@ fn init_http() {
         !is_port_reachable("127.0.0.1:8081"),
         "Port 8081 is required for Challenge-Response integration test but 8081 is already in use."
     );
-    let http_config = HTTPConfig {
-        host: "127.0.0.1".parse().unwrap(),
-        port: 8081,
-        server_did: Some("did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_owned()),
-        root_event_time: Some(1666265405),
-        ..Default::default()
+
+    let http_config = match BITCOIN_NETWORK
+        .as_ref()
+        .expect("Integration test requires Bitcoin")
+    {
+        Network::Testnet => HTTPConfig {
+            host: "127.0.0.1".parse().unwrap(),
+            port: 8081,
+            server_did: Some(
+                "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A".to_owned(),
+            ),
+            root_event_time: Some(1666265405),
+            ..Default::default()
+        },
+        Network::Testnet4 => HTTPConfig {
+            host: "127.0.0.1".parse().unwrap(),
+            port: 8081,
+            server_did: Some(
+                "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q".to_owned(),
+            ),
+            root_event_time: Some(1766953540),
+            ..Default::default()
+        },
+        network @ _ => {
+            panic!("No test fixtures for network: {:?}", network);
+        }
     };
 
     // Run test server in own thread
@@ -64,12 +86,31 @@ async fn attestation_challenge_response() {
 
     // |------------| requester |------------|
     // Use ROOT_PLUS_1 as attestor. Run server on localhost:8081.
-    let attestor_did = "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
+    let attestor_did = match BITCOIN_NETWORK
+        .as_ref()
+        .expect("Integration test requires Bitcoin")
+    {
+        Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+        Network::Testnet4 => "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
+        network @ _ => {
+            panic!("No test fixtures for network: {:?}", network);
+        }
+    };
+    let root_event_time = match BITCOIN_NETWORK
+        .as_ref()
+        .expect("Integration test requires Bitcoin")
+    {
+        Network::Testnet => ROOT_EVENT_TIME_1,
+        Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+        network @ _ => {
+            panic!("No test fixtures for network: {:?}", network);
+        }
+    };
     let resolver = trustchain_resolver("http://localhost:8081/");
     let verifier = TrustchainVerifier::new(resolver);
     let resolver = verifier.resolver();
     // Verify the attestor did to make sure we can trust the endpoint.
-    let result = verifier.verify(attestor_did, ROOT_EVENT_TIME_1).await;
+    let result = verifier.verify(attestor_did, root_event_time).await;
     assert!(result.is_ok());
     // Resolve did document.
     let result = resolver.resolve_as_result(attestor_did).await;
@@ -79,6 +120,7 @@ async fn attestation_challenge_response() {
     let attestor_doc = attestor_doc.as_ref().unwrap();
     let services = attestor_doc.service.as_ref().unwrap();
 
+    // |------------| requester |------------|
     // Part 1.1: The requester initiates the attestation request (identity initiation).
     // The requester generates a temporary key pair and sends the public key to the attestor via
     // a POST request, together with the organization name and operator name.
@@ -128,7 +170,9 @@ async fn attestation_challenge_response() {
     let result = present_identity_challenge(attestor_did, &temp_p_key);
     assert!(result.is_ok());
     let identity_challenge_attestor = result.unwrap();
-    let _ = identity_challenge_attestor.elementwise_serialize(&attestor_path);
+    identity_challenge_attestor
+        .elementwise_serialize(&attestor_path)
+        .unwrap();
 
     // |------------| requester |------------|
     // Write signed and encrypted challenge to file to requester path (this step would done manually
@@ -181,7 +225,18 @@ async fn attestation_challenge_response() {
     // hashmap of nonces with the one sent to requester.
     // The entire process is automated and is kicked off with the content CR initiation request.
     // let requester_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-    let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
+    // let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
+    let requester_did = match BITCOIN_NETWORK
+        .as_ref()
+        .expect("Integration test requires Bitcoin")
+    {
+        Network::Testnet => "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA",
+        Network::Testnet4 => "did:ion:test:EiDvLBa5H7kG76UJLRwqDkXzMnMoY82amD0b4KPd5Z3zmw",
+        network @ _ => {
+            panic!("No test fixtures for network: {:?}", network);
+        }
+    };
+
     let result = initiate_content_challenge(
         &requester_path,
         requester_did,
