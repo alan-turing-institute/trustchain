@@ -79,7 +79,7 @@ pub async fn initiate_identity_challenge(
 ///
 /// This function first decrypts and verifies the challenge received from attestor to extract
 /// challenge nonce. It then signs the nonce with the requester's temporary secret key and
-/// encrypts it with the attestor's public key, before posting the response to the attestor.
+/// encrypts it with the requester's public key, before posting the response to the attestor.
 /// If post request is successful, the updated ```CRIdentityChallenge``` is returned.
 pub async fn identity_response(
     path: &PathBuf,
@@ -152,7 +152,7 @@ pub async fn identity_response(
 
 /// Initiates part 2 attestation request (content challenge-response).
 ///
-/// This function posts the to be attested to candidate DID (dDID) to the attestor's endpoint.
+/// This function posts the candidate DID (dDID) to the attestor's endpoint.
 /// If the post request is successful, the response body contains the signed and encrypted
 /// challenge payload with a hashmap that contains an encrypted nonce per signing key.
 /// The response to the challenge is generated and posted to the attestor's endpoint.
