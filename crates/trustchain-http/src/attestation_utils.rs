@@ -75,6 +75,12 @@ pub enum TrustchainCRError {
     /// Reqwest error.
     #[error("Network request failed.")]
     Reqwest(reqwest::Error),
+    /// Missing service endpoint.
+    #[error("No service endpoint matching {0}")]
+    MissingServiceEndpoint(String),
+    /// Ambiguous service endpoint.
+    #[error("Ambiguous service endpoint.")]
+    AmbiguousServiceEndpoint,
     /// Invalid service endpoint.
     #[error("Invalid service endpoint.")]
     InvalidServiceEndpoint,
@@ -878,13 +884,17 @@ pub fn matching_endpoint(
                 Some(OneOrMany::One(ServiceEndpoint::URI(uri))) => {
                     endpoints.push(uri.to_string());
                 }
-
                 _ => return Err(TrustchainCRError::InvalidServiceEndpoint),
             }
         }
     }
-    if endpoints.len() != 1 {
-        return Err(TrustchainCRError::InvalidServiceEndpoint);
+    if endpoints.is_empty() {
+        return Err(TrustchainCRError::MissingServiceEndpoint(
+            fragment.to_string(),
+        ));
+    }
+    if endpoints.len() > 1 {
+        return Err(TrustchainCRError::AmbiguousServiceEndpoint);
     }
     Ok(endpoints[0].clone())
 }
