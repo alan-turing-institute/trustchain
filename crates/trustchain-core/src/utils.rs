@@ -206,7 +206,7 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
         },
         serde_json::Value::Array(cand_vec) => {
             // If the candidate is an Array, check if any value in the candidate contains the expected one.
-            return cand_vec.iter().any(|value| json_contains(value, expected));
+            cand_vec.iter().any(|value| json_contains(value, expected))
         }
         serde_json::Value::Object(cand_map) => {
             match expected {
@@ -220,10 +220,7 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
                                 match cand_map.get(cand_key).unwrap() {
                                     serde_json::Value::Object(..)
                                     | serde_json::Value::Array(..) => {
-                                        return json_contains(
-                                            cand_map.get(cand_key).unwrap(),
-                                            expected,
-                                        )
+                                        json_contains(cand_map.get(cand_key).unwrap(), expected)
                                     }
                                     _ => false,
                                 }
@@ -241,9 +238,9 @@ pub fn json_contains(candidate: &serde_json::Value, expected: &serde_json::Value
                 _ => {
                     // If the candidate is a Map and the expected is a scalar, check each value inside
                     // the candidate map.
-                    return cand_map
+                    cand_map
                         .values()
-                        .any(|cand_value| json_contains(cand_value, expected));
+                        .any(|cand_value| json_contains(cand_value, expected))
                 }
             }
         }
