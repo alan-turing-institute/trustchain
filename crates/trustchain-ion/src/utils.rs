@@ -720,10 +720,10 @@ mod tests {
                 assert_eq!(block_height, 2377445);
             }
             Network::Testnet4 => {
-                let suffix = "EiA6o-kI_QCKqwJ53WftfdWWhUH7W9QtK7PhyaF47BZBzg";
+                let suffix = "EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
                 let doc = query_mongodb(suffix).await.unwrap();
                 let block_height: i32 = doc.get_i32("txnTime").unwrap();
-                assert_eq!(block_height, 75432);
+                assert_eq!(block_height, 115709);
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -943,16 +943,16 @@ mod tests {
                 assert_eq!(block_hash, expected_block_hash);
                 assert_eq!(transaction_index, 66);
 
-                let did = "did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w";
+                let did = "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
                 let (block_hash, transaction_index) =
                     locate_transaction(did, &client).await.unwrap();
-                // Block 75425
+                // Block 115709
                 let expected_block_hash = BlockHash::from_str(
-                    "000000000b91285d8d7943ee85b9471e3e807571eba2ba6439fb0f7eab5f3b08",
+                    "00000000eae3c2b2e336d66e390f622bfe817ab524cfe08eff03189640ded9ec",
                 )
                 .unwrap();
                 assert_eq!(block_hash, expected_block_hash);
-                assert_eq!(transaction_index, 120);
+                assert_eq!(transaction_index, 1);
 
                 let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
                 let (block_hash, transaction_index) =
@@ -1092,12 +1092,12 @@ mod tests {
                 assert_eq!(result, (2377360, 2377519));
             }
             Network::Testnet4 => {
-                let date = NaiveDate::from_ymd_opt(2025, 10, 20).unwrap();
+                let date = NaiveDate::from_ymd_opt(2025, 12, 28).unwrap();
                 let result = block_height_range_on_date(date, None, None).unwrap();
 
-                // The first testnet block mined on 2025-10-20 (UTC) was at height 107252.
-                // The last testnet block mined on 2025-10-20 (UTC) was at height 107379.
-                assert_eq!(result, (107252, 107379));
+                // The first testnet4 block mined on 2025-12-28 (UTC) was at height 115580.
+                // The last testnet4 block mined on 2025-12-28 (UTC) was at height 115729.
+                assert_eq!(result, (115580, 115729));
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

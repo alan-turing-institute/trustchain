@@ -209,7 +209,7 @@ mod tests {
                 "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()
             }
             Network::Testnet4 => {
-                "/did/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw".to_string()
+                "/did/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og".to_string()
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -255,7 +255,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/chain/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1766953540"),
+            Network::Testnet4 => format!("/did/chain/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -270,9 +270,6 @@ mod tests {
                 panic!("No test fixtures for network: {:?}", network);
             }
         };
-
-        // let root_event_time = 1666265405;
-        // let uri = format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={root_event_time}");
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
@@ -318,7 +315,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => format!("/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1766953540"),
+            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -392,8 +389,8 @@ mod tests {
                 "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
             ),
             Network::Testnet4 => (
-                "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
                 "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+                "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -404,7 +401,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => (1666971942, 1666265405),
-            Network::Testnet4 => (1766953540, 1753028520),
+            Network::Testnet4 => (1753028520, 1766953540),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }

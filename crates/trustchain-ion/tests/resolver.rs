@@ -17,7 +17,7 @@ async fn trustchain_resolution() {
         .expect("Integration test requires Bitcoin")
     {
         Network::Testnet => "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
-        Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
+        Network::Testnet4 => "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
         network @ _ => {
             panic!("No test fixtures for network: {:?}", network);
         }

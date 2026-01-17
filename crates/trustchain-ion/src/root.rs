@@ -181,7 +181,7 @@ mod tests {
                 assert_eq!(result[37].block_height, 2377416);
             }
             Network::Testnet4 => {
-                let date = NaiveDate::from_ymd_opt(2025, 04, 01).unwrap();
+                let date = NaiveDate::from_ymd_opt(2025, 12, 28).unwrap();
                 let result = root_did_candidates(date)
                     .await
                     .unwrap()
@@ -189,31 +189,32 @@ mod tests {
                     .sorted()
                     .collect_vec();
 
-                // There were 2 Testnet4 ION create operations with opIndex 0 on 1st Apr 2025.
-                // The block height range on that date is (75430, 75549).
+                // There were 3 testnet ION operations with opIndex 0 on 28th Dec 2025.
+                // The block height range on that date is (115580, 115729).
                 // The relevant mongosh query is:
-                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 75430, $lt: 75549}}).count()
-                assert_eq!(result.len(), 2);
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 115580, $lt: 115729}}).count()
+                assert_eq!(result.len(), 3);
 
                 assert_eq!(
                     result[0].did,
-                    "did:ion:test:EiAsi4efXUijeTw7OTEeETzcBC5hZJJ8u9ybzjGeMcXdIA"
+                    "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA"
                 );
                 assert_eq!(
                     result[0].txid,
-                    "b393f90038914de514312168a250112587c553a2ecb775777436dc6bd6c02dc4"
+                    "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c"
                 );
-                assert_eq!(result[0].block_height, 75432);
+                assert_eq!(result[0].block_height, 115688);
 
+                // This is the root DID used in testing:
                 assert_eq!(
-                    result[1].did,
-                    "did:ion:test:EiBwLicw_9QrVr88Yam8snI2iAvTovJqL8maYxGKZjy8mg"
+                    result[2].did,
+                    "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA"
                 );
                 assert_eq!(
-                    result[1].txid,
-                    "87a5f2c328c2ae41fdc77ca0346b8bf0453cf15b3d4ca39c9d360d3aa429208f"
+                    result[2].txid,
+                    "45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57"
                 );
-                assert_eq!(result[1].block_height, 75535);
+                assert_eq!(result[2].block_height, 115709);
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

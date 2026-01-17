@@ -569,7 +569,7 @@ mod tests {
                 did_resolve(did, ffi_opts).unwrap();
             }
             Network::Testnet4 => {
-                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA".to_string();
+                let did = "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og".to_string();
                 did_resolve(did, ffi_opts).unwrap();
             }
             network @ _ => {

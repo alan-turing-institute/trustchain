@@ -876,20 +876,20 @@ mod tests {
             }
             Network::Testnet4 => {
                 // The commitment target is the Merkle root from the block header.
-                // For the Testnet4 block at height 92219, the Merkle root is:
-                let target = "34e1e265d51ad285fad756b1da21a2586ce36cfb9de159462384c7ca2eb2de09";
+                // For the Testnet4 block at height 115709, the Merkle root is:
+                let target = "74e098540b229cb59b770867d3e3993d4721cf439a78e929fc51d6301b37a13b";
                 // and the block hash is:
                 let block_hash_str =
-                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993";
+                    "00000000eae3c2b2e336d66e390f622bfe817ab524cfe08eff03189640ded9ec";
 
                 // We expect to find the transaction ID in the Merkle proof (candidate data):
-                let txid_str = "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c";
+                let txid_str = "45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57";
                 let expected_data = serde_json::json!(txid_str);
 
-                // Get the Bitcoin transaction with index 586, for the DID:
-                // did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA.
+                // Get the Bitcoin transaction with index 1, for the DID:
+                // did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA.
                 let block_hash = BlockHash::from_str(block_hash_str).unwrap();
-                let tx_index = 586;
+                let tx_index = 1;
                 let tx = transaction(&block_hash, tx_index, None).unwrap();
 
                 // The candidate data is a serialized Merkle proof.

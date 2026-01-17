@@ -642,7 +642,7 @@ mod tests {
                 assert!(result.is_ok());
             }
             Network::Testnet4 => {
-                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                let did = "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
                 let result = target.resolve_did(did).await;
                 assert!(result.is_ok());
             }
@@ -806,7 +806,7 @@ mod tests {
             }
             Network::Testnet4 => {
                 assert!(target.bundles.lock().unwrap().is_empty());
-                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                let did = "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
                 target.fetch_bundle(did).await.unwrap();
 
                 assert!(!target.bundles.lock().unwrap().is_empty());
@@ -844,7 +844,7 @@ mod tests {
                 assert_eq!(result.hash().unwrap(), commitment.hash().unwrap());
             }
             Network::Testnet4 => {
-                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                let did = "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
 
                 assert!(target.bundles.lock().unwrap().is_empty());
                 let result = target.did_commitment(did).await.unwrap();
