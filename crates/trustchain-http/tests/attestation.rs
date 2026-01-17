@@ -194,7 +194,6 @@ async fn attestation_challenge_response() {
     // public key. This response is sent to attestor via a POST request.
     // Upon receiving the request, the attestor decrypts the response and verifies the signature,
     // before comparing the nonce from the response with the nonce from the challenge.
-
     let public_keys = extract_keys(attestor_doc);
     let attestor_public_key_ssi = public_keys.first().unwrap();
     let attestor_public_key = ssi_to_josekit_jwk(attestor_public_key_ssi).unwrap();
@@ -224,8 +223,6 @@ async fn attestation_challenge_response() {
     // The attestor decrypts the response and verifies the signature. It then compares the received
     // hashmap of nonces with the one sent to requester.
     // The entire process is automated and is kicked off with the content CR initiation request.
-    // let requester_did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
-    // let requester_did = "did:ion:test:EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA";
     let requester_did = match BITCOIN_NETWORK
         .as_ref()
         .expect("Integration test requires Bitcoin")
