@@ -191,17 +191,36 @@ mod tests {
         config::HTTPConfig, errors::TrustchainHTTPError, server::TrustchainRouter, state::AppState,
     };
     use axum_test_helper::TestClient;
+    use bitcoin::Network;
     use hyper::StatusCode;
     use lazy_static::lazy_static;
     use serde_json::json;
     use std::{collections::HashMap, sync::Arc};
+    use trustchain_ion::utils::BITCOIN_NETWORK;
+
+    // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
+    const TESTNET3_TEST_ROOT_EVENT_TIME: u64 = 1666265405;
+    const TESTNET4_TEST_ROOT_EVENT_TIME: u64 = 1766953540;
 
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
-        pub static ref TEST_HTTP_CONFIG: HTTPConfig = HTTPConfig {
+        pub static ref TEST_HTTP_CONFIG: HTTPConfig = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => HTTPConfig {
             server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
-            root_event_time: Some(1666265405),
+            root_event_time: Some(TESTNET3_TEST_ROOT_EVENT_TIME),
             ..Default::default()
+        },
+            Network::Testnet4 => HTTPConfig {
+            server_did: Some("did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw".to_string()),
+            root_event_time: Some(TESTNET4_TEST_ROOT_EVENT_TIME),
+            ..Default::default()
+        },
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
         };
     }
 
@@ -229,7 +248,7 @@ mod tests {
     }
     "#;
 
-    const TEST_POST_VERIFIER_CREDENTIAL: &str = r#"
+    const TESTNET3_TEST_POST_VERIFIER_CREDENTIAL: &str = r#"
     {
         "presentationOrCredential": {
           "credential": {
@@ -264,7 +283,42 @@ mod tests {
     }
     "#;
 
-    const TEST_POST_VERIFIER_PRESENTATION: &str = r#"
+    const TESTNET4_TEST_POST_VERIFIER_CREDENTIAL: &str = r#"
+    {
+        "presentationOrCredential": {
+          "credential": {
+            "@context": [
+                "https://www.w3.org/2018/credentials/v1",
+                "https://www.w3.org/2018/credentials/examples/v1",
+                "https://w3id.org/citizenship/v1"
+            ],
+            "type": [
+                "VerifiableCredential"
+            ],
+            "credentialSubject": {
+                "familyName": "Doe",
+                "degree": {
+                "type": "BachelorDegree",
+                "name": "Bachelor of Science and Arts",
+                "college": "College of Engineering"
+                },
+                "givenName": "Jane"
+            },
+            "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+            "proof": {
+                "type": "EcdsaSecp256k1Signature2019",
+                "proofPurpose": "assertionMethod",
+                "verificationMethod": "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw#ZWXNr31cpZX62JBSR91Nc-rEYdoI4kDFsqf6IBtv6Dk",
+                "created": "2026-01-03T18:31:22.932100183Z",
+                "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..ozHpmgUU25J6S09yh7qsjQDojumanIPYe7tGrfCZojMmwo0AN2GFCFq3n1tQG7zPsE0bckBc7akspiWIRFrKtw"
+            }
+          }
+        },
+        "rootEventTime": 1766953540
+    }
+    "#;
+
+    const TESTNET3_TEST_POST_VERIFIER_PRESENTATION: &str = r#"
     {
         "presentationOrCredential": {
           "presentation": {
@@ -312,6 +366,57 @@ mod tests {
             },
             "holder": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q"
           }
+        },
+        "rootEventTime": 1666265405
+    }
+    "#;
+
+    const TESTNET4_TEST_POST_VERIFIER_PRESENTATION: &str = r#"
+    {
+        "presentationOrCredential": {
+          "presentation": {
+                "@context": [
+                    "https://www.w3.org/2018/credentials/v1"
+                ],
+                "type": "VerifiablePresentation",
+                "verifiableCredential": [
+                    {
+                    "@context": [
+                        "https://www.w3.org/2018/credentials/v1",
+                        "https://www.w3.org/2018/credentials/examples/v1",
+                        "https://w3id.org/citizenship/v1"
+                    ],
+                    "type": [
+                        "VerifiableCredential"
+                    ],
+                    "credentialSubject": {
+                        "familyName": "Doe",
+                        "degree": {
+                        "type": "BachelorDegree",
+                        "name": "Bachelor of Science and Arts",
+                        "college": "College of Engineering"
+                        },
+                        "givenName": "Jane"
+                    },
+                    "issuer": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw",
+                    "proof": {
+                        "type": "EcdsaSecp256k1Signature2019",
+                        "proofPurpose": "assertionMethod",
+                        "verificationMethod": "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw#ZWXNr31cpZX62JBSR91Nc-rEYdoI4kDFsqf6IBtv6Dk",
+                        "created": "2026-01-03T18:35:01.214812423Z",
+                        "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..7UpBr38iKOZcTBzPX4R4CWbOxDb1Sj5EbO3Ne0LK9vxZ60pB-1jvYcapL8cszIY-T-1hLvzeKsP7rsTQyLf3BQ"
+                    }
+                    }
+                ],
+                "proof": {
+                    "type": "EcdsaSecp256k1Signature2019",
+                    "proofPurpose": "authentication",
+                    "verificationMethod": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw#HpzXYjTYoo7WX4QTP_KhpGoeym29F8SUUi4yRS--714",
+                    "created": "2026-01-03T18:35:01.685401626Z",
+                    "jws": "eyJhbGciOiJFUzI1NksiLCJjcml0IjpbImI2NCJdLCJiNjQiOmZhbHNlfQ..s1tvxb3xkcZ-RQB58YQ0yVPZQduRsKd5UwcWwLOYiq4-p1b4hgDfYvSFzHe4zHu6dNbV6ctOrj0bUkDqBrlXig"
+                },
+                "holder": "did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw"
+            }
         },
         "rootEventTime": 1666265405
     }
@@ -367,8 +472,21 @@ mod tests {
         let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
         let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap();
+
+        let post_verifier: PostVerifier = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_POST_VERIFIER_CREDENTIAL).unwrap()
+            }
+            Network::Testnet4 => {
+                serde_json::from_str(TESTNET4_TEST_POST_VERIFIER_CREDENTIAL).unwrap()
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Credential received and verified!", response.text().await);
@@ -387,8 +505,21 @@ mod tests {
         let id = "b9519df2-35c1-11ee-8314-7f66e4585b4f";
         let path = format!("/vc/verifier/{id}");
         let client = TestClient::new(app);
-        let post_verifier: PostVerifier =
-            serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap();
+
+        let post_verifier: PostVerifier = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_POST_VERIFIER_PRESENTATION).unwrap()
+            }
+            Network::Testnet4 => {
+                serde_json::from_str(TESTNET4_TEST_POST_VERIFIER_PRESENTATION).unwrap()
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let response = client.post(&path).json(&post_verifier).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!("Presentation received and verified!", response.text().await);

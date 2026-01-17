@@ -30,7 +30,7 @@ Trustchain Mobile is a fork of the Credible credential wallet app developed by [
 
 ### Onboarding
 
-![Recovery phrase](assets/mobile-screenshots/00-recovery-phrase-margin.png){ align="right"; width="360" } 
+![Recovery phrase](assets/mobile-screenshots/00-recovery-phrase-margin.png){ align="right"; width="360" }
 
 &nbsp;
 
@@ -42,13 +42,13 @@ The first step in this process is to generate a *recovery phrase*: twelve random
 
 &nbsp;
 
-After hitting continue, they are asked to enter three of the twelve words to confirm the recovery phrase has been correctly recorded. 
+After hitting continue, they are asked to enter three of the twelve words to confirm the recovery phrase has been correctly recorded.
 
 &nbsp;
 
 ### Profile
 
-![Profile](assets/mobile-screenshots/03-profile-margin.png){ align="right"; width="360" } 
+![Profile](assets/mobile-screenshots/03-profile-margin.png){ align="right"; width="360" }
 
 &nbsp;
 
@@ -68,7 +68,7 @@ Near the top of the profile page, the user is directed by a green panel to enter
 
 ### Configuration
 
-![Root event date](assets/mobile-screenshots/04-set-root-event-date-margin.png){ align="right"; width="360" } 
+![Root event date](assets/mobile-screenshots/04-set-root-event-date-margin.png){ align="right"; width="360" }
 
 Before using the app, one essential configuration step is necessary.
 The user must enter the root event date. That is, the date on which the root DID was published.
@@ -83,7 +83,7 @@ A short 3-character confirmation code must also be entered at the same time as t
 
 ### Credential Wallet
 
-![Credential details](assets/mobile-screenshots/10-credential-details-margin.png){ align="right"; width="360" } 
+![Credential details](assets/mobile-screenshots/10-credential-details-margin.png){ align="right"; width="360" }
 
 With the root DID configuration in place, the app is able to verify the signature of any legal entity whose DID is part of the user's network.
 It can therefore verify the authenticity of any downstream DID in the network and any credential issued by those entities.
@@ -96,16 +96,16 @@ This is the URL of an API endpoint for credential issuance.
 &nbsp;
 
 The app resolves the downstream DID in the QR code and verifies it by checking the chain of attestation signatures up to the root DID, and then verifying the root DID timestamp.
-If successful, the user can be certain of the identity of the issuing authority. 
+If successful, the user can be certain of the identity of the issuing authority.
 They can then receive a verifiable credential, e.g. a digital university diploma as in this example.
 
 ### DID Chain
 
-![DID chain](assets/mobile-screenshots/11-did-chain-margin.png){ align="right"; width="360" } 
+![DID chain](assets/mobile-screenshots/11-did-chain-margin.png){ align="right"; width="360" }
 
 All credentials received by the app are automatically checked for authenticity.
 
-This involves verifying not only the signature of the issuing authority (and the credential expiry date), but also the attestation signatures on the chain of downstream DIDs and the timestamp on the root DID. 
+This involves verifying not only the signature of the issuing authority (and the credential expiry date), but also the attestation signatures on the chain of downstream DIDs and the timestamp on the root DID.
 The root DID timestamp is compared to the configured root event date (and the confirmation code). Only if all of these checks pass is the credential deemed valid.
 
 For maximum transparency, the user is also able to view the chain of downstream DIDs leading from the credential issuer back to the root entity. Each of the legal entities represented in this chain ought to be recognisable to the users, who can judge for themselves the level of trust they are willing to place in them, and the extent to which they are the appropriate authorities to be involved in the issuance of that particular type of credential.
@@ -113,7 +113,7 @@ For maximum transparency, the user is also able to view the chain of downstream 
 
 ### Verifiable Presentation
 
-![Selective disclosure](assets/mobile-screenshots/12-selective-disclosure-margin.png){ align="right"; width="360" } 
+![Selective disclosure](assets/mobile-screenshots/12-selective-disclosure-margin.png){ align="right"; width="360" }
 
 In the final step of the demonstration, the user generates a presentation from their credential, which can be verified using another device running the same Trustchain Mobile app.
 
@@ -127,7 +127,7 @@ Trustchain supports a redactable signature scheme which enables the user to sele
 
 ### Device-to-Device Verification
 
-![Credential verification](assets/mobile-screenshots/14-verified-presentation-margin.png){ align="right"; width="360" } 
+![Credential verification](assets/mobile-screenshots/14-verified-presentation-margin.png){ align="right"; width="360" }
 
 When the user has selected the attributes for sharing, the app generates a presentation in which all other attributes are redacted, but which still contains a valid signature from the credential issuer. The presentation is also timestamped and signed using holder's private key, to prevent stale presentations from being re-used.
 
@@ -135,6 +135,6 @@ The app then encodes this presentation in a QR code which is displayed on the de
 
 Any other device running Trustchain Mobile can then scan this QR code and verify the authenticity of the credential from which it was generated.
 
-Naturally, the verifier's app must be configured with the same root event date as the credential holder's. This common knowledge of the root event date across all users of the network of trusted DIDs is a fundamental assumption on which Trustchain relies. 
+Naturally, the verifier's app must be configured with the same root event date as the credential holder's. This common knowledge of the root event date across all users of the network of trusted DIDs is a fundamental assumption on which Trustchain relies.
 
 &nbsp;

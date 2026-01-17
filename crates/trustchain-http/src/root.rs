@@ -154,7 +154,9 @@ mod tests {
     use super::*;
     use crate::{config::HTTPConfig, server::TrustchainRouter};
     use axum_test_helper::TestClient;
+    use bitcoin::Network;
     use itertools::Itertools;
+    use trustchain_ion::utils::BITCOIN_NETWORK;
 
     #[tokio::test]
     #[ignore = "requires MongoDB and Bitcoin RPC"]
@@ -172,22 +174,54 @@ mod tests {
         );
 
         // Valid request:
-        let uri = "/root?year=2022&month=10&day=20".to_string();
-        let response = client.get(&uri).send().await;
-        assert_eq!(response.status(), StatusCode::OK);
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let uri = "/root?year=2022&month=10&day=20".to_string();
+                let response = client.get(&uri).send().await;
+                assert_eq!(response.status(), StatusCode::OK);
 
-        let result: RootCandidatesResult = serde_json::from_str(&response.text().await).unwrap();
+                let result: RootCandidatesResult =
+                    serde_json::from_str(&response.text().await).unwrap();
 
-        assert_eq!(result.date, NaiveDate::from_ymd_opt(2022, 10, 20).unwrap());
-        let sorted_root_candidates = result.root_candidates.into_iter().sorted().collect_vec();
-        assert_eq!(
-            sorted_root_candidates[26].did,
-            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
-        );
-        assert_eq!(
-            sorted_root_candidates[26].txid,
-            "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
-        );
+                assert_eq!(result.date, NaiveDate::from_ymd_opt(2022, 10, 20).unwrap());
+                let sorted_root_candidates =
+                    result.root_candidates.into_iter().sorted().collect_vec();
+                assert_eq!(
+                    sorted_root_candidates[26].did,
+                    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+                );
+                assert_eq!(
+                    sorted_root_candidates[26].txid,
+                    "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
+                );
+            }
+            Network::Testnet4 => {
+                let uri = "/root?year=2025&month=12&day=28".to_string();
+                let response = client.get(&uri).send().await;
+                assert_eq!(response.status(), StatusCode::OK);
+
+                let result: RootCandidatesResult =
+                    serde_json::from_str(&response.text().await).unwrap();
+
+                assert_eq!(result.date, NaiveDate::from_ymd_opt(2025, 12, 28).unwrap());
+                let sorted_root_candidates =
+                    result.root_candidates.into_iter().sorted().collect_vec();
+                assert_eq!(
+                    sorted_root_candidates[2].did,
+                    "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA"
+                );
+                assert_eq!(
+                    sorted_root_candidates[2].txid,
+                    "45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57"
+                );
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
     }
 
     #[tokio::test]
@@ -213,12 +247,31 @@ mod tests {
         assert!(response.text().await.contains("integer out of range"));
 
         // Valid request:
-        let uri = "/root/timestamp/2377445".to_string();
+        let uri = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "/root/timestamp/2377445".to_string(),
+            Network::Testnet4 => "/root/timestamp/115709".to_string(),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
 
         let result: TimestampResult = serde_json::from_str(&response.text().await).unwrap();
 
-        assert_eq!(result.timestamp, 1666265405);
+        let expected_timestamp = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => 1666265405,
+            Network::Testnet4 => 1766953540,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        assert_eq!(result.timestamp, expected_timestamp);
     }
 }

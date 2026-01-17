@@ -19,4 +19,5 @@ trustchain-core = { path = "../trustchain-core" }
 trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]
+bitcoin = { workspace = true }
 tokio = { workspace = true, features = ["full"] }

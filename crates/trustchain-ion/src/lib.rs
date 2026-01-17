@@ -16,7 +16,10 @@ pub mod verifier;
 
 use crate::ion::IONTest as ION;
 use crate::resolver::HTTPTrustchainResolver;
+use crate::utils::BITCOIN_NETWORK;
+use bitcoin::Network;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
@@ -195,8 +198,19 @@ pub const BITS_KEY: &str = "bits";
 pub const NONCE_KEY: &str = "nonce";
 
 // Minimum number of zeros for PoW block hash of root
-// TODO: set differently for mainnet and testnet with features
-pub const MIN_POW_ZEROS: usize = 14;
+lazy_static! {
+    static ref MIN_POW_ZEROS: usize = match BITCOIN_NETWORK
+        .as_ref()
+        .expect("Integration test requires Bitcoin")
+    {
+        Network::Bitcoin => 14,
+        Network::Testnet => 6,
+        Network::Testnet4 => 6,
+        network @ _ => {
+            panic!("No test fixtures for network: {:?}", network);
+        }
+    };
+}
 
 // BIP32
 pub const SIGNING_KEY_DERIVATION_PATH: &str = "m/0h";

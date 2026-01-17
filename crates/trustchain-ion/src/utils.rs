@@ -1,17 +1,29 @@
 //! ION-related utilities.
+use crate::data::{
+    TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
+    TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
+};
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
-use bitcoin::{BlockHash, BlockHeader, Transaction};
+use bitcoin::Network;
+use bitcoin::{block::Header, blockdata::block::BlockHash, Transaction};
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
+use lazy_static::lazy_static;
 use mongodb::{bson::doc, options::ClientOptions, Cursor};
 use serde_json::{json, Value};
+use ssi::jwk::JWK;
+use ssi::one_or_many::OneOrMany;
 use std::io::Read;
+use std::path::Path;
+use std::sync::Once;
 use std::{cmp::Ordering, collections::HashMap};
+use trustchain_core::key_manager::{KeyManager, KeyType};
+use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
@@ -24,9 +36,112 @@ const ION_METHOD_WITH_DELIMITER: &str = "ion:";
 const ION_OPERATION_COUNT_DELIMITER: &str = ".";
 const DID_DELIMITER: &str = ":";
 
+lazy_static! {
+    /// Lazy static reference to the Bitcoin blockchain network.
+    pub static ref BITCOIN_NETWORK: Result<Network, TrustchainBitcoinError> = bitcoin_network(None);
+}
+
 /// Locator for a transaction on the PoW ledger, given by the pair:
 /// (block_hash, tx_index_within_block).
 pub type TransactionLocator = (BlockHash, u32);
+
+/// Utility key manager.
+struct UtilsKeyManager;
+
+impl KeyManager for UtilsKeyManager {}
+
+/// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
+// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+static INIT: Once = Once::new();
+pub fn init() {
+    INIT.call_once(|| {
+        let utils_key_manager = UtilsKeyManager;
+        // initialization code here
+        let tempdir = tempfile::tempdir().unwrap();
+        std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+        // Manually drop here so additional writes in the init call are not removed
+        drop(tempdir);
+        // Include test signing keys for two resolvable DIDs
+        let (root_plus_1_did_suffix, root_plus_2_did_suffix) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A",
+                "EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            ),
+            Network::Testnet4 => (
+                "EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
+                "EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og"
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let (root_plus_1_did_signing_key, root_plus_2_did_signing_keys) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY,
+                TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
+            ),
+            Network::Testnet4 => (
+                TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY,
+                TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        // Dummy DID suffix and signing key as candidate for testing.
+        let (root_plus_2_candidate_did_suffix, root_plus_2_candidate_signing_key) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "EiCDmY0qxsde9AdIwMf2tUKOiMo4aHnoWaPBRCeGt7iMHA",
+                r#"{"kty":"EC","crv":"secp256k1","x":"WzbWcgvvq21xKDTsvANakBSI3nJKDSmNa99usFmYJ0E","y":"vAFo1gkFqgEE3QsX1xlmHcoKxs5AuDqc18kkYEGVwDk","d":"LHt66ri5ykeVqEZwbzboJevbh5UEZkT8r8etsjg3KeE"}"#,
+            ),
+            Network::Testnet4 => (
+                "EiDvLBa5H7kG76UJLRwqDkXzMnMoY82amD0b4KPd5Z3zmw",
+                r#"{"kty":"EC","crv":"secp256k1","x":"l_JNJd4cpmkysnF5YxGBpPvFcDuAe1JOb9DMLeyjtbY","y":"NGaFgg9R4vn09AJWJrc4KgmuoztmEWPDKDsXq8APaSc","d":"4J3Qh101l3pBUspcp-0LEhUzqT67TV1zq6Oqi61r3wM"}"#,
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
+        let root_plus_1_signing_jwk: JWK = serde_json::from_str(root_plus_1_did_signing_key).unwrap();
+        let root_plus_2_signing_jwks: Vec<JWK> =
+            serde_json::from_str(root_plus_2_did_signing_keys).unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_1_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::One(root_plus_1_signing_jwk),
+                false,
+            )
+            .unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_2_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::Many(root_plus_2_signing_jwks),
+                false,
+            )
+            .unwrap();
+        let root_plus_2_candidate_signing_jwk: JWK = serde_json::from_str(root_plus_2_candidate_signing_key).unwrap();
+        utils_key_manager
+            .save_keys(
+                root_plus_2_candidate_did_suffix,
+                KeyType::SigningKey,
+                &OneOrMany::One(root_plus_2_candidate_signing_jwk),
+                false,
+            ).unwrap();
+    });
+}
 
 /// Queries IPFS for the given content identifier (CID) to retrieve the content
 /// (as bytes), hashes the content and checks that the hash matches the CID,
@@ -65,10 +180,12 @@ fn tx_to_op_return_data(tx: &Transaction) -> Result<String, VerifierError> {
         .collect();
 
     match extracted.len() {
-        0 => Err(VerifierError::NoDIDContentIdentifier(tx.txid().to_string())),
+        0 => Err(VerifierError::NoDIDContentIdentifier(
+            tx.compute_txid().to_string(),
+        )),
         1 => Ok(extracted.first().unwrap().to_string()),
         _ => Err(VerifierError::MultipleDIDContentIdentifiers(
-            tx.txid().to_string(),
+            tx.compute_txid().to_string(),
         )),
     }
 }
@@ -169,11 +286,23 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     .unwrap()
 }
 
+/// Gets the Bitcoin chain via the RPC API.
+pub fn bitcoin_network(
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<Network, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return bitcoin_network(Some(&rpc_client));
+    };
+    Ok(client.unwrap().get_blockchain_info()?.chain)
+}
+
 /// Gets a Bitcoin block header via the RPC API.
 pub fn block_header(
     block_hash: &BlockHash,
     client: Option<&bitcoincore_rpc::Client>,
-) -> Result<BlockHeader, TrustchainBitcoinError> {
+) -> Result<Header, TrustchainBitcoinError> {
     // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
     if client.is_none() {
         let rpc_client = rpc_client();
@@ -294,7 +423,7 @@ pub fn merkle_proof(
     }
     Ok(client
         .unwrap()
-        .get_tx_out_proof(&[tx.txid()], Some(block_hash))?)
+        .get_tx_out_proof(&[tx.compute_txid()], Some(block_hash))?)
 }
 
 pub fn reverse_endianness(hex: &str) -> Result<String, hex::FromHexError> {
@@ -580,74 +709,178 @@ mod tests {
     #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
     async fn test_query_mongodb() {
-        let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let doc = query_mongodb(suffix).await.unwrap();
-        let block_height: i32 = doc.get_i32("txnTime").unwrap();
-        assert_eq!(block_height, 2377445);
-    }
-
-    #[tokio::test]
-    #[ignore = "Integration test requires MongoDB"]
-    async fn test_query_mongodb_on_interval_1902375_to_1902377() {
-        let mut result = query_mongodb_on_interval(1902375, 1902377).await.unwrap();
-
-        let mut dids: Vec<String> = Vec::new();
-        assert_eq!(dids.len(), 0);
-        while let Some(doc) = result.next().await {
-            dids.push(
-                doc.unwrap()
-                    .get_str(MONGO_FILTER_DID_SUFFIX)
-                    .unwrap()
-                    .to_owned(),
-            );
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let suffix = "EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+                let doc = query_mongodb(suffix).await.unwrap();
+                let block_height: i32 = doc.get_i32("txnTime").unwrap();
+                assert_eq!(block_height, 2377445);
+            }
+            Network::Testnet4 => {
+                let suffix = "EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
+                let doc = query_mongodb(suffix).await.unwrap();
+                let block_height: i32 = doc.get_i32("txnTime").unwrap();
+                assert_eq!(block_height, 115709);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
         }
-
-        // Two ION operations with opIndex = 0 exist on testnet during this interval.
-        // db.operations.find({opIndex: 0, txnTime: { $gte: 1902375, $lte: 1902377}})
-        assert_eq!(dids.len(), 2);
-        assert!(dids.contains(&String::from(
-            "EiDlkji8etHKKZl58SQNx02_HHSJkotwYmDqF77AfVvPtA"
-        )));
-        assert!(dids.contains(&String::from(
-            "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ"
-        )));
     }
 
     #[tokio::test]
     #[ignore = "Integration test requires MongoDB"]
-    async fn test_query_mongodb_on_interval_2377360_to_2377519() {
-        let result = query_mongodb_on_interval(2377360, 2377519).await.unwrap();
-        let docs = result
-            .try_collect::<Vec<mongodb::bson::Document>>()
-            .await
-            .unwrap();
+    async fn test_query_mongodb_on_interval_short() {
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let mut result = query_mongodb_on_interval(1902375, 1902377).await.unwrap();
 
-        // There are 38 testnet ION create operations with opIndex = 0 testnet during this interval.
-        // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gte: 2377360, $lte: 2377519}})
-        assert_eq!(docs.len(), 38);
+                let mut dids: Vec<String> = Vec::new();
+                assert_eq!(dids.len(), 0);
+                while let Some(doc) = result.next().await {
+                    dids.push(
+                        doc.unwrap()
+                            .get_str(MONGO_FILTER_DID_SUFFIX)
+                            .unwrap()
+                            .to_owned(),
+                    );
+                }
+
+                // Two ION operations with opIndex = 0 exist on testnet during this interval.
+                // db.operations.find({opIndex: 0, txnTime: { $gte: 1902375, $lte: 1902377}})
+                assert_eq!(dids.len(), 2);
+                assert!(dids.contains(&String::from(
+                    "EiDlkji8etHKKZl58SQNx02_HHSJkotwYmDqF77AfVvPtA"
+                )));
+                assert!(dids.contains(&String::from(
+                    "EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ"
+                )));
+            }
+            Network::Testnet4 => {
+                let mut result = query_mongodb_on_interval(75422, 75432).await.unwrap();
+
+                let mut dids: Vec<String> = Vec::new();
+                assert_eq!(dids.len(), 0);
+                while let Some(doc) = result.next().await {
+                    dids.push(
+                        doc.unwrap()
+                            .get_str(MONGO_FILTER_DID_SUFFIX)
+                            .unwrap()
+                            .to_owned(),
+                    );
+                }
+
+                // Two ION operations with opIndex = 0 exist on testnet during this interval.
+                // db.operations.find({opIndex: 0, txnTime: { $gte: 75422, $lte: 75432}})
+                // Both operations relate to the same DID:
+                assert_eq!(dids.len(), 2);
+                assert!(dids.contains(&String::from(
+                    "EiAsi4efXUijeTw7OTEeETzcBC5hZJJ8u9ybzjGeMcXdIA"
+                )));
+                assert_eq!(dids[0], dids[1]);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires MongoDB"]
+    async fn test_query_mongodb_on_interval_long() {
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let result = query_mongodb_on_interval(2377360, 2377519).await.unwrap();
+                let docs = result
+                    .try_collect::<Vec<mongodb::bson::Document>>()
+                    .await
+                    .unwrap();
+
+                // There are 38 testnet ION create operations with opIndex = 0 testnet during this interval.
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gte: 2377360, $lte: 2377519}})
+                assert_eq!(docs.len(), 38);
+            }
+            Network::Testnet4 => {
+                let result = query_mongodb_on_interval(75422, 92219).await.unwrap();
+                let docs = result
+                    .try_collect::<Vec<mongodb::bson::Document>>()
+                    .await
+                    .unwrap();
+
+                // There are four Testnet4 ION create operations with opIndex = 0 testnet during this interval.
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gte: 75422, $lte: 92219}})
+                assert_eq!(docs.len(), 4);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_transaction() {
-        // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
-        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
-        let block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The transaction can be found on-chain inside this block (indexed 3, starting from 0):
+                // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+                let block_hash = BlockHash::from_str(
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f",
+                )
                 .unwrap();
-        let tx_index = 3;
-        let result = transaction(&block_hash, tx_index, None);
+                let tx_index = 3;
+                let result = transaction(&block_hash, tx_index, None);
 
-        assert!(result.is_ok());
-        let tx = result.unwrap();
+                assert!(result.is_ok());
+                let tx = result.unwrap();
 
-        // Expected transaction ID:
-        let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_eq!(tx.txid().to_string(), expected);
+                // Expected transaction ID:
+                let expected = "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert_eq!(tx.compute_txid().to_string(), expected);
 
-        // Expect a different transaction ID to fail.
-        let not_expected = "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
-        assert_ne!(tx.txid().to_string(), not_expected);
+                // Expect a different transaction ID to fail.
+                let not_expected =
+                    "8dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c";
+                assert_ne!(tx.compute_txid().to_string(), not_expected);
+            }
+            Network::Testnet4 => {
+                // The transaction can be found on-chain inside this block (indexed 66, starting from 0):
+                // https://mempool.space/testnet4/block/0000000000000000a2d13f2c71c739e9e61e576bb3a0759c71befae09a5a8f40
+                let block_hash = BlockHash::from_str(
+                    "0000000000000000a2d13f2c71c739e9e61e576bb3a0759c71befae09a5a8f40",
+                )
+                .unwrap();
+                let tx_index = 66;
+                let result = transaction(&block_hash, tx_index, None);
+
+                assert!(result.is_ok());
+                let tx = result.unwrap();
+
+                // Expected transaction ID:
+                let expected = "7d0413f646550b8ac6b4a82346b8f78df1f7d451f892bf2533893ba9558b082b";
+                assert_eq!(tx.compute_txid().to_string(), expected);
+
+                // Expect a different transaction ID to fail.
+                let not_expected =
+                    "7d4ef05d7e83c2731bebb6ce1fe739bb9c994bb6063bb87606b029462faec3a1";
+                assert_ne!(tx.compute_txid().to_string(), not_expected);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[tokio::test]
@@ -655,51 +888,107 @@ mod tests {
     async fn test_locate_transaction() {
         let client = rpc_client();
 
-        let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
-        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
-        // Block 1902377
-        let expected_block_hash =
-            BlockHash::from_str("00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447")
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let did = "did:ion:test:EiDYpQWYf_vkSm60EeNqWys6XTZYvg6UcWrRI9Mh12DuLQ";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 1902377
+                let expected_block_hash = BlockHash::from_str(
+                    "00000000e89bddeae5ad5589dfa4a7ea76ad9c83b0d711b5e6d4ee515ace6447",
+                )
                 .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 118);
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 118);
 
-        let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
-        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
-        // Block 2377445
-        let expected_block_hash =
-            BlockHash::from_str("000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f")
+                let did = "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 2377445
+                let expected_block_hash = BlockHash::from_str(
+                    "000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f",
+                )
                 .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 3);
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 3);
 
-        let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
-        let (block_hash, transaction_index) = locate_transaction(did, &client).await.unwrap();
-        // Block 2377339
-        let expected_block_hash =
-            BlockHash::from_str("000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b")
+                let did = "did:ion:test:EiBP_RYTKG2trW1_SN-e26Uo94I70a8wB4ETdHy48mFfMQ";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 2377339
+                let expected_block_hash = BlockHash::from_str(
+                    "000000000000003fadd15bdd2b55994371b832c6251781aa733a2a9e8865162b",
+                )
                 .unwrap();
-        assert_eq!(block_hash, expected_block_hash);
-        assert_eq!(transaction_index, 10);
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 10);
 
-        // Invalid DID
-        let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
-        let result = locate_transaction(invalid_did, &client).await;
-        assert!(result.is_err());
+                // Invalid DID
+                let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+                let result = locate_transaction(invalid_did, &client).await;
+                assert!(result.is_err());
+            }
+            Network::Testnet4 => {
+                let did = "did:ion:test:EiA6o-kI_QCKqwJ53WftfdWWhUH7W9QtK7PhyaF47BZBzg";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 75432
+                let expected_block_hash = BlockHash::from_str(
+                    "0000000000000000a2d13f2c71c739e9e61e576bb3a0759c71befae09a5a8f40",
+                )
+                .unwrap();
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 66);
+
+                let did = "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 115709
+                let expected_block_hash = BlockHash::from_str(
+                    "00000000eae3c2b2e336d66e390f622bfe817ab524cfe08eff03189640ded9ec",
+                )
+                .unwrap();
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 1);
+
+                let did = "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA";
+                let (block_hash, transaction_index) =
+                    locate_transaction(did, &client).await.unwrap();
+                // Block 92219
+                let expected_block_hash = BlockHash::from_str(
+                    "0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993",
+                )
+                .unwrap();
+                assert_eq!(block_hash, expected_block_hash);
+                assert_eq!(transaction_index, 586);
+
+                // Invalid DID
+                let invalid_did = "did:ion:test:EiCClfEdkTv_aM3UnBBh10V89L1GhpQAbfeZLFdFxVFkEg";
+                let result = locate_transaction(invalid_did, &client).await;
+                assert!(result.is_err());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     fn test_tx_to_op_return_data() {
-        // The transaction, including OP_RETURN data, can be found on-chain:
+        // The transaction, including OP_RETURN data, can be found on-chain (on Testnet3) at:
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
         let expected = "ion:3.QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
         let actual = tx_to_op_return_data(&tx).unwrap();
         assert_eq!(expected, actual);
     }
+
     #[test]
     fn test_tx_to_op_return_cid() {
-        // The transaction, including OP_RETURN data, can be found on-chain:
+        // The transaction, including OP_RETURN data, can be found on-chain (on Testnet3) at:
         // https://blockstream.info/testnet/tx/9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c
         let expected = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
         let tx: Transaction = serde_json::from_str(TEST_TRANSACTION).unwrap();
@@ -710,41 +999,109 @@ mod tests {
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_time_at_block_height() {
-        // The block can be found on-chain at:
-        // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
-        let block_height = 2377445;
-        let result = time_at_block_height(block_height, None);
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                // The block can be found on-chain at:
+                // https://blockstream.info/testnet/block/000000000000000eaa9e43748768cd8bf34f43aaa03abd9036c463010a0c6e7f
+                let block_height = 2377445;
+                let result = time_at_block_height(block_height, None);
 
-        assert!(result.is_ok());
-        let time = result.unwrap();
-        let expected = 1666265405;
-        assert_eq!(time, expected);
+                assert!(result.is_ok());
+                let time = result.unwrap();
+                let expected = 1666265405;
+                assert_eq!(time, expected);
+            }
+            Network::Testnet4 => {
+                // The block can be found on-chain at:
+                // https://mempool.space/testnet4/block/0000000000000003ba24b7ed918955105d4c488c0d7d0a2bcaface7f889b1993
+                let block_height = 92219;
+                let result = time_at_block_height(block_height, None);
+
+                assert!(result.is_ok());
+                let time = result.unwrap();
+                let expected = 1753028520;
+                assert_eq!(time, expected);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_last_block_height_before() {
-        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = last_block_height_before(date, None, None).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+                let result = last_block_height_before(date, None, None).unwrap();
 
-        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
-        assert_eq!(result, 2377359);
+                // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+                assert_eq!(result, 2377359);
 
-        let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
-        let result = last_block_height_before(date, None, None).unwrap();
+                let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
+                let result = last_block_height_before(date, None, None).unwrap();
 
-        // The first testnet block mined on 2023-09-16 (UTC) was at height 2501917.
-        assert_eq!(result, 2501916);
+                // The first testnet block mined on 2023-09-16 (UTC) was at height 2501917.
+                assert_eq!(result, 2501916);
+            }
+            Network::Testnet4 => {
+                let date = NaiveDate::from_ymd_opt(2025, 10, 20).unwrap();
+                let result = last_block_height_before(date, None, None).unwrap();
+
+                // The first Testnet4 block mined on 2025-10-20 (UTC) was at height 107252.
+                assert_eq!(result, 107251);
+
+                let date = NaiveDate::from_ymd_opt(2025, 12, 28).unwrap();
+                let result = last_block_height_before(date, None, None).unwrap();
+
+                // The first Testnet4 block mined on 2023-12-28 (UTC) was at height 115580.
+                assert_eq!(result, 115579);
+
+                let date = NaiveDate::from_ymd_opt(2023, 9, 16).unwrap();
+                let result = last_block_height_before(date, None, None);
+
+                // Testnet4 did not exist on 2023-09-16 (UTC).
+                assert!(result.is_err());
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 
     #[test]
     #[ignore = "Integration test requires Bitcoin"]
     fn test_block_range_on_date() {
-        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = block_height_range_on_date(date, None, None).unwrap();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+                let result = block_height_range_on_date(date, None, None).unwrap();
 
-        // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
-        // The last testnet block mined on 2022-10-20 (UTC) was at height 2377519.
-        assert_eq!(result, (2377360, 2377519));
+                // The first testnet block mined on 2022-10-20 (UTC) was at height 2377360.
+                // The last testnet block mined on 2022-10-20 (UTC) was at height 2377519.
+                assert_eq!(result, (2377360, 2377519));
+            }
+            Network::Testnet4 => {
+                let date = NaiveDate::from_ymd_opt(2025, 12, 28).unwrap();
+                let result = block_height_range_on_date(date, None, None).unwrap();
+
+                // The first testnet4 block mined on 2025-12-28 (UTC) was at height 115580.
+                // The last testnet4 block mined on 2025-12-28 (UTC) was at height 115729.
+                assert_eq!(result, (115580, 115729));
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 }

@@ -261,16 +261,30 @@ pub mod tests {
     use crate::data::{
         TEST_NEXT_UPDATE_KEY, TEST_RECOVERY_KEY, TEST_SIGNING_KEYS, TEST_UPDATE_KEY,
     };
-    use crate::utils::{generate_key, init};
+    use crate::utils::generate_key;
     use mockall::mock;
     use ssi::jwk::Params;
     use std::io::Read;
+    use std::sync::Once;
 
     pub struct TestKeyManager;
 
     impl KeyManager for TestKeyManager {}
     impl AttestorKeyManager for TestKeyManager {}
     impl ControllerKeyManager for TestKeyManager {}
+
+    /// Set-up tempdir and use as env var for `TRUSTCHAIN_DATA`.
+    // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
+    static INIT: Once = Once::new();
+    pub fn init() {
+        INIT.call_once(|| {
+            // initialization code here
+            let tempdir = tempfile::tempdir().unwrap();
+            std::env::set_var(TRUSTCHAIN_DATA, Path::new(tempdir.as_ref().as_os_str()));
+            // Manually drop here so additional writes in the init call are not removed
+            drop(tempdir);
+        });
+    }
 
     #[test]
     fn test_generate_key() {
@@ -376,7 +390,7 @@ pub mod tests {
 
     #[test]
     fn test_keys_exist() -> Result<(), Box<dyn std::error::Error>> {
-        // Set env var
+        // Init env
         init();
 
         let target = TestKeyManager;
@@ -407,7 +421,7 @@ pub mod tests {
 
     #[test]
     fn test_save_key() -> Result<(), Box<dyn std::error::Error>> {
-        // Set env var
+        // Init env
         init();
 
         // Make path for this test
@@ -431,7 +445,7 @@ pub mod tests {
 
     #[test]
     fn test_save_keys() -> Result<(), Box<dyn std::error::Error>> {
-        // Set env var
+        // Init env
         init();
 
         // Make path for this test
@@ -455,7 +469,7 @@ pub mod tests {
 
     #[test]
     fn test_apply_next_update_key() -> Result<(), Box<dyn std::error::Error>> {
-        // Set env var
+        // Init env
         init();
 
         // Make path for this test

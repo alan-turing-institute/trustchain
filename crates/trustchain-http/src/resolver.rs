@@ -171,15 +171,20 @@ mod tests {
     use super::*;
     use crate::{
         config::HTTPConfig,
-        data::{TEST_ROOT_PLUS_2_BUNDLE, TEST_ROOT_PLUS_2_CHAIN, TEST_ROOT_PLUS_2_RESOLVED},
+        data::{
+            TESTNET3_TEST_ROOT_PLUS_2_BUNDLE, TESTNET3_TEST_ROOT_PLUS_2_CHAIN,
+            TESTNET3_TEST_ROOT_PLUS_2_RESOLVED, TESTNET4_TEST_ROOT_PLUS_2_BUNDLE,
+            TESTNET4_TEST_ROOT_PLUS_2_CHAIN, TESTNET4_TEST_ROOT_PLUS_2_RESOLVED,
+        },
         server::TrustchainRouter,
     };
     use axum_test_helper::TestClient;
+    use bitcoin::Network;
     use hyper::Server;
     use std::net::TcpListener;
     use tower::make::Shared;
     use trustchain_core::utils::canonicalize_str;
-    use trustchain_ion::trustchain_resolver_light_client;
+    use trustchain_ion::{trustchain_resolver_light_client, utils::BITCOIN_NETWORK};
 
     #[tokio::test]
     #[ignore = "requires TRUSTCHAIN_DATA and TRUSTCHAIN_CONFIG environment variables"]
@@ -195,13 +200,39 @@ mod tests {
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_did() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
-        let uri = "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+
+        let uri = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                "/did/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()
+            }
+            Network::Testnet4 => {
+                "/did/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og".to_string()
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
+
+        let resolved_did_doc = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_RESOLVED,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_RESOLVED,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         assert_eq!(
             canonicalize_str::<ResolutionResult>(&response.text().await).unwrap(),
-            canonicalize_str::<ResolutionResult>(TEST_ROOT_PLUS_2_RESOLVED).unwrap()
+            canonicalize_str::<ResolutionResult>(resolved_did_doc).unwrap()
         );
         let invalid_uri =
             "/did/did:ion:test:invalid_did__AsM3tgCut3OiBY4ekHTf__invalid_did".to_string();
@@ -218,24 +249,52 @@ mod tests {
     #[ignore = "requires ION, MongoDB, IPFS and Bitcoin RPC"]
     async fn test_resolve_chain() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
-        let root_event_time = 1666265405;
-        let uri = format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={root_event_time}");
+
+        let uri = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
+            Network::Testnet4 => format!("/did/chain/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let expected_chain = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_CHAIN,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_CHAIN,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
             canonicalize_str::<DIDChainResolutionResult>(&response.text().await).unwrap(),
-            canonicalize_str::<DIDChainResolutionResult>(TEST_ROOT_PLUS_2_CHAIN).unwrap()
+            canonicalize_str::<DIDChainResolutionResult>(expected_chain).unwrap()
         );
 
         // Test for case where incorrect root_event_time for the root of the given DID, expected to
         // return Ok but with a JSON containing the wrapped Trustchain error.
-        let incorrect_root_event_time = 1234500;
-        let uri_incorrect_root = format!(
-            "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time={incorrect_root_event_time}"
-        )
-        .to_string();
-        let response = client.get(&uri_incorrect_root).send().await;
+        let uri_incorrect_root_event_time = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => format!(
+            "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1234500"
+        ).to_string(),
+            Network::Testnet4 => format!(
+            "/did/chain/did:ion:test:EiBsaims7YMtoe3XYZ-7nQ-CGBGBsZQUIIfTRAh0Mrd8Sw?root_event_time=1234500"
+        ).to_string(),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let response = client.get(&uri_incorrect_root_event_time).send().await;
         assert_eq!(response.status(), StatusCode::OK);
         // A wrapped CommitmentError is now returned here mapped to VerifierError::InvalidRoot
         // println!("{}", response.text().await);
@@ -250,14 +309,35 @@ mod tests {
     // Test of the bundle endpoint by using the verifier `fetch_bundle()` method to get from the endpoint
     async fn test_get_bundle() {
         let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
-        let uri =
-            "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
+
+        let uri = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => format!("/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
+            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
         let client = TestClient::new(app);
         let response = client.get(&uri).send().await;
         assert_eq!(response.status(), StatusCode::OK);
+
+        let expected_bundle = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_BUNDLE,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_BUNDLE,
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         assert_eq!(
             canonicalize_str::<VerificationBundle>(&response.text().await).unwrap(),
-            canonicalize_str::<VerificationBundle>(TEST_ROOT_PLUS_2_BUNDLE).unwrap()
+            canonicalize_str::<VerificationBundle>(expected_bundle).unwrap()
         );
         // Failing test for non-existent DID
         let uri =
@@ -299,17 +379,39 @@ mod tests {
             trustchain_resolver_light_client(&trustchain_endpoint),
             trustchain_endpoint,
         );
-        let did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA";
+
+        let (did, other_did) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (
+                "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA",
+                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
+            ),
+            Network::Testnet4 => (
+                "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA",
+                "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
+            ),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let (root_event_time, other_root_event_time) = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => (1666971942, 1666265405),
+            Network::Testnet4 => (1753028520, 1766953540),
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         // Check verification
-        let root_event_time = 1666971942;
         verifier.verify(did, root_event_time).await.unwrap();
         // Check verification for another root
-        let root_event_time = 1666265405;
         verifier
-            .verify(
-                "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
-                root_event_time,
-            )
+            .verify(other_did, other_root_event_time)
             .await
             .unwrap();
     }

@@ -114,10 +114,24 @@ struct Config {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::Network;
+    use trustchain_ion::utils::BITCOIN_NETWORK;
+
     use super::*;
 
     #[test]
     fn test_deserialize() {
+        let server_did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA",
+            Network::Testnet4 => "did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw",
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+
         let config_string = r#"
         [http]
         host = "127.0.0.1"
@@ -125,21 +139,20 @@ mod tests {
         port = 8081
         ion_host = "127.0.0.1"
         ion_port = 3000
-        server_did = "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA"
+        server_did = "<SERVER_DID>"
         https = false
 
         [non_http]
         key = "value"
-        "#;
+        "#
+        .replace("<SERVER_DID>", server_did);
 
-        let config: HTTPConfig = parse_toml(config_string);
+        let config: HTTPConfig = parse_toml(&config_string);
         assert!(config.verifiable_endpoints.is_none());
         assert_eq!(
             config,
             HTTPConfig {
-                server_did: Some(
-                    "did:ion:test:EiBcLZcELCKKtmun_CUImSlb2wcxK5eM8YXSq3MrqNe5wA".to_string()
-                ),
+                server_did: Some(server_did.to_string()),
                 ..HTTPConfig::default()
             }
         );

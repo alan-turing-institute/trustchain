@@ -230,8 +230,8 @@ pub fn create_operation_mnemonic(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::utils::init;
     use glob::glob;
-    use trustchain_core::utils::init;
 
     // Test document state for making a create operation from
     const TEST_DOC_STATE: &str = r#"{

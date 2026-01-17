@@ -26,3 +26,6 @@ trustchain-api = { path = "../trustchain-api" }
 trustchain-core = { path = "../trustchain-core" }
 trustchain-http = { path = "../trustchain-http" }
 trustchain-ion = { path = "../trustchain-ion" }
+
+[dev-dependencies]
+bitcoin = { workspace = true }

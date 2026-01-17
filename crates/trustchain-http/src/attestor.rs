@@ -466,7 +466,7 @@ mod tests {
 
     #[test]
     fn test_verify_nonce() {
-        let temp_path = tempdir().unwrap().into_path();
+        let temp_path = tempdir().unwrap().keep();
         let expected_nonce = Nonce::from(String::from("test_nonce"));
         let identity_challenge = IdentityCRChallenge {
             update_p_key: serde_json::from_str(TEST_UPDATE_KEY).unwrap(),

@@ -100,7 +100,7 @@ pub async fn root_did_candidates(
             if tx.is_err() {
                 return None;
             }
-            let txid = tx.unwrap().txid().to_string();
+            let txid = tx.unwrap().compute_txid().to_string();
 
             let block_height = doc
                 .get_i32(MONGO_FILTER_TXN_TIME)
@@ -120,56 +120,105 @@ pub async fn root_did_candidates(
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::Network;
     use itertools::Itertools;
+
+    use crate::utils::BITCOIN_NETWORK;
 
     use super::*;
 
     #[tokio::test]
     #[ignore = "Integration test requires Bitcoin & MongoDB"]
     async fn test_root_did_candidates() {
-        let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
-        let result = root_did_candidates(date)
-            .await
-            .unwrap()
-            .into_iter()
-            .sorted()
-            .collect_vec();
+        match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => {
+                let date = NaiveDate::from_ymd_opt(2022, 10, 20).unwrap();
+                let result = root_did_candidates(date)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .sorted()
+                    .collect_vec();
 
-        // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
-        // The block height range on that date is (2377360, 2377519).
-        // The relevant mongosh query is:
-        // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 2377359, $lt: 2377520}}).count()
-        assert_eq!(result.len(), 38);
+                // There were 38 testnet ION operations with opIndex 0 on 20th Oct 2022.
+                // The block height range on that date is (2377360, 2377519).
+                // The relevant mongosh query is:
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 2377359, $lt: 2377520}}).count()
+                assert_eq!(result.len(), 38);
 
-        assert_eq!(
-            result[0].did,
-            "did:ion:test:EiA6m4-V4fW_l1xEu3jH9xvXt1JyynmO7I_rkBpFulEAuQ"
-        );
-        assert_eq!(
-            result[0].txid,
-            "b698c0919a91a161bc141cd395788296edb85d19415a6d29a13a220a8f2249e0"
-        );
-        assert_eq!(result[0].block_height, 2377410);
+                assert_eq!(
+                    result[0].did,
+                    "did:ion:test:EiA6m4-V4fW_l1xEu3jH9xvXt1JyynmO7I_rkBpFulEAuQ"
+                );
+                assert_eq!(
+                    result[0].txid,
+                    "b698c0919a91a161bc141cd395788296edb85d19415a6d29a13a220a8f2249e0"
+                );
+                assert_eq!(result[0].block_height, 2377410);
 
-        // This is the root DID used in testing:
-        assert_eq!(
-            result[26].did,
-            "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
-        );
-        assert_eq!(
-            result[26].txid,
-            "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
-        );
-        assert_eq!(result[26].block_height, 2377445);
+                // This is the root DID used in testing:
+                assert_eq!(
+                    result[26].did,
+                    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg"
+                );
+                assert_eq!(
+                    result[26].txid,
+                    "9dc43cca950d923442445340c2e30bc57761a62ef3eaf2417ec5c75784ea9c2c"
+                );
+                assert_eq!(result[26].block_height, 2377445);
 
-        assert_eq!(
-            result[37].did,
-            "did:ion:test:EiDz_zvUa2FUIgLUvBia9wUJakhrrW889nDdGlr1-RTAWw"
-        );
-        assert_eq!(
-            result[37].txid,
-            "c369dd566a0dd5c2f381c1ab9c8e96b4f6b4fd323f5c1ed68dbb2a1bfb9cb48f"
-        );
-        assert_eq!(result[37].block_height, 2377416);
+                assert_eq!(
+                    result[37].did,
+                    "did:ion:test:EiDz_zvUa2FUIgLUvBia9wUJakhrrW889nDdGlr1-RTAWw"
+                );
+                assert_eq!(
+                    result[37].txid,
+                    "c369dd566a0dd5c2f381c1ab9c8e96b4f6b4fd323f5c1ed68dbb2a1bfb9cb48f"
+                );
+                assert_eq!(result[37].block_height, 2377416);
+            }
+            Network::Testnet4 => {
+                let date = NaiveDate::from_ymd_opt(2025, 12, 28).unwrap();
+                let result = root_did_candidates(date)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .sorted()
+                    .collect_vec();
+
+                // There were 3 testnet ION operations with opIndex 0 on 28th Dec 2025.
+                // The block height range on that date is (115580, 115729).
+                // The relevant mongosh query is:
+                // db.operations.find({type: 'create', opIndex: 0, txnTime: { $gt: 115580, $lt: 115729}}).count()
+                assert_eq!(result.len(), 3);
+
+                assert_eq!(
+                    result[0].did,
+                    "did:ion:test:EiCKLQjzVNl0R7UCUW74JH_FN5VyfxWpL1IX1FUYTJ4uIA"
+                );
+                assert_eq!(
+                    result[0].txid,
+                    "e6ab4e7eb0dfd266fff8cd2cc679fad128d31f4bce37aa088a033bec1ee3505c"
+                );
+                assert_eq!(result[0].block_height, 115688);
+
+                // This is the root DID used in testing:
+                assert_eq!(
+                    result[2].did,
+                    "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA"
+                );
+                assert_eq!(
+                    result[2].txid,
+                    "45fd2acb89da0c5c79e59df90c0e3580a515e66bc71b8194e5ee764640e52e57"
+                );
+                assert_eq!(result[2].block_height, 115709);
+            }
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        }
     }
 }

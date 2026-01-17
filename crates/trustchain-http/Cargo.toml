@@ -46,3 +46,4 @@ itertools = { workspace = true }
 mockall = { workspace = true }
 port_check = { workspace = true }
 tempfile = { workspace = true }
+bitcoin = { workspace = true }
