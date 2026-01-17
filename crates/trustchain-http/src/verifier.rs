@@ -198,6 +198,10 @@ mod tests {
     use std::{collections::HashMap, sync::Arc};
     use trustchain_ion::utils::BITCOIN_NETWORK;
 
+    // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
+    const TESTNET3_TEST_ROOT_EVENT_TIME: u64 = 1666265405;
+    const TESTNET4_TEST_ROOT_EVENT_TIME: u64 = 1766953540;
+
     lazy_static! {
         /// Lazy static reference to core configuration loaded from `trustchain_config.toml`.
         pub static ref TEST_HTTP_CONFIG: HTTPConfig = match BITCOIN_NETWORK
@@ -206,12 +210,12 @@ mod tests {
         {
             Network::Testnet => HTTPConfig {
             server_did: Some("did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string()),
-            root_event_time: Some(1666265405),
+            root_event_time: Some(TESTNET3_TEST_ROOT_EVENT_TIME),
             ..Default::default()
         },
             Network::Testnet4 => HTTPConfig {
             server_did: Some("did:ion:test:EiA-CAfMgrNRa2Gv5D8ZF7AazX9nKxnSlYkYViuKeomymw".to_string()),
-            root_event_time: Some(1766953540),
+            root_event_time: Some(TESTNET4_TEST_ROOT_EVENT_TIME),
             ..Default::default()
         },
             network @ _ => {
@@ -244,7 +248,7 @@ mod tests {
     }
     "#;
 
-    const TEST_POST_VERIFIER_CREDENTIAL: &str = r#"
+    const TESTNET3_TEST_POST_VERIFIER_CREDENTIAL: &str = r#"
     {
         "presentationOrCredential": {
           "credential": {
@@ -314,7 +318,7 @@ mod tests {
     }
     "#;
 
-    const TEST_POST_VERIFIER_PRESENTATION: &str = r#"
+    const TESTNET3_TEST_POST_VERIFIER_PRESENTATION: &str = r#"
     {
         "presentationOrCredential": {
           "presentation": {
@@ -473,7 +477,9 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_POST_VERIFIER_CREDENTIAL).unwrap(),
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_POST_VERIFIER_CREDENTIAL).unwrap()
+            }
             Network::Testnet4 => {
                 serde_json::from_str(TESTNET4_TEST_POST_VERIFIER_CREDENTIAL).unwrap()
             }
@@ -504,7 +510,9 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_POST_VERIFIER_PRESENTATION).unwrap(),
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_POST_VERIFIER_PRESENTATION).unwrap()
+            }
             Network::Testnet4 => {
                 serde_json::from_str(TESTNET4_TEST_POST_VERIFIER_PRESENTATION).unwrap()
             }

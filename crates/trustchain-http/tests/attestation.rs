@@ -17,8 +17,8 @@ use trustchain_http::requester::{
 use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
 // The root event time of DID documents used in integration test below.
-const ROOT_EVENT_TIME_1: u64 = 1666265405;
-const TESTNET4_ROOT_EVENT_TIME_1: u64 = 1766953540;
+const TESTNET3_TEST_ROOT_EVENT_TIME: u64 = 1666265405;
+const TESTNET4_TEST_ROOT_EVENT_TIME: u64 = 1766953540;
 
 use mockall::automock;
 use trustchain_core::utils::extract_keys;
@@ -100,8 +100,8 @@ async fn attestation_challenge_response() {
         .as_ref()
         .expect("Integration test requires Bitcoin")
     {
-        Network::Testnet => ROOT_EVENT_TIME_1,
-        Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+        Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+        Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
         network @ _ => {
             panic!("No test fixtures for network: {:?}", network);
         }

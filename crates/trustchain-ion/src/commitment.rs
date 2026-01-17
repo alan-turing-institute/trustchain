@@ -620,14 +620,11 @@ mod tests {
     use bitcoin::{BlockHash, Network};
     use ipfs_api_backend_hyper::IpfsClient;
     use std::str::FromStr;
-    use trustchain_core::{
-        data::{TESTNET4_ROOT_DOCUMENT, TEST_ROOT_DOCUMENT},
-        utils::json_contains,
-    };
+    use trustchain_core::{data::TEST_ROOT_DOCUMENT, utils::json_contains};
 
     use super::*;
     use crate::{
-        data::TEST_BLOCK_HEADER_HEX,
+        data::{TESTNET4_TEST_ROOT_DOCUMENT, TEST_BLOCK_HEADER_HEX},
         utils::{block_header, merkle_proof, query_ipfs, transaction, BITCOIN_NETWORK},
     };
 
@@ -1200,7 +1197,7 @@ mod tests {
                 assert!(commitment.verify(block_hash_str).is_ok());
             }
             Network::Testnet4 => {
-                let did_doc = Document::from_json(TESTNET4_ROOT_DOCUMENT).unwrap();
+                let did_doc = Document::from_json(TESTNET4_TEST_ROOT_DOCUMENT).unwrap();
 
                 let ipfs_client = IpfsClient::default();
 

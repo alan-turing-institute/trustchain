@@ -172,9 +172,9 @@ mod tests {
     use crate::{
         config::HTTPConfig,
         data::{
-            TESTNET4_TEST_ROOT_PLUS_2_BUNDLE, TESTNET4_TEST_ROOT_PLUS_2_CHAIN,
-            TESTNET4_TEST_ROOT_PLUS_2_RESOLVED, TEST_ROOT_PLUS_2_BUNDLE, TEST_ROOT_PLUS_2_CHAIN,
-            TEST_ROOT_PLUS_2_RESOLVED,
+            TESTNET3_TEST_ROOT_PLUS_2_BUNDLE, TESTNET3_TEST_ROOT_PLUS_2_CHAIN,
+            TESTNET3_TEST_ROOT_PLUS_2_RESOLVED, TESTNET4_TEST_ROOT_PLUS_2_BUNDLE,
+            TESTNET4_TEST_ROOT_PLUS_2_CHAIN, TESTNET4_TEST_ROOT_PLUS_2_RESOLVED,
         },
         server::TrustchainRouter,
     };
@@ -223,7 +223,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => TEST_ROOT_PLUS_2_RESOLVED,
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_RESOLVED,
             Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_RESOLVED,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -264,7 +264,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => TEST_ROOT_PLUS_2_CHAIN,
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_CHAIN,
             Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_CHAIN,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -328,7 +328,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => TEST_ROOT_PLUS_2_BUNDLE,
+            Network::Testnet => TESTNET3_TEST_ROOT_PLUS_2_BUNDLE,
             Network::Testnet4 => TESTNET4_TEST_ROOT_PLUS_2_BUNDLE,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

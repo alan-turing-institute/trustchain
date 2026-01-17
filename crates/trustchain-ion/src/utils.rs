@@ -1,7 +1,7 @@
 //! ION-related utilities.
 use crate::data::{
-    ROOT_PLUS_1_SIGNING_KEY, ROOT_PLUS_2_SIGNING_KEYS, TESTNET4_ROOT_PLUS_1_SIGNING_KEY,
-    TESTNET4_ROOT_PLUS_2_SIGNING_KEYS,
+    TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
+    TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
 };
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
@@ -84,12 +84,12 @@ pub fn init() {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => (
-                ROOT_PLUS_1_SIGNING_KEY,
-                ROOT_PLUS_2_SIGNING_KEYS,
+                TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY,
+                TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
             ),
             Network::Testnet4 => (
-                TESTNET4_ROOT_PLUS_1_SIGNING_KEY,
-                TESTNET4_ROOT_PLUS_2_SIGNING_KEYS,
+                TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY,
+                TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
             ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);

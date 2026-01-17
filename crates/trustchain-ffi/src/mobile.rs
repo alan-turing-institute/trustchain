@@ -285,7 +285,7 @@ mod tests {
     use crate::config::parse_toml;
 
     use super::*;
-    const TEST_FFI_CONFIG: &str = r#"
+    const TESTNET3_TEST_FFI_CONFIG: &str = r#"
     [ffi.trustchainOptions]
     rootEventTime = 1666265405
     signatureOnly = false
@@ -305,7 +305,7 @@ mod tests {
     trustchainEndpoint.port = 8081
     "#;
 
-    const TEST_FFI_CONFIG_RSS: &str = r#"
+    const TESTNET3_TEST_FFI_CONFIG_RSS: &str = r#"
     [ffi.trustchainOptions]
     rootEventTime = 1697213008
     signatureOnly = false
@@ -325,7 +325,7 @@ mod tests {
     trustchainEndpoint.port = 8081
     "#;
 
-    const TEST_CREDENTIAL: &str = r#"
+    const TESTNET3_TEST_CREDENTIAL: &str = r#"
     {
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
@@ -384,13 +384,13 @@ mod tests {
     }
     "#;
 
-    const TEST_CREDENTIAL_RSS: &str = r#"{"@context":["https://www.w3.org/2018/credentials/v1","https://w3id.org/vdl/v1"],"type":["VerifiableCredential","Iso18013DriversLicense"],"credentialSubject":{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":"British","given_name":"Jane","family_name":"Bloggs","issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}},"issuer":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q","issuanceDate":"2023-11-23T14:37:04.349867Z","proof":{"type":"RSSSignature2023","proofPurpose":"assertionMethod","proofValue":"1 0FCABC8DA586913D57CA7C3D5A9083E2C63999F2B07ABE7A091468A8290137232D21178A3093B41A182EBD0CB0314D96 1 0192B26C65C48F88E21E29D5985DD7B41D8E052382E557DD0EAEF2E60C77251632217A1A1B4B3CB4C61399B7B22832F8 1 0BBC5C12C26C3BCD90AA0B95BF83C147E43A47F49E5BDAB5EF91618ED017829829D1BB3F7E8B48A9E67B6D2A007A9D2C 1 10F41FE24A63CB21342250325C5FAD5213599EFA0EBEA69C55E66DC56FB544850DE756354390107FD484B703BF52EA16 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 0055C44D1473432D778E23A1C141F645BDA5EAB305045E3B2630F82F2AEB6A29F8DC413889F55F30AD7AD7F53984FB22 1 0CCFEEBFE7B5BBB224E64003C1501E69A4141A29D5BDF0EAA011C1A71D533A33C435A61B22D674B9C36F27ED4EA81ED4 1 186888DD113D3570CEAE2305783B9857AAB7A51869CD1C1D0D4A57411DF14DADEF2528BCE2EBC257C7DDD9C6BDE79B62 1 0A8B390C4EE079DD728C093ED8E9D56BB4BB96B3EA7C047E9B19BA7A2F7F970AD6E2ACDC8C26AEF474BE18E4B9996061 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","verificationMethod":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q#Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34","created":"2023-11-23T14:37:04.356221Z"}}"#;
-    const TEST_CREDENTIAL_SUBJECT_MASK: &str = r#"{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":null,"given_name":null,"family_name":null,"issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}}"#;
+    const TESTNET3_TEST_CREDENTIAL_RSS: &str = r#"{"@context":["https://www.w3.org/2018/credentials/v1","https://w3id.org/vdl/v1"],"type":["VerifiableCredential","Iso18013DriversLicense"],"credentialSubject":{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":"British","given_name":"Jane","family_name":"Bloggs","issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}},"issuer":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q","issuanceDate":"2023-11-23T14:37:04.349867Z","proof":{"type":"RSSSignature2023","proofPurpose":"assertionMethod","proofValue":"1 0FCABC8DA586913D57CA7C3D5A9083E2C63999F2B07ABE7A091468A8290137232D21178A3093B41A182EBD0CB0314D96 1 0192B26C65C48F88E21E29D5985DD7B41D8E052382E557DD0EAEF2E60C77251632217A1A1B4B3CB4C61399B7B22832F8 1 0BBC5C12C26C3BCD90AA0B95BF83C147E43A47F49E5BDAB5EF91618ED017829829D1BB3F7E8B48A9E67B6D2A007A9D2C 1 10F41FE24A63CB21342250325C5FAD5213599EFA0EBEA69C55E66DC56FB544850DE756354390107FD484B703BF52EA16 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 0055C44D1473432D778E23A1C141F645BDA5EAB305045E3B2630F82F2AEB6A29F8DC413889F55F30AD7AD7F53984FB22 1 0CCFEEBFE7B5BBB224E64003C1501E69A4141A29D5BDF0EAA011C1A71D533A33C435A61B22D674B9C36F27ED4EA81ED4 1 186888DD113D3570CEAE2305783B9857AAB7A51869CD1C1D0D4A57411DF14DADEF2528BCE2EBC257C7DDD9C6BDE79B62 1 0A8B390C4EE079DD728C093ED8E9D56BB4BB96B3EA7C047E9B19BA7A2F7F970AD6E2ACDC8C26AEF474BE18E4B9996061 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","verificationMethod":"did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q#Un2E28ffH75_lvA59p7R0wUaGaACzbg8i2H9ksviS34","created":"2023-11-23T14:37:04.356221Z"}}"#;
+    const TESTNET3_TEST_CREDENTIAL_SUBJECT_MASK: &str = r#"{"id":"did:key:z6Mkt68mqTgiLQdeZhnyai61yvSkG5SbzUR768n9cPMxyq9i","Iso18013DriversLicense":{"nationality":null,"given_name":null,"family_name":null,"issuing_country":"UK","birth_date":"1958-07-17","age_in_years":65,"age_birth_year":1958,"birth_place":"London","document_number":123456789,"resident_city":"London","resident_address":"London, UK"}}"#;
 
     const TESTNET4_TEST_CREDENTIAL_RSS: &str = r#"{"@context":["https://www.w3.org/2018/credentials/v1","https://w3id.org/vdl/v1"],"type":["VerifiableCredential","Iso18013DriversLicense"],"credentialSubject":{"id":"did:example:12347abcd","Iso18013DriversLicense":{"height":1.8,"weight":70,"nationality":"France","given_name":"Test","family_name":"A","issuing_country":"US","birth_date":"1958-07-17","age_in_years":30,"age_birth_year":1958}},"issuer":"did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og","issuanceDate":"2025-11-23T11:43:26.806224Z","proof":{"type":"RSSSignature2023","proofPurpose":"assertionMethod","proofValue":"1 07BB2E2FB721D74441AAC2A27B69B0CCCBA37B3C67AAE5B79A41655FF599594E158B00A0B8164F183462914C6CA69E0B 1 09D7A1BE437B234DBE2274590EAD4D5F53548DD34C27F3DE959A0F610A5FAD3126AD40141E52F12C52D1BA9D575FA154 1 18235BAAD9803C4BB375E3EF44953913E2ADE3F5C35A9216FB88EC44EA8D41F2965298DD6064F154B64621C3E7DD7974 1 138555E086820CE5B45755FA4511CCE16F6CFD03C589E36E706BE8BBD4EFE18E00961154F30BFBB4B6C812476FA3CE6D 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 0BC9768E8B4B877A14F4EC4705D88A60A0B4EB1B0714CD319EB15CCA983850E7FF6DD37D88EF88AD9F5B542A99F8E6B0 1 121BA9086B3FB4E10F8B3B538E2D66FF1AFA9C6FAEE2F4D821BF775BE1B73A4E10203690B440A52EE5D169E309C35380 1 002AB54639250E79780F0E7C30E184590CA0812E9758963CD4B86C2C12C95DEBF0B50BA3EE1244D82C31771207B6AFF0 1 026AE4C737D5FD16D3C89F5625A5AF513352C39D2F3600306046FC036EE930922D3689A058413F3CA81B14CAB1A253C1 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000:1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 2 13317C30F3A0D636D56A23C34FDD80B891ECBDE7C2B7D6E16B0F4B0B7E6D26CB6147ACDE629C4A23C57400D203A9FB84 1 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","verificationMethod":"did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og#nNW6wsf4UdHKtjnEC7SerqCZI0CarVaxDwrxyhLJl0I","created":"2026-01-12T13:39:41.570305959Z"}}"#;
     const TESTNET4_TEST_CREDENTIAL_SUBJECT_MASK: &str = r#"{"id":"did:example:12347abcd","Iso18013DriversLicense":{"height":1.8,"weight":70,"nationality":null,"given_name":null,"family_name":null,"issuing_country":"US","birth_date":"1958-07-17","age_in_years":30,"age_birth_year":1958}}"#;
 
-    const TEST_PRESENTATION: &str = r#"
+    const TESTNET3_TEST_PRESENTATION: &str = r#"
     {
         "@context": [
           "https://www.w3.org/2018/credentials/v1"
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     #[ignore = "integration test requires ION, MongoDB, IPFS and Bitcoin RPC"]
     fn test_did_resolve() {
-        let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
+        let ffi_opts = ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG, init_http_ephemeral());
         match BITCOIN_NETWORK
             .as_ref()
             .expect("Integration test requires Bitcoin")
@@ -586,7 +586,7 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => {
-                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
+                let ffi_opts = ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG, init_http_ephemeral());
                 let did = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q".to_string();
                 did_verify(did, ffi_opts).unwrap();
             }
@@ -609,8 +609,9 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => {
-                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-                let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+                let ffi_opts = ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG, init_http_ephemeral());
+                let credential: Credential =
+                    serde_json::from_str(TESTNET3_TEST_CREDENTIAL).unwrap();
                 vc_verify_credential(serde_json::to_string(&credential).unwrap(), ffi_opts)
                     .unwrap();
             }
@@ -634,7 +635,9 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ffi_opts_with_port(TEST_FFI_CONFIG_RSS, init_http_ephemeral()),
+            Network::Testnet => {
+                ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG_RSS, init_http_ephemeral())
+            }
             Network::Testnet4 => {
                 ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG_RSS, init_http_ephemeral())
             }
@@ -646,7 +649,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_CREDENTIAL_RSS).unwrap(),
+            Network::Testnet => serde_json::from_str(TESTNET3_TEST_CREDENTIAL_RSS).unwrap(),
             Network::Testnet4 => serde_json::from_str(TESTNET4_TEST_CREDENTIAL_RSS).unwrap(),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -662,7 +665,9 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ffi_opts_with_port(TEST_FFI_CONFIG_RSS, init_http_ephemeral()),
+            Network::Testnet => {
+                ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG_RSS, init_http_ephemeral())
+            }
             Network::Testnet4 => {
                 ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG_RSS, init_http_ephemeral())
             }
@@ -674,7 +679,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_CREDENTIAL_RSS).unwrap(),
+            Network::Testnet => serde_json::from_str(TESTNET3_TEST_CREDENTIAL_RSS).unwrap(),
             Network::Testnet4 => serde_json::from_str(TESTNET4_TEST_CREDENTIAL_RSS).unwrap(),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -684,7 +689,9 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_CREDENTIAL_SUBJECT_MASK).unwrap(),
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_CREDENTIAL_SUBJECT_MASK).unwrap()
+            }
             Network::Testnet4 => {
                 serde_json::from_str(TESTNET4_TEST_CREDENTIAL_SUBJECT_MASK).unwrap()
             }
@@ -709,8 +716,10 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => {
-                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG_RSS, init_http_ephemeral());
-                let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+                let ffi_opts =
+                    ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG_RSS, init_http_ephemeral());
+                let credential: Credential =
+                    serde_json::from_str(TESTNET3_TEST_CREDENTIAL).unwrap();
                 let root_plus_1_did: &str =
                     "did:ion:test:EiBVpjUxXeSRJpvj2TewlX9zNF3GKMCKWwGmKBZqF6pk_A";
                 let presentation: Presentation = Presentation {
@@ -757,8 +766,8 @@ mod tests {
 
     #[test]
     fn test_vp_issue_presentation_ed25519() {
-        let ffi_opts = serde_json::to_string(&parse_toml(TEST_FFI_CONFIG)).unwrap();
-        let credential: Credential = serde_json::from_str(TEST_CREDENTIAL).unwrap();
+        let ffi_opts = serde_json::to_string(&parse_toml(TESTNET3_TEST_FFI_CONFIG)).unwrap();
+        let credential: Credential = serde_json::from_str(TESTNET3_TEST_CREDENTIAL).unwrap();
         let did: &str = "did:key:z6MkhG98a8j2d3jqia13vrWqzHwHAgKTv9NjYEgdV3ndbEdD";
         let key: &str = r#"{"kty":"OKP","crv":"Ed25519","x":"Kbnao1EkojaLeZ135PuIf28opnQybD0lB-_CQxuvSDg","d":"vwJwnuhHd4J0UUvjfYr8YxYwvNLU_GVkdqEbC3sUtAY"}"#;
         let presentation: Presentation = Presentation {
@@ -783,8 +792,8 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => {
-                let ffi_opts = ffi_opts_with_port(TEST_FFI_CONFIG, init_http_ephemeral());
-                vp_verify_presentation(TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
+                let ffi_opts = ffi_opts_with_port(TESTNET3_TEST_FFI_CONFIG, init_http_ephemeral());
+                vp_verify_presentation(TESTNET3_TEST_PRESENTATION.to_string(), ffi_opts).unwrap();
             }
             Network::Testnet4 => {
                 let ffi_opts = ffi_opts_with_port(TESTNET4_TEST_FFI_CONFIG, init_http_ephemeral());

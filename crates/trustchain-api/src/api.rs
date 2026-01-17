@@ -367,10 +367,10 @@ mod tests {
     use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
-    const ROOT_EVENT_TIME_1: u64 = 1666265405;
-    const TESTNET4_ROOT_EVENT_TIME_1: u64 = 1766953540;
+    const TESTNET3_TEST_ROOT_EVENT_TIME: u64 = 1666265405;
+    const TESTNET4_TEST_ROOT_EVENT_TIME: u64 = 1766953540;
 
-    const TEST_UNSIGNED_VC: &str = r#"{
+    const TESTNET3_TEST_UNSIGNED_VC: &str = r#"{
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://www.w3.org/2018/credentials/examples/v1",
@@ -410,7 +410,7 @@ mod tests {
       }
       "#;
 
-    const UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
+    const TESTNET3_TEST_UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://w3id.org/vdl/v1"
@@ -437,7 +437,7 @@ mod tests {
         }
       }"###;
 
-    const TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
+    const TESTNET4_TEST_UNSIGNED_DRIVERS_LICENCE_VC: &str = r###"{
         "@context": [
           "https://www.w3.org/2018/credentials/v1",
           "https://w3id.org/vdl/v1"
@@ -483,8 +483,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -547,9 +547,11 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap(),
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+            }
             Network::Testnet4 => {
-                serde_json::from_str(TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+                serde_json::from_str(TESTNET4_TEST_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -578,8 +580,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -629,9 +631,11 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(UNSIGNED_DRIVERS_LICENCE_VC).unwrap(),
+            Network::Testnet => {
+                serde_json::from_str(TESTNET3_TEST_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+            }
             Network::Testnet4 => {
-                serde_json::from_str(TESTNET4_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
+                serde_json::from_str(TESTNET4_TEST_UNSIGNED_DRIVERS_LICENCE_VC).unwrap()
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -684,8 +688,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -787,8 +791,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -837,8 +841,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -866,7 +870,7 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => serde_json::from_str(TEST_UNSIGNED_VC).unwrap(),
+            Network::Testnet => serde_json::from_str(TESTNET3_TEST_UNSIGNED_VC).unwrap(),
             Network::Testnet4 => serde_json::from_str(TESTNET4_TEST_UNSIGNED_VC).unwrap(),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -948,8 +952,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }

@@ -563,9 +563,9 @@ mod tests {
     use super::*;
     use crate::{
         data::{
-            TESTNET4_PROVISIONAL_INDEX_FILE_HEX, TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX,
-            TEST_CORE_INDEX_FILE_HEX, TEST_MERKLE_BLOCK_HEX, TEST_PROVISIONAL_INDEX_FILE_HEX,
-            TEST_TRANSACTION_HEX,
+            TESTNET3_TEST_PROVISIONAL_INDEX_FILE_HEX, TESTNET4_TEST_PROVISIONAL_INDEX_FILE_HEX,
+            TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
+            TEST_MERKLE_BLOCK_HEX, TEST_TRANSACTION_HEX,
         },
         trustchain_resolver,
         utils::BITCOIN_NETWORK,
@@ -663,7 +663,8 @@ mod tests {
             .expect("Integration test requires Bitcoin")
         {
             Network::Testnet => {
-                let prov_index_file = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+                let prov_index_file =
+                    hex::decode(TESTNET3_TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
                 let result = target.fetch_chunk_file(&prov_index_file).await;
                 assert!(result.is_ok());
@@ -679,7 +680,8 @@ mod tests {
                 assert!(value.as_object().unwrap().contains_key("deltas"));
             }
             Network::Testnet4 => {
-                let prov_index_file = hex::decode(TESTNET4_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+                let prov_index_file =
+                    hex::decode(TESTNET4_TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
 
                 let result = target.fetch_chunk_file(&prov_index_file).await;
                 assert!(result.is_ok());
@@ -700,7 +702,6 @@ mod tests {
         }
     }
 
-    // NEW FOR TESTNET4:
     #[tokio::test]
     #[ignore = "Integration test requires IPFS"]
     async fn test_fetch_prov_index_file() {
@@ -877,7 +878,7 @@ mod tests {
 
     #[test]
     fn test_prov_index_file_deserialize() {
-        let bytes = hex::decode(TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
+        let bytes = hex::decode(TESTNET3_TEST_PROVISIONAL_INDEX_FILE_HEX).unwrap();
         let mut decoder = GzDecoder::new(&*bytes);
         let mut ipfs_content_str = String::new();
         let value: serde_json::Value = match decoder.read_to_string(&mut ipfs_content_str) {

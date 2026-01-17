@@ -255,8 +255,8 @@ mod tests {
     use trustchain_ion::{trustchain_resolver, verifier::TrustchainVerifier};
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
-    const ROOT_EVENT_TIME_1: u64 = 1666265405;
-    const TESTNET4_ROOT_EVENT_TIME_1: u64 = 1766953540;
+    const TESTNET3_TEST_ROOT_EVENT_TIME: u64 = 1666265405;
+    const TESTNET4_TEST_ROOT_EVENT_TIME: u64 = 1766953540;
 
     const ISSUER_DID: &str = "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q";
     lazy_static! {
@@ -267,7 +267,7 @@ mod tests {
         };
     }
 
-    const CREDENTIALS: &str = r#"{
+    const TESTNET3_TEST_CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
             "did": "did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q",
             "credential": {
@@ -293,7 +293,7 @@ mod tests {
     }
     "#;
 
-    const TESTNET4_CREDENTIALS: &str = r#"{
+    const TESTNET4_TEST_CREDENTIALS: &str = r#"{
         "46cb84e2-fa10-11ed-a0d4-bbb4e61d1556" : {
             "did": "did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og",
             "credential": {
@@ -325,7 +325,7 @@ mod tests {
     async fn test_get_issuer_offer() {
         let state = Arc::new(AppState::new_with_cache(
             TEST_HTTP_CONFIG.to_owned(),
-            serde_json::from_str(CREDENTIALS).unwrap(),
+            serde_json::from_str(TESTNET3_TEST_CREDENTIALS).unwrap(),
             HashMap::new(),
         ));
         let app = TrustchainRouter::from(state.clone()).into_router();
@@ -375,8 +375,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => CREDENTIALS,
-            Network::Testnet4 => TESTNET4_CREDENTIALS,
+            Network::Testnet => TESTNET3_TEST_CREDENTIALS,
+            Network::Testnet4 => TESTNET4_TEST_CREDENTIALS,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -427,8 +427,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => 1666265405,
-            Network::Testnet4 => 1766953540,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -452,8 +452,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => CREDENTIALS,
-            Network::Testnet4 => TESTNET4_CREDENTIALS,
+            Network::Testnet => TESTNET3_TEST_CREDENTIALS,
+            Network::Testnet4 => TESTNET4_TEST_CREDENTIALS,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -505,8 +505,8 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => ROOT_EVENT_TIME_1,
-            Network::Testnet4 => TESTNET4_ROOT_EVENT_TIME_1,
+            Network::Testnet => TESTNET3_TEST_ROOT_EVENT_TIME,
+            Network::Testnet4 => TESTNET4_TEST_ROOT_EVENT_TIME,
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
