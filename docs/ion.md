@@ -51,7 +51,7 @@ Once installed, follow the port forwarding instructions in the [SSH config](#ssh
 
 ## ION Installation Guide
 
-These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support the latest versions of Bitcoin Core.
+These instructions are based on the official [ION Install Guide](https://identity.foundation/ion/install-guide/) but contain additional details, several minor corrections and a workaround to support recent versions of Bitcoin Core.
 
 Both Linux and macOS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions. Instructions for installing on Windows are given in the official [ION guide](https://identity.foundation/ion/install-guide/).
 
@@ -93,6 +93,10 @@ Run the following commands to set up your environment.
     Install the [Homebrew](https://brew.sh/#install) package manager:
     ```console
     $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+    Install Node.js via the [download page](https://nodejs.org/en/download) or with this command:
+    ```console
+    $ brew install node
     ```
 
 ### Install IPFS
@@ -144,49 +148,49 @@ which should output a welcome message.
 
 ### Install Bitcoin Core
 
-Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructions below assume that version. More recent versions of Bitcoin Core are [available](https://bitcoincore.org/en/releases/) and can be used, but will require some minor changes to the commands in the following steps.
+Trustchain has been tested with Bitcoin Core v28.0 and therefore the instructions below assume that version. Other versions of Bitcoin Core are [available](https://bitcoincore.org/en/releases/) and can be used, but will require some minor changes to the commands in the following steps.
 
 === "Linux"
 
-    Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-24.0.1/) for your system:
+    Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-28.0/) for your system:
 
-     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-x86_64-linux-gnu.tar.gz) for Linux with x86-64 processor.
-     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-arm-linux-gnueabihf.tar.gz) for Linux with ARM processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-x86_64-linux-gnu.tar.gz) for Linux with x86-64 processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-arm-linux-gnueabihf.tar.gz) for Linux with ARM processor.
 
-    Verify the download by comparing the [published hash](https://bitcoincore.org/bin/bitcoin-core-24.0.1/SHA256SUMS) with the result of this command:
+    Verify the download by comparing the [published hash](https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS) with the result of this command:
     ```console
-    $ shasum -a 256 ~/Downloads/bitcoin-24.0.1-*.tar.gz
+    $ shasum -a 256 ~/Downloads/bitcoin-28.0-*.tar.gz
     ```
 
     Unzip the archive:
     ```console
-    $ (cd ~/Downloads && tar xvzf bitcoin-24.0.1-*.tar.gz)
+    $ (cd ~/Downloads && tar xvzf bitcoin-28.0-*.tar.gz)
     ```
     and install Bitcoin Core:
     ```console
-    $ sudo install -m 0755 -t /usr/local/bin ~/Downloads/bitcoin-24.0.1/bin/*
+    $ sudo install -m 0755 -t /usr/local/bin ~/Downloads/bitcoin-28.0/bin/*
     ```
     The installation includes an executable file named `bitcoind` which we will run to start Bitcoin Core.
 
 === "macOS"
 
-    Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-24.0.1/) for your system:
+    Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-28.0/) for your system:
 
-     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-x86_64-apple-darwin.tar.gz) for Mac with x86-64 processor.
-     - [Download link](https://bitcoincore.org/bin/bitcoin-core-24.0.1/bitcoin-24.0.1-arm64-apple-darwin.tar.gz) for Mac with Apple M1 processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-x86_64-apple-darwin.tar.gz) for Mac with x86-64 processor.
+     - [Download link](https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-arm64-apple-darwin.tar.gz) for Mac with Apple M-series processor.
 
-    Verify the download by comparing the [published hash](https://bitcoincore.org/bin/bitcoin-core-24.0.1/SHA256SUMS) with the result of this command:
+    Verify the download by comparing the [published hash](https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS) with the result of this command:
     ```console
-    $ shasum -a 256 ~/Downloads/bitcoin-24.0.1-*.tar.gz
+    $ shasum -a 256 ~/Downloads/bitcoin-28.0-*.tar.gz
     ```
 
     Unzip the archive:
     ```console
-    $ (cd ~/Downloads && tar xvzf bitcoin-24.0.1-*.tar.gz)
+    $ (cd ~/Downloads && tar xvzf bitcoin-28.0-*.tar.gz)
     ```
     and move the contents to the `/Applications` folder:
     ```console
-    $ mv ~/Downloads/bitcoin-24.0.1 /Applications
+    $ mv ~/Downloads/bitcoin-28.0 /Applications
     ```
     The download contains an executable file named `bitcoind` which we will run to start Bitcoin Core.
 
@@ -194,16 +198,16 @@ Trustchain has been tested with Bitcoin Core v24.0.1 and therefore the instructi
 
         Newer macOS systems will refuse to run an executable file unless it is signed. Run the following command to check whether this is a requirement on your machine:
         ```console
-        $ codesign -d -vvv --entitlements :- /Applications/bitcoin-24.0.1/bin/bitcoind
-        > /Applications/bitcoin-24.0.1/bin/bitcoind: code object is not signed at all
+        $ codesign -d -vvv --entitlements :- /Applications/bitcoin-28.0/bin/bitcoind
+        > /Applications/bitcoin-28.0/bin/bitcoind: code object is not signed at all
         ```
         If you see the message "code object is not signed at all" (as in the example above), you will need to create a [self-signed certificate](https://support.apple.com/en-gb/guide/keychain-access/kyca8916/mac) for the executable file. Do this by running:
         ```console
-        $ codesign -s - /Applications/bitcoin-24.0.1/bin/bitcoind
+        $ codesign -s - /Applications/bitcoin-28.0/bin/bitcoind
         ```
         And do the same for the Bitcoin CLI executable:
         ```console
-        $ codesign -s - /Applications/bitcoin-24.0.1/bin/bitcoin-cli
+        $ codesign -s - /Applications/bitcoin-28.0/bin/bitcoin-cli
         ```
 
 ### Configure Bitcoin Core
@@ -212,7 +216,7 @@ We shall need to specify a folder to store the Bitcoin blockchain data.
 
 !!! warning "Bitcoin data storage requirements"
 
-    The Bitcoin data folder will store the entire Bitcoin blockchain, which is >580GB for Mainnet and >75GB for Testnet.
+    The Bitcoin data folder will store the entire Bitcoin blockchain, which is >700GB for Mainnet and >175GB for Testnet.
 
 For convenience, we create an environment variable for the Bitcoin data folder.
 
@@ -233,19 +237,22 @@ $ mkdir $BITCOIN_DATA
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
     The following command creates that file with the required parameters and user permissions:
     ```console
-    $ printf "server=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
+    $ printf "server=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
     ```console
-    $ head -n 4 $BITCOIN_DATA/bitcoin.conf
+    $ head -n 7 $BITCOIN_DATA/bitcoin.conf
     ```
     You should see lines like these printed to the Terminal:
     ```
     server=1
     daemon=1
     txindex=1
+    blocksxor=0
     datadir=<YOUR_BITCOIN_DATA_DIRECTORY>
+    deprecatedrpc=create_bdb
+    deprecatedrpc=warnings
     ```
 
 === "Testnet"
@@ -253,12 +260,12 @@ $ mkdir $BITCOIN_DATA
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
     The following command creates that file with the required parameters and user permissions:
     ```console
-    $ printf "testnet=1\nserver=1\ndaemon=1\ntxindex=1\ndatadir=$BITCOIN_DATA\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
+    $ printf "testnet=1\nserver=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
     ```
 
     To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
     ```console
-    $ head -n 5 $BITCOIN_DATA/bitcoin.conf
+    $ head -n 8 $BITCOIN_DATA/bitcoin.conf
     ```
     You should see lines like these printed to the Terminal:
     ```
@@ -266,8 +273,17 @@ $ mkdir $BITCOIN_DATA
     server=1
     daemon=1
     txindex=1
+    blocksxor=0
     datadir=<YOUR_BITCOIN_DATA_DIRECTORY>
+    deprecatedrpc=create_bdb
+    deprecatedrpc=warnings
     ```
+
+!!! info "Configuration in earlier versions of Bitcoin Core"
+
+    - The configuration setting `deprecatedrpc=warnings` was introduced in Bitcoin Core v28.0, so it must be omitted if you are running an earlier version.
+
+    - The configuration setting `deprecatedrpc=create_bdb` was introduced in Bitcoin Core v26.0, so it must be omitted if you are running an earlier version.
 
 !!! warning "Note: Do not use the `~` shorthand in the `datadir` parameter"
 
@@ -290,7 +306,7 @@ Run the following command to create an alias, making to easy to access the CLI:
 === "macOS"
 
     ```console
-    $ echo 'alias bitcoin-cli="/Applications/bitcoin-24.0.1/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    $ echo 'alias bitcoin-cli="/Applications/bitcoin-28.0/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 !!! info "Bitcoin RPC username and password"
@@ -340,7 +356,7 @@ Before we start Bitcoin Core, we need to make sure it can find the correct confi
 === "macOS"
 
     ```console
-    $ echo 'alias bitcoind="/Applications/bitcoin-24.0.1/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    $ echo 'alias bitcoind="/Applications/bitcoin-28.0/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf"' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
     Now, use the following simple command to start Bitcoin Core:
@@ -695,7 +711,16 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
 
     **The synchronisation process may take >1 hour to complete.** Wait until it has finished before running the ION Core microservice in the following step.
 
-??? tip "Troubleshooting Tip"
+??? tip "Troubleshooting Tips"
+
+    - When running the ION Bitcoin microservice for the first time, it may fail with an error message similar to the following:
+    ```bash
+    Sidetree-Bitcoin node initialization failed with error: {"stack":"Error: Unexpected fetch HTTP response: [500]: {\"result\":null,\"error\":{\"code\":-4,\"message\":\"Wallet already loading.\"}...
+    ```
+    This error can usually be overcome by simply re-starting the microservice with same command:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
 
     - If you see an `ECONNREFUSED` error message when starting the ION Bitcoin microservice, this indicates that it has failed to communicate with Bitcoin Core. In this case, make sure that Bitcoin Core started successfully.
 
