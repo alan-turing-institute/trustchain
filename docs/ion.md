@@ -326,7 +326,7 @@ Run the following command to create an alias, making to easy to access the CLI:
         ```
     === "macOS"
         ```console
-        $ sed -i '' "1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|" $BITCOIN_DATA/bitcoin.conf
+        $ sed -i '' $'1s|^|rpcuser=admin\\\nrpcpassword='"$RPC_PASSWORD"$'\\\n|' $BITCOIN_DATA/bitcoin.conf
         ```
 
     To confirm these changes were made correctly, check the first two lines in the `bitcoin.conf` file by running:
