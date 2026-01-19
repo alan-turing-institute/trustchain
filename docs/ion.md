@@ -279,11 +279,12 @@ $ mkdir $BITCOIN_DATA
     deprecatedrpc=warnings
     ```
 
-!!! info "Configuration in earlier versions of Bitcoin Core"
+!!! info "Configuration in older versions of Bitcoin Core"
 
-    - The configuration setting `deprecatedrpc=warnings` was introduced in Bitcoin Core v28.0, so it must be omitted if you are running an earlier version.
+    If you are running an older version of Bitcoin Core, you may need to omit the `deprecatedrpc` parameters from your configuration file:
 
-    - The configuration setting `deprecatedrpc=create_bdb` was introduced in Bitcoin Core v26.0, so it must be omitted if you are running an earlier version.
+    - the setting `deprecatedrpc=warnings` was introduced in Bitcoin Core v28.0, so it must be omitted if you are running an earlier version.
+    - the setting `deprecatedrpc=create_bdb` was introduced in Bitcoin Core v26.0, so it must be omitted if you are running an earlier version.
 
 !!! warning "Note: Do not use the `~` shorthand in the `datadir` parameter"
 
