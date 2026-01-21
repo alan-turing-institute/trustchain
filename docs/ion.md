@@ -13,7 +13,7 @@ Trustchain delegates the execution of DID operations to an ION node. Therefore t
     The recommended system requirements for an ION installation are:
 
     - 6GB of RAM
-    - 1TB of storage (or 256GB for [Testnet](#bitcoin-mainnet-vs-testnet)).
+    - 1.5TB of storage (or 100GB for [Testnet4](#bitcoin-mainnet-vs-testnet)).
 
 Note, however, that **Trustchain makes no assumptions about the trustworthiness of the ION system** and the Trustchain security model does not rely on the correct functioning of the ION software. Trustchain independently verifies all of the data it receives from ION, so a faulty or compromised ION node would not represent a security vulnerability in Trustchain (although it could cause a loss of service).
 
@@ -37,11 +37,13 @@ If you want to run ION using Docker, you can skip most of this page and just fol
 
 The Bitcoin client wrapped inside an ION node can be configured either for **Mainnet** (the main Bitcoin network) or **Testnet** (an alternative blockchain designed for testing and software development).
 
-Mainnet should be used for a production deployment of Trustchain because DID operations published on the Bitcoin blockchain have extremely strong immutability, persistence and discoverability properties. When testing Trustchain, however, it is sensible to configure the ION Bitcoin client for Testnet, since coins on the test network have no monetary value and therefore "test" DID operations can be executed at zero cost.
+**Mainnet should be used for a production deployment of Trustchain** because DID operations published on the Bitcoin blockchain have extremely strong immutability, persistence and discoverability properties. When testing Trustchain, however, it is sensible to configure the ION Bitcoin client for Testnet, since coins on the test network have no monetary value and therefore "test" DID operations can be executed at zero cost.
 
-Testnet coins can be requested from a Testnet "faucet", such as [this one](https://coinfaucet.eu/en/btc-testnet/).
+The current iteration of Bitcoin's test network is Testnet4, which since May 2024 has replaced the (now deprecated) Testnet3. It is possible to run ION on either of these networks, but **Testnet4 is strongly recommended over Testnet3**.
 
-In this guide, commands and configuration settings may depend on which network is in use. In those cases, choose the appropriate tab (Mainnet or Testnet) for your setup.
+Testnet coins can be requested from a Testnet "faucet", such as [this one for Testnet4](https://faucet.testnet4.dev/) or [this one for Testnet3](https://coinfaucet.eu/en/btc-testnet/).
+
+In this guide, commands and configuration settings may depend on which network is in use. In those cases, choose the appropriate tab for your setup: Mainnet, Testnet4 or Testnet3 (Deprecated).
 
 ### Local vs. Remote Installation
 
@@ -150,6 +152,10 @@ which should output a welcome message.
 
 Trustchain has been tested with Bitcoin Core v28.0 and therefore the instructions below assume that version. Other versions of Bitcoin Core are [available](https://bitcoincore.org/en/releases/) and can be used, but will require some minor changes to the commands in the following steps.
 
+!!! info "Testnet4 requires Bitcoin Core v28.0 or above"
+
+    If you are intending to run ION on Testnet4 you must install Bitcoin Core v28.0 or above, as this is the earliest version that supports the new test network.
+
 === "Linux"
 
     Begin by downloading the [Bitcoin Core release](https://bitcoincore.org/bin/bitcoin-core-28.0/) for your system:
@@ -216,7 +222,7 @@ We shall need to specify a folder to store the Bitcoin blockchain data.
 
 !!! warning "Bitcoin data storage requirements"
 
-    The Bitcoin data folder will store the entire Bitcoin blockchain, which is >700GB for Mainnet and >175GB for Testnet.
+    The Bitcoin data folder will store the entire Bitcoin blockchain, which is >800GB for Mainnet and >15GB for Testnet4.
 
 For convenience, we create an environment variable for the Bitcoin data folder.
 
@@ -255,7 +261,31 @@ $ mkdir $BITCOIN_DATA
     deprecatedrpc=warnings
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
+    The following command creates that file with the required parameters and user permissions:
+    ```console
+    $ printf "testnet4=1\nserver=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n" > $BITCOIN_DATA/bitcoin.conf && chmod 640 $BITCOIN_DATA/bitcoin.conf
+    ```
+
+    To confirm these changes were made correctly, check the first three lines in the `bitcoin.conf` file by running:
+    ```console
+    $ head -n 8 $BITCOIN_DATA/bitcoin.conf
+    ```
+    You should see lines like these printed to the Terminal:
+    ```
+    testnet4=1
+    server=1
+    daemon=1
+    txindex=1
+    blocksxor=0
+    datadir=<YOUR_BITCOIN_DATA_DIRECTORY>
+    deprecatedrpc=create_bdb
+    deprecatedrpc=warnings
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     Bitcoin configuration parameters will be stored in a file named `bitcoin.conf` inside the `$BITCOIN_DATA` folder.
     The following command creates that file with the required parameters and user permissions:
@@ -283,7 +313,7 @@ $ mkdir $BITCOIN_DATA
 
     If you are running an older version of Bitcoin Core, you may need to omit the `deprecatedrpc` parameters from your configuration file:
 
-    - the setting `deprecatedrpc=warnings` was introduced in Bitcoin Core v28.0, so it must be omitted if you are running an earlier version.
+    - the settings `blocksxor=0` and `deprecatedrpc=warnings` were introduced in Bitcoin Core v28.0, so they must be omitted if you are running an earlier version.
     - the setting `deprecatedrpc=create_bdb` was introduced in Bitcoin Core v26.0, so it must be omitted if you are running an earlier version.
 
 !!! warning "Note: Do not use the `~` shorthand in the `datadir` parameter"
@@ -384,7 +414,9 @@ You should now see the message "Bitcoin Core starting" in the Terminal.
 
     When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.
 
-    **The synchronisation process may take several hours, or even days, to complete.** You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
+    **The synchronisation process on Mainnet may take several hours, or even days, to complete.** You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.
+
+    Fortunately, the synchronisation process on Testnet4 is much quicker, as only ~15GB of data must be downloaded.
 
 Whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning `bitcoin-cli`. A full list of commands available via the Bitcoin CLI can be found [here](https://developer.bitcoin.org/reference/rpc/).
 
@@ -419,7 +451,7 @@ $ cd
 ```
 Now clone the ION code repository from GitHub:
 ```console
-$ git clone https://github.com/decentralized-identity/ion
+$ git clone https://github.com/decentralized-identity/ion.git
 ```
 and change into the newly-created `ion` subfolder:
 ```console
@@ -448,7 +480,11 @@ We will need a folder for storing ION configuration files. For convenience, we'l
         ```console
         $ printf "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
         ```
-    === "Testnet"
+    === "Testnet4"
+        ```console
+        $ printf "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
+        ```
+    === "Testnet3 (Deprecated)"
         ```console
         $ printf "export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json" >> $SHELL_CONFIG; source $SHELL_CONFIG
         ```
@@ -464,7 +500,11 @@ Next, copy the template ION configuration files to your `ION_CONFIG` directory:
     ```console
     $ cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG
     ```
-=== "Testnet"
+=== "Testnet4"
+    ```console
+    $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
+    ```
+=== "Testnet3 (Deprecated)"
     ```console
     $ cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG
     ```
@@ -482,37 +522,93 @@ Having made copies of the template configuration files, we now edit some of thei
 
     === "Linux"
         ```console
-        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
     === "macOS"
         ```console
-        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'"|' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    Set the `bitcoinDataDirectory` parameter in the ION Bitcoin config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet4"|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet4"|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+    Next, for Testnet4 only, set two further parameters in the same file. First the `bitcoinPeerUri` parameter:
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinPeerUri": "http://localhost:18332"|"bitcoinPeerUri": "http://localhost:48332"|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinPeerUri": "http://localhost:18332"|"bitcoinPeerUri": "http://localhost:48332"|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+    and second, the `genesisBlockNumber` parameter:
+    === "Linux"
+        ```console
+        $ sed -i 's|"genesisBlockNumber": .*,|"genesisBlockNumber": 2000,|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"genesisBlockNumber": .*,|"genesisBlockNumber": 2000,|' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+    Also for Testnet4 only, set the `startingBlockchainTime` parameter in the ION Bitcoin versioning config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"startingBlockchainTime": .*,|"startingBlockchainTime": 2000,|' $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"startingBlockchainTime": .*,|"startingBlockchainTime": 2000,|' $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH
+        ```
+
+    and the same parameter in the ION Core versioning config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"startingBlockchainTime": .*,|"startingBlockchainTime": 2000,|' $ION_CORE_VERSIONING_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"startingBlockchainTime": .*,|"startingBlockchainTime": 2000,|' $ION_CORE_VERSIONING_CONFIG_FILE_PATH
+        ```
+
+=== "Testnet3 (Deprecated)"
 
     Set the `bitcoinDataDirectory` parameter (skip this step if your `BITCOIN_DATA` directory is on a network drive):
 
     === "Linux"
         ```console
-        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
     === "macOS"
         ```console
-        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        $ sed -i '' 's|"bitcoinDataDirectory": ".*"|"bitcoinDataDirectory": "'$BITCOIN_DATA'/testnet3"|' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
+<br>
 Next we shall set the `bitcoinRpcUsername` and `bitcoinRpcPassword` parameters. These must match the username and password chosen in the [Bitcoin CLI](#bitcoin-cli) section above.
 
-We chose `admin` for the RPC username. The following command sets this same value inside the ION config file:
+We chose `admin` for the RPC username. The following command sets this same value inside the ION Bitcoin config file:
 
 === "Linux"
     ```console
-    $ sed -i 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+    $ sed -i 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
 === "macOS"
     ```console
-    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+    $ sed -i '' 's|"bitcoinRpcUsername": ".*"|"bitcoinRpcUsername": "admin"|' $ION_BITCOIN_CONFIG_FILE_PATH
     ```
 
 For the RPC password, copy and paste the following command into the Terminal and then change `<password>` to the **same password** you chose when setting up the [Bitcoin CLI](#bitcoin-cli):
@@ -582,9 +678,13 @@ The final configuration step is to set the `bitcoinWalletOrImportString` paramet
         $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
         ```
 
-=== "Testnet"
+=== "Testnet4"
 
-    On Testnet, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
+    On Testnet4, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
+
+=== "Testnet3 (Deprecated)"
+
+    On Testnet3, a key will be automatically generated when ION runs for the first time which can be used for the `bitcoinWalletOrImportString` parameter, so you don't need to do anything in this step.
 
 !!! tip "Tip: Set the `requestMaxRetries` configuration parameter"
 
@@ -627,6 +727,40 @@ $ npm run build
 
     You must rerun the command `npm run build` if changes are made to the JSON configuration files in the `ION_CONFIG` folder.
 
+??? warning "Additional configuration steps required for Testnet4"
+
+    ION has built-in support for Bitcoin Mainnet and Testnet3, but not for Testnet4. To fix this, the following additional steps must be performed (after completing the ION build procedure) **only if you are running on Testnet4**.
+
+    Run the following command to update your ION installation with the Testnet4 [magic bytes](https://learnmeabitcoin.com/technical/networking/magic-bytes/), used to delimit messages on the Bitcoin network:
+    === "Linux"
+        ```console
+        $ sed -i "s/testnet: Buffer\.from('0b110907', 'hex')/testnet: Buffer.from('1c163f28', 'hex')/" $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' "s/testnet: Buffer\.from('0b110907', 'hex')/testnet: Buffer.from('1c163f28', 'hex')/" $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js
+        ```
+
+    Run this command to fix the way ION computes the Testnet4 block height:
+    === "Linux"
+        ```console
+        $ sed -i 's/magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest)/(magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest) || (magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.testnet)))/' $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's/magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest)/(magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest) || (magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.testnet)))/' $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js
+        ```
+
+    Finally, run the following command to avoid errors when performing fee estimation on Testnet4 (required for publishing DID operations from your ION node):
+    === "Linux"
+        ```console
+        $ sed -i 's|1 // Number of confirmation targets|50 // Number of confirmation targets|' $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|1 // Number of confirmation targets|50 // Number of confirmation targets|' $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js
+        ```
+
 ### Test ION
 
 Before running ION for the first time, **make sure that you have started IPFS, MongoDB and Bitcoin Core** (by following the instructions above or using the command summary in the [Running ION](#running-ion) section). Also make sure that Bitcoin Core is fully synchronised by running:
@@ -637,20 +771,24 @@ $ bitcoin-cli -getinfo
 You should see output similar to the following. Bitcoin Core is synchronised if the number of `Blocks` is equal to the number of `Headers`:
 
 === "Mainnet"
-    ```sh
+    ```
     Chain: main
-    Blocks: 852429
-    Headers: 852429
-    Verification progress: 99.9997%
-    Difficulty: 82047728459932.75
+    Blocks: 933111
+    Headers: 933111
+    Verification progress: 99.9998%
+    Difficulty: 146472570619930.8
 
     Network: in 0, out 10, total 10
-    Version: 240001
+    Version: 280000
     Time offset (s): 0
     Proxies: n/a
     Min tx relay fee rate (BTC/kvB): 0.00001000
 
-    Warnings: (none)
+    Wallet: sidetreeDefaultWallet
+    Keypool size: 1000
+    Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+
+    Balance: 0.00000000
     ```
 
     In a new Terminal, start the ION Bitcoin microservice with:
@@ -658,21 +796,77 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
     $ (cd $ION_REPO && npm run bitcoin)
     ```
 
-=== "Testnet"
-    ```sh
-    Chain: test
-    Blocks: 2868427
-    Headers: 2868427
-    Verification progress: 99.9997%
-    Difficulty: 205023102.4598488
+=== "Testnet4"
+    ```
+    Chain: testnet4
+    Blocks: 119371
+    Headers: 119371
+    Verification progress: 100.0000%
+    Difficulty: 1
 
-    Network: in 0, out 10, total 10
-    Version: 240001
+    Network: in 0, out 11, total 11
+    Version: 280000
     Time offset (s): 0
     Proxies: n/a
     Min tx relay fee rate (BTC/kvB): 0.00001000
 
-    Warnings: (none)
+    Wallet: sidetreeDefaultWallet
+    Keypool size: 1000
+    Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+
+    Balance: 0.00000000
+    ```
+
+    In a new Terminal, start the ION Bitcoin microservice with:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
+
+    When running this command for the first time, expect the error:
+    ```
+    Non-base58 character
+    Is bitcoinWalletImportString valid? Consider using <testnet> key generated below:
+    ```
+    followed by a base58 string. In this case, copy the base58 string and paste it into the following command in place of `<wif>`:
+    ```console
+    $ WIF="<wif>"
+    ```
+
+    Then run this command to update the `bitcoinWalletOrImportString` parameter in the ION config file:
+
+    === "Linux"
+        ```console
+        $ sed -i 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"bitcoinWalletOrImportString": ".*"|"bitcoinWalletOrImportString": "'$WIF'"|g' $ION_BITCOIN_CONFIG_FILE_PATH
+        ```
+
+    Now repeat the attempt to start the ION Bitcoin microservice:
+    ```console
+    $ (cd $ION_REPO && npm run bitcoin)
+    ```
+
+=== "Testnet3 (Deprecated)"
+    ```
+    Chain: test
+    Blocks: 4834624
+    Headers: 4834624
+    Verification progress: 99.9999%
+    Difficulty: 2154250.232295683
+
+    Network: in 0, out 10, total 10
+    Version: 280000
+    Time offset (s): 0
+    Proxies: n/a
+    Min tx relay fee rate (BTC/kvB): 0.00001000
+
+    Wallet: sidetreeDefaultWallet
+    Keypool size: 1000
+    Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+
+    Balance: 0.00000000
     ```
 
     In a new Terminal, start the ION Bitcoin microservice with:
@@ -710,13 +904,15 @@ You should see output similar to the following. Bitcoin Core is synchronised if 
 
     When the ION Bitcoin microservice starts for the first time, it will begin scanning the Bitcoin blockchain for ION DID operations, by making calls to the Bitcoin Core RPC interface.
 
-    **The synchronisation process may take >1 hour to complete.** Wait until it has finished before running the ION Core microservice in the following step.
+    On Mainnet **the synchronisation process may take several hours to complete.** Wait until it has finished before running the ION Core microservice in the following step.
+
+    On Testnet4 the synchronisation process is much quicker, as there are fewer blocks to scan, and should take only a few minutes.
 
 ??? tip "Troubleshooting Tips"
 
     - When running the ION Bitcoin microservice for the first time, it may fail with an error message similar to the following:
     ```bash
-    Sidetree-Bitcoin node initialization failed with error: {"stack":"Error: Unexpected fetch HTTP response: [500]: {\"result\":null,\"error\":{\"code\":-4,\"message\":\"Wallet already loading.\"}...
+    Sidetree-Bitcoin node initialization failed with error: {"stack":"Error: Unexpected fetch HTTP response: [500]: {\"result\":null,\"error\":{\"code\":-4,\"message\":\"Wallet already loading.\"}...}}
     ```
     This error can usually be overcome by simply re-starting the microservice with same command:
     ```console
@@ -742,7 +938,13 @@ Finally, to confirm that ION is working properly, open yet another new Terminal 
     $ curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     ```console
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
@@ -859,7 +1061,34 @@ $ bitcoind
         $ netstat -tulpn | grep 'bitcoind'
         ```
 
-    === "Testnet"
+    === "Testnet4"
+
+        Check status:
+        ```console
+        $ bitcoin-cli -getinfo
+        ```
+
+        Stop Bitcoin Core:
+        ```console
+        $ bitcoin-cli stop
+        ```
+
+        Print the log file to the Terminal (hit ++ctrl+c++ to exit):
+        ```console
+        $ tail -f $BITCOIN_DATA/testnet4/debug.log
+        ```
+
+        Reindex the chain (may take >1 hour):
+        ```console
+        $ bitcoind -reindex-chainstate
+        ```
+
+        Check which port bitcoind is listening on (should be 48333 for Testnet4):
+        ```console
+        $ netstat -tulpn | grep 'bitcoind'
+        ```
+
+    === "Testnet3 (Deprecated)"
 
         Check status:
         ```console
@@ -881,7 +1110,7 @@ $ bitcoind
         $ bitcoind -reindex-chainstate
         ```
 
-        Check which port bitcoind is listening on (should be 18333 for Testnet):
+        Check which port bitcoind is listening on (should be 18333 for Testnet3):
         ```console
         $ netstat -tulpn | grep 'bitcoind'
         ```
@@ -904,7 +1133,13 @@ $ (cd $ION_REPO && npm run core)
     $ curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     ```console
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
@@ -938,20 +1173,31 @@ To fund your wallet, send Bitcoins to the **first address** in this list.
 
         If you do not already own any bitcoins, they can be purchased on a [Bitcoin exchange](https://bitcoin.org/en/exchanges). Make sure that you acquire genuine bitcoins, which are identified by the ticker symbol `BTC`. When withdrawing your coins from the exchange, enter the receive address obtained in the preceding step to send them to your ION wallet.
 
-    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as [blockstream.info](https://blockstream.info/).
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as [mempool.space](https://mempool.space/).
 
+=== "Testnet4"
 
-=== "Testnet"
+    !!! tip "Request tBTC from a Testnet4 faucet"
 
-    !!! tip "Request tBTC from a Testnet faucet"
+        Testnet4 bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.
 
-        Testnet bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.
+        Since coins on Bitcoin Testnet4 have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.
 
-        Since coins on the Bitcoin Testnet have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.
+        Visit a Bitcoin Testnet4 faucet, such as [this one](https://faucet.testnet4.dev/), and enter the recieve address obtained in the preceding step to send them to your ION wallet.
 
-        Visit a Bitcoin Testnet faucet, such as [coinfaucet.eu](https://coinfaucet.eu/en/btc-testnet/), and enter the recieve address obtained in the preceding step to send them to your ION wallet.
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet4 explorer such as [mempool.space](https://mempool.space/testnet4).
 
-    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet explorer such as [blockstream.info](https://blockstream.info/testnet/).
+=== "Testnet3 (Deprecated)"
+
+    !!! tip "Request tBTC from a Testnet3 faucet"
+
+        Testnet3 bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.
+
+        Since coins on Bitcoin Testnet3 have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.
+
+        Visit a Bitcoin Testnet3 faucet, such as [coinfaucet.eu](https://coinfaucet.eu/en/btc-testnet/), and enter the recieve address obtained in the preceding step to send them to your ION wallet.
+
+    After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet3 explorer such as [mempool.space](https://mempool.space/testnet).
 
 When the transaction is confirmed, check your wallet balance with:
 ```console
@@ -997,7 +1243,20 @@ We recommend adding the following lines to your SSH configuration file at `~/.ss
         LocalForward 27017 localhost:27017
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    ```bash
+    Host ion
+        HostName <IP_ADDRESS>
+        User <USERNAME>
+        IdentityFile ~/.ssh/<KEY_FILE>
+        LocalForward 3000 localhost:3000
+        LocalForward 5001 localhost:5001
+        LocalForward 48332 localhost:48332
+        LocalForward 27017 localhost:27017
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     ```bash
     Host ion
@@ -1023,7 +1282,16 @@ The port forwarding rules in the above configuration assume that the default por
     | 8332        | Bitcoin           |
     | 27017       | MongoDB           |
 
-=== "Testnet"
+=== "Testnet4"
+
+    | Port        | Process           |
+    | ----------- | ----------------- |
+    | 3000        | ION               |
+    | 5001        | IPFS              |
+    | 48332       | Bitcoin           |
+    | 27017       | MongoDB           |
+
+=== "Testnet3 (Deprecated)"
 
     | Port        | Process           |
     | ----------- | ----------------- |
@@ -1077,13 +1345,12 @@ These instructions are based on the [guide](https://github.com/decentralized-ide
 
 **Step 2: Run the ION Docker container**
 
-To obtain the required `docker-compose.*` files, clone the ION repository and enter the `docker` directory:
+To access the required `docker-compose.*` files, enter the ION `docker` directory:
 ```
-git clone https://github.com/decentralized-identity/ion.git
-cd ion/docker
+cd $ION_REPO/docker
 ```
 
-Now run the ION container. This command depends on whether you wish to run a Mainnet or a Testnet ION node.
+Now run the ION container. This command depends on whether you wish to run a Mainnet, Testnet4 or Testnet3 ION node:
 
 === "Mainnet"
 
@@ -1091,7 +1358,24 @@ Now run the ION container. This command depends on whether you wish to run a Mai
     docker-compose up -d
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    To run ION with Docker on Testnet4, the `docker-compose.testnet-override.yml` config file must be modified to set the correct RPC port number for the Bitcoin client:
+    === "Linux"
+        ```console
+        $ sed -i 's|"18332:18332"|"48332:48332"|' $ION_REPO/docker/docker-compose.testnet-override.yml
+        ```
+    === "macOS"
+        ```console
+        $ sed -i '' 's|"18332:18332"|"48332:48332"|' $ION_REPO/docker/docker-compose.testnet-override.yml
+        ```
+
+    Then run the container with:
+    ```
+    docker-compose -f docker-compose.yml -f docker-compose.testnet-override.yml up -d
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     ```
     docker-compose -f docker-compose.yml -f docker-compose.testnet-override.yml up -d
@@ -1103,6 +1387,7 @@ Now run the ION container. This command depends on whether you wish to run a Mai
 
     **In total, the synchronisation process may take several hours, or even days, to complete.** You will not be able to use Trustchain until your ION node has finished synchronising.
 
+    Fortunately, the synchronisation process on Testnet4 is much quicker, as only ~15GB of data must be downloaded.
 
 <!-- TODO: screenshots! -->
 
@@ -1114,7 +1399,13 @@ When the synchronisation process has finished, confirm that ION is working prope
     $ curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp
     ```
 
-=== "Testnet"
+=== "Testnet4"
+
+    ```console
+    $ curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp
+    ```
+
+=== "Testnet3 (Deprecated)"
 
     ```console
     $ curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp
