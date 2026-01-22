@@ -134,8 +134,7 @@ which should output a welcome message.
 
 === "Linux"
 
-    Follow [these instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/) to install MongoDB on Linux
-
+    Instructions for installing MongoDB on Linux are available on the [MongoDB website](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/).
 
 === "macOS"
 
