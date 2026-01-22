@@ -72,7 +72,7 @@ Step 7 of the Certbot instructions requires you to install your new TLS certific
 
 - make a new directory to store the certificate:
 ```console
-$ mkdir "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
+$ mkdir -p "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
 ```
 - copy the certificate file `fullchain.pem` and the key file `privkey.pem` from the locations given in the output from Step 6 (above), to the new directory, e.g.:
 ```console
