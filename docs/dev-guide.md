@@ -650,12 +650,12 @@ The prompt character helps to distinguish between Terminal commands and other co
 For example, the Markdown code block:
 ````
 ```console
-$ echo "hello, world"
+echo "hello, world"
 ```
 ````
 will be rendered as:
 ```console
-$ echo "hello, world"
+echo "hello, world"
 ```
 but only the command `echo "hello, world"` will be copied to the clipboard.
 

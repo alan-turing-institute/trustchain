@@ -12,14 +12,14 @@ Trustchain includes a built-in HTTP server that can be used to issue and verify 
 
 To install the Trustchain HTTP server, run:
 ```console
-$ cargo install --path "$TRUSTCHAIN_REPO"/crates/trustchain-http
+cargo install --path "$TRUSTCHAIN_REPO"/crates/trustchain-http
 ```
 
 ## Configuration
 
 Before starting the HTTP server some configuation parameters will need to be set. Execute the following command to open the Trustchain configuration file `trustchain_config.toml` for editing:
 ```console
-$ nano $TRUSTCHAIN_CONFIG
+nano $TRUSTCHAIN_CONFIG
 ```
 
 Under the section headed `[http]`, add or edit the following configuration parameters:
@@ -59,7 +59,7 @@ If you do not already have a TLS certificate, you can obtain one by using a free
 Follow the steps in the [Certbot setup instructions](https://certbot.eff.org/instructions?ws=other&os=ubuntubionic) to generate a TLS certificate.
 
 At the end of Step 6, you should see output similar to the following:
-```
+```{ .text .no-copy }
 Successfully received certificate.
 Certificate is saved at: /etc/letsencrypt/live/trustchain.example.com/fullchain.pem
 Key is saved at:         /etc/letsencrypt/live/trustchain.example.com/privkey.pem
@@ -72,29 +72,29 @@ Step 7 of the Certbot instructions requires you to install your new TLS certific
 
 - make a new directory to store the certificate:
 ```console
-$ mkdir -p "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
+mkdir -p "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
 ```
 - copy the certificate file `fullchain.pem` and the key file `privkey.pem` from the locations given in the output from Step 6 (above), to the new directory, e.g.:
 ```console
-$ sudo cp /etc/letsencrypt/live/trustchain.example.com/fullchain.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
-$ sudo cp /etc/letsencrypt/live/trustchain.example.com/privkey.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
+sudo cp /etc/letsencrypt/live/trustchain.example.com/fullchain.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
+sudo cp /etc/letsencrypt/live/trustchain.example.com/privkey.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs
 ```
 - change the ownership of those files so they are owned by the user and group that will run the Trustchain server (replace `<USER>` and `<GROUP>` in the following commands):
 ```console
-$ sudo chown <USER>:<GROUP> "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/fullchain.pem
-$ sudo chown <USER>:<GROUP> "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/privkey.pem
+sudo chown <USER>:<GROUP> "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/fullchain.pem
+sudo chown <USER>:<GROUP> "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/privkey.pem
 ```
 - create symbolic links to the certificate and key files:
 ```console
-$ ln -s "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/fullchain.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/cert.pem
-$ ln -s "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/privkey.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/key.pem
+ln -s "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/fullchain.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/cert.pem
+ln -s "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/privkey.pem "$TRUSTCHAIN_CONFIG"/http/self_signed_certs/key.pem
 ```
 
 !!! warning "Running the Trustchain HTTP server on port 443"
 
     By default, elevated privileges are required when binding a process to port 443. Therefore, if you have configured the HTTP server to listen on port 443, you will need to run the following command (once) to allow a non-root user to start the server:
     ```console
-    $ sudo setcap CAP_NET_BIND_SERVICE=+eip $HOME/.cargo/bin/trustchain-http
+    sudo setcap CAP_NET_BIND_SERVICE=+eip $HOME/.cargo/bin/trustchain-http
     ```
 
 ### Network configuration
@@ -113,7 +113,7 @@ If your node is running on a computer in your local network, the network configu
 
 Open a new Terminal window and invoke the Trustchain HTTP server with the following command:
 ```console
-$ trustchain-http
+trustchain-http
 ```
 
 The server will listen on the port specified in the `trustchain_config.toml` file. Server log messages will be printed to this terminal window, so you will see a new message whenever the server responds to a request.
