@@ -10,11 +10,11 @@ Trustchain can be installed on all major operating systems. The steps below have
 
     Commands will be presented in code blocks like this one:
     ```console
-    $ echo "Hello World"
+    echo "Hello World"
     ```
-    The initial prompt character `$` indicates that this is a command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
+    These are commands that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
 
-    To copy such commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command itself will be copied (the prompt character will be omitted), so it can be pasted straight into the Terminal.
+    To copy to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block.
 
 ## Environment Variables
 
@@ -26,11 +26,11 @@ Environment variables are defined in your Terminal configuration file. Since we 
 
 To do this, run the following command:
 ```console
-$ SHELL_CONFIG=$(find ~/.*shrc -maxdepth 0 | head -n 1) && echo "export SHELL_CONFIG=$SHELL_CONFIG" >> $SHELL_CONFIG
+SHELL_CONFIG=$(find ~/.*shrc -maxdepth 0 | head -n 1) && echo "export SHELL_CONFIG=$SHELL_CONFIG" >> $SHELL_CONFIG
 ```
 Now check that the new environment variable exists:
 ```console
-$ echo $SHELL_CONFIG
+echo $SHELL_CONFIG
 ```
 This command should output the path to your Terminal configuration file. From now on, whenever we want to refer to that file we will be able to use the `SHELL_CONFIG` environment variable.
 
@@ -38,7 +38,7 @@ This command should output the path to your Terminal configuration file. From no
 
     Now that we have defined the `SHELL_CONFIG` environment variable (above), we can use it to conveniently create new environment variables. Whenever we need to define a new variable, you will be given a command similar to the following (don't run this one, it's just an example):
     ```console
-    $ echo "export NAME=VALUE" >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo "export NAME=VALUE" >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
     This command adds a new environment variable named `NAME` with value `VALUE` to your Terminal config file, and then reads the updated file so the change takes effect inside the current Terminal session.
 
@@ -54,44 +54,44 @@ Instructions for installing the Rust language can be found [here](https://www.ru
 
 On Linux or macOS, the recommended method is to run the following command:
 ```console
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Then check the installation was successful by running:
 ```console
-$ rustc --version
+rustc --version
 ```
 
 ### Step 3. Install Trustchain
 
-Choose a directory in which you want to store the Trustchain software and change to that directory using the command `$ cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
+Choose a directory in which you want to store the Trustchain software and change to that directory using the command `cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
 ```console
-$ cd
+cd
 ```
 Now clone the Trustchain code repository from GitHub:
 ```console
-$ git clone https://github.com/alan-turing-institute/trustchain.git
+git clone https://github.com/alan-turing-institute/trustchain.git
 ```
 and then enter the newly-created `trustchain` subfolder:
 ```console
-$ cd trustchain
+cd trustchain
 ```
 
 !!! tip "Create the `TRUSTCHAIN_REPO` environment variable"
 
     Since we will need to refer to this folder in future, let's create an [environment variable](#environment-variables) containing its file path:
     ```console
-    $ echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 The next step is to build the Trustchain software from its source code (this may take a minute or two):
 ```console
-$ cargo build
+cargo build
 ```
 
 Finally, we install the Trustchain command line interface (CLI):
 ```console
-$ cargo install --path crates/trustchain-cli
+cargo install --path crates/trustchain-cli
 ```
 
 ## Configuration
@@ -103,12 +103,12 @@ Trustchain uses a data directory to store files related to its operation. Here w
 !!! tip "Create the `TRUSTCHAIN_DATA` environment variable"
 
     ```console
-    $ echo 'export TRUSTCHAIN_DATA=~/.trustchain/' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo 'export TRUSTCHAIN_DATA=~/.trustchain/' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 Now create the `TRUSTCHAIN_DATA` directory on your file system:
 ```console
-$ mkdir $TRUSTCHAIN_DATA
+mkdir $TRUSTCHAIN_DATA
 ```
 
 ### Trustchain configuration file
@@ -118,28 +118,28 @@ Configuration parameters relating to Trustchain are stored in a file named `trus
 !!! tip "Create the `TRUSTCHAIN_CONFIG` environment variable"
 
     ```console
-    $ echo 'export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"trustchain_config.toml' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo 'export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"trustchain_config.toml' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 Copy the template configuration file from the Trustchain repository to the data directory (unless it already exists):
 ```console
-$ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
+cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
 and set appropriate user permissions:
 ```console
-$ chmod 640 $TRUSTCHAIN_CONFIG
+chmod 640 $TRUSTCHAIN_CONFIG
 ```
 
 Then open your copy of `trustchain_config.toml` for editing:
 ```console
-$ nano $TRUSTCHAIN_CONFIG
+nano $TRUSTCHAIN_CONFIG
 ```
 and edit the following configuration parameters:
 
 - In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
 - If you intend to act as an issuer of digital credentials, and you already have you own DID for this purpose, add it in the `[http]` section to the `issuer_did` parameter value. Otherwise, the `[http]` section can be ignored.
 - If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format, e.g.:
-```
+```{ .text .no-copy }
 root_event_time = 1697213008
 ```
 
