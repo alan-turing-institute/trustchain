@@ -1,0 +1,1018 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../faq/">
+      
+      
+        <link rel="next" href="../ion/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Technical Notes - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#technical-notes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Technical Notes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#independently-verifiable-timestamping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Independently Verifiable Timestamping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-dids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream DIDs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upstream-did-key-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upstream DID Key Rotation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-did-key-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root DID Key Rotation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-did-update-and-recovery-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root DID Update and Recovery Secrets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constrained-ddids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constrained dDIDs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constrained-vc-issuance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constrained VC Issuance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rebasing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rebasing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-did-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root DID Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interoperability-ddids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interoperability dDIDs
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="technical-notes">Technical Notes</h1>
+<h2 id="independently-verifiable-timestamping">Independently Verifiable Timestamping</h2>
+<p>Trustchain adopts the W3C standard for Verifiable Credentials (VCs) and specifies the precise nature of the Verifiable Data Registry which plays a central role in the <a href="https://www.w3.org/TR/vc-data-model-2.0/#roles">VC data model</a>. The main purpose of this data registry is to store <a href="https://www.w3.org/TR/did-core/">Decentralised Identifiers</a> (DIDs) and associated DID Documents containing public key information.</p>
+<p>The data registry employed by Trustchain enables independent verification of:</p>
+<ol>
+<li>the timestamps associated with DIDs and DID Documents (including metadata),</li>
+<li>the content of those DID Documents.</li>
+</ol>
+<p>In other words, anybody who wishes to do so can verify that a particular Trustchain DID was published at a particular date/time, and that the content of the associated DID Document has not been modified since that time.</p>
+<p>Several core operations in Trustchain depend on this ability to create (DIDs) with independently verifiable timestamps, as <a href="../faq/#q-why-is-independently-verifiable-timestamping-important-in-trustchain">explained in the FAQ</a>. Here we explain the verification mechanism.</p>
+<p>Trustchain delegates the process of DID creation and timestamping to the <a href="https://identity.foundation/ion/">Identity Overlay Network</a> (ION), open source software from the Decentralized Identity Foundation. The verifiable timestamping mechanism delivered by ION, and leveraged by Trustchain, ultimately depends on the continuous and cumulative proof of work performed by the Bitcoin network. It involves embedding IPFS content identifiers (cryptographic hash digests) into Bitcoin transactions, thereby furnishing the IPFS content (DID documents, in this case) with the same timestamp as the transaction itself.</p>
+<p>Anybody can verify that a particular Bitcoin transaction is contained in a particular block by executing a series of SHA256 hash operations and comparing the result to the hash digest found inside the block header. By performing a similar process for each subsequent block, they can accurately estimate the amount of work done to produce the "strongest" (i.e. most computationally expensive) chain of blocks.</p>
+<p>Since this work would need to be re-done by anyone attempting to modify the block containing the transaction of interest, the verifier can infer a realistic estimate of the computational cost of falsifying such a timestamp. And from this computational cost, the economic cost of such an attack can be estimated.</p>
+<p>Very little computational effort is required to perform the verification, and the blockchain data structure contains all of the information needed to verify the timestamp, so no trust in any third party is required.</p>
+<p>At the time of writing (April 2022), the total hash rate of the Bitcoin network is &gt;600 EH/s and the <a href="https://www.crypto51.app/">theoretical cost</a> (in USD) to modify the history of the chain, as a function of the temporal depth of the attack, is as follows:</p>
+<table>
+<thead>
+<tr>
+<th>0</th>
+<th>1 hour</th>
+<th>1 day</th>
+<th>1 week</th>
+<th>1 month</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~$1</td>
+<td>$3.4m</td>
+<td>$81.0m</td>
+<td>$566.8m</td>
+<td>$2.463b</td>
+</tr>
+</tbody>
+</table>
+<p>We can see that it is very cheap to create honest timestamps but very expensive to create deceptive ones. (In addition, any attempt at deception would be immediately observable by all nodes on the Bitcoin network.)</p>
+<p>In this way, the timestamp on a transaction (and hence on a DID Document) can be verified in a quantitative manner by computing how expensive it would be to execute an attack to produce a deceptive timestamp.</p>
+<h2 id="downstream-dids">Downstream DIDs</h2>
+<p>A downstream DID (dDID) is a decentralised identifier in which the trustworthiness of the information contained in the corresponding DID document is attested to by an upstream entity, whose identity is itself represented by an upstream DID (uDID). The act of creating a dDID is an assertion, on the part of the upstream entity, of their confidence in the trustworthiness of the identifying information contained in the dDID document. In particular, it is an assertion that downstream entity is in sole possession of the private keys corresponding to the public keys found in the dDID document.</p>
+<p>In a dDID the <a href="https://www.w3.org/TR/did-core/#did-subject">DID subject</a> refers to the downstream entity and the <a href="https://www.w3.org/TR/did-core/#did-controller">DID controller</a> is the upstream entity that signs the dDID document, thereby attesting to its trustworthiness. The <code>controller</code> property in the dDID must therefore contain a string matching that of the <code>id</code> property in the uDID.</p>
+<p>The signature of controller is stored in the <a href="https://w3c-ccg.github.io/did-resolution/#output-documentmetadata">DID Document Metadata</a>.</p>
+<p>This signature represents an assertion by the upstream entity and therefore the public key with which the signature can be verified must be that contained in the <a href="https://www.w3.org/TR/did-core/#assertion"><code>assertionMethod</code></a> property of the uDID. That is, for verification purposes, the dDID is treated in exactly the same way as a Verifiable Credential (VC) issued by the upstream entity; the proof contained in the dDID document metadata conceptually makes the dDID into a credential in which the subject is the downstream entity.</p>
+<!-- <center><img src="assets/figs/dDID_anatomy.png" width="400px" /></center> -->
+<p><img alt="dDID Anatomy" src="../assets/figs/dDID_anatomy.svg" /></p>
+<p>Here the public key PKu is value associated with the <code>assertionMethod</code> property in the uDID (i.e. it's the public key used to verify assertions made by the upstream entity). The signature is on the dDID is just such an assertion. It is stored in the dDID Document Metadata and verified using PKu.</p>
+<p>Similarly, PKd is the value associated with the <code>assertionMethod</code> property in the dDID. It provides the verification method for further dDIDs and/or VCs issued by the downstream entity.</p>
+<h2 id="upstream-did-key-rotation">Upstream DID Key Rotation</h2>
+<p>When keys are rotated in an upstream DID, attestations that depend on the expiring keys must be reinstated using the new keys if the same network structure is to be preserved.</p>
+<p>These renewed attestations should be included in the same batch of DID operations as the uDID update operation itself, to avoid any interruption to the services provided by the Trustchain infrastructure.</p>
+<p>Attestations made with keys that are common to both the original and updated uDID need not be renewed, as there will still exist a verifiable chain of attestations via the new path. In this case the dDID will be older than the uDID, but the attestation remains valid because the chronological order in which upstream and downstream DIDs are published is unimportant; what matters is that the signature on the dDID can be verified using a key in the uDID.</p>
+<h2 id="root-did-key-rotation">Root DID Key Rotation</h2>
+<p>Root DID key rotation is more subtle than regular uDID key rotation (considered above) because here the chronological order of events does matter. An updated root DID will have a timestamp that differs from the generally accepted root event time and therefore, even if all downstream attestations are reinstated, every dDID verification attempt will fail.</p>
+<p>The solution is to slightly relax the condition for a root DID to be considered valid. It will be valid if <em>either</em>:</p>
+<ul>
+<li>its timestamp matches the known root event time, <em>or</em></li>
+<li>its chain of update (or recovery) operations can be traced back to a DID whose timestamp matches the root event time.</li>
+</ul>
+<h2 id="root-did-update-and-recovery-secrets">Root DID Update and Recovery Secrets</h2>
+<p>If the root DID update secret is compromised then an attacker could insert their own keys and/or remove the legitimate keys in an updated root DID document. The only defence against such an attack would be to use the recovery secret to recover the root DID (with a new update secret).</p>
+<p>If the root DID recovery secret is compromised then an attacker could acquire complete and irrevocable control over the contents of the root DID document. The only defence in that case would be for the genuine root entity to execute the recovery operation first, thereby introducing a new recovery secret. Otherwise the whole network must be abandoned.</p>
+<p>However, both of these risks can be reduced dramatically by including multiple secrets in the pre-image of the update and recovery commitments and then dividing those secrets among multiple parties. Any update or recovery operation would then require the cooporation of several different parties and therefore the compromise of any one (or small number) of the secrets would not result in a vulnerability.</p>
+<h2 id="constrained-ddids">Constrained dDIDs</h2>
+<p>This idea was inspired by our <a href="https://github.com/alan-turing-institute/trustchain/wiki/Trustchain%3A-Review-of-Web-PKI">analysis of the existing Web PKI</a> and in particular the problem of "<a href="https://datatracker.ietf.org/doc/html/draft-iab-web-pki-problems-01.txt#section-3.3">surprising certificates</a>".</p>
+<p>In the Web PKI context, a mitigation strategy against surprising certificates is for root Certification Authorities (CAs) to impose name constraints on the certificates that can be issued by their subordinate CAs. For instance, the subordinate may only be allowed to issue a certificate under a particular top-level domain. The mechanism for enforcing these constraints is via guidelines that encourage browser vendors to check for violations.</p>
+<p>Our aim, in the context of a decentralised PKI for digital identity, is to enforce constraints on the issuance of DIDs cryptographically, rather than merely encouraging software vendors to police them.</p>
+<p>The aim is to enable an upstream entity to issue a downstream DID to another (subordinate) entity that delegates permission for them to extend the chain of trust further by issuing their own dDIDs, but also imposes constraints on the nature (i.e the contents) of those dDIDs.</p>
+<p>The types of constraints imagined include:</p>
+<ul>
+<li>name constraints on service endpoint URIs (or other network addresses)</li>
+<li>constraints on allowed verification methods</li>
+<li>constraints on the existence (or otherwise) of particular DID data &amp; metadata parameters</li>
+<li>constraints on the types of VCs that can be issued.</li>
+</ul>
+<p>The proposed enforcement mechanism is via the <a href="https://www.w3.org/TR/did-core/#verification-methods">verification method</a> (e.g. public key) specified in the <code>assertionMethod</code> property of the constrained dDID issued to the subordinate entity.</p>
+<p>As explained <a href="#downstream-dids">above</a>, in the standard (unconstrained) case the <code>assertionMethod</code> property in the uDID is used to express the public key with which to verify the attestation signature on the dDID. Therefore, when permission to issue DIDs further downstream is delegated to a subordinate entity, it is the public key of the subordinate entity that belongs in the <code>assertionMethod</code> property.</p>
+<p>In the constrained case, however, the <code>assertionMethod</code> instead contains a 2-of-2 multi-signature public key that represents both the subordinate and the upstream (delegating) entity. This means that any lower-level dDID issued by the subordinate must be signed by <em>both</em> the subordinate <em>and</em> the superior entity. The subordinate is prevented from issuing their own dDIDs without first obtaining the signature of their uDID superior.</p>
+<p><img alt="Constrained dDID" src="../assets/figs/constrained_dDID.svg" /></p>
+<p>The key difference, versus the unconstrained case, is that the <code>assertionMethod</code> property in the Constrained dDID is a linear combination of the public keys of the upstream and subordinate entities (PKu and PKd). This aggregated public key can be used to verify a multi-signature produced by <em>both</em> entities (assuming here a Schnorr multi-signature scheme such as <a href="https://dl.acm.org/doi/abs/10.1007/978-3-030-84242-0_8">MuSig2</a>; there are others of course).</p>
+<p>When the subordinate entity wants to issue a dDID, it collects the information and constructs a candidate DID document but does not attempt to publish it (because, without the upsteam entity's signature, this new dDID is invalid). To get the upstream entity's signature, the subordinate makes a call the the upstream entity's Web API (using an endpoint specified in their own uDID), requesting their signature and passing the candidate DID document.</p>
+<p>The call to the upsteam entity's Web API returns a conditional signature that is valid if and only if the exact same DID document is subsequently signed by the subordinate entity. The API call provides the upstream entity with the opportunity to check that the constraint is not violated. The business logic behind the API endpoint takes the candidate DID document, checks the constraint, hashes the document, signs the hash and returns the conditional signature. If the candidate DID violates the constraint, an error is returned by the API.</p>
+<p>Assuming the constraints are respected, the subordinate entity now has a partially-signed hash of the candidate dDID document, and only needs to add its own signature to make it a valid dDID that can be published.</p>
+<p>Notice that the upstream entity does not need to be directly involved in the construction of the final dDID, except by exposing the Web API, because the logic for checking the constraint can be encoded and a conditional signature provided automatically that will only be valid if the final version of the dDID exactly matches that which was sent to the API.</p>
+<p>Also, the reference software client can include the API logic so the upstream entity need only specify the particular constraints they wish to impose on the subordinate at the time of creating their dDID, and the rest is automatic.</p>
+<p>One might ask: what is the point of the subordinate dDID in this scenario? Since a signature from the upstream entity is required anyway, why bother with the multisignature involving both the upstream and subordinate entities? The point is that the attestion as to the correctness of the information in the final dDID is being made by the subordinate, not the upstream entity. It is the subordinate that is responsible for collecting and verifying the information contained, and this should not be confused with (or made equivalent to) the case where the upstream entity issues its own dDIDs. In particular, we want to be able to revoke the subordinate's dDID (thereby automatically revoking any of <em>their</em> downstream DIDs) without affecting the status of the upstream entity's DID.</p>
+<p>While the above seems like it <em>might</em> work in practice, there are some <strong>open research questions</strong> associated with this idea, in particular:</p>
+<ul>
+<li>Is the Schnorr signature aggregation approach, assumed above, the best way to implement the multi-signatures required for this scheme, or are other cryptographic protocols (e.g. using conditional signatures) available that offer advantages?</li>
+<li>Is it possible to achieve a similar result without requiring an interactive signing protocol at all? That is, could cryptographic constraints be built into dDIDs at the point of creation, without requiring any further involvement from the upstream entity?</li>
+</ul>
+<h2 id="constrained-vc-issuance">Constrained VC Issuance</h2>
+<p>The mechanism outlined <a href="#constrained-ddids">above</a> for imposing constraints on the nature of the dDIDs that can be created by a subordinate entity could also be used to restrict the nature of the Verifiable Credentials that they can issue.</p>
+<p>To see this, observe that a dDID is itself a form of VC, and therefore constrained dDIDs are in fact a special case of constrained VC issuance.</p>
+<p>As a concrete example, suppose the upstream entity is a central bank and the subordinate is a commercial bank. Now suppose that an insider at the commercial bank is prepared to issue fraudulent VCs (for a fee) that attest to an individual having Legal Disability Status, which would entitle the individual to certain benefits.</p>
+<p>The commercial bank is a recognised by the central bank as a legitimate issuer of VCs pertaining to certain attributes, such as minimum age, employment status, creditworthiness etc., but can <em>not</em> legitimately attest to an individual's disability status.</p>
+<p>Constrained VC issuance refers to the idea that the dDID created by the upstream entity (the central bank) constrains the attributes that can be attested to in VCs issued by the subordinate entity (the commercial bank). Any VC that violates these constraints is referred to as <em>transgressive</em>.</p>
+<p>One way to impose this constraint would be to embed metadata in the dDID specifying which VC attributes can legitimately be attested to by the dDID subject. However, this would require the verifier's client software to faithfully check that metadata and reject a VC if it violated the given constraints, even if the signature on the VC and the trustchain of the dDID were valid. There is no way to guarantee that the client software would correctly perform this additional check.</p>
+<p>The constrained VC approach is much more robust. In this case, the VC must be signed by both the upstream and subordinate entities, giving the upstream entity an opportunity to check that the attribute constraints have not been violated. This makes it <em>impossible</em> for the subordinate to issue a transgressive VC.</p>
+<p>Because the check that the upstream entity performs, in order to verify that the candidate VC does not violate any of the desired constraints, is fully automated (requiring only a Web API call), this approach can scale to the case of VCs which are likely to be issued at a much higher frequency than dDIDs.</p>
+<!-- [TODO: check whether there is any mechanism in the DID or VC standards for achieving this end, i.e. for constraining the attributes that can be attested to by a DID subject.] -->
+
+<h2 id="rebasing">Rebasing</h2>
+<p>Suppose two independent root transactions are created by two separate user communities. Each then builds a tree of trust relationships branching out from their respective roots, in the form of chains of downstream DIDs.</p>
+<p>At some later date, there may be a mutual agreement that one community should assimilate the other, by enabling chains of trust from (part or all of) tree <span class="arithmatex">\(B\)</span> to be traced back to the root of tree <span class="arithmatex">\(A\)</span>.</p>
+<p>This can be achieved by simply creating a dDID on tree <span class="arithmatex">\(A\)</span> that duplicates an existing DID in tree <span class="arithmatex">\(B\)</span> (which may be the root of tree <span class="arithmatex">\(B\)</span>, but need not be). All DIDs on tree <span class="arithmatex">\(B\)</span> that are downstream of the duplicated DID are automatically included in tree <span class="arithmatex">\(A\)</span>, since there now exists a valid chain of trust to its root.</p>
+<p>We refer to this operation as <em>rebasing</em>, because it is somewhat similar to the rebase operation found in the Git version control system.</p>
+<p>The act of rebasing revokes (i.e. invalidates) the original DID on tree <span class="arithmatex">\(B\)</span>, because (according to the DID standard) the latest valid DID overrides any earlier ones. Note that this does <em>not</em> invalidate the DIDs that are downstream of the rebased node on tree <span class="arithmatex">\(B\)</span>, provided the same keys are included in the rebased DID.</p>
+<p>Since those dDIDs in tree <span class="arithmatex">\(B\)</span> existed before the rebasing operation was performed, the timestamps on a rebased trustchain will not necessarily follow reverse chronological order (back to the root) as would be expected in a regular chain. In itself this is not problematic, because the authenticity of the chain is assured by the validity of the chain of signatures, not by the downstream timestamps. However further assurance could be provided by attaching metadata to the rebased DID indicating that any chain involving it may legitimately include non-chronological timestamps.</p>
+<p>The option to rebase one root or branch onto another tree may be beneficial for adoption of the technology, as it enables different groups to begin using the system independently without leading to permanently parallel and disconnected systems.</p>
+<p>This feature also promotes one of the key benefits of decentralisation, namely permissionless access, since marginalised communities can establish their own roots of trust and make use of the technology without accepting or contributing to the possibility of long-term exclusion.</p>
+<h2 id="root-did-integration">Root DID Integration</h2>
+<p>Suppose (as in the <a href="#rebasing">Rebasing</a> section above) two independent root DIDs have been created by two separate user communities, each with its own network of trust relationships represented by chains of downstream DIDs.</p>
+<p>At some later date there may be a mutual agreement to fuse the two networks into a single one, but (unlike the case above) suppose that neither of the root entities is prepared to be subordinated by the other.</p>
+<p>In this situation the two networks can be integrated by publishing a new root DID, whose set of public keys is the union of the public keys from each of the original roots. Those two root DIDs are then updated to become downstream DIDs of the new root. In each case, the dDID attestation is made using the signing key from the original root, so it is clear that the original root entity is attesting to itself.</p>
+<p>Users on both networks would need to reconfigure the root event time on their Trustchain nodes to match the publication time of the new integrated root DID. Once this is done, all credentials that were previously issued will remain valid and will now be verifiable by participants on both networks.</p>
+<p>Here we have considered integrating two root DIDs, but the same approach works equally well for larger numbers.</p>
+<h2 id="interoperability-ddids">Interoperability dDIDs</h2>
+<p>The concept of an <em>Interoperability dDID</em> provides a means to support loosely-coupled federation across multiple, pre-existing digital ID systems in which Verifiable Credentials (VCs) are issued either by an identity provider itself, or by a recognised (subordinate) issuer.</p>
+<p>For simplicity, we consider the case of two national ID systems, administered by entities we refer to as Local and Remote. In the Trustchain model both entities are represented by DIDs, which are themselves downstream from some root DID. The root may be common to both or distinct (in which case Local and Remote occupy disjoint trust networks).</p>
+<p>Suppose Alice, a user who is registered in the Local system, has a credential issued by the Local ID provider, which she can use to prove certain individual attributes about herself. A verifier operating within the Local system will be able to verify the signature on Alice's credential by resolving the Local ID provider's DID document to retrieve their public key.</p>
+<p>Now suppose Alice travels to the country where the Remote entity operates the national ID system, and she wishes to use the same credential. As things stand this will not be possible, because verifiers will only accept credentials signed by the Remote entity (i.e. their own national ID provider), or a recognised subordinate thereof.</p>
+<p>Before the two systems can become interoperable some sort of "Trust Framework" must be established between the Local and Remote entities, including a formal agreement to recognise credentials issued by the foreign system. Such frameworks necessarily take into account a variety of considerations (legal, regulatory, political, etc.) which are outside the scope of any technical solution. However, there remains the technical question of how a formal policy agreement is brought into effect in a live digital ID system. This is where the interoperability dDID can play a role.</p>
+<p>A trust agreement between the Local and Remote ID providers is embodied in a new downstream DID, jointly signed by both entities. This <strong>interoperability dDID</strong>  represents a new combined entity, and the corresponding DID document includes the public keys already associated with each of the individual providers (in their own DID documents) for the purpose of VC issuance.</p>
+<p>As soon as the interoperability dDID is published, it is automatically downloaded and verified by users and verifiers in both systems.</p>
+<p>Now, when Alice presents her credential to the Remote verifier she also shares a reference to the interoperability dDID. The verifier resolves the corresponding DID document to obtain the public keys of the Local entity, with which they can verify the authenticity of Alice's credential. The verifier also checks the chain of signatures on the interoperability dDID and finds a valid chain leading to the DID of the Remote ID provider, which is already recognised (and can be re-verified back to the trusted root if necessary).</p>
+<p>Through this mechanism, credentials previously issued under either the Local or Remote system become instantly verifiable in the other system as soon as the interoperability dDID is published.</p>
+<p>By selecting which keys to include in the interoperability dDID, the Local and Remote ID providers can be selective about which sets of credentials should be included within the terms of the trust agreement.</p>
+<p>In this example we have considered federation across two pre-existing digital ID systems, but the same mechanism could be applied to enable interoperability between larger groups. Provided the interoperability dDID is signed by all participating entities, and contains the relevant keys from each, it scales to groups of any size.</p>
+<p>In order to achieve a similar arrangement, without the means of an open &amp; shared public key infrastructure, bilateral or multilateral agreements between identity providers would need to be securely communicated to all users and relying parties, including updating lists of trusted public keys on their client devices. In that scenario device updates would become an attack vector and, in the absence of a universally accessible &amp; verifiable "ground truth", the shared state across different participants in the system could easily become unsynchronised.</p>
+<!-- [TODO: consider the (more complicated) case in which the VC is issued not by the ID provider itself but by a subordinate entity. ] -->
+
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../faq/" class="md-footer__link md-footer__link--prev" aria-label="Previous: FAQ">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                FAQ
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../ion/" class="md-footer__link md-footer__link--next" aria-label="Next: ION">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                ION
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>
