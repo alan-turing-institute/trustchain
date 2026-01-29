@@ -84,10 +84,20 @@ cd trustchain
     echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
-The next step is to build the Trustchain software from its source code (this may take a minute or two):
-```console
-cargo build
-```
+=== "Linux"
+    The next step is to build the Trustchain software from its source code. It depends on the OpenSSL library, so let's make sure we have that installed first:
+    ```console
+    sudo apt install openssl && sudo apt install libssl-dev && sudo apt install pkg-config
+    ```
+    Now we can build Trustchain (this may take a minute or two):
+    ```console
+    cargo build
+    ```
+=== "macOS"
+    The next step is to build the Trustchain software from its source code (this may take a minute or two):
+    ```console
+    cargo build
+    ```
 
 Finally, we install the Trustchain command line interface (CLI):
 ```console

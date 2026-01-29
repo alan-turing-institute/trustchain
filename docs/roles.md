@@ -1,8 +1,8 @@
 # User Roles
 
-This page discusses the different roles that exist within a Trustchain user group. A user's role will determine which components of the Trustchain software suite they make use of, and this relationship is summarised the following table:
+This page discusses the different roles that exist within a Trustchain user group. A user's role will determine which components of the Trustchain software suite they make use of, as summarised in the following table:
 
-&nbsp;
+<br>
 
 <div class="center-table" markdown>
 
