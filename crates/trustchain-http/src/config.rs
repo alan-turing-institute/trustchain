@@ -16,27 +16,26 @@ const DEFAULT_PORT: u16 = 8081;
 /// HTTP configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HTTPConfig {
-    /// Host address for server.
-    /// machine running emulator.
-    pub host: IpAddr,
-    /// Hostname display in QR codes. For example, if using local server with an Android emulator
-    /// `10.0.2.2` refers to `127.0.0.1` of machine
-    /// running emulator.
+    /// Hostname displayed in generated QR codes, e.g. for credential offers.
+    /// If using a local server with an Android emulator for Trustchain Mobile development, the
+    /// hostname `10.0.2.2` refers to `127.0.0.1` (localhost) of the machine running the emulator.
     pub host_display: String,
-    /// Port for server
+    /// Host address for server.
+    pub host: IpAddr,
+    /// Port for server.
     pub port: u16,
-    /// ION host
+    /// ION host.
     pub ion_host: IpAddr,
-    /// ION port
+    /// ION port.
     pub ion_port: u16,
-    /// Optional server DID if issuing or verifying
+    /// Optional server DID if attesting dDIDs or verifying credentials/presentations.
     pub server_did: Option<String>,
-    /// Flag indicating whether server uses https
+    /// Flag indicating whether server uses https.
     pub https: bool,
-    /// Path containing certificate and key necessary for https
+    /// Path containing certificate and key necessary for https.
     pub https_path: Option<String>,
     /// Display downstream DIDs (instead of URLs) in QR codes for verifiable endpoint retrieval
-    /// (`None` by default and unwrapped as `true`)
+    /// (`None` by default and unwrapped as `true`).
     pub verifiable_endpoints: Option<bool>,
     /// Root event time for verifier.
     pub root_event_time: Option<Timestamp>,
