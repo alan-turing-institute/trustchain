@@ -144,27 +144,87 @@ Then open your copy of `trustchain_config.toml` for editing:
 ```console
 nano $TRUSTCHAIN_CONFIG
 ```
-and edit the following configuration parameters:
+This file is organised into different sections, separated by headings inside square brackets. At this point, we only need to consider the `[ion]` and `[cli]` sections.
 
-- In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
-- If you intend to act as an issuer of digital credentials, and you already have you own DID for this purpose, add it in the `[http]` section to the `issuer_did` parameter value. Otherwise, the `[http]` section can be ignored.
-- If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format, e.g.:
-```{ .text .no-copy }
-root_event_time = 1697213008
+Edit the following configuration parameters:
+
+- In the `[ion]` section, set the `mongo_database_ion_core` parameter to either `"ion-mainnet-core"` or `"ion-testnet-core"`, depending on the Bitcoin network in use (see the example below). This parameter must match the `databaseName` parameter in the ION Core config file which can be viewed by running the following command:
+```console
+cat $ION_CORE_CONFIG_FILE_PATH
 ```
+- Also in the `[ion]` section, set the address of your Bitcoin node in the `bitcoin_connection_string` parameter. If Bitcoin is running locally, set this to localhost and choose the correct port number for the particular Bitcoin network in use (see the example below).
+- Also in the `[ion]` section, set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
+- If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format.
+
+After completing the above steps, the `trustchain_config.toml` file should look similar to the following example (choose the correct tab for your [Bitcoin network configuration](ion.md#bitcoin-mainnet-vs-testnet)):
+
+=== "Mainnet"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-mainnet-core"
+
+    bitcoin_connection_string = "http://localhost:8332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1697213008
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
+
+=== "Testnet4"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-testnet-core"
+
+    bitcoin_connection_string = "http://localhost:48332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1769521645
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
+
+=== "Testnet3 (Deprecated)"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-testnet-core"
+
+    bitcoin_connection_string = "http://localhost:18332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1697213008
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
 
 !!! warning "Root event time"
 
     The "root event time" refers to the exact time at which the root DID was published. It is imperative that this configuration parameter is entered correctly, because it identifies the root public key certificate.
 
+    The value given in the above example is for illustration only.
+
     If you are not sure about the correct root event time for your network, or you are intending to create your own root DID, leave this parameter unset for now.
 
-    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar date (the "root event date") plus a short confirmation code.
+    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar date, the "root event date", plus a short confirmation code (which is the format used in the Trustchain Mobile app).
 
 ## Using Trustchain
 
-Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, issuance, attestation and verification. It can also be used to issue and verify digital credentials.
+Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, creation, attestation and verification. It can also be used to sign and verify digital credentials.
 
 Instructions on how to use the Trustchain CLI are provided on the [Usage page](usage.md).
+
+If you also want to be able to issue verifiable credentials to users of the Trustchain Mobile credential wallet app, check out [this page](http-server.md) for instructions on how to configure and run the built-in Trustchain HTTP server.
 
 &nbsp;
