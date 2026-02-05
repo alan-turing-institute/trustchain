@@ -144,10 +144,16 @@ Then open your copy of `trustchain_config.toml` for editing:
 ```console
 nano $TRUSTCHAIN_CONFIG
 ```
-and edit the following configuration parameters:
+This file is organised into different sections, separated by headings inside square brackets. At this point, we only need to consider the `[ion]` and `[cli]` sections.
 
-- In the `[ion]` section, set the address of your Bitcoin node in the `bitcoin_connection_string` parameter. If Bitcoin is running locally, set this to localhost and choose the correct port number for the particular Bitcoin network in use (see the example below).
-- Also set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
+Edit the following configuration parameters:
+
+- In the `[ion]` section, set the `mongo_database_ion_core` parameter to either `"ion-mainnet-core"` or `"ion-testnet-core"`, depending on the Bitcoin network in use (see the example below). This parameter must match the `databaseName` parameter in the ION Core config file which can be viewed by running the following command:
+```console
+cat $ION_CORE_CONFIG_FILE_PATH
+```
+- Also in the `[ion]` section, set the address of your Bitcoin node in the `bitcoin_connection_string` parameter. If Bitcoin is running locally, set this to localhost and choose the correct port number for the particular Bitcoin network in use (see the example below).
+- Also in the `[ion]`section, set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
 - If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format.
 
 After completing the above steps, the `trustchain_config.toml` should look similar to the following example (choose the correct tab for your [Bitcoin network configuration](ion.md#bitcoin-mainnet-vs-testnet)):
@@ -157,7 +163,7 @@ After completing the above steps, the `trustchain_config.toml` should look simil
     ```bash
     [ion]
     mongo_connection_string = "mongodb://localhost:27017/"
-    mongo_database_ion_core = "ion-testnet-core"
+    mongo_database_ion_core = "ion-mainnet-core"
 
     bitcoin_connection_string = "http://localhost:8332"
     bitcoin_rpc_username = "admin"
@@ -215,8 +221,10 @@ After completing the above steps, the `trustchain_config.toml` should look simil
 
 ## Using Trustchain
 
-Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, issuance, attestation and verification. It can also be used to issue and verify digital credentials.
+Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, creation, attestation and verification. It can also be used to sign and verify digital credentials.
 
 Instructions on how to use the Trustchain CLI are provided on the [Usage page](usage.md).
+
+If you also want to be able to issue verifiable credentials to users of the Trustchain Mobile credential wallet app, check out [this page](http-server.md) for instructions on how to configure and run the built-in Trustchain HTTP server.
 
 &nbsp;

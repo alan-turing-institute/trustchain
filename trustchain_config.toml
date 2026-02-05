@@ -2,9 +2,14 @@
 mongo_connection_string = "mongodb://localhost:27017/"
 mongo_database_ion_core = "ion-testnet-core"
 
-bitcoin_connection_string = "http://localhost:8332"
+bitcoin_connection_string = "http://localhost:48332"
 bitcoin_rpc_username = "<YOUR_BITCOIN_RPC_USERNAME>"
 bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+[cli]
+root_event_time = 0 # SET YOUR ROOT EVENT TIME HERE
+ion_endpoint.host = "127.0.0.1"
+ion_endpoint.port = 3000
 
 [http]
 root_event_time = 0 # SET YOUR ROOT EVENT TIME HERE
@@ -16,8 +21,3 @@ https_path = "~/.trustchain/http/self_signed_certs"
 ion_host = "127.0.0.1"
 ion_port = 3000
 server_did = "<YOUR_SERVER_DID>"
-
-[cli]
-root_event_time = 0 # SET YOUR ROOT EVENT TIME HERE
-ion_endpoint.host = "127.0.0.1"
-ion_endpoint.port = 3000
