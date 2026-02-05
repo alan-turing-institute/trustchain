@@ -59,9 +59,8 @@ If your Trustchain node is running on a virtual machine (VM) in the cloud, navig
 
 If your node is running on a computer in your local network, the network configuration steps are as follows:
 
-- On your router, configure the firewall to allow connections to the port configured for the Trustchain server.
-- On your router, configure port forwarding (for the same port) to the IP address of your Trustchain node on the local network. To enable this, you may want to assign a static local IP address to your Trustchain node.
-- If there is a firewall running on your Trustchain node, ensure it is configured to allow connections to the relevant port.
+- On your router, configure the firewall to allow connections to the port configured for the Trustchain server, and configure port forwarding (for the same port) to the IP address of your Trustchain node on the local network. To enable this, you may want to assign a static local IP address to your Trustchain node.
+- If there is a firewall running on your Trustchain node, ensure it is configured to allow inbound connections to the relevant port.
 
 ### HTTPS configuration
 

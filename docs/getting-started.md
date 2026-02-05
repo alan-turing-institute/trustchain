@@ -153,10 +153,10 @@ Edit the following configuration parameters:
 cat $ION_CORE_CONFIG_FILE_PATH
 ```
 - Also in the `[ion]` section, set the address of your Bitcoin node in the `bitcoin_connection_string` parameter. If Bitcoin is running locally, set this to localhost and choose the correct port number for the particular Bitcoin network in use (see the example below).
-- Also in the `[ion]`section, set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
+- Also in the `[ion]` section, set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
 - If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format.
 
-After completing the above steps, the `trustchain_config.toml` should look similar to the following example (choose the correct tab for your [Bitcoin network configuration](ion.md#bitcoin-mainnet-vs-testnet)):
+After completing the above steps, the `trustchain_config.toml` file should look similar to the following example (choose the correct tab for your [Bitcoin network configuration](ion.md#bitcoin-mainnet-vs-testnet)):
 
 === "Mainnet"
 
@@ -213,7 +213,7 @@ After completing the above steps, the `trustchain_config.toml` should look simil
 
     The "root event time" refers to the exact time at which the root DID was published. It is imperative that this configuration parameter is entered correctly, because it identifies the root public key certificate.
 
-    The values given in the above example are for illustration only.
+    The value given in the above example is for illustration only.
 
     If you are not sure about the correct root event time for your network, or you are intending to create your own root DID, leave this parameter unset for now.
 
