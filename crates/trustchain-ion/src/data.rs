@@ -18,7 +18,7 @@ pub fn sample_did(network: &Network) -> Result<String, TrustchainBitcoinError> {
         Network::Bitcoin => Ok(SAMPLE_DID_MAINNET.to_string()),
         Network::Testnet => Ok(SAMPLE_DID_TESTNET3.to_string()),
         Network::Testnet4 => Ok(SAMPLE_DID_TESTNET4.to_string()),
-        _ => Err(TrustchainBitcoinError::UnsupportedNetwork(network.clone())),
+        _ => Err(TrustchainBitcoinError::UnsupportedNetwork(*network)),
     }
 }
 
