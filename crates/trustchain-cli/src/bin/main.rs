@@ -132,7 +132,7 @@ fn cli() -> Command {
         )
         .subcommand(
             Command::new("cr")
-                .about("Challenge-response functionality for attestation challenge response process (identity and content challenge-response).")
+                .about("Challenge-response functionality for downstream DID attestation.")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .allow_external_subcommands(true)
