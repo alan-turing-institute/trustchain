@@ -60,6 +60,30 @@ Verifiable timestamping plays an important role in the design of Trustchain by e
 
     Verifiers can therefore be certain that they have received all revocation notifications up to a given time.
 
+### Q: Could Trustchain be implemented on a proof-of-stake blockchain, such as Ethereum, instead of Bitcoin?
+
+No, the Trustchain security model depends specifically on proof-of-work because it enables a timestamp verification mechanism that does not require any prior knowledge on the part of the verifier (as explained in [this technical note](technical-notes.md#independently-verifiable-timestamping)). This enables any participant to confirm that the root DID was published on a particular date, which is how they can be certain it is genuine.
+
+In a proof-of-stake system, since there is no proof-of-work, the only verification mechanism available is the digital signature. Evidently, digital signatures are not suitable for sharing root public keys because another public key would be needed in advance, in order to verify the signature on the root certificate. Logically then, proof-of-stake cannot provide a mechanism for sharing a root public key.
+
+In particular, proof-of-stake does not enable independently verifiable timestamping. To see this, let us consider how the security of Trustchain would be affected if proof-of-work were to be replaced by proof-of-stake.
+
+Suppose the hash of a root DID were embedded in an Ethereum transaction instead of a Bitcoin transaction. Anyone running an Ethereum full node could verify that the transaction was included in a particular block, and they could read the timestamp on that block.
+
+But how can they be sure that the timestamp is accurate and the block was indeed published on the date claimed?
+
+They can verify that the block is contained in a proof-of-stake chain that meets the requirements specified by the Ethereum protocol. But how costly would it be for an attacker to produce a fraudulent chain which still meets these requirements?
+
+Since the protocol demands no computational work, the answer is that an attacker could very cheaply produce an alternative data structure that still constitutes a valid proof-of-stake chain. The only requirement is that it must contain a sequence of transaction data with appropriate digital signatures to conform to the Ethereum protocol. But digital signatures can be produced at essentially zero cost.
+
+To dissuade this sort of unwanted behaviour, the Ethereum protocol imposes a financial penalty on any participant that proposes multiple alternative chains (a measure known as "slashing"). However, this sanction can only be applied if the attacker has units of Ether (the ETH token) staked at the time the attack takes place. Therefore long-range attacks, after the attacker has withdrawn their staked Ether, are essentially costless.
+
+In this scenario the Trustchain user would have no way of verifying that the chain (and the timestamp) they are observing is genuine. It could be the original chain that was constructed at regular intervals over the preceding months and years, or it could be a new chain containing deceptive timestamps that *appear* to date back years. There is no way for the verifier to reliably and independently distinguish between these two possibilities.
+
+In the case of proof-of-work, the situation is very different. The attacker would need to redo all of the computational work that has been done by the network since the timestamp in question. At the time of writing (April 2025), the Bitcoin network continuously computes around $8\times10^{20}$ SHA-256 hash digests every second, which means the blockchain data structure itself is extremely (and verifiably) costly to produce. Therefore, while theoretically possible, an attack which rewrites the history of the Bitcoin blockchain is infeasible, particularly over timeframes of several months or years.
+
+For an in-depth analysis of the different security guarantees afforded by proof-of-work versus proof-of-stake, see Andrew Poelstra's 2015 article [On Stake and Consensus](https://cdn.nakamotoinstitute.org/docs/on-stake-and-consensus.pdf).
+
 ### Q: Isn't Bitcoin wasteful? Does Trustchain contribute to Bitcoin's energy consumption?
 
 The Bitcoin protocol employs the proof of work (PoW) mechanism to achieve consensus across a peer-to-peer network regarding the order of monetary transactions. This enables it to solve the [double-spending problem](https://en.wikipedia.org/wiki/Double-spending) without the need for any central authority. The result is a signal that is unforgeably costly to produce and can be independently verified by anybody.

@@ -5,6 +5,7 @@ nav:
     - roles.md
     - getting-started.md
     - usage.md
+    - http-server.md
     # - deployment.md
     - faq.md
     # - glossary.md

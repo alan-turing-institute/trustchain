@@ -10,11 +10,11 @@ Trustchain can be installed on all major operating systems. The steps below have
 
     Commands will be presented in code blocks like this one:
     ```console
-    $ echo "Hello World"
+    echo "Hello World"
     ```
-    The initial prompt character `$` indicates that this is a command that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
+    These are commands that you should copy and paste into your Terminal, followed by the ++return++ key to execute the command.
 
-    To copy such commands to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block. Only the command itself will be copied (the prompt character will be omitted), so it can be pasted straight into the Terminal.
+    To copy to the clipboard, click on the :material-content-copy: icon at the right-hand side of the code block.
 
 ## Environment Variables
 
@@ -26,11 +26,11 @@ Environment variables are defined in your Terminal configuration file. Since we 
 
 To do this, run the following command:
 ```console
-$ echo "export SHELL_CONFIG=" $(find ~/.*shrc -maxdepth 0 | head -n 1) | sed 's/= /=/g' >> $(find ~/.*shrc -maxdepth 0 | head -n 1)
+SHELL_CONFIG=$(find ~/.*shrc -maxdepth 0 | head -n 1) && echo "export SHELL_CONFIG=$SHELL_CONFIG" >> $SHELL_CONFIG
 ```
-Then close and reopen the Terminal window that you're working in, so that the change takes effect. Now check that the new environment variable exists:
+Now check that the new environment variable exists:
 ```console
-$ echo $SHELL_CONFIG
+echo $SHELL_CONFIG
 ```
 This command should output the path to your Terminal configuration file. From now on, whenever we want to refer to that file we will be able to use the `SHELL_CONFIG` environment variable.
 
@@ -38,7 +38,7 @@ This command should output the path to your Terminal configuration file. From no
 
     Now that we have defined the `SHELL_CONFIG` environment variable (above), we can use it to conveniently create new environment variables. Whenever we need to define a new variable, you will be given a command similar to the following (don't run this one, it's just an example):
     ```console
-    $ echo "export NAME=VALUE" >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo "export NAME=VALUE" >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
     This command adds a new environment variable named `NAME` with value `VALUE` to your Terminal config file, and then reads the updated file so the change takes effect inside the current Terminal session.
 
@@ -54,54 +54,55 @@ Instructions for installing the Rust language can be found [here](https://www.ru
 
 On Linux or macOS, the recommended method is to run the following command:
 ```console
-$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 Then check the installation was successful by running:
 ```console
-$ rustc --version
+rustc --version
 ```
 
 ### Step 3. Install Trustchain
 
-Choose a directory in which you want to store the Trustchain software and change to that directory using the command `$ cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
+Choose a directory in which you want to store the Trustchain software and change to that directory using the command `cd <DIRECTORY_NAME>`. For instance, to change to your home directory run the `cd` command without any arguments:
 ```console
-$ cd
+cd
 ```
 Now clone the Trustchain code repository from GitHub:
 ```console
-$ git clone https://github.com/alan-turing-institute/trustchain.git
+git clone https://github.com/alan-turing-institute/trustchain.git
 ```
 and then enter the newly-created `trustchain` subfolder:
 ```console
-$ cd trustchain
+cd trustchain
 ```
 
 !!! tip "Create the `TRUSTCHAIN_REPO` environment variable"
 
     Since we will need to refer to this folder in future, let's create an [environment variable](#environment-variables) containing its file path:
     ```console
-    $ echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo "export TRUSTCHAIN_REPO=" $(pwd) | sed 's/= /=/g' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
-The next step is to build the Trustchain software from its source code (this may take a minute or two):
-```console
-$ cargo build
-```
+=== "Linux"
+    The next step is to build the Trustchain software from its source code. It depends on the OpenSSL library, so let's make sure we have that installed first:
+    ```console
+    sudo apt install openssl && sudo apt install libssl-dev && sudo apt install pkg-config
+    ```
+    Now we can build Trustchain (this may take a minute or two):
+    ```console
+    cargo build
+    ```
+=== "macOS"
+    The next step is to build the Trustchain software from its source code (this may take a minute or two):
+    ```console
+    cargo build
+    ```
 
 Finally, we install the Trustchain command line interface (CLI):
 ```console
-$ cargo install --path trustchain-cli
+cargo install --path crates/trustchain-cli
 ```
-
-!!! info "Trustchain HTTP server (this step is optional)"
-
-    Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials via an HTTP API. It can also respond to requests made by the Trustchain mobile app.
-
-    To install the Trustchain HTTP server, run:
-    ```console
-    $ cargo install --path trustchain-http
-    ```
 
 ## Configuration
 
@@ -112,12 +113,12 @@ Trustchain uses a data directory to store files related to its operation. Here w
 !!! tip "Create the `TRUSTCHAIN_DATA` environment variable"
 
     ```console
-    $ echo 'export TRUSTCHAIN_DATA=~/.trustchain/' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo 'export TRUSTCHAIN_DATA=~/.trustchain/' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 Now create the `TRUSTCHAIN_DATA` directory on your file system:
 ```console
-$ mkdir $TRUSTCHAIN_DATA
+mkdir $TRUSTCHAIN_DATA
 ```
 
 ### Trustchain configuration file
@@ -127,43 +128,103 @@ Configuration parameters relating to Trustchain are stored in a file named `trus
 !!! tip "Create the `TRUSTCHAIN_CONFIG` environment variable"
 
     ```console
-    $ echo 'export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"trustchain_config.toml' >> $SHELL_CONFIG; source $SHELL_CONFIG
+    echo 'export TRUSTCHAIN_CONFIG="$TRUSTCHAIN_DATA"trustchain_config.toml' >> $SHELL_CONFIG; source $SHELL_CONFIG
     ```
 
 Copy the template configuration file from the Trustchain repository to the data directory (unless it already exists):
 ```console
-$ cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
+cp -n $TRUSTCHAIN_REPO/trustchain_config.toml $TRUSTCHAIN_CONFIG
 ```
 and set appropriate user permissions:
 ```console
-$ chmod 640 $TRUSTCHAIN_CONFIG
+chmod 640 $TRUSTCHAIN_CONFIG
 ```
 
-Then open your copy of `trustchain_config.toml` in a text editor:
+Then open your copy of `trustchain_config.toml` for editing:
 ```console
-$ open $TRUSTCHAIN_CONFIG
+nano $TRUSTCHAIN_CONFIG
 ```
-and edit the following configuration parameters:
+This file is organised into different sections, separated by headings inside square brackets. At this point, we only need to consider the `[ion]` and `[cli]` sections.
 
-- In the `[ion]` section, add the `bitcoin_rpc_username` and `bitcoin_rpc_password` that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
-- If you intend to act as an issuer of digital credentials, and you already have you own DID for this purpose, add it in the `[http]` section to the `issuer_did` parameter value. Otherwise, the `[http]` section can be ignored.
-- If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format, e.g.:
+Edit the following configuration parameters:
+
+- In the `[ion]` section, set the `mongo_database_ion_core` parameter to either `"ion-mainnet-core"` or `"ion-testnet-core"`, depending on the Bitcoin network in use (see the example below). This parameter must match the `databaseName` parameter in the ION Core config file which can be viewed by running the following command:
+```console
+cat $ION_CORE_CONFIG_FILE_PATH
 ```
-root_event_time = 1697213008
-```
+- Also in the `[ion]` section, set the address of your Bitcoin node in the `bitcoin_connection_string` parameter. If Bitcoin is running locally, set this to localhost and choose the correct port number for the particular Bitcoin network in use (see the example below).
+- Also in the `[ion]` section, set the `bitcoin_rpc_username` and `bitcoin_rpc_password` parameters that were chosen when you configured the [Bitcoin CLI](ion.md#bitcoin-cli).
+- If you know the root event time for your DID network, add it in the `[cli]` section to the `root_event_time` parameter value. This must be an integer in Unix time format.
+
+After completing the above steps, the `trustchain_config.toml` file should look similar to the following example (choose the correct tab for your [Bitcoin network configuration](ion.md#bitcoin-mainnet-vs-testnet)):
+
+=== "Mainnet"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-mainnet-core"
+
+    bitcoin_connection_string = "http://localhost:8332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1697213008
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
+
+=== "Testnet4"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-testnet-core"
+
+    bitcoin_connection_string = "http://localhost:48332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1769521645
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
+
+=== "Testnet3 (Deprecated)"
+
+    ```bash
+    [ion]
+    mongo_connection_string = "mongodb://localhost:27017/"
+    mongo_database_ion_core = "ion-testnet-core"
+
+    bitcoin_connection_string = "http://localhost:18332"
+    bitcoin_rpc_username = "admin"
+    bitcoin_rpc_password = "<YOUR_BITCOIN_RPC_PASSWORD>"
+
+    [cli]
+    root_event_time = 1697213008
+    ion_endpoint.host = "127.0.0.1"
+    ion_endpoint.port = 3000
+    ```
 
 !!! warning "Root event time"
 
     The "root event time" refers to the exact time at which the root DID was published. It is imperative that this configuration parameter is entered correctly, because it identifies the root public key certificate.
 
+    The value given in the above example is for illustration only.
+
     If you are not sure about the correct root event time for your network, or you are intending to create your own root DID, leave this parameter unset for now.
 
-    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar date (the "root event date") plus a short confirmation code.
+    In future versions of Trustchain, this Unix time parameter will be replaced by a calendar date, the "root event date", plus a short confirmation code (which is the format used in the Trustchain Mobile app).
 
 ## Using Trustchain
 
-Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, issuance, attestation and verification. It can also be used to issue and verify digital credentials.
+Trustchain is controlled via its command line interface (CLI). Supported operations include DID resolution, creation, attestation and verification. It can also be used to sign and verify digital credentials.
 
 Instructions on how to use the Trustchain CLI are provided on the [Usage page](usage.md).
+
+If you also want to be able to issue verifiable credentials to users of the Trustchain Mobile credential wallet app, check out [this page](http-server.md) for instructions on how to configure and run the built-in Trustchain HTTP server.
 
 &nbsp;

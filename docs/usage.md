@@ -13,12 +13,12 @@ Depending on your role within the network of Trustchain users you may need to pe
 ## Trustchain CLI
 
 To invoke the Trustchain CLI, open a Terminal and run this command:
-``` console
-$ trustchain-cli
+```console
+trustchain-cli
 ```
 You should see a list of available commands and some usage hints.
 
-If instead you get an error that `trustchain-cli` command is not found, make sure you have followed all of the installation steps on the [Getting Started](getting-started.md) page.
+If instead you get an error that the `trustchain-cli` command is not found, make sure you have followed all of the installation steps on the [Getting Started](getting-started.md) page.
 
 The CLI is organised into a set of subcommands for different types of operation:
 
@@ -27,21 +27,22 @@ The CLI is organised into a set of subcommands for different types of operation:
 | `did`         | DID functionality: create, attest, resolve, verify.   |
 | `vc`          | Verifiable credential functionality: sign and verify. |
 | `data`        | Data provenance functionality: sign and verify.       |
+| `cr`          | Challenge-response functionality for dDID issuance.   |
 
 To get help with a particular subcommand, use the `--help` flag (or `-h` for short). For example, to get help with the CLI commands relating to DIDs:
 ```console
-$ trustchain-cli did --help
+trustchain-cli did --help
 ```
 
 ## DID Resolution
 
 DID Resolution is a process defined in the [W3C standard](https://www.w3.org/TR/did-core/#did-resolution) for Decentralised Identifiers (DIDs).
 
-It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity referred to by the DID.
+It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity that is the DID subject. DID document metadata is also returned.
 
 To resolve a DID using the Trustchain CLI, execute this command replacing `<DID>` with the DID of interest:
 ```console
-$ trustchain-cli did resolve --did <DID>
+trustchain-cli did resolve --did <DID>
 ```
 
 If the DID is found, the complete DID document (and document metadata) will be printed to the terminal.
@@ -52,32 +53,45 @@ If the DID is found, the complete DID document (and document metadata) will be p
 
         To test that Trustchain and ION are working correctly, try resolving this example DID:
         ```console
-        $ trustchain-cli did resolve --did did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w
+        trustchain-cli did resolve --did did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w
         ```
 
+=== "Testnet4"
 
-=== "Testnet"
-
-    !!! example "Example: DID resolution on Testnet"
+    !!! example "Example: DID resolution on Testnet4"
 
         To test that Trustchain and ION are working correctly, try resolving this example DID:
         ```console
-        $ trustchain-cli did resolve --did did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw
+        trustchain-cli did resolve --did did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w
+        ```
+
+=== "Testnet3 (Deprecated)"
+
+    !!! example "Example: DID resolution on Testnet3"
+
+        To test that Trustchain and ION are working correctly, try resolving this example DID:
+        ```console
+        trustchain-cli did resolve --did did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw
         ```
 
 ## DID Issuance
 
-With the Trustchain CLI, you can create and publish your own Decentralised Identifiers. This process must be carried out by the DID subject, that is, the legal entity to whom the DID will refer.
+With the Trustchain CLI, you can create and publish your own Decentralised Identifiers. This process must be carried out by the DID subject because it involves generating new public-private key pairs.
 
 #### DID document content
 
-Use the template below to create a fragment that will be included in your new DID document. This fragment may include either, or both, of the `services` in the template. Services are part of the W3C DID specification. A service is an endpoint (URL)
+Use the template below to create a JSON object that will be included in your new DID document. This JSON object may include either or both of the `services` in the template.
 
-The first service has type `Identity` and is used to identify the subject of the DID by their Web domain.
+Services are part of the W3C [DID specification](https://www.w3.org/TR/did-1.0/#services). They are used in DID documents to express ways of communicating with the DID subject via a service endpoint (URL), and can relate to any type of service the DID subject wants to advertise.
 
-The second services has type `CredentialEndpoint`. Include this service
+In the template below:
 
-Using a text editor, make a copy of the following template, remove any services that you do not wish to include in your DID, and then save the file.
+ - the first service has type `Identity` and is used to identify the DID subject by their Web domain,
+ - the second service has type `CredentialEndpoint` and can be used by credential issuing authorities to advertise their issuance endpoint (URL).
+
+Other services may also be included, at the DID subject's discretion.
+
+Using a text editor, make a copy of the following template and modify it so it contains the services and endpoints that you wish to include in your DID, then save the file.
 
 The file can be saved anywhere, but we recommend storing it in a directory named `doc_states` inside the `TRUSTCHAIN_DATA` directory. That way it will be easy to find later, when you use it to create your DID document.
 
@@ -100,43 +114,42 @@ The file can be saved anywhere, but we recommend storing it in a directory named
 
 #### Create the DID
 
-Having defined the content of the DID document, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing `<DID_CONTENT_FILE>` with the path to the DID document content file (from the previous step):
+Having defined the document content, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing `<DID_CONTENT_FILE>` with the path to the DID document content file (from the previous step):
 ```console
-$ trustchain-cli did create --file_path <DID_CONTENT_FILE>
+trustchain-cli did create --file_path <DID_CONTENT_FILE>
 ```
 
 !!! example "Example: DID creation"
 
     Suppose you named your DID document content file `did_content.json` and saved it in the folder `$TRUSTCHAIN_DATA/doc_states/`. Then you would create the DID with the following command:
     ```console
-    $ trustchain-cli did create --file_path $TRUSTCHAIN_DATA/doc_states/did_content.json
+    trustchain-cli did create --file_path $TRUSTCHAIN_DATA/doc_states/did_content.json
     ```
 
 The `create` command prints the new DID in the terminal window.
 
 It also creates a new file inside the folder `$TRUSTCHAIN_DATA/operations/`. To see the contents of this file, replace `<DID>` with the newly-created DID in the following command:
 ```console
-$ cat $TRUSTCHAIN_DATA/operations/create_operation_<DID>.json
+cat $TRUSTCHAIN_DATA/operations/create_operation_<DID>.json
 ```
 
-Inside this file you will be able to see the services copied from the DID document content file (previous step).
+Inside this file you will be able to see the services inserted from the DID document content file.
 
 You will also see a public key of type `JsonWebSignature2020`. This public key was generated automatically by the Trustchain CLI and inserted into the file, so it will be part of the published DID document content.
 
-The counterpart private key was saved at `$TRUSTCHAIN_DATA/key_manager/` in a subfolder with the same name as the DID. This private key will enable the DID subject to perform signing operations, such as attesting to downsteam DIDs or digital credentials. Anyone will be able to verify those digital signatures by obtaining the public key from the published DID document.
+The counterpart private key was saved at `$TRUSTCHAIN_DATA/key_manager/` in a subfolder with the same name as the DID. This private key will enable the DID subject to perform signing operations, such as attesting to downsteam DIDs or digital credentials. Anyone will be able to verify those digital signatures by obtaining the corresponding public key from the published DID document.
 
-In fact, four private key were generated by the CLI when the DID was created. All are contained in teh same subfolder which will now contain the following files:
+In fact, three private key were generated by the CLI when the DID was created. All are contained in the same subfolder which will now contain the following files:
 
 | Filename    | Description       |
 | ----------------------- | ----------------- |
 | `signing_key.json`      | Private key counterpart to the public key in the DID document. |
-| `update_key.json`       | Private key required to make the next update the DID document. |
-| `next_update_key.json`  | Private key required to make the next-but-one update to the DID document. |
+| `update_key.json`       | Private key required to make the next update to the DID document. |
 | `recovery_key.json`     | Private key required to recover the DID (in case other keys are lost/compromised). |
 
-??? question "Can my DID document contain multiple keys?"
+??? question "Can my DID document contain multiple signing keys?"
 
-    By default, a single public-private key pair is automatcially generated for all signing/attestation purposes. However, Trustchain allows for multiple keys to be contained in a single DID document.
+    By default, a single public-private key pair is automatically generated for all signing/attestation purposes. However, it is possible to include multiple keys in a single DID document.
 
     This can be useful if different keys are intended to be used for different purposes, or if the DID refers to an organisation in which different individuals or departments wish to hold their own keys.
 
@@ -187,7 +200,7 @@ In fact, four private key were generated by the CLI when the DID was created. Al
     ```
     Then run the usual command to create the DID:
     ```console
-    $ trustchain-cli did create --file_path <DID_CONTENT_FILE>
+    trustchain-cli did create --file_path <DID_CONTENT_FILE>
     ```
     When a list of public keys is specified in the DID document content (as above), Trustchain will not generate any new signing keys when creating the DID.
 
@@ -215,12 +228,205 @@ In fact, four private key were generated by the CLI when the DID was created. Al
 
     Publishing a Trustchain DID involves embedding information into a Bitcoin transaction and broadcasting it to the Bitcoin network. This makes the information accessible to everyone, globally, via the Bitcoin transaction ledger.
 
-    This will be taken care of by the Trustchain CLI, via the embedded ION node which itself contains a node on the Bitcoin network. However, since each Bitcoin transaction includes a processing fee, **you must have funds in your Bitcoin wallet before issuing any DIDs**.
+    This process will be taken care of by the Trustchain CLI, via the embedded ION node which itself contains a node on the Bitcoin network. However, since each Bitcoin transaction includes a processing fee, **you must have funds in your Bitcoin wallet before publishing any DIDs**.
 
-    For instructions on how to fund your Bitcoin wallet, see the [ION](ion.md#funding-your-bitcoin-wallet) page.
+    Instructions on how to fund your Bitcoin wallet are available [here](ion.md#funding-your-bitcoin-wallet).
 
+Currently the Trustchain CLI does not include a command for publishing DIDs. This will be added in a future version. In the meantime, DIDs can be published by running a script from the command line.
 
-TODO: this is currently a manual step (to be built into the CLI in future). You need to run the `publish.sh` shell script that is found in the `scripts/` subdirectory inside the Trustchain repository. This script will attempt to publish all of the DID operations that are found in the `$TRUSTCHAIN_DATA/operations/` directory.
+When you are ready to publish one or more DIDs, execute the `publish.sh` script by running the following command:
+```console
+"$TRUSTCHAIN_REPO"/scripts/publish.sh
+```
+
+This script will attempt to publish all of the DID operations that are found in the `$TRUSTCHAIN_DATA/operations/` directory. The output from this command should include the following line:
+```{ .text .no-copy }
+* We are completely uploaded and fine
+```
+and the HTTP status code 200, indicating it was successful:
+```{ .text .no-copy }
+< HTTP/1.1 200 OK
+```
+
+After the `publish.sh` script has run, there will be some delay before the newly-published DID can be resolved. This is due to i) the ION publication mechanism, which supports batching of DID operations to reduce transaction fees, and ii) the Bitcoin network processing time. For more details, see the information panels below.
+
+=== "Mainnet"
+
+    ??? info "ION DID publication mechanism"
+
+        The `publish.sh` script takes all of the DID operations in `$TRUSTCHAIN_DATA/operations/` and dispatches them to the local ION node for publishing. They are then placed in the collection of `queued-operations` inside ION's Mongo database.
+
+        To view the contents of this database, open the MongoDB shell with this command:
+        ```console
+        mongosh
+        ```
+        Then run the following MongoDB commands (omitting the `>` prompt character) to select the database:
+        ```console
+        > ion-mainnet-core
+        ```
+        and check how many queued DID operations exist:
+        ```console
+        > db["queued-operations"].countDocuments()
+        ```
+        The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the `publish.sh` script, the number of queued operations will increase to one (or more, if there were multiple files inside `$TRUSTCHAIN_DATA/operations/` when the script was executed).
+
+        Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the `batchingIntervalInSeconds` parameter, found in the ION core config file. To view this file, run:
+        ```console
+        less $ION_CORE_CONFIG_FILE_PATH
+        ```
+
+        The default batching interval is 600 seconds. This can be reduced by changing the value of the `batchingIntervalInSeconds` parameter and restarting ION.
+
+    ??? info "Bitcoin network processing time"
+
+        When a new (or updated) DID document is published, it will take some time for the Bitcoin network to [process](https://bitcoin.org/en/how-it-works#processing) the relevant transaction so that it becomes visible to all other network participants.
+
+        Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI `resolve` command.
+
+        Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.
+
+    !!! tip "Tip: Identifying your DID transaction"
+
+        While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+        ```console
+        bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
+        ```
+        Then copy the **first address** in the list and paste it into the search bar at [mempool.space](https://mempool.space/).
+
+        This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, *including any unconfirmed transactions*.
+
+        Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.
+
+        Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.
+
+        Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.
+
+        By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "$n$ Confirmations", where $n$ is the number of Bitcoin blocks mined since the one containing this transaction.
+
+        As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.
+
+        **If your are publishing a root DID**, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date & time that it was confirmed). The timestamp can be found on the same page as the transaction status on [mempool.space](https://mempool.space/).
+
+=== "Testnet4"
+
+    ??? info "ION DID publication mechanism"
+
+        The `publish.sh` script takes all of the DID operations in `$TRUSTCHAIN_DATA/operations/` and dispatches them to the local ION node for publishing. They are then placed in the collection of `queued-operations` inside ION's Mongo database.
+
+        To view the contents of this database, open the MongoDB shell with this command:
+        ```console
+        mongosh
+        ```
+        Then run the following MongoDB commands (omitting the `>` prompt character) to select the database:
+        ```console
+        > use ion-testnet-core
+        ```
+        and check how many queued DID operations exist:
+        ```console
+        > db["queued-operations"].countDocuments()
+        ```
+        The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the `publish.sh` script, the number of queued operations will increase to one (or more, if there were multiple files inside `$TRUSTCHAIN_DATA/operations/` when the script was executed).
+
+        Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the `batchingIntervalInSeconds` parameter, found in the ION core config file. To view this file, run:
+        ```console
+        less $ION_CORE_CONFIG_FILE_PATH
+        ```
+
+        The default batching interval is 600 seconds. This can be reduced by changing the value of the `batchingIntervalInSeconds` parameter and restarting ION.
+
+    ??? info "Bitcoin network processing time"
+
+        When a new (or updated) DID document is published, it will take some time for the Bitcoin network to [process](https://bitcoin.org/en/how-it-works#processing) the relevant transaction so that it becomes visible to all other network participants.
+
+        Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI `resolve` command.
+
+        Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.
+
+    !!! tip "Tip: Identifying your DID transaction"
+
+        While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+        ```console
+        bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
+        ```
+        Then copy the **first address** in the list and paste it into the search bar at [mempool.space](https://mempool.space/testnet4).
+
+        This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, *including any unconfirmed transactions*.
+
+        Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.
+
+        Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.
+
+        Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.
+
+        By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "$n$ Confirmations", where $n$ is the number of Bitcoin blocks mined since the one containing this transaction.
+
+        As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.
+
+        **If your are publishing a root DID**, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date & time that it was confirmed). The timestamp can be found on the same page as the transaction status on [mempool.space](https://mempool.space/testnet4).
+
+=== "Testnet3 (Deprecated)"
+
+    ??? info "ION DID publication mechanism"
+
+        The `publish.sh` script takes all of the DID operations in `$TRUSTCHAIN_DATA/operations/` and dispatches them to the local ION node for publishing. They are then placed in the collection of `queued-operations` inside ION's Mongo database.
+
+        To view the contents of this database, open the MongoDB shell with this command:
+        ```console
+        mongosh
+        ```
+        Then run the following MongoDB commands (omitting the `>` prompt character) to select the database:
+        ```console
+        > use ion-testnet-core
+        ```
+        and check how many queued DID operations exist:
+        ```console
+        > db["queued-operations"].countDocuments()
+        ```
+        The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the `publish.sh` script, the number of queued operations will increase to one (or more, if there were multiple files inside `$TRUSTCHAIN_DATA/operations/` when the script was executed).
+
+        Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the `batchingIntervalInSeconds` parameter, found in the ION core config file. To view this file, run:
+        ```console
+        less $ION_CORE_CONFIG_FILE_PATH
+        ```
+
+        The default batching interval is 600 seconds. This can be reduced by changing the value of the `batchingIntervalInSeconds` parameter and restarting ION.
+
+    ??? info "Bitcoin network processing time"
+
+        When a new (or updated) DID document is published, it will take some time for the Bitcoin network to [process](https://bitcoin.org/en/how-it-works#processing) the relevant transaction so that it becomes visible to all other network participants.
+
+        Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI `resolve` command.
+
+        Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.
+
+    !!! tip "Tip: Identifying your DID transaction"
+
+        While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+        ```console
+        bitcoin-cli -rpcwallet="sidetreeDefaultWallet" listreceivedbyaddress 1 true
+        ```
+        Then copy the **first address** in the list and paste it into the search bar at [mempool.space](https://mempool.space/testnet).
+
+        This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, *including any unconfirmed transactions*.
+
+        Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.
+
+        Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.
+
+        Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.
+
+        By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "$n$ Confirmations", where $n$ is the number of Bitcoin blocks mined since the one containing this transaction.
+
+        As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.
+
+        **If your are publishing a root DID**, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date & time that it was confirmed). The timestamp can be found on the same page as the transaction status on [mempool.space](https://mempool.space/testnet).
+
+After running the `publish.sh` script, wait for the transaction to be processed, then check that it was successfully published by attempting to resolve the DID (or DIDs, if more than one was published) [using the CLI](#did-resolution).
+
+Once you have confirmed that the DID(s) can be resolved, you can clean up the `.trustchain/operations/` folder by running this command to move all operations files to the `sent/` subdirectory:
+```console
+mv $TRUSTCHAIN_DATA/operations/*.json* $TRUSTCHAIN_DATA/operations/sent/./
+```
 
 !!! tip "Tip: Batching DID operations"
 
@@ -228,34 +434,19 @@ TODO: this is currently a manual step (to be built into the CLI in future). You 
 
     To perform batching, simply repeat the create operation as many times as you like before running the `publish.sh` script. Then run the script once to publish all operations in a single batch.
 
-    The only exception to this rule is that the **root DID must not be published in a batched transaction**. It must be the unique DID operation associated with the transaction in which it is published.
-
-After running the `publish.sh` script, wait for the transaction to be published and processed by the Bitcoin network, then check that it was successfully published by attempting to resolve the DID (or DIDs, if more than one operation was published) with the CLI.
-
-Then there is a further manual step required: once you have confirmed that the DID(s) can be resolved, clean up the `.trustchain/operations/` folder by running this command to move all operations files to the `sent/` subdirectory:
-```console
-$ mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
-```
-
-!!! info "Network processing time"
-
-    When a new (or updated) DID document is published, it will take some time for the Bitcoin network to process the relevant transaction so that it becomes visible to all other network participants.
-
-    Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI `resolve` command.
-
-    Typically, the processing time will be around 10 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network, and the size of the fee inserted in the relevant transaction.
+    The only exception to this rule is that **the root DID must not be published in a batched transaction**. It must be the unique DID operation associated with the transaction in which it is published. The reason for this condition is to enable fast and efficient scanning of the Bitcoin blockchain to identify potential root DID operations.
 
 ## Downstream DID Issuance
 
-This process must be carried out by the DID controller, that is, the legal entity that will attest to the downstream DID. The DID controller must itself be the subject of another DID document that is already published. We refer to the controller's DID as the *upstream DID* (uDID).
+This process must be carried out by the DID controller, that is, the legal entity whose attestation will appear on the downstream DID. The DID controller must itself be the subject of another DID document that is already published. We refer to the controller's DID as the *upstream DID* (uDID).
 
 !!! info "Challenge-response protocol"
 
     The interaction between the upstream and downstream entities, when issuing a new downstream DID, must be performed carefully so that the dDID controller (upstream entity) can be confident that the information included in the downstream DID document is correct, before attesting to it.
 
-    The proper way to manage this interaction is via a challenge-response protocol, that includes a rigorous checks of both the identity of the legal entities involved and of the dDID document content.
+    The proper way to manage this interaction is via a challenge-response protocol, that includes rigorous checks of both the identity of the legal entities involved and of the dDID document content.
 
-    A future version of Trustchain will include such a challenge-response protocol. In the meantime, dDID issuance is a manual process, as described here.
+    The latest version of the Trustchain CLI includes such a challenge-response protocol. In earlier versions, dDID issuance is a manual process, as described here.
 
 Issuing a downstream DID is a two-step process. The first step is for the dDID subject to publish their (regular) DID by following the steps in the [DID Issuance](#did-issuance) section above.
 
@@ -269,12 +460,12 @@ We assume that the downsteam legal entity has published their candidate dDID doc
 
 First check that the candidate dDID can be successfully resolved:
 ```console
-$ trustchain-cli did resolve --did <CANDIDATE_dDID>
+trustchain-cli did resolve --did <CANDIDATE_dDID>
 ```
 
 Next, use the CLI to attest to the dDID:
 ```console
-$ trustchain-cli did attest --did <uDID> --controlled_did <CANDIDATE_dDID>
+trustchain-cli did attest --did <uDID> --controlled_did <CANDIDATE_dDID>
 ```
 
 #### Publish the updated dDID document
@@ -291,25 +482,25 @@ To publish the updated dDID document, containing the controller's attestation, f
 
 To verify a downstream DID, run the following command with the relevant `<dDID>` identifier:
 ```console
-$ trustchain-cli did verify --did <dDID>
+trustchain-cli did verify --did <dDID>
 ```
 The Trustchain CLI will perform the following verification process and report the result:
 
  1. Resolve the given dDID document.
- 2. Identify the controller's uDID from the dDID metadata (if no controller is found, the verification fails).
+ 2. Identify the controller's uDID from the dDID metadata. If no controller is found, the verification fails.
  3. If the uDID is itself a downstream DID, repeat steps 1 & 2 until reaching the root DID.
- 4. Verify that the timestamp on the root DID exactly matches the [configured](getting-started.md#trustchain-configuration-file) `root_event_time` parameter.
- 5. Starting at the root DID, descend down the DID chain and verify each attestation signature using the public key from the next upstream DID document (if any signature is invalid, the verification fails).
+ 4. Verify that the timestamp on the root DID exactly matches the [configured](getting-started.md#trustchain-configuration-file) `root_event_time` parameter. If the timestamp does not match, the verification fails.
+ 5. Starting at the root DID, descend down the DID chain and verify each attestation signature using the public key from the next upstream DID document. If any signature is invalid, the verification fails.
  6. If all of the attestation signatures in the chain are valid, the verification is successful.
 
  This process ensures that the exact content of the downstream DID (including the public keys of the downstream legal entity) has been attested to by a recognised upstream entity, whose own public keys have themselves been attested to in a chain of signatures leading back to the root DID, whose exact time of publication has also been verified.
 
 ## Credential Issuance
 
-TODO.
+This section is under construction.
 
 ## Credential Verification
 
-TODO.
+This section is under construction.
 
 &nbsp;

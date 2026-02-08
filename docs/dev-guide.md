@@ -113,7 +113,7 @@ Where required, configurable variables within crates are managed according to th
 ### trustchain-cli
 Install with:
 ```bash
-cargo install --path trustchain-cli
+cargo install --path crates/trustchain-cli
 ```
 
 
@@ -308,7 +308,7 @@ rsync -azvuv --prune-empty-dirs \
 ##### Running the HTTP server on the VM over https
 - Go trustchain repo, install from branch you would like to serve:
 ```
-cargo install --path trustchain-http
+cargo install --path crates/trustchain-http
 ```
 - Allow the binary to access 443 without sudo:
 ```
@@ -650,12 +650,12 @@ The prompt character helps to distinguish between Terminal commands and other co
 For example, the Markdown code block:
 ````
 ```console
-$ echo "hello, world"
+echo "hello, world"
 ```
 ````
 will be rendered as:
 ```console
-$ echo "hello, world"
+echo "hello, world"
 ```
 but only the command `echo "hello, world"` will be copied to the clipboard.
 

@@ -38,7 +38,7 @@ cargo build
 ```
 Install the Trustchain CLI with:
 ```shell
-cargo install --path trustchain-cli
+cargo install --path crates/trustchain-cli
 ```
 
 ## Usage Guide
