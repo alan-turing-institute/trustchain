@@ -165,6 +165,9 @@ pub enum TrustchainBitcoinError {
     /// Target date precedes start block timestamp or succeeds end block timestamp.
     #[error("Target date out of range of block timestamps.")]
     TargetDateOutOfRange,
+    /// Unsupported Bitcoin network.
+    #[error("Unsupported Bitcoin network: {0}")]
+    UnsupportedNetwork(Network),
 }
 
 // DID

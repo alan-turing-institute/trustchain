@@ -1,8 +1,29 @@
 //! Test fixtures for crate.
 #![allow(dead_code)]
 
+use bitcoin::Network;
+
+use crate::TrustchainBitcoinError;
+
+pub(crate) const SAMPLE_CID: &str = "QmRvgZm4J3JSxfk4wRjE2u2Hi2U7VmobYnpqhqH5QP6J97";
+pub(crate) const SAMPLE_DID_MAINNET: &str =
+    "did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w";
+pub(crate) const SAMPLE_DID_TESTNET3: &str =
+    "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg";
+pub(crate) const SAMPLE_DID_TESTNET4: &str =
+    "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA";
+
+pub fn sample_did(network: &Network) -> Result<String, TrustchainBitcoinError> {
+    match network {
+        Network::Bitcoin => Ok(SAMPLE_DID_MAINNET.to_string()),
+        Network::Testnet => Ok(SAMPLE_DID_TESTNET3.to_string()),
+        Network::Testnet4 => Ok(SAMPLE_DID_TESTNET4.to_string()),
+        _ => Err(TrustchainBitcoinError::UnsupportedNetwork(*network)),
+    }
+}
+
 //
-// Testnet fixtures
+// Testnet3 fixtures
 //
 
 // Note on Testnet test fixtures (see below for Testnet4 fixtures):

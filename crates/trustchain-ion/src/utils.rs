@@ -1,4 +1,5 @@
 //! ION-related utilities.
+use crate::data::{sample_did, SAMPLE_CID};
 use crate::data::{
     TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
     TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
@@ -6,8 +7,8 @@ use crate::data::{
 use crate::{
     config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
-use bitcoin::Network;
-use bitcoin::{block::Header, blockdata::block::BlockHash, Transaction};
+use bitcoin::{block::Header, blockdata::block::BlockHash, Network, Transaction};
+use bitcoincore_rpc::json::GetBlockchainInfoResult;
 use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
@@ -23,13 +24,15 @@ use std::path::Path;
 use std::sync::Once;
 use std::{cmp::Ordering, collections::HashMap};
 use trustchain_core::key_manager::{KeyManager, KeyType};
+use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
-    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, BITS_KEY,
-    HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS, MONGO_CREATE_OPERATION,
-    MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY, VERSION_KEY,
+    trustchain_resolver, TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError,
+    BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS,
+    MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY,
+    VERSION_KEY,
 };
 
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";
@@ -286,16 +289,23 @@ pub fn rpc_client() -> bitcoincore_rpc::Client {
     .unwrap()
 }
 
+/// Gets Bitcoin blockchain info via the RPC API.
+pub fn blockchain_info(
+    client: Option<&bitcoincore_rpc::Client>,
+) -> Result<GetBlockchainInfoResult, TrustchainBitcoinError> {
+    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
+    if client.is_none() {
+        let rpc_client = rpc_client();
+        return blockchain_info(Some(&rpc_client));
+    };
+    Ok(client.unwrap().get_blockchain_info()?)
+}
+
 /// Gets the Bitcoin chain via the RPC API.
 pub fn bitcoin_network(
     client: Option<&bitcoincore_rpc::Client>,
 ) -> Result<Network, TrustchainBitcoinError> {
-    // If necessary, construct a Bitcoin RPC client to communicate with the ION Bitcoin node.
-    if client.is_none() {
-        let rpc_client = rpc_client();
-        return bitcoin_network(Some(&rpc_client));
-    };
-    Ok(client.unwrap().get_blockchain_info()?.chain)
+    Ok(blockchain_info(client)?.chain)
 }
 
 /// Gets a Bitcoin block header via the RPC API.
@@ -520,6 +530,76 @@ pub fn block_height_range_on_date(
     let next_date = date.succ_opt().unwrap();
     let last_block = last_block_height_before(next_date, Some(first_block), client)?;
     Ok((first_block, last_block))
+}
+
+#[derive(Debug)]
+pub enum BitcoindStatus {
+    Ok(Network),
+    Synching(u64, u64),
+    UnexpectedNetwork(Network),
+    UnsupportedNetwork(Network),
+    Error(TrustchainBitcoinError),
+}
+
+/// Returns the current status of bitcoind.
+pub async fn bitcoind_status() -> BitcoindStatus {
+    let info = blockchain_info(None);
+    if info.is_err() {
+        return BitcoindStatus::Error(info.err().unwrap());
+    }
+    let info = info.unwrap();
+    if info.blocks != info.headers {
+        return BitcoindStatus::Synching(info.blocks, info.headers);
+    }
+    let ion_core_config = &ion_config().mongo_database_ion_core;
+    match info.chain {
+        Network::Bitcoin => {
+            if ion_core_config.contains("testnet") {
+                return BitcoindStatus::UnexpectedNetwork(info.chain);
+            }
+            BitcoindStatus::Ok(Network::Bitcoin)
+        }
+        Network::Testnet => {
+            if ion_core_config.contains("mainnet") {
+                return BitcoindStatus::UnexpectedNetwork(info.chain);
+            }
+            BitcoindStatus::Ok(Network::Testnet)
+        }
+        Network::Testnet4 => {
+            if ion_core_config.contains("mainnet") {
+                return BitcoindStatus::UnexpectedNetwork(info.chain);
+            }
+            BitcoindStatus::Ok(Network::Testnet4)
+        }
+        _ => BitcoindStatus::UnsupportedNetwork(info.chain),
+    }
+}
+
+/// Returns true if the IPFS daemon is running on the expected port.
+pub async fn ipfs_ok() -> bool {
+    query_ipfs(SAMPLE_CID, &IpfsClient::default()).await.is_ok()
+}
+
+/// Returns true if the MongoDB daemon is running on the expected port.
+pub async fn mongodb_ok(network: &Network) -> bool {
+    if let Ok(sample_did) = sample_did(network) {
+        query_mongodb(get_did_suffix(&sample_did)).await.is_ok()
+    } else {
+        // If the given Bitcoin network is unsupported, return false.
+        false
+    }
+}
+
+/// Returns true if the ION Core microservice is running on the expected port.
+pub async fn ion_ok(network: &Network, ion_port: u16) -> bool {
+    let resolver = trustchain_resolver(&format!("http://localhost:{}/", ion_port));
+    if let Ok(sample_did) = sample_did(network) {
+        let result = resolver.resolve_as_result(&sample_did).await;
+        result.is_ok()
+    } else {
+        // If the given Bitcoin network is unsupported, return false.
+        false
+    }
 }
 
 #[cfg(test)]
@@ -1103,5 +1183,11 @@ mod tests {
                 panic!("No test fixtures for network: {:?}", network);
             }
         }
+    }
+
+    #[tokio::test]
+    #[ignore = "Integration test requires Bitcoin"]
+    async fn test_bitcoind_status() {
+        let _ = bitcoind_status().await;
     }
 }
