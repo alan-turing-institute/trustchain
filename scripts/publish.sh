@@ -58,9 +58,6 @@ for file in "$BASE_DIR"/*.json; do
     fi
 
     if [ "$http_code" -eq 200 ]; then
-        if [ "$count" -eq 0 ]; then
-            echo "Publishing:"
-        fi
         # Print a green tick and increment the success count.
         ((++count))
         echo "- $filename ✅"
@@ -69,7 +66,7 @@ for file in "$BASE_DIR"/*.json; do
         mkdir -p "$FAILED_DIR"
         mv "$file" "$out_file" "$FAILED_DIR/"
         # Print a red cross and the HTTP error code.
-        echo "$filename ❌ [HTTP code: $http_code]"
+        echo "- $filename ❌ [HTTP code: $http_code]"
     fi
 done
 
