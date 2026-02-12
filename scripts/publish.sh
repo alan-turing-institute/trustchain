@@ -25,7 +25,7 @@ shopt -s nullglob
 num_files=("$BASE_DIR"/*.json)
 num_files=${#num_files[@]}
 if [ "$num_files" -eq 0 ]; then
-    echo "No JSON files found in $BASE_DIR. Exiting."
+    echo "No JSON files found in $BASE_DIR. Nothing to do."
     exit 0
 elif [ "$num_files" -eq 1 ]; then
     echo "Found 1 DID operation."
