@@ -250,7 +250,7 @@ When you are ready to publish one or more DIDs, execute the `publish.sh` script 
 "$TRUSTCHAIN_REPO"/scripts/publish.sh
 ```
 
-This script will attempt to publish all of the DID operations that are found in the `$TRUSTCHAIN_DATA/operations/` directory. It does this by sending each of them to your ION server as an HTTP POST request. The response to each of these requests is checked for success (HTTP status code 200).
+This script will attempt to publish all of the DID operations (JSON files) that are found in the `$TRUSTCHAIN_DATA/operations/` directory. It does this by sending each of them to your ION server as an HTTP POST request. The response to each of these requests is checked for success (HTTP status code 200).
 
 If successful, the output should look something like this:
 ```{ .text .no-copy }
