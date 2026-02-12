@@ -59,7 +59,7 @@ fn cli() -> Command {
                 .allow_external_subcommands(true)
                 .subcommand(
                     Command::new("create")
-                        .about("Creates a new controlled DID from a document state.")
+                        .about("Creates a new DID from a document state.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-m - -mnemonic).action(ArgAction::SetTrue))
                         .arg(arg!(-f --file_path <FILE_PATH>).required(false)),
