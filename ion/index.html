@@ -1,0 +1,2280 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../technical-notes/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>ION - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ion" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ION
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#preliminaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preliminaries
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Preliminaries">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-container-vs-full-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker Container vs. Full Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitcoin-mainnet-vs-testnet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bitcoin Mainnet vs. Testnet
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-vs-remote-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local vs. Remote Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ion-installation-guide" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ION Installation Guide
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ION Installation Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-ipfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install IPFS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-mongodb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install MongoDB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-bitcoin-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Bitcoin Core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-bitcoin-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure Bitcoin Core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-bitcoin-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure Bitcoin CLI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start-bitcoin-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start Bitcoin Core
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-ion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configure ION
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-ion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build ION
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-ion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test ION
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-ion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running ION
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#funding-your-bitcoin-wallet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Funding your Bitcoin wallet
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ssh-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SSH config
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ion-using-docker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ION using Docker
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="ion">ION</h1>
+<p>The <a href="https://identity.foundation/ion/">Identity Overlay Network</a> (ION) is an open source <a href="https://www.w3.org/TR/did-core/#methods">DID method</a> implementation developed by the Decentralized Identity Foundation.</p>
+<p>In other words, ION is a software tool that can be used to perform DID operations, such as creating and publishing new DIDs and DID documents, and resolving existing ones. It does this by reading and writing data to the <a href="https://bitcoin.org/en/">Bitcoin</a> blockchain and to the <a href="https://ipfs.tech/">IPFS</a> distributed file system. As such, every ION instance is a node on these two peer-to-peer networks.</p>
+<p>Trustchain delegates the execution of DID operations to an ION node. Therefore to use Trustchain you must first install and run ION, either on the same machine or a connected one.</p>
+<div class="admonition warning">
+<p class="admonition-title">ION resource requirements</p>
+<p>An ION installation includes a full node on the Bitcoin network, which must download and store the entire Bitcoin blockchain. This is a large amount of data that typically takes several hours, or even days, to download.</p>
+<p>The recommended system requirements for an ION installation are:</p>
+<ul>
+<li>6GB of RAM</li>
+<li>1.5TB of storage (or 100GB for <a href="#bitcoin-mainnet-vs-testnet">Testnet4</a>).</li>
+</ul>
+</div>
+<p>Note, however, that <strong>Trustchain makes no assumptions about the trustworthiness of the ION system</strong> and the Trustchain security model does not rely on the correct functioning of the ION software. Trustchain independently verifies all of the data it receives from ION, so a faulty or compromised ION node would not represent a security vulnerability in Trustchain (although it could cause a loss of service).</p>
+<p>This page explains how to install and run ION.</p>
+<!-- TODO: insert the architecture schematic diagram here? (from the paper). -->
+
+<h2 id="preliminaries">Preliminaries</h2>
+<p>Before beginning the installation, a few decisions must be made that will determine exactly what steps should be taken.</p>
+<h3 id="docker-container-vs-full-installation">Docker Container vs. Full Installation</h3>
+<p>The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, this method provides a <strong>read-only ION node</strong>. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.</p>
+<p>If you would like to be able to use Trustchain to create and publish your own DIDs, follow the full installation instructions below (and ignore the <a href="#ion-using-docker">ION with Docker</a> section).</p>
+<p>If you want to run ION using Docker, you can skip most of this page and just follow the instructions in the <a href="#ion-with-docker">ION with Docker</a> section.</p>
+<h3 id="bitcoin-mainnet-vs-testnet">Bitcoin Mainnet vs. Testnet</h3>
+<p>The Bitcoin client wrapped inside an ION node can be configured either for <strong>Mainnet</strong> (the main Bitcoin network) or <strong>Testnet</strong> (an alternative blockchain designed for testing and software development).</p>
+<p><strong>Mainnet should be used for a production deployment of Trustchain</strong> because DID operations published on the Bitcoin blockchain have extremely strong immutability, persistence and discoverability properties. When testing Trustchain, however, it is sensible to configure the ION Bitcoin client for Testnet, since coins on the test network have no monetary value and therefore "test" DID operations can be executed at zero cost.</p>
+<p>The current iteration of Bitcoin's test network is Testnet4, which since May 2024 has replaced the (now deprecated) Testnet3. It is possible to run ION on either of these networks, but <strong>Testnet4 is strongly recommended over Testnet3</strong>.</p>
+<p>Testnet coins can be requested from a Testnet "faucet", such as <a href="https://faucet.testnet4.dev/">this one for Testnet4</a> or <a href="https://coinfaucet.eu/en/btc-testnet/">this one for Testnet3</a>.</p>
+<p>In this guide, commands and configuration settings may depend on which network is in use. In those cases, choose the appropriate tab for your setup: Mainnet, Testnet4 or Testnet3 (Deprecated).</p>
+<h3 id="local-vs-remote-installation">Local vs. Remote Installation</h3>
+<p>You can install ION on your local machine or a remote one, e.g. a virtual machine in the Cloud. If you are using a remote machine, connect to it using SSH and follow the instructions below.</p>
+<p>Once installed, follow the port forwarding instructions in the <a href="#ssh-config">SSH config</a> section to produce a setup that is indistinguishable from running an ION node locally.</p>
+<h2 id="ion-installation-guide">ION Installation Guide</h2>
+<p>These instructions are based on the official <a href="https://identity.foundation/ion/install-guide/">ION Install Guide</a> but contain additional details, several minor corrections and a workaround to support recent versions of Bitcoin Core.</p>
+<p>Both Linux and macOS are supported and tested. For Linux, our instructions assume a Debian-based distribution, such as Ubuntu. Some minor changes will be needed for other distributions. Instructions for installing on Windows are given in the official <a href="https://identity.foundation/ion/install-guide/">ION guide</a>.</p>
+<p>In all cases, administrator privileges are required.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<div class="admonition info">
+<p class="admonition-title">Create the <code>SHELL_CONFIG</code> environment variable</p>
+<p>Before continuing, make sure you have created the <code>SHELL_CONFIG</code> environment variable by following the instructions on the <a href="../getting-started/#environment-variables">Getting Started</a> page.</p>
+</div>
+<p>Run the following commands to set up your environment.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Linux</label><label for="__tabbed_1_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Update the package lists on your machine and install essential build tools:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">sudo apt update &amp;&amp; sudo apt install build-essential</span>
+</code></pre></div>
+Install Git:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">sudo apt install git</span>
+</code></pre></div>
+Install Node.js:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">sudo apt install nodejs</span>
+</code></pre></div>
+and the Node package manager:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">sudo apt install npm</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Install Xcode <a href="https://developer.apple.com/download/all/">command line tools</a>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">xcode-select --install</span>
+</code></pre></div>
+Install the <a href="https://brew.sh/#install">Homebrew</a> package manager:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">/bin/bash -c &quot;$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)&quot;</span>
+</code></pre></div>
+Install Node.js via the <a href="https://nodejs.org/en/download">download page</a> or with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">brew install node</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+<h3 id="install-ipfs">Install IPFS</h3>
+<p>IPFS is the InterPlanetary File System, a peer-to-peer protocol and network used by ION for storing and sharing data.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Linux</label><label for="__tabbed_2_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Follow the official IPFS <a href="https://docs.ipfs.tech/install/command-line/#install-kubo-linux">installation instructions</a> for Linux.</p>
+</div>
+<div class="tabbed-block">
+<p>Install IPFS:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="go">brew install ipfs</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+<p>Then initialise your IPFS node:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">ipfs init</span>
+</code></pre></div>
+To check the installation was successful, open a new Terminal window and start the IPFS daemon:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">ipfs daemon</span>
+</code></pre></div>
+Then (back in the original Terminal window) run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="go">ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme</span>
+</code></pre></div>
+which should output a welcome message.</p>
+<h3 id="install-mongodb">Install MongoDB</h3>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Linux</label><label for="__tabbed_3_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Instructions for installing MongoDB on Linux are available on the <a href="https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-ubuntu/">MongoDB website</a>.</p>
+</div>
+<div class="tabbed-block">
+<p>Following <a href="https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/">these instructions</a>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">brew tap mongodb/brew</span>
+</code></pre></div>
+then:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="go">brew install mongodb-community</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+<h3 id="install-bitcoin-core">Install Bitcoin Core</h3>
+<p>Trustchain has been tested with Bitcoin Core v28.0 and therefore the instructions below assume that version. Other versions of Bitcoin Core are <a href="https://bitcoincore.org/en/releases/">available</a> and can be used, but will require some minor changes to the commands in the following steps.</p>
+<div class="admonition info">
+<p class="admonition-title">Testnet4 requires Bitcoin Core v28.0 or above</p>
+<p>If you are intending to run ION on Testnet4 you must install Bitcoin Core v28.0 or above, as this is the earliest version that supports the new test network.</p>
+</div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Linux</label><label for="__tabbed_4_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Begin by downloading the <a href="https://bitcoincore.org/bin/bitcoin-core-28.0/">Bitcoin Core release</a> for your system:</p>
+<ul>
+<li><a href="https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-x86_64-linux-gnu.tar.gz">Download link</a> for Linux with x86-64 processor.</li>
+<li><a href="https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-arm-linux-gnueabihf.tar.gz">Download link</a> for Linux with ARM processor.</li>
+</ul>
+<p>Verify the download by comparing the <a href="https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS">published hash</a> with the result of this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="go">shasum -a 256 ~/Downloads/bitcoin-28.0-*.tar.gz</span>
+</code></pre></div></p>
+<p>Unzip the archive:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="gp gp-VirtualEnv">(cd ~/Downloads &amp;&amp; tar xvzf bitcoin-28.0-*.tar.gz)</span>
+</code></pre></div>
+and install Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="go">sudo install -m 0755 -t /usr/local/bin ~/Downloads/bitcoin-28.0/bin/*</span>
+</code></pre></div>
+The installation includes an executable file named <code>bitcoind</code> which we will run to start Bitcoin Core.</p>
+</div>
+<div class="tabbed-block">
+<p>Begin by downloading the <a href="https://bitcoincore.org/bin/bitcoin-core-28.0/">Bitcoin Core release</a> for your system:</p>
+<ul>
+<li><a href="https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-x86_64-apple-darwin.tar.gz">Download link</a> for Mac with x86-64 processor.</li>
+<li><a href="https://bitcoincore.org/bin/bitcoin-core-28.0/bitcoin-28.0-arm64-apple-darwin.tar.gz">Download link</a> for Mac with Apple M-series processor.</li>
+</ul>
+<p>Verify the download by comparing the <a href="https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS">published hash</a> with the result of this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="go">shasum -a 256 ~/Downloads/bitcoin-28.0-*.tar.gz</span>
+</code></pre></div></p>
+<p>Unzip the archive:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="gp gp-VirtualEnv">(cd ~/Downloads &amp;&amp; tar xvzf bitcoin-28.0-*.tar.gz)</span>
+</code></pre></div>
+and move the contents to the <code>/Applications</code> folder:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="go">mv ~/Downloads/bitcoin-28.0 /Applications</span>
+</code></pre></div>
+The download contains an executable file named <code>bitcoind</code> which we will run to start Bitcoin Core.</p>
+<div class="admonition info">
+<p class="admonition-title">Sign the Bitcoin Core executable files</p>
+<p>Newer macOS systems will refuse to run an executable file unless it is signed. Run the following command to check whether this is a requirement on your machine:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="go">codesign -d -vvv --entitlements :- /Applications/bitcoin-28.0/bin/bitcoind</span>
+</code></pre></div>
+If you see the message "code object is not signed at all", you will need to create a <a href="https://support.apple.com/en-gb/guide/keychain-access/kyca8916/mac">self-signed certificate</a> for the executable file. Do this by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="go">codesign -s - /Applications/bitcoin-28.0/bin/bitcoind</span>
+</code></pre></div>
+And do the same for the Bitcoin CLI executable:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="go">codesign -s - /Applications/bitcoin-28.0/bin/bitcoin-cli</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+</div>
+<h3 id="configure-bitcoin-core">Configure Bitcoin Core</h3>
+<p>We shall need to specify a folder to store the Bitcoin blockchain data.</p>
+<div class="admonition warning">
+<p class="admonition-title">Bitcoin data storage requirements</p>
+<p>The Bitcoin data folder will store the entire Bitcoin blockchain, which is &gt;800GB for Mainnet and &gt;15GB for Testnet4.</p>
+</div>
+<p>For convenience, we create an environment variable for the Bitcoin data folder.</p>
+<div class="admonition tip">
+<p class="admonition-title">Create the <code>BITCOIN_DATA</code> environment variable</p>
+<p>Our convention is to use the folder <code>~/.bitcoin</code> for Bitcoin Core data. If you want to use a different folder, just change the path in the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="go">echo &quot;export BITCOIN_DATA=~/.bitcoin&quot; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div></p>
+</div>
+<p>Having defined the <code>BITCOIN_DATA</code> environment variable, use it to create the data folder itself:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="go">mkdir $BITCOIN_DATA</span>
+</code></pre></div></p>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:3"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><input id="__tabbed_5_3" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Mainnet</label><label for="__tabbed_5_2">Testnet4</label><label for="__tabbed_5_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Bitcoin configuration parameters will be stored in a file named <code>bitcoin.conf</code> inside the <code>$BITCOIN_DATA</code> folder.
+The following command creates that file with the required parameters and user permissions:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="go">printf &quot;server=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n&quot; &gt; $BITCOIN_DATA/bitcoin.conf &amp;&amp; chmod 640 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div></p>
+<p>To confirm these changes were made correctly, check the first three lines in the <code>bitcoin.conf</code> file by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="go">head -n 7 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+You should see lines like these printed to the Terminal:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>server=1
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>daemon=1
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>txindex=1
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>blocksxor=0
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>datadir=&lt;YOUR_BITCOIN_DATA_DIRECTORY&gt;
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>deprecatedrpc=create_bdb
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>deprecatedrpc=warnings
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Bitcoin configuration parameters will be stored in a file named <code>bitcoin.conf</code> inside the <code>$BITCOIN_DATA</code> folder.
+The following command creates that file with the required parameters and user permissions:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="go">printf &quot;testnet4=1\nserver=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n&quot; &gt; $BITCOIN_DATA/bitcoin.conf &amp;&amp; chmod 640 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div></p>
+<p>To confirm these changes were made correctly, check the first three lines in the <code>bitcoin.conf</code> file by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="go">head -n 8 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+You should see lines like these printed to the Terminal:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>testnet4=1
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>server=1
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>daemon=1
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>txindex=1
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>blocksxor=0
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>datadir=&lt;YOUR_BITCOIN_DATA_DIRECTORY&gt;
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>deprecatedrpc=create_bdb
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>deprecatedrpc=warnings
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Bitcoin configuration parameters will be stored in a file named <code>bitcoin.conf</code> inside the <code>$BITCOIN_DATA</code> folder.
+The following command creates that file with the required parameters and user permissions:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="go">printf &quot;testnet=1\nserver=1\ndaemon=1\ntxindex=1\nblocksxor=0\ndatadir=$BITCOIN_DATA\ndeprecatedrpc=create_bdb\ndeprecatedrpc=warnings\n&quot; &gt; $BITCOIN_DATA/bitcoin.conf &amp;&amp; chmod 640 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div></p>
+<p>To confirm these changes were made correctly, check the first three lines in the <code>bitcoin.conf</code> file by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="go">head -n 8 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+You should see lines like these printed to the Terminal:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>testnet=1
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>server=1
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>daemon=1
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>txindex=1
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>blocksxor=0
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>datadir=&lt;YOUR_BITCOIN_DATA_DIRECTORY&gt;
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>deprecatedrpc=create_bdb
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>deprecatedrpc=warnings
+</code></pre></div></p>
+</div>
+</div>
+</div>
+<div class="admonition info">
+<p class="admonition-title">Configuration in older versions of Bitcoin Core</p>
+<p>If you are running an older version of Bitcoin Core, you may need to omit the <code>deprecatedrpc</code> parameters from your configuration file:</p>
+<ul>
+<li>the settings <code>blocksxor=0</code> and <code>deprecatedrpc=warnings</code> were introduced in Bitcoin Core v28.0, so they must be omitted if you are running an earlier version.</li>
+<li>the setting <code>deprecatedrpc=create_bdb</code> was introduced in Bitcoin Core v26.0, so it must be omitted if you are running an earlier version.</li>
+</ul>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Note: Do not use the <code>~</code> shorthand in the <code>datadir</code> parameter</p>
+<p>The directory path in the <code>datadir</code> parameter must not contain the <code>~</code> character as a shorthand for the user's home directory.</p>
+<p>The example given in the official <a href="https://identity.foundation/ion/install-guide/">ION install guide</a> does use this shorthand, which causes an error, so beware of this issue if you are following that guide and/or editing the <code>bitcoin.conf</code> file manually.</p>
+</div>
+<h3 id="configure-bitcoin-cli">Configure Bitcoin CLI</h3>
+<p>When your Bitcoin Core node is up and running, you will want to be able to communicate with it. Bitcoin Core provides a command line interface (CLI) for this purpose.</p>
+<p>Run the following command to create an alias, making to easy to access the CLI:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Linux</label><label for="__tabbed_6_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="go">echo &#39;alias bitcoin-cli=&quot;/usr/local/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf&quot;&#39; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="go">echo &#39;alias bitcoin-cli=&quot;/Applications/bitcoin-28.0/bin/bitcoin-cli -conf=$BITCOIN_DATA/bitcoin.conf&quot;&#39; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition info">
+<p class="admonition-title">Bitcoin RPC username and password</p>
+<p>Before you can make use of the CLI you will need to add a username and password to the Bitcoin configuration file. These same parameters will also be used for authentication when ION interacts with Bitcoin Core. In both cases, the interaction is possible because Bitcoin Core provides access via a Remote Procedure Call (RPC) interface.</p>
+<p>We shall use <code>admin</code> for the RPC username. To set up the RPC password, copy and paste the following command into the Terminal and then change <code>&lt;password&gt;</code> to something of your choice before hitting the <span class="keys"><kbd class="key-enter">Enter</kbd></span> key:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="go">RPC_PASSWORD=&quot;&lt;password&gt;&quot;</span>
+</code></pre></div>
+Now run the following command to add the username and password to the <code>bitcoin.conf</code> file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Linux</label><label for="__tabbed_7_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="go">sed -i &quot;1s|^|rpcuser=admin\nrpcpassword=$RPC_PASSWORD\n|&quot; $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="go">sed -i &#39;&#39; $&#39;1s|^|rpcuser=admin\\\nrpcpassword=&#39;&quot;$RPC_PASSWORD&quot;$&#39;\\\n|&#39; $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>To confirm these changes were made correctly, check the first two lines in the <code>bitcoin.conf</code> file by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="go">head -n 2 $BITCOIN_DATA/bitcoin.conf</span>
+</code></pre></div>
+You should see these lines printed to the Terminal (with your chosen password):
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>rpcuser=admin
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>rpcpassword=&lt;password&gt;
+</code></pre></div></p>
+</div>
+<h3 id="start-bitcoin-core">Start Bitcoin Core</h3>
+<p>Before we start Bitcoin Core, we need to make sure it can find the correct configuration file that was created above. To make this convenient, let's create an alias in our <code>SHELL_CONFIG</code> file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Linux</label><label for="__tabbed_8_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="go">echo &#39;alias bitcoind=&quot;/usr/local/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf&quot;&#39; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+<p>Now, use the following simple command to start Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="go">bitcoind</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="go">echo &#39;alias bitcoind=&quot;/Applications/bitcoin-28.0/bin/bitcoind -conf=$BITCOIN_DATA/bitcoin.conf&quot;&#39; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+<p>Now, use the following simple command to start Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="go">bitcoind</span>
+</code></pre></div>
+The first time your run this command, you will see the following pop-up message:</p>
+<p><img alt="bitcoind macOS pop-up" src="../assets/bitcoind-macOS-pop-up.png" style="height:250px" /></p>
+<p>You need to tell macOS that this is not malicious software. To do this, open the "Security &amp; Privacy" settings in System Preferences, choose the "General" tab, and click the button on the right-hand side that says "Allow Anyway":</p>
+<p><img alt="bitcoind macOS pop-up" src="../assets/bitcoind-allow-anyway.png" style="height:350px" /></p>
+<p>Now re-run the command to start Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a><span class="go">bitcoind</span>
+</code></pre></div>
+Another pop-up message will appear, similar to the first one, but this time there will be an option to allow the program to run by clicking the "Open" button.</p>
+</div>
+</div>
+</div>
+<p>You should now see the message "Bitcoin Core starting" in the Terminal.</p>
+<div class="admonition warning">
+<p class="admonition-title">Bitcoin synchronisation</p>
+<p>When Bitcoin Core starts for the first time, it will begin synchronising with the rest of the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed.</p>
+<p><strong>The synchronisation process on Mainnet may take several hours, or even days, to complete.</strong> You can continue with the installation steps below while it is in progress, but you will not be able to use Trustchain until your Bitcoin node has finished synchronising.</p>
+<p>Fortunately, the synchronisation process on Testnet4 is much quicker, as only ~15GB of data must be downloaded.</p>
+</div>
+<p>Whenever Bitcoin Core is running, you can invoke the Bitcoin CLI with commands beginning <code>bitcoin-cli</code>. A full list of commands available via the Bitcoin CLI can be found <a href="https://developer.bitcoin.org/reference/rpc/">here</a>.</p>
+<p>One useful example is the following <code>-getinfo</code> command. It reports information about the state of your Bitcoin node, including whether it is fully synchronised:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="go">bitcoin-cli -getinfo</span>
+</code></pre></div></p>
+<div class="admonition info">
+<p class="admonition-title">Create a Bitcoin wallet for ION</p>
+<p>Before using ION you must create a Bitcoin wallet by running the following CLI command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a><span class="go">bitcoin-cli -named createwallet wallet_name=&quot;sidetreeDefaultWallet&quot; descriptors=false</span>
+</code></pre></div>
+Expected output:
+<div class="language-json no-copy highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a><span class="p">{</span>
+<a id="__codelineno-47-2" name="__codelineno-47-2" href="#__codelineno-47-2"></a><span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sidetreeDefaultWallet&quot;</span><span class="p">,</span>
+<a id="__codelineno-47-3" name="__codelineno-47-3" href="#__codelineno-47-3"></a><span class="w">  </span><span class="nt">&quot;warnings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-47-4" name="__codelineno-47-4" href="#__codelineno-47-4"></a><span class="w">    </span><span class="s2">&quot;Wallet created successfully. The legacy wallet type is being deprecated and support for creating and opening legacy wallets will be removed in the future.&quot;</span>
+<a id="__codelineno-47-5" name="__codelineno-47-5" href="#__codelineno-47-5"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-47-6" name="__codelineno-47-6" href="#__codelineno-47-6"></a><span class="p">}</span>
+</code></pre></div>
+Note that we have chosen to create a "legacy" Bitcoin wallet, for compatibility with ION.</p>
+</div>
+<h3 id="configure-ion">Configure ION</h3>
+<p>Choose a directory in which you want to store the ION software and change to that directory using the command <code>cd &lt;DIRECTORY_NAME&gt;</code>. For instance, to change to your home directory run the <code>cd</code> command without any arguments:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a><span class="go">cd</span>
+</code></pre></div>
+Now clone the ION code repository from GitHub:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a><span class="go">git clone https://github.com/decentralized-identity/ion.git</span>
+</code></pre></div>
+and change into the newly-created <code>ion</code> subfolder:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a><span class="go">cd ion</span>
+</code></pre></div></p>
+<div class="admonition tip">
+<p class="admonition-title">Create the <code>ION_REPO</code> environment variable</p>
+<p>Since we will need to refer to this folder in future, let's create an <a href="../getting-started/#environment-variables">environment variable</a> containing its file path:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a><span class="go">echo &quot;export ION_REPO=&quot; $(pwd) | sed &#39;s/= /=/g&#39; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div></p>
+</div>
+<p>We will need a folder for storing ION configuration files. For convenience, we'll also create an environment variable for that folder.</p>
+<div class="admonition tip">
+<p class="admonition-title">Create the <code>ION_CONFIG</code> environment variables</p>
+<p>Our convention is to use the folder <code>~/.ion</code> for ION configuration files. If you want to use a different folder, just change the path in the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a><span class="go">echo &quot;export ION_CONFIG=~/.ion&quot; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div></p>
+<p>We also need environment variables for each of the four files that will be stored in the ION config folder, so ION can find them when it starts up. The following command creates all four environment variables:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:3"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><input id="__tabbed_9_3" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Mainnet</label><label for="__tabbed_9_2">Testnet4</label><label for="__tabbed_9_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a><span class="go">printf &quot;export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/mainnet-core-versioning.json&quot; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a><span class="go">printf &quot;export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json&quot; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-55-1" name="__codelineno-55-1" href="#__codelineno-55-1"></a><span class="go">printf &quot;export ION_BITCOIN_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-config.json\nexport ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-bitcoin-versioning.json\nexport ION_CORE_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-config.json\nexport ION_CORE_VERSIONING_CONFIG_FILE_PATH=$ION_CONFIG/testnet-core-versioning.json&quot; &gt;&gt; $SHELL_CONFIG; source $SHELL_CONFIG</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<p>Having defined the <code>ION_CONFIG</code> environment variable (above), use it to create the folder itself:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-56-1" name="__codelineno-56-1" href="#__codelineno-56-1"></a><span class="go">mkdir $ION_CONFIG</span>
+</code></pre></div></p>
+<p>Next, copy the template ION configuration files to your <code>ION_CONFIG</code> directory:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:3"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><input id="__tabbed_10_3" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Mainnet</label><label for="__tabbed_10_2">Testnet4</label><label for="__tabbed_10_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-57-1" name="__codelineno-57-1" href="#__codelineno-57-1"></a><span class="go">cp $ION_REPO/config/mainnet-bitcoin-config.json $ION_REPO/config/mainnet-bitcoin-versioning.json $ION_REPO/config/mainnet-core-config.json $ION_REPO/config/mainnet-core-versioning.json $ION_CONFIG</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-58-1" name="__codelineno-58-1" href="#__codelineno-58-1"></a><span class="go">cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-59-1" name="__codelineno-59-1" href="#__codelineno-59-1"></a><span class="go">cp $ION_REPO/config/testnet-bitcoin-config.json $ION_REPO/config/testnet-bitcoin-versioning.json $ION_REPO/config/testnet-core-config.json $ION_REPO/config/testnet-core-versioning.json $ION_CONFIG</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>and set appropriate user permissions:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-60-1" name="__codelineno-60-1" href="#__codelineno-60-1"></a><span class="go">chmod 640 $ION_BITCOIN_CONFIG_FILE_PATH $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH $ION_CORE_CONFIG_FILE_PATH $ION_CORE_VERSIONING_CONFIG_FILE_PATH</span>
+</code></pre></div></p>
+<p>Having made copies of the template configuration files, we now edit some of their parameters to match our Bitcoin Core configuration.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:3"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><input id="__tabbed_11_3" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Mainnet</label><label for="__tabbed_11_2">Testnet4</label><label for="__tabbed_11_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Set the <code>bitcoinDataDirectory</code> parameter (skip this step if your <code>BITCOIN_DATA</code> directory is on a network drive):</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">Linux</label><label for="__tabbed_12_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-61-1" name="__codelineno-61-1" href="#__codelineno-61-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-62-1" name="__codelineno-62-1" href="#__codelineno-62-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="tabbed-block">
+<p>Set the <code>bitcoinDataDirectory</code> parameter in the ION Bitcoin config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">Linux</label><label for="__tabbed_13_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-63-1" name="__codelineno-63-1" href="#__codelineno-63-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;/testnet4&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-64-1" name="__codelineno-64-1" href="#__codelineno-64-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;/testnet4&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Next, for Testnet4 only, set two further parameters in the same file. First the <code>bitcoinPeerUri</code> parameter:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">Linux</label><label for="__tabbed_14_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-65-1" name="__codelineno-65-1" href="#__codelineno-65-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinPeerUri&quot;: &quot;http://localhost:18332&quot;|&quot;bitcoinPeerUri&quot;: &quot;http://localhost:48332&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-66-1" name="__codelineno-66-1" href="#__codelineno-66-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinPeerUri&quot;: &quot;http://localhost:18332&quot;|&quot;bitcoinPeerUri&quot;: &quot;http://localhost:48332&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>and second, the <code>genesisBlockNumber</code> parameter:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">Linux</label><label for="__tabbed_15_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-67-1" name="__codelineno-67-1" href="#__codelineno-67-1"></a><span class="go">sed -i &#39;s|&quot;genesisBlockNumber&quot;: .*,|&quot;genesisBlockNumber&quot;: 2000,|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-68-1" name="__codelineno-68-1" href="#__codelineno-68-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;genesisBlockNumber&quot;: .*,|&quot;genesisBlockNumber&quot;: 2000,|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Also for Testnet4 only, set the <code>startingBlockchainTime</code> parameter in the ION Bitcoin versioning config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">Linux</label><label for="__tabbed_16_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-69-1" name="__codelineno-69-1" href="#__codelineno-69-1"></a><span class="go">sed -i &#39;s|&quot;startingBlockchainTime&quot;: .*,|&quot;startingBlockchainTime&quot;: 2000,|&#39; $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-70-1" name="__codelineno-70-1" href="#__codelineno-70-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;startingBlockchainTime&quot;: .*,|&quot;startingBlockchainTime&quot;: 2000,|&#39; $ION_BITCOIN_VERSIONING_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>and the same parameter in the ION Core versioning config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="17:2"><input checked="checked" id="__tabbed_17_1" name="__tabbed_17" type="radio" /><input id="__tabbed_17_2" name="__tabbed_17" type="radio" /><div class="tabbed-labels"><label for="__tabbed_17_1">Linux</label><label for="__tabbed_17_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-71-1" name="__codelineno-71-1" href="#__codelineno-71-1"></a><span class="go">sed -i &#39;s|&quot;startingBlockchainTime&quot;: .*,|&quot;startingBlockchainTime&quot;: 2000,|&#39; $ION_CORE_VERSIONING_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-72-1" name="__codelineno-72-1" href="#__codelineno-72-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;startingBlockchainTime&quot;: .*,|&quot;startingBlockchainTime&quot;: 2000,|&#39; $ION_CORE_VERSIONING_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="tabbed-block">
+<p>Set the <code>bitcoinDataDirectory</code> parameter (skip this step if your <code>BITCOIN_DATA</code> directory is on a network drive):</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="18:2"><input checked="checked" id="__tabbed_18_1" name="__tabbed_18" type="radio" /><input id="__tabbed_18_2" name="__tabbed_18" type="radio" /><div class="tabbed-labels"><label for="__tabbed_18_1">Linux</label><label for="__tabbed_18_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-73-1" name="__codelineno-73-1" href="#__codelineno-73-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;/testnet3&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-74-1" name="__codelineno-74-1" href="#__codelineno-74-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinDataDirectory&quot;: &quot;.*&quot;|&quot;bitcoinDataDirectory&quot;: &quot;&#39;$BITCOIN_DATA&#39;/testnet3&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><br>
+Next we shall set the <code>bitcoinRpcUsername</code> and <code>bitcoinRpcPassword</code> parameters. These must match the username and password chosen in the <a href="#bitcoin-cli">Bitcoin CLI</a> section above.</p>
+<p>We chose <code>admin</code> for the RPC username. The following command sets this same value inside the ION Bitcoin config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="19:2"><input checked="checked" id="__tabbed_19_1" name="__tabbed_19" type="radio" /><input id="__tabbed_19_2" name="__tabbed_19" type="radio" /><div class="tabbed-labels"><label for="__tabbed_19_1">Linux</label><label for="__tabbed_19_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-75-1" name="__codelineno-75-1" href="#__codelineno-75-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinRpcUsername&quot;: &quot;.*&quot;|&quot;bitcoinRpcUsername&quot;: &quot;admin&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-76-1" name="__codelineno-76-1" href="#__codelineno-76-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinRpcUsername&quot;: &quot;.*&quot;|&quot;bitcoinRpcUsername&quot;: &quot;admin&quot;|&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>For the RPC password, copy and paste the following command into the Terminal and then change <code>&lt;password&gt;</code> to the <strong>same password</strong> you chose when setting up the <a href="#bitcoin-cli">Bitcoin CLI</a>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-77-1" name="__codelineno-77-1" href="#__codelineno-77-1"></a><span class="go">RPC_PASSWORD=&quot;&lt;password&gt;&quot;</span>
+</code></pre></div></p>
+<p>Then run this command to update the <code>bitcoinRpcPassword</code> parameter in the ION config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="20:2"><input checked="checked" id="__tabbed_20_1" name="__tabbed_20" type="radio" /><input id="__tabbed_20_2" name="__tabbed_20" type="radio" /><div class="tabbed-labels"><label for="__tabbed_20_1">Linux</label><label for="__tabbed_20_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-78-1" name="__codelineno-78-1" href="#__codelineno-78-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinRpcPassword&quot;: &quot;.*&quot;|&quot;bitcoinRpcPassword&quot;: &quot;&#39;$RPC_PASSWORD&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-79-1" name="__codelineno-79-1" href="#__codelineno-79-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinRpcPassword&quot;: &quot;.*&quot;|&quot;bitcoinRpcPassword&quot;: &quot;&#39;$RPC_PASSWORD&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>The final configuration step is to set the <code>bitcoinWalletOrImportString</code> parameter.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="21:3"><input checked="checked" id="__tabbed_21_1" name="__tabbed_21" type="radio" /><input id="__tabbed_21_2" name="__tabbed_21" type="radio" /><input id="__tabbed_21_3" name="__tabbed_21" type="radio" /><div class="tabbed-labels"><label for="__tabbed_21_1">Mainnet</label><label for="__tabbed_21_2">Testnet4</label><label for="__tabbed_21_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>This must be a mainnet-compatible private key in wallet import format (WIF).</p>
+<p>If you do <strong>not</strong> intend to use Trustchain to write your own DID operations, you can use <a href="https://learnmeabitcoin.com/technical/wif">this tool</a> to randomly generate a WIF string without any bitcoin.</p>
+<p>If you are intending to use Trustchain to write your own DID operations, this parameter must be populated with your private key in the appropriate format. To do this, first check that <code>sidetreeDefaultWallet</code> (that was created <a href="#configure-bitcoin-core">earlier</a>) is loaded. You should see the following output when running this command:
+<div class="language-json no-copy highlight"><pre><span></span><code><a id="__codelineno-80-1" name="__codelineno-80-1" href="#__codelineno-80-1"></a><span class="err">bi</span><span class="kc">t</span><span class="err">coi</span><span class="kc">n</span><span class="mi">-</span><span class="err">cli</span><span class="w"> </span><span class="err">lis</span><span class="kc">t</span><span class="err">walle</span><span class="kc">ts</span>
+<a id="__codelineno-80-2" name="__codelineno-80-2" href="#__codelineno-80-2"></a><span class="p">[</span>
+<a id="__codelineno-80-3" name="__codelineno-80-3" href="#__codelineno-80-3"></a><span class="w">  </span><span class="s2">&quot;sidetreeDefaultWallet&quot;</span>
+<a id="__codelineno-80-4" name="__codelineno-80-4" href="#__codelineno-80-4"></a><span class="p">]</span>
+</code></pre></div>
+Next create a wallet address with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-81-1" name="__codelineno-81-1" href="#__codelineno-81-1"></a><span class="go">bitcoin-cli getnewaddress</span>
+</code></pre></div>
+This command will output a new address (a long string of characters).</p>
+<p>Now, to get the private key for this Bitcoin address, run the following command but with <code>&lt;address&gt;</code> replaced with the output from the previous step:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-82-1" name="__codelineno-82-1" href="#__codelineno-82-1"></a><span class="go">bitcoin-cli dumpprivkey &lt;address&gt;</span>
+</code></pre></div>
+Once again, the output will be a long string of characters. This is the WIF string to be used in the following command.</p>
+<div class="admonition warning">
+<p class="admonition-title">Never share your Bitcoin private keys</p>
+<p>The output from the previous command is the Bitcoin private key corresponding to your wallet address. Anyone who has access to this private key can spend the bitcoins in that address, so you should be careful to keep it secret.</p>
+<p>In the following step we will copy the private key into an ION configuration file, to enable ION to execute the Bitcoin transactions necessary to create and update DIDs. The permissions on this configuration file have already been set (above) so that only the user and their group can read the file contents.</p>
+</div>
+<p>Copy and paste this command into the Terminal and then change <code>&lt;wif&gt;</code> to your WIF string:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-83-1" name="__codelineno-83-1" href="#__codelineno-83-1"></a><span class="go">WIF=&quot;&lt;wif&gt;&quot;</span>
+</code></pre></div></p>
+<p>Then run this command to update the <code>bitcoinWalletOrImportString</code> parameter in the ION config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="22:2"><input checked="checked" id="__tabbed_22_1" name="__tabbed_22" type="radio" /><input id="__tabbed_22_2" name="__tabbed_22" type="radio" /><div class="tabbed-labels"><label for="__tabbed_22_1">Linux</label><label for="__tabbed_22_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-84-1" name="__codelineno-84-1" href="#__codelineno-84-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-85-1" name="__codelineno-85-1" href="#__codelineno-85-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="tabbed-block">
+<p>On Testnet4, a key will be automatically generated when ION runs for the first time which can be used for the <code>bitcoinWalletOrImportString</code> parameter, so you don't need to do anything in this step.</p>
+</div>
+<div class="tabbed-block">
+<p>On Testnet3, a key will be automatically generated when ION runs for the first time which can be used for the <code>bitcoinWalletOrImportString</code> parameter, so you don't need to do anything in this step.</p>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Set the <code>requestMaxRetries</code> configuration parameter</p>
+<p>This step is optional but is strongly recommended because it may significantly speed up the synchronisation process which takes place when ION runs for the first time.</p>
+<p>When ION requests information from the local Bitcoin node it may have to retry several times before receiving a response. This is particularly common during its initial synchronisation, when many requests are made at high frequency.</p>
+<p>After several failed requests ION will stop trying and the synchronisation process will restart, forfeiting the progress already made. By default this will happen after only three failed attempts, but this can be increased by setting the <code>requestMaxRetries</code> config parameter.</p>
+<p>Run the following command to increase the maximum number of retry attempts:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="23:2"><input checked="checked" id="__tabbed_23_1" name="__tabbed_23" type="radio" /><input id="__tabbed_23_2" name="__tabbed_23" type="radio" /><div class="tabbed-labels"><label for="__tabbed_23_1">Linux</label><label for="__tabbed_23_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-86-1" name="__codelineno-86-1" href="#__codelineno-86-1"></a><span class="go">N=$(grep -n &#39;\&quot;port\&quot;&#39; $ION_BITCOIN_CONFIG_FILE_PATH | cut -d&#39;:&#39; -f1); sed -i &quot;$((N+1))&quot;&#39;i\&#39;$&#39;\n&#39;&#39;  &quot;requestMaxRetries&quot;: 6,&#39;$&#39;\n&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-87-1" name="__codelineno-87-1" href="#__codelineno-87-1"></a><span class="go">N=$(grep -n &#39;\&quot;port\&quot;&#39; $ION_BITCOIN_CONFIG_FILE_PATH | cut -d&#39;:&#39; -f1); sed -i &#39;&#39; &quot;$((N+1))&quot;&#39;i\&#39;$&#39;\n&#39;&#39;  &quot;requestMaxRetries&quot;: 6,&#39;$&#39;\n&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
+<h3 id="build-ion">Build ION</h3>
+<p>Change directory into the ION repository:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-88-1" name="__codelineno-88-1" href="#__codelineno-88-1"></a><span class="go">cd $ION_REPO</span>
+</code></pre></div>
+Now install the ION dependencies:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-89-1" name="__codelineno-89-1" href="#__codelineno-89-1"></a><span class="go">npm i</span>
+</code></pre></div>
+make sure Typescript is installed:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-90-1" name="__codelineno-90-1" href="#__codelineno-90-1"></a><span class="go">npm install typescript</span>
+</code></pre></div>
+and then build the ION package:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-91-1" name="__codelineno-91-1" href="#__codelineno-91-1"></a><span class="go">npm run build</span>
+</code></pre></div></p>
+<div class="admonition info">
+<p class="admonition-title">Note: Rebuild ION whenever a configuration file is modified</p>
+<p>You must rerun the command <code>npm run build</code> if changes are made to the JSON configuration files in the <code>ION_CONFIG</code> folder.</p>
+</div>
+<details class="warning">
+<summary>Additional configuration steps required for Testnet4</summary>
+<p>ION has built-in support for Bitcoin Mainnet and Testnet3, but not for Testnet4. To fix this, the following additional steps must be performed (after completing the ION build procedure) <strong>only if you are running on Testnet4</strong>.</p>
+<p>Run the following command to update your ION installation with the Testnet4 <a href="https://learnmeabitcoin.com/technical/networking/magic-bytes/">magic bytes</a>, used to delimit messages on the Bitcoin network:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="24:2"><input checked="checked" id="__tabbed_24_1" name="__tabbed_24" type="radio" /><input id="__tabbed_24_2" name="__tabbed_24" type="radio" /><div class="tabbed-labels"><label for="__tabbed_24_1">Linux</label><label for="__tabbed_24_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-92-1" name="__codelineno-92-1" href="#__codelineno-92-1"></a><span class="go">sed -i &quot;s/testnet: Buffer\.from(&#39;0b110907&#39;, &#39;hex&#39;)/testnet: Buffer.from(&#39;1c163f28&#39;, &#39;hex&#39;)/&quot; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-93-1" name="__codelineno-93-1" href="#__codelineno-93-1"></a><span class="go">sed -i &#39;&#39; &quot;s/testnet: Buffer\.from(&#39;0b110907&#39;, &#39;hex&#39;)/testnet: Buffer.from(&#39;1c163f28&#39;, &#39;hex&#39;)/&quot; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Run this command to fix the way ION computes the Testnet4 block height:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="25:2"><input checked="checked" id="__tabbed_25_1" name="__tabbed_25" type="radio" /><input id="__tabbed_25_2" name="__tabbed_25" type="radio" /><div class="tabbed-labels"><label for="__tabbed_25_1">Linux</label><label for="__tabbed_25_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-94-1" name="__codelineno-94-1" href="#__codelineno-94-1"></a><span class="go">sed -i &#39;s/magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest)/(magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest) || (magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.testnet)))/&#39; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-95-1" name="__codelineno-95-1" href="#__codelineno-95-1"></a><span class="go">sed -i &#39;&#39; &#39;s/magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest)/(magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.regtest) || (magicBytes\.equals(BitcoinRawDataParser\.magicBytes\.testnet)))/&#39; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinRawDataParser.js</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Finally, run the following command to avoid errors when performing fee estimation on Testnet4 (required for publishing DID operations from your ION node):</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="26:2"><input checked="checked" id="__tabbed_26_1" name="__tabbed_26" type="radio" /><input id="__tabbed_26_2" name="__tabbed_26" type="radio" /><div class="tabbed-labels"><label for="__tabbed_26_1">Linux</label><label for="__tabbed_26_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-96-1" name="__codelineno-96-1" href="#__codelineno-96-1"></a><span class="go">sed -i &#39;s|1 // Number of confirmation targets|50 // Number of confirmation targets|&#39; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-97-1" name="__codelineno-97-1" href="#__codelineno-97-1"></a><span class="go">sed -i &#39;&#39; &#39;s|1 // Number of confirmation targets|50 // Number of confirmation targets|&#39; $ION_REPO/node_modules/@decentralized-identity/sidetree/dist/lib/bitcoin/BitcoinClient.js</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</details>
+<h3 id="test-ion">Test ION</h3>
+<p>Before running ION for the first time, <strong>make sure that you have started IPFS, MongoDB and Bitcoin Core</strong> (by following the instructions above or using the command summary in the <a href="#running-ion">Running ION</a> section). Also make sure that Bitcoin Core is fully synchronised by running:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-98-1" name="__codelineno-98-1" href="#__codelineno-98-1"></a><span class="go">bitcoin-cli -getinfo</span>
+</code></pre></div></p>
+<p>You should see output similar to the following. Bitcoin Core is synchronised if the number of <code>Blocks</code> is equal to the number of <code>Headers</code>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="27:3"><input checked="checked" id="__tabbed_27_1" name="__tabbed_27" type="radio" /><input id="__tabbed_27_2" name="__tabbed_27" type="radio" /><input id="__tabbed_27_3" name="__tabbed_27" type="radio" /><div class="tabbed-labels"><label for="__tabbed_27_1">Mainnet</label><label for="__tabbed_27_2">Testnet4</label><label for="__tabbed_27_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-99-1" name="__codelineno-99-1" href="#__codelineno-99-1"></a>Chain: main
+<a id="__codelineno-99-2" name="__codelineno-99-2" href="#__codelineno-99-2"></a>Blocks: 933111
+<a id="__codelineno-99-3" name="__codelineno-99-3" href="#__codelineno-99-3"></a>Headers: 933111
+<a id="__codelineno-99-4" name="__codelineno-99-4" href="#__codelineno-99-4"></a>Verification progress: 99.9998%
+<a id="__codelineno-99-5" name="__codelineno-99-5" href="#__codelineno-99-5"></a>Difficulty: 146472570619930.8
+<a id="__codelineno-99-6" name="__codelineno-99-6" href="#__codelineno-99-6"></a>
+<a id="__codelineno-99-7" name="__codelineno-99-7" href="#__codelineno-99-7"></a>Network: in 0, out 10, total 10
+<a id="__codelineno-99-8" name="__codelineno-99-8" href="#__codelineno-99-8"></a>Version: 280000
+<a id="__codelineno-99-9" name="__codelineno-99-9" href="#__codelineno-99-9"></a>Time offset (s): 0
+<a id="__codelineno-99-10" name="__codelineno-99-10" href="#__codelineno-99-10"></a>Proxies: n/a
+<a id="__codelineno-99-11" name="__codelineno-99-11" href="#__codelineno-99-11"></a>Min tx relay fee rate (BTC/kvB): 0.00001000
+<a id="__codelineno-99-12" name="__codelineno-99-12" href="#__codelineno-99-12"></a>
+<a id="__codelineno-99-13" name="__codelineno-99-13" href="#__codelineno-99-13"></a>Wallet: sidetreeDefaultWallet
+<a id="__codelineno-99-14" name="__codelineno-99-14" href="#__codelineno-99-14"></a>Keypool size: 1000
+<a id="__codelineno-99-15" name="__codelineno-99-15" href="#__codelineno-99-15"></a>Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+<a id="__codelineno-99-16" name="__codelineno-99-16" href="#__codelineno-99-16"></a>
+<a id="__codelineno-99-17" name="__codelineno-99-17" href="#__codelineno-99-17"></a>Balance: 0.00000000
+</code></pre></div>
+<p>In a new Terminal, start the ION Bitcoin microservice with:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-100-1" name="__codelineno-100-1" href="#__codelineno-100-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-101-1" name="__codelineno-101-1" href="#__codelineno-101-1"></a>Chain: testnet4
+<a id="__codelineno-101-2" name="__codelineno-101-2" href="#__codelineno-101-2"></a>Blocks: 119371
+<a id="__codelineno-101-3" name="__codelineno-101-3" href="#__codelineno-101-3"></a>Headers: 119371
+<a id="__codelineno-101-4" name="__codelineno-101-4" href="#__codelineno-101-4"></a>Verification progress: 100.0000%
+<a id="__codelineno-101-5" name="__codelineno-101-5" href="#__codelineno-101-5"></a>Difficulty: 1
+<a id="__codelineno-101-6" name="__codelineno-101-6" href="#__codelineno-101-6"></a>
+<a id="__codelineno-101-7" name="__codelineno-101-7" href="#__codelineno-101-7"></a>Network: in 0, out 11, total 11
+<a id="__codelineno-101-8" name="__codelineno-101-8" href="#__codelineno-101-8"></a>Version: 280000
+<a id="__codelineno-101-9" name="__codelineno-101-9" href="#__codelineno-101-9"></a>Time offset (s): 0
+<a id="__codelineno-101-10" name="__codelineno-101-10" href="#__codelineno-101-10"></a>Proxies: n/a
+<a id="__codelineno-101-11" name="__codelineno-101-11" href="#__codelineno-101-11"></a>Min tx relay fee rate (BTC/kvB): 0.00001000
+<a id="__codelineno-101-12" name="__codelineno-101-12" href="#__codelineno-101-12"></a>
+<a id="__codelineno-101-13" name="__codelineno-101-13" href="#__codelineno-101-13"></a>Wallet: sidetreeDefaultWallet
+<a id="__codelineno-101-14" name="__codelineno-101-14" href="#__codelineno-101-14"></a>Keypool size: 1000
+<a id="__codelineno-101-15" name="__codelineno-101-15" href="#__codelineno-101-15"></a>Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+<a id="__codelineno-101-16" name="__codelineno-101-16" href="#__codelineno-101-16"></a>
+<a id="__codelineno-101-17" name="__codelineno-101-17" href="#__codelineno-101-17"></a>Balance: 0.00000000
+</code></pre></div>
+<p>In a new Terminal, start the ION Bitcoin microservice with:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-102-1" name="__codelineno-102-1" href="#__codelineno-102-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+<p>When running this command for the first time, expect the error:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-103-1" name="__codelineno-103-1" href="#__codelineno-103-1"></a>Non-base58 character
+<a id="__codelineno-103-2" name="__codelineno-103-2" href="#__codelineno-103-2"></a>Is bitcoinWalletImportString valid? Consider using &lt;testnet&gt; key generated below:
+</code></pre></div>
+followed by a base58 string (another long string of characters). In this case, copy the base58 string and paste it into the following command in place of <code>&lt;wif&gt;</code>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-104-1" name="__codelineno-104-1" href="#__codelineno-104-1"></a><span class="go">WIF=&quot;&lt;wif&gt;&quot;</span>
+</code></pre></div></p>
+<p>Then run this command to update the <code>bitcoinWalletOrImportString</code> parameter in the ION config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="28:2"><input checked="checked" id="__tabbed_28_1" name="__tabbed_28" type="radio" /><input id="__tabbed_28_2" name="__tabbed_28" type="radio" /><div class="tabbed-labels"><label for="__tabbed_28_1">Linux</label><label for="__tabbed_28_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-105-1" name="__codelineno-105-1" href="#__codelineno-105-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-106-1" name="__codelineno-106-1" href="#__codelineno-106-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Now repeat the attempt to start the ION Bitcoin microservice:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-107-1" name="__codelineno-107-1" href="#__codelineno-107-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-108-1" name="__codelineno-108-1" href="#__codelineno-108-1"></a>Chain: test
+<a id="__codelineno-108-2" name="__codelineno-108-2" href="#__codelineno-108-2"></a>Blocks: 4834624
+<a id="__codelineno-108-3" name="__codelineno-108-3" href="#__codelineno-108-3"></a>Headers: 4834624
+<a id="__codelineno-108-4" name="__codelineno-108-4" href="#__codelineno-108-4"></a>Verification progress: 99.9999%
+<a id="__codelineno-108-5" name="__codelineno-108-5" href="#__codelineno-108-5"></a>Difficulty: 2154250.232295683
+<a id="__codelineno-108-6" name="__codelineno-108-6" href="#__codelineno-108-6"></a>
+<a id="__codelineno-108-7" name="__codelineno-108-7" href="#__codelineno-108-7"></a>Network: in 0, out 10, total 10
+<a id="__codelineno-108-8" name="__codelineno-108-8" href="#__codelineno-108-8"></a>Version: 280000
+<a id="__codelineno-108-9" name="__codelineno-108-9" href="#__codelineno-108-9"></a>Time offset (s): 0
+<a id="__codelineno-108-10" name="__codelineno-108-10" href="#__codelineno-108-10"></a>Proxies: n/a
+<a id="__codelineno-108-11" name="__codelineno-108-11" href="#__codelineno-108-11"></a>Min tx relay fee rate (BTC/kvB): 0.00001000
+<a id="__codelineno-108-12" name="__codelineno-108-12" href="#__codelineno-108-12"></a>
+<a id="__codelineno-108-13" name="__codelineno-108-13" href="#__codelineno-108-13"></a>Wallet: sidetreeDefaultWallet
+<a id="__codelineno-108-14" name="__codelineno-108-14" href="#__codelineno-108-14"></a>Keypool size: 1000
+<a id="__codelineno-108-15" name="__codelineno-108-15" href="#__codelineno-108-15"></a>Transaction fee rate (-paytxfee) (BTC/kvB): 0.00000000
+<a id="__codelineno-108-16" name="__codelineno-108-16" href="#__codelineno-108-16"></a>
+<a id="__codelineno-108-17" name="__codelineno-108-17" href="#__codelineno-108-17"></a>Balance: 0.00000000
+</code></pre></div>
+<p>In a new Terminal, start the ION Bitcoin microservice with:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-109-1" name="__codelineno-109-1" href="#__codelineno-109-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+<p>When running this command for the first time, expect the error:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-110-1" name="__codelineno-110-1" href="#__codelineno-110-1"></a>Non-base58 character
+<a id="__codelineno-110-2" name="__codelineno-110-2" href="#__codelineno-110-2"></a>Is bitcoinWalletImportString valid? Consider using &lt;testnet&gt; key generated below:
+</code></pre></div>
+followed by a base58 string (another long string of characters). In this case, copy the base58 string and paste it into the following command in place of <code>&lt;wif&gt;</code>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-111-1" name="__codelineno-111-1" href="#__codelineno-111-1"></a><span class="go">WIF=&quot;&lt;wif&gt;&quot;</span>
+</code></pre></div></p>
+<p>Then run this command to update the <code>bitcoinWalletOrImportString</code> parameter in the ION config file:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="29:2"><input checked="checked" id="__tabbed_29_1" name="__tabbed_29" type="radio" /><input id="__tabbed_29_2" name="__tabbed_29" type="radio" /><div class="tabbed-labels"><label for="__tabbed_29_1">Linux</label><label for="__tabbed_29_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-112-1" name="__codelineno-112-1" href="#__codelineno-112-1"></a><span class="go">sed -i &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-113-1" name="__codelineno-113-1" href="#__codelineno-113-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;bitcoinWalletOrImportString&quot;: &quot;.*&quot;|&quot;bitcoinWalletOrImportString&quot;: &quot;&#39;$WIF&#39;&quot;|g&#39; $ION_BITCOIN_CONFIG_FILE_PATH</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Now repeat the attempt to start the ION Bitcoin microservice:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-114-1" name="__codelineno-114-1" href="#__codelineno-114-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">ION synchronisation</p>
+<p>When the ION Bitcoin microservice starts for the first time, it will begin scanning the Bitcoin blockchain for ION DID operations, by making calls to the Bitcoin Core RPC interface.</p>
+<p>On Mainnet <strong>the synchronisation process may take several hours to complete.</strong> Wait until it has finished before running the ION Core microservice in the following step.</p>
+<p>On Testnet4 the synchronisation process is much quicker, as there are fewer blocks to scan, and should take only a few minutes.</p>
+</div>
+<details class="tip">
+<summary>Troubleshooting Tips</summary>
+<ul>
+<li>
+<p>When running the ION Bitcoin microservice for the first time, it may fail with an error message similar to the following:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-115-1" name="__codelineno-115-1" href="#__codelineno-115-1"></a>Sidetree-Bitcoin node initialization failed with error: {&quot;stack&quot;:&quot;Error: Unexpected fetch HTTP response: [500]: {\&quot;result\&quot;:null,\&quot;error\&quot;:{\&quot;code\&quot;:-4,\&quot;message\&quot;:\&quot;Wallet already loading.\&quot;}...}}
+</code></pre></div>
+This error can usually be overcome by simply re-starting the microservice with same command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-116-1" name="__codelineno-116-1" href="#__codelineno-116-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>If you see an <code>ECONNREFUSED</code> error message when starting the ION Bitcoin microservice, this indicates that it has failed to communicate with Bitcoin Core. In this case, make sure that Bitcoin Core started successfully.</p>
+</li>
+</ul>
+</details>
+<p>In another new Terminal, start the ION Core microservice with:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-117-1" name="__codelineno-117-1" href="#__codelineno-117-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run core)</span>
+</code></pre></div></p>
+<details class="tip">
+<summary>Troubleshooting Tip</summary>
+<p>If you see an <code>ECONNREFUSED</code> error message when starting the ION Core microservice, this indicates that it has failed to communicate with the ION Bitcoin microservice. In this case, make sure that the ION Bitcoin microservice started successfully and is fully synchronised.</p>
+</details>
+<p>Finally, to confirm that ION is working properly, open yet another new Terminal and resolve a sample DID:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="30:3"><input checked="checked" id="__tabbed_30_1" name="__tabbed_30" type="radio" /><input id="__tabbed_30_2" name="__tabbed_30" type="radio" /><input id="__tabbed_30_3" name="__tabbed_30" type="radio" /><div class="tabbed-labels"><label for="__tabbed_30_1">Mainnet</label><label for="__tabbed_30_2">Testnet4</label><label for="__tabbed_30_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-118-1" name="__codelineno-118-1" href="#__codelineno-118-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-119-1" name="__codelineno-119-1" href="#__codelineno-119-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-120-1" name="__codelineno-120-1" href="#__codelineno-120-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>If ION is working properly, the command above will return a JSON data structure containing the resolved DID document and document metadata for the sample DID.</p>
+<p>Congratulations! Your ION installation is now complete.</p>
+<h2 id="running-ion">Running ION</h2>
+<p>The following commands must be run each time you start your ION node, e.g. after restarting your computer. Some of them will keep control of the Terminal, so you will need to open a new Terminal window to continue.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Use tmux</p>
+<p>A convenient way to start all of the following processes is to use <a href="https://github.com/tmux/tmux/wiki">tmux</a> (the terminal multiplexer). Once installed, open a tmux session with the command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-121-1" name="__codelineno-121-1" href="#__codelineno-121-1"></a><span class="go">tmux new -s ion</span>
+</code></pre></div>
+and hit <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-b">B</kbd></span> followed by <span class="keys"><kbd class="key-c">C</kbd></span> each time you need to open a new window.</p>
+<p>When all of the processes are started, detach the tmux session with <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-b">B</kbd></span> followed by <span class="keys"><kbd class="key-d">D</kbd></span>. To reattach the session later, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-122-1" name="__codelineno-122-1" href="#__codelineno-122-1"></a><span class="go">tmux a -t ion</span>
+</code></pre></div></p>
+</div>
+<p>Follow these steps to start your ION node:</p>
+<p><strong>1. Start IPFS</strong></p>
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-123-1" name="__codelineno-123-1" href="#__codelineno-123-1"></a><span class="go">ipfs daemon</span>
+</code></pre></div>
+<details class="info">
+<summary>Other IPFS commands</summary>
+<p>Stop:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-124-1" name="__codelineno-124-1" href="#__codelineno-124-1"></a><span class="go">ipfs shutdown</span>
+</code></pre></div></p>
+</details>
+<p><strong>2. Start MongoDB</strong></p>
+<div class="tabbed-set tabbed-alternate" data-tabs="31:2"><input checked="checked" id="__tabbed_31_1" name="__tabbed_31" type="radio" /><input id="__tabbed_31_2" name="__tabbed_31" type="radio" /><div class="tabbed-labels"><label for="__tabbed_31_1">Linux</label><label for="__tabbed_31_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-125-1" name="__codelineno-125-1" href="#__codelineno-125-1"></a><span class="go">sudo systemctl start mongod</span>
+</code></pre></div>
+<details class="info">
+<summary>Other MongoDB commands</summary>
+<p>Stop MongoDB:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-126-1" name="__codelineno-126-1" href="#__codelineno-126-1"></a>sudo systemctl stop mongod
+</code></pre></div>
+Restart:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-127-1" name="__codelineno-127-1" href="#__codelineno-127-1"></a>sudo systemctl restart mongod
+</code></pre></div>
+Check status:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-128-1" name="__codelineno-128-1" href="#__codelineno-128-1"></a>sudo systemctl status mongod
+</code></pre></div></p>
+</details>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-129-1" name="__codelineno-129-1" href="#__codelineno-129-1"></a><span class="go">brew services start mongodb-community</span>
+</code></pre></div>
+<details class="info">
+<summary>Other MongoDB commands</summary>
+<p>Stop:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-130-1" name="__codelineno-130-1" href="#__codelineno-130-1"></a><span class="go">brew services stop mongodb-community</span>
+</code></pre></div>
+Restart:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-131-1" name="__codelineno-131-1" href="#__codelineno-131-1"></a><span class="go">brew services restart mongodb-community</span>
+</code></pre></div></p>
+</details>
+</div>
+</div>
+</div>
+<p><strong>3. Start Bitcoin Core</strong>
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-132-1" name="__codelineno-132-1" href="#__codelineno-132-1"></a><span class="go">bitcoind</span>
+</code></pre></div></p>
+<details class="info">
+<summary>Other Bitcoin Core commands</summary>
+<div class="tabbed-set tabbed-alternate" data-tabs="32:3"><input checked="checked" id="__tabbed_32_1" name="__tabbed_32" type="radio" /><input id="__tabbed_32_2" name="__tabbed_32" type="radio" /><input id="__tabbed_32_3" name="__tabbed_32" type="radio" /><div class="tabbed-labels"><label for="__tabbed_32_1">Mainnet</label><label for="__tabbed_32_2">Testnet4</label><label for="__tabbed_32_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Check status:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-133-1" name="__codelineno-133-1" href="#__codelineno-133-1"></a><span class="go">bitcoin-cli -getinfo</span>
+</code></pre></div></p>
+<p>Stop Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-134-1" name="__codelineno-134-1" href="#__codelineno-134-1"></a><span class="go">bitcoin-cli stop</span>
+</code></pre></div></p>
+<p>Print the log file to the Terminal (hit <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> to exit):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-135-1" name="__codelineno-135-1" href="#__codelineno-135-1"></a><span class="go">tail -f $BITCOIN_DATA/debug.log</span>
+</code></pre></div></p>
+<p>Reindex the chain (may take &gt;1 hour):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-136-1" name="__codelineno-136-1" href="#__codelineno-136-1"></a><span class="go">bitcoind -reindex-chainstate</span>
+</code></pre></div></p>
+<p>Check which port bitcoind is listening on (should be 8333 for Mainnet):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-137-1" name="__codelineno-137-1" href="#__codelineno-137-1"></a><span class="go">netstat -tulpn | grep &#39;bitcoind&#39;</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Check status:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-138-1" name="__codelineno-138-1" href="#__codelineno-138-1"></a><span class="go">bitcoin-cli -getinfo</span>
+</code></pre></div></p>
+<p>Stop Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-139-1" name="__codelineno-139-1" href="#__codelineno-139-1"></a><span class="go">bitcoin-cli stop</span>
+</code></pre></div></p>
+<p>Print the log file to the Terminal (hit <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> to exit):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-140-1" name="__codelineno-140-1" href="#__codelineno-140-1"></a><span class="go">tail -f $BITCOIN_DATA/testnet4/debug.log</span>
+</code></pre></div></p>
+<p>Reindex the chain (may take &gt;1 hour):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-141-1" name="__codelineno-141-1" href="#__codelineno-141-1"></a><span class="go">bitcoind -reindex-chainstate</span>
+</code></pre></div></p>
+<p>Check which port bitcoind is listening on (should be 48333 for Testnet4):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-142-1" name="__codelineno-142-1" href="#__codelineno-142-1"></a><span class="go">netstat -tulpn | grep &#39;bitcoind&#39;</span>
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Check status:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-143-1" name="__codelineno-143-1" href="#__codelineno-143-1"></a><span class="go">bitcoin-cli -getinfo</span>
+</code></pre></div></p>
+<p>Stop Bitcoin Core:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-144-1" name="__codelineno-144-1" href="#__codelineno-144-1"></a><span class="go">bitcoin-cli stop</span>
+</code></pre></div></p>
+<p>Print the log file to the Terminal (hit <span class="keys"><kbd class="key-control">Ctrl</kbd><span>+</span><kbd class="key-c">C</kbd></span> to exit):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-145-1" name="__codelineno-145-1" href="#__codelineno-145-1"></a><span class="go">tail -f $BITCOIN_DATA/testnet3/debug.log</span>
+</code></pre></div></p>
+<p>Reindex the chain (may take &gt;1 hour):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-146-1" name="__codelineno-146-1" href="#__codelineno-146-1"></a><span class="go">bitcoind -reindex-chainstate</span>
+</code></pre></div></p>
+<p>Check which port bitcoind is listening on (should be 18333 for Testnet3):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-147-1" name="__codelineno-147-1" href="#__codelineno-147-1"></a><span class="go">netstat -tulpn | grep &#39;bitcoind&#39;</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+</details>
+<p><strong>4. Start the ION bitcoin service.</strong>
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-148-1" name="__codelineno-148-1" href="#__codelineno-148-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run bitcoin)</span>
+</code></pre></div></p>
+<p><strong>5. Start the ION core service.</strong>
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-149-1" name="__codelineno-149-1" href="#__codelineno-149-1"></a><span class="gp gp-VirtualEnv">(cd $ION_REPO &amp;&amp; npm run core)</span>
+</code></pre></div></p>
+<p><strong>6. Test ION.</strong> To confirm that ION is working properly, resolve a sample DID:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="33:3"><input checked="checked" id="__tabbed_33_1" name="__tabbed_33" type="radio" /><input id="__tabbed_33_2" name="__tabbed_33" type="radio" /><input id="__tabbed_33_3" name="__tabbed_33" type="radio" /><div class="tabbed-labels"><label for="__tabbed_33_1">Mainnet</label><label for="__tabbed_33_2">Testnet4</label><label for="__tabbed_33_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-150-1" name="__codelineno-150-1" href="#__codelineno-150-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-151-1" name="__codelineno-151-1" href="#__codelineno-151-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-152-1" name="__codelineno-152-1" href="#__codelineno-152-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>This command should print the contents of the resolved DID document and document metadata to the Terminal. If it does not, see the Troubleshoot tips <a href="#test-ion">above</a>.</p>
+<h2 id="funding-your-bitcoin-wallet">Funding your Bitcoin wallet</h2>
+<p>ION can be used to resolve existing DIDs and to publish new ones. New DIDs are published by writing the DID document content to IPFS and inserting an identifier for that content inside a Bitcoin transaction. This has the effect of timestamping the DID document and also making it easily discoverable (by scanning the Bitcoin blockchain).</p>
+<p>Every Bitcoin transaction must include a processing fee, and therefore some funds must be available in your ION Bitcoin wallet before it can be used to publish any new DIDs. No funds are needed to resolve existing DIDs.</p>
+<p>First check that <code>sidetreeDefaultWallet</code>, that was created <a href="#configure-bitcoin-core">earlier</a>, is loaded by running this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-153-1" name="__codelineno-153-1" href="#__codelineno-153-1"></a><span class="go">bitcoin-cli listwallets</span>
+</code></pre></div></p>
+<p>You should see the following output:
+<div class="language-json no-copy highlight"><pre><span></span><code><a id="__codelineno-154-1" name="__codelineno-154-1" href="#__codelineno-154-1"></a><span class="p">[</span>
+<a id="__codelineno-154-2" name="__codelineno-154-2" href="#__codelineno-154-2"></a><span class="w">  </span><span class="s2">&quot;sidetreeDefaultWallet&quot;</span>
+<a id="__codelineno-154-3" name="__codelineno-154-3" href="#__codelineno-154-3"></a><span class="p">]</span>
+</code></pre></div>
+Then use this command to list the receiving addresses for this wallet (with their balances):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-155-1" name="__codelineno-155-1" href="#__codelineno-155-1"></a><span class="go">bitcoin-cli -rpcwallet=&quot;sidetreeDefaultWallet&quot; listreceivedbyaddress 1 true</span>
+</code></pre></div></p>
+<p>To fund your wallet, send Bitcoins to the <strong>first address</strong> in this list.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="34:3"><input checked="checked" id="__tabbed_34_1" name="__tabbed_34" type="radio" /><input id="__tabbed_34_2" name="__tabbed_34" type="radio" /><input id="__tabbed_34_3" name="__tabbed_34" type="radio" /><div class="tabbed-labels"><label for="__tabbed_34_1">Mainnet</label><label for="__tabbed_34_2">Testnet4</label><label for="__tabbed_34_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="admonition tip">
+<p class="admonition-title">Purchase BTC on a Bitcoin exchange</p>
+<p>If you do not already own any bitcoins, they can be purchased on a <a href="https://bitcoin.org/en/exchanges">Bitcoin exchange</a>. Make sure that you acquire genuine bitcoins, which are identified by the ticker symbol <code>BTC</code>. When withdrawing your coins from the exchange, enter the receive address obtained in the preceding step to send them to your ION wallet.</p>
+</div>
+<p>After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. This should take around 10 minutes on average, but may take longer depending on the size of the transaction fee paid. To check the status of your transaction, paste the transaction ID into a Bitcoin blockchain explorer such as <a href="https://mempool.space/">mempool.space</a>.</p>
+</div>
+<div class="tabbed-block">
+<div class="admonition tip">
+<p class="admonition-title">Request tBTC from a Testnet4 faucet</p>
+<p>Testnet4 bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.</p>
+<p>Since coins on Bitcoin Testnet4 have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.</p>
+<p>Visit a Bitcoin Testnet4 faucet, such as <a href="https://faucet.testnet4.dev/">this one</a>, and enter the recieve address obtained in the preceding step to send them to your ION wallet.</p>
+</div>
+<p>After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet4 explorer such as <a href="https://mempool.space/testnet4">mempool.space</a>.</p>
+</div>
+<div class="tabbed-block">
+<div class="admonition tip">
+<p class="admonition-title">Request tBTC from a Testnet3 faucet</p>
+<p>Testnet3 bitcoins are identified by the ticker symbol tBTC, to distinguish them from the Mainnet bitcoins which have the symbol BTC.</p>
+<p>Since coins on Bitcoin Testnet3 have no monetary value they can be obtained free of charge from a "faucet", which is an automated service that will dispense a small quantity of tBTC on request.</p>
+<p>Visit a Bitcoin Testnet3 faucet, such as <a href="https://coinfaucet.eu/en/btc-testnet/">coinfaucet.eu</a>, and enter the recieve address obtained in the preceding step to send them to your ION wallet.</p>
+</div>
+<p>After sending bitcoins to your wallet, you will need to wait for the transaction to be confirmed by the Bitcoin network. To check the status of your transaction, paste the transaction ID into a Bitcoin Testnet3 explorer such as <a href="https://mempool.space/testnet">mempool.space</a>.</p>
+</div>
+</div>
+</div>
+<p>When the transaction is confirmed, check your wallet balance with:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-156-1" name="__codelineno-156-1" href="#__codelineno-156-1"></a><span class="go">bitcoin-cli getbalances</span>
+</code></pre></div>
+The output should look something like this, with a non-zero balance for the <code>watchonly</code> wallet:
+<div class="language-json no-copy highlight"><pre><span></span><code><a id="__codelineno-157-1" name="__codelineno-157-1" href="#__codelineno-157-1"></a><span class="p">{</span>
+<a id="__codelineno-157-2" name="__codelineno-157-2" href="#__codelineno-157-2"></a><span class="w">  </span><span class="nt">&quot;mine&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-157-3" name="__codelineno-157-3" href="#__codelineno-157-3"></a><span class="w">    </span><span class="nt">&quot;trusted&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00000000</span><span class="p">,</span>
+<a id="__codelineno-157-4" name="__codelineno-157-4" href="#__codelineno-157-4"></a><span class="w">    </span><span class="nt">&quot;untrusted_pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00000000</span><span class="p">,</span>
+<a id="__codelineno-157-5" name="__codelineno-157-5" href="#__codelineno-157-5"></a><span class="w">    </span><span class="nt">&quot;immature&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00000000</span>
+<a id="__codelineno-157-6" name="__codelineno-157-6" href="#__codelineno-157-6"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-157-7" name="__codelineno-157-7" href="#__codelineno-157-7"></a><span class="w">  </span><span class="nt">&quot;watchonly&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-157-8" name="__codelineno-157-8" href="#__codelineno-157-8"></a><span class="w">    </span><span class="nt">&quot;trusted&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00017612</span><span class="p">,</span>
+<a id="__codelineno-157-9" name="__codelineno-157-9" href="#__codelineno-157-9"></a><span class="w">    </span><span class="nt">&quot;untrusted_pending&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00000000</span><span class="p">,</span>
+<a id="__codelineno-157-10" name="__codelineno-157-10" href="#__codelineno-157-10"></a><span class="w">    </span><span class="nt">&quot;immature&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.00000000</span>
+<a id="__codelineno-157-11" name="__codelineno-157-11" href="#__codelineno-157-11"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-157-12" name="__codelineno-157-12" href="#__codelineno-157-12"></a><span class="p">}</span>
+</code></pre></div></p>
+<h2 id="ssh-config">SSH config</h2>
+<p>When running a remote ION node, it can be convenient to open an SSH connection (with port forwarding) from your local machine. This produces a setup that is indistinguishable from running ION locally.</p>
+<div class="admonition warning">
+<p class="admonition-title">Allow incoming connections on the remote machine</p>
+<p>The remote machine must be configured to accept incoming connections on all of the ports listed below. If you are using a Virtual Machine from a cloud provider, this can be done from the Network Settings page in the management portal.</p>
+</div>
+<p>We recommend adding the following lines to your SSH configuration file at <code>~/.ssh/config</code>:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="35:3"><input checked="checked" id="__tabbed_35_1" name="__tabbed_35" type="radio" /><input id="__tabbed_35_2" name="__tabbed_35" type="radio" /><input id="__tabbed_35_3" name="__tabbed_35" type="radio" /><div class="tabbed-labels"><label for="__tabbed_35_1">Mainnet</label><label for="__tabbed_35_2">Testnet4</label><label for="__tabbed_35_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-158-1" name="__codelineno-158-1" href="#__codelineno-158-1"></a><span class="go">Host ion</span>
+<a id="__codelineno-158-2" name="__codelineno-158-2" href="#__codelineno-158-2"></a><span class="go">    HostName &lt;IP_ADDRESS&gt;</span>
+<a id="__codelineno-158-3" name="__codelineno-158-3" href="#__codelineno-158-3"></a><span class="go">    User &lt;USERNAME&gt;</span>
+<a id="__codelineno-158-4" name="__codelineno-158-4" href="#__codelineno-158-4"></a><span class="go">    IdentityFile ~/.ssh/&lt;KEY_FILE&gt;</span>
+<a id="__codelineno-158-5" name="__codelineno-158-5" href="#__codelineno-158-5"></a><span class="go">    LocalForward 3000 localhost:3000</span>
+<a id="__codelineno-158-6" name="__codelineno-158-6" href="#__codelineno-158-6"></a><span class="go">    LocalForward 5001 localhost:5001</span>
+<a id="__codelineno-158-7" name="__codelineno-158-7" href="#__codelineno-158-7"></a><span class="go">    LocalForward 8332 localhost:8332</span>
+<a id="__codelineno-158-8" name="__codelineno-158-8" href="#__codelineno-158-8"></a><span class="go">    LocalForward 27017 localhost:27017</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-159-1" name="__codelineno-159-1" href="#__codelineno-159-1"></a><span class="go">Host ion</span>
+<a id="__codelineno-159-2" name="__codelineno-159-2" href="#__codelineno-159-2"></a><span class="go">    HostName &lt;IP_ADDRESS&gt;</span>
+<a id="__codelineno-159-3" name="__codelineno-159-3" href="#__codelineno-159-3"></a><span class="go">    User &lt;USERNAME&gt;</span>
+<a id="__codelineno-159-4" name="__codelineno-159-4" href="#__codelineno-159-4"></a><span class="go">    IdentityFile ~/.ssh/&lt;KEY_FILE&gt;</span>
+<a id="__codelineno-159-5" name="__codelineno-159-5" href="#__codelineno-159-5"></a><span class="go">    LocalForward 3000 localhost:3000</span>
+<a id="__codelineno-159-6" name="__codelineno-159-6" href="#__codelineno-159-6"></a><span class="go">    LocalForward 5001 localhost:5001</span>
+<a id="__codelineno-159-7" name="__codelineno-159-7" href="#__codelineno-159-7"></a><span class="go">    LocalForward 48332 localhost:48332</span>
+<a id="__codelineno-159-8" name="__codelineno-159-8" href="#__codelineno-159-8"></a><span class="go">    LocalForward 27017 localhost:27017</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-160-1" name="__codelineno-160-1" href="#__codelineno-160-1"></a><span class="go">Host ion</span>
+<a id="__codelineno-160-2" name="__codelineno-160-2" href="#__codelineno-160-2"></a><span class="go">    HostName &lt;IP_ADDRESS&gt;</span>
+<a id="__codelineno-160-3" name="__codelineno-160-3" href="#__codelineno-160-3"></a><span class="go">    User &lt;USERNAME&gt;</span>
+<a id="__codelineno-160-4" name="__codelineno-160-4" href="#__codelineno-160-4"></a><span class="go">    IdentityFile ~/.ssh/&lt;KEY_FILE&gt;</span>
+<a id="__codelineno-160-5" name="__codelineno-160-5" href="#__codelineno-160-5"></a><span class="go">    LocalForward 3000 localhost:3000</span>
+<a id="__codelineno-160-6" name="__codelineno-160-6" href="#__codelineno-160-6"></a><span class="go">    LocalForward 5001 localhost:5001</span>
+<a id="__codelineno-160-7" name="__codelineno-160-7" href="#__codelineno-160-7"></a><span class="go">    LocalForward 18332 localhost:18332</span>
+<a id="__codelineno-160-8" name="__codelineno-160-8" href="#__codelineno-160-8"></a><span class="go">    LocalForward 27017 localhost:27017</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>where <code>&lt;IP_ADDRESS&gt;</code> is the public IP address of the remote machine, <code>&lt;USERNAME&gt;</code> is the login username, and <code>&lt;KEY_FILE&gt;</code> is the name of the SSH key file used for key pair authentication.</p>
+<p>The port forwarding rules in the above configuration assume that the default ports are used for the following processes. These ports are shown in the following table. If you wish, you can change any of these ports by editing the ION configuration files as described <a href="#configure-ion">earlier</a>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="36:3"><input checked="checked" id="__tabbed_36_1" name="__tabbed_36" type="radio" /><input id="__tabbed_36_2" name="__tabbed_36" type="radio" /><input id="__tabbed_36_3" name="__tabbed_36" type="radio" /><div class="tabbed-labels"><label for="__tabbed_36_1">Mainnet</label><label for="__tabbed_36_2">Testnet4</label><label for="__tabbed_36_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Process</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3000</td>
+<td>ION</td>
+</tr>
+<tr>
+<td>5001</td>
+<td>IPFS</td>
+</tr>
+<tr>
+<td>8332</td>
+<td>Bitcoin</td>
+</tr>
+<tr>
+<td>27017</td>
+<td>MongoDB</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Process</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3000</td>
+<td>ION</td>
+</tr>
+<tr>
+<td>5001</td>
+<td>IPFS</td>
+</tr>
+<tr>
+<td>48332</td>
+<td>Bitcoin</td>
+</tr>
+<tr>
+<td>27017</td>
+<td>MongoDB</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="tabbed-block">
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Process</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3000</td>
+<td>ION</td>
+</tr>
+<tr>
+<td>5001</td>
+<td>IPFS</td>
+</tr>
+<tr>
+<td>18332</td>
+<td>Bitcoin</td>
+</tr>
+<tr>
+<td>27017</td>
+<td>MongoDB</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>With this configuration in place, connect to the remote machine with the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-161-1" name="__codelineno-161-1" href="#__codelineno-161-1"></a><span class="go">ssh ion</span>
+</code></pre></div></p>
+<p>As long as this connection is active, data sent to the ports specified in the SSH configuration (above) will be relayed to the same ports on the remote machine, producing a setup equivalent to running ION and its related processes locally.</p>
+<h2 id="ion-using-docker">ION using Docker</h2>
+<div class="admonition warning">
+<p class="admonition-title">ION using Docker is read-only</p>
+<p>The simplest way to run ION is using Docker, and it can be a useful way to experiment with the system before performing a full installation. However, <strong>this method provides a read-only ION node</strong>. This means that it provides access to existing DIDs, but cannot be used to create and publish new ones.</p>
+</div>
+<p>These instructions are based on the <a href="https://github.com/decentralized-identity/ion/tree/master/docker">guide</a> available on the ION GitHub repository.</p>
+<p><strong>Step 1: Install Docker</strong></p>
+<div class="tabbed-set tabbed-alternate" data-tabs="37:2"><input checked="checked" id="__tabbed_37_1" name="__tabbed_37" type="radio" /><input id="__tabbed_37_2" name="__tabbed_37" type="radio" /><div class="tabbed-labels"><label for="__tabbed_37_1">Linux</label><label for="__tabbed_37_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Install Docker:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-162-1" name="__codelineno-162-1" href="#__codelineno-162-1"></a>sudo apt-get update
+<a id="__codelineno-162-2" name="__codelineno-162-2" href="#__codelineno-162-2"></a>sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+<a id="__codelineno-162-3" name="__codelineno-162-3" href="#__codelineno-162-3"></a>
+<a id="__codelineno-162-4" name="__codelineno-162-4" href="#__codelineno-162-4"></a>curl -fsSL --max-time 10 --retry 3 --retry-delay 3 --retry-max-time 60 https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+<a id="__codelineno-162-5" name="__codelineno-162-5" href="#__codelineno-162-5"></a>
+<a id="__codelineno-162-6" name="__codelineno-162-6" href="#__codelineno-162-6"></a>sudo add-apt-repository &quot;deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable&quot;
+<a id="__codelineno-162-7" name="__codelineno-162-7" href="#__codelineno-162-7"></a>
+<a id="__codelineno-162-8" name="__codelineno-162-8" href="#__codelineno-162-8"></a>sudo apt-get install -y docker-ce
+<a id="__codelineno-162-9" name="__codelineno-162-9" href="#__codelineno-162-9"></a>sudo systemctl enable docker
+</code></pre></div></p>
+<p>Install Docker Compose:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-163-1" name="__codelineno-163-1" href="#__codelineno-163-1"></a>sudo curl -L --max-time 60 --retry 3 --retry-delay 3 --retry-max-time 100 &quot;https://github.com/docker/compose/releases/download/v2.6.0/docker-compose-$(uname -s)-$(uname -m)&quot; -o /usr/local/bin/docker-compose
+<a id="__codelineno-163-2" name="__codelineno-163-2" href="#__codelineno-163-2"></a>sudo chmod +x /usr/local/bin/docker-compose
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<p>Install <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>.</p>
+</div>
+</div>
+</div>
+<p><strong>Step 2: Run the ION Docker container</strong></p>
+<p>To access the required <code>docker-compose.*</code> files, enter the ION <code>docker</code> directory:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-164-1" name="__codelineno-164-1" href="#__codelineno-164-1"></a>cd $ION_REPO/docker
+</code></pre></div></p>
+<p>Now run the ION container. This command depends on whether you wish to run a Mainnet, Testnet4 or Testnet3 ION node:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="38:3"><input checked="checked" id="__tabbed_38_1" name="__tabbed_38" type="radio" /><input id="__tabbed_38_2" name="__tabbed_38" type="radio" /><input id="__tabbed_38_3" name="__tabbed_38" type="radio" /><div class="tabbed-labels"><label for="__tabbed_38_1">Mainnet</label><label for="__tabbed_38_2">Testnet4</label><label for="__tabbed_38_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-165-1" name="__codelineno-165-1" href="#__codelineno-165-1"></a>docker-compose up -d
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>To run ION with Docker on Testnet4, the <code>docker-compose.testnet-override.yml</code> config file must be modified to set the correct RPC port number for the Bitcoin client:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="39:2"><input checked="checked" id="__tabbed_39_1" name="__tabbed_39" type="radio" /><input id="__tabbed_39_2" name="__tabbed_39" type="radio" /><div class="tabbed-labels"><label for="__tabbed_39_1">Linux</label><label for="__tabbed_39_2">macOS</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-166-1" name="__codelineno-166-1" href="#__codelineno-166-1"></a><span class="go">sed -i &#39;s|&quot;18332:18332&quot;|&quot;48332:48332&quot;|&#39; $ION_REPO/docker/docker-compose.testnet-override.yml</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-167-1" name="__codelineno-167-1" href="#__codelineno-167-1"></a><span class="go">sed -i &#39;&#39; &#39;s|&quot;18332:18332&quot;|&quot;48332:48332&quot;|&#39; $ION_REPO/docker/docker-compose.testnet-override.yml</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Then run the container with:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-168-1" name="__codelineno-168-1" href="#__codelineno-168-1"></a>docker-compose -f docker-compose.yml -f docker-compose.testnet-override.yml up -d
+</code></pre></div></p>
+</div>
+<div class="tabbed-block">
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-169-1" name="__codelineno-169-1" href="#__codelineno-169-1"></a>docker-compose -f docker-compose.yml -f docker-compose.testnet-override.yml up -d
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Bitcoin and ION synchronisation</p>
+<p>When the ION container starts for the first time, it will begin synchronising with the Bitcoin network. This means downloading all of the blocks in the Bitcoin blockchain, which is a large data structure containing every Bitcoion transaction that has ever been processed. Once this has finished, ION itself will then scan the entire blockchain for ION DID operations, which is also a lengthy process.</p>
+<p><strong>In total, the synchronisation process may take several hours, or even days, to complete.</strong> You will not be able to use Trustchain until your ION node has finished synchronising.</p>
+<p>Fortunately, the synchronisation process on Testnet4 is much quicker, as only ~15GB of data must be downloaded.</p>
+</div>
+<!-- TODO: screenshots! -->
+
+<p>When the synchronisation process has finished, confirm that ION is working properly by running the following command to resolve a sample DID:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="40:3"><input checked="checked" id="__tabbed_40_1" name="__tabbed_40" type="radio" /><input id="__tabbed_40_2" name="__tabbed_40" type="radio" /><input id="__tabbed_40_3" name="__tabbed_40" type="radio" /><div class="tabbed-labels"><label for="__tabbed_40_1">Mainnet</label><label for="__tabbed_40_2">Testnet4</label><label for="__tabbed_40_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-170-1" name="__codelineno-170-1" href="#__codelineno-170-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-171-1" name="__codelineno-171-1" href="#__codelineno-171-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w | json_pp</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-172-1" name="__codelineno-172-1" href="#__codelineno-172-1"></a><span class="go">curl http://localhost:3000/identifiers/did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw | json_pp</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>If ION is working properly, the command above will return a JSON data structure containing the resolved DID document and document metadata for the sample DID.</p>
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../technical-notes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Technical Notes">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Technical Notes
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Contributing
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1314 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../deployment/">
+      
+      
+        <link rel="next" href="../faq/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Developer Guide [DRAFT] - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#developer-guide-draft" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Developer Guide [DRAFT]
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="developer-guide-draft">Developer Guide [DRAFT]</h1>
+<!-- ## Contents
+
+- Project Overview and Structure
+    - Repositories
+        - Trustchain
+        - Trustchain Mobile
+        - Trustchain GUI
+        - Trustchain Dart
+    - Forks
+        - SSI
+- Trustchain details
+    - Rust Crates
+        - `trustchain-api`
+        - `trustchain-core`
+        - `trustchain-ion`
+        - `trustchain-cli`
+        - `trustchain-ffi`
+        - `trustchain-dart`
+        - `trustchain-http`
+    - Running Tests
+    - Coding Conventions
+        - Crate Configuration
+        - Error handling
+- Trustchain Mobile details
+    - TODO: Building the app for emulator
+    - Building app for Android physical device
+- Trustchain GUI details
+    - TODO
+- Trustchain Dart details
+    - Platform agnostic error handling
+    - Dart models of Trustchain structs
+    - Shared UI widgets
+
+
+:::info
+TODO:
+ - add Certbot instructions (see [#618](https://github.com/alan-turing-institute/trustworthy-id/issues/618))
+::: -->
+
+<h2 id="project-structure">Project Structure</h2>
+<p>The Trustchain codebase consists of four repositories:</p>
+<ul>
+<li><a href="https://github.com/alan-turing-institute/trustchain">trustchain</a>: Rust API and core reference implementation, CLI, HTTP, and FFI.</li>
+<li><a href="https://github.com/alan-turing-institute/trustchain-gui">trustchain-gui</a>: Desktop GUI for mirroring CLI functionality.</li>
+<li><a href="https://github.com/alan-turing-institute/trustchain-mobile">trustchain-mobile</a>: Mobile credential wallet forked from <a href="https://github.com/spruceid/wallet">credible (now called wallet)</a></li>
+<li><a href="https://github.com/alan-turing-institute/trustchain-dart">trustchain-dart</a>: common Dart library code for errors and widgets.</li>
+</ul>
+<p>And a fork of the <a href="https://github.com/spruceid/ssi">spruceid/ssi</a> repository:</p>
+<ul>
+<li><a href="https://github.com/alan-turing-institute/ssi/tree/dev">ssi</a>: Changes on the fork are described in detail in the <a href="https://github.com/alan-turing-institute/ssi/pull/3">PR notes</a>:<ul>
+<li>New Redactable Signature scheme added, allowing selective disclosure for Verifiable Credentials.</li>
+<li>TODO: mention the <a href="https://github.com/alan-turing-institute/trustchain/issues/148">IPFS-linked key feature</a> added to support &gt;1kB RSS public keys. The ION DID method imposes a 1kB limit on DID deltas, making it impossible to publish RSS keys directly in ION DID documents.<ul>
+<li>Unit test in <code>trustchain-api/src/api.rs</code> called <code>get_key_entry()</code> can be used to print a <code>PublicKeyEntry</code> which is the type uploaded to IPFS.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="code-repositories">Code Repositories</h2>
+<h3 id="trustchain">Trustchain</h3>
+<p>The main <code>trustchain</code> repository contains the following Rust crates (details of which are given in the section below):</p>
+<ul>
+<li><code>trustchain-core</code>: Core logic, agnostic to implementation-specific components</li>
+<li><code>trustchain-ion</code>: Implementation of Trustchain for the ION DID method</li>
+<li><code>trustchain-cli</code>: Trustchain command line interface</li>
+<li><code>trustchain-ffi</code>: Foreign Function Interface</li>
+<li><code>trustchain-http</code>: Trustchain HTTP APIs</li>
+</ul>
+<h3 id="trustchain-gui">Trustchain GUI</h3>
+<p>The <code>trustchain-gui</code> repository contains a Flutter application (written in Dart) which wraps the <code>trustchain</code> repository, and serves as the Trustchain desktop application.</p>
+<h3 id="trustchain-mobile">Trustchain Mobile</h3>
+<p>The <code>trustchain-mobile</code> repository is a fork of the Credible credential wallet developed by <a href="https://www.spruceid.dev/">SpruceID</a> (also using Flutter/Dart), tailored to work with Trustchain.</p>
+<h3 id="trustchain-dart">Trustchain Dart</h3>
+<p>The <code>trustchain-dart</code> repository contains platform agnostic dart code to be shared across platform specific application repositories (eg. <code>trustchain-mobile</code> and <code>trustchain-gui</code>). Including but not limited to shared ui and ffi error handling.</p>
+<h3 id="ssi-forked-from-spruceid">SSI (Forked from SpruceID)</h3>
+<p>This is the main upstream library on which the Trustchain codebase depends.</p>
+<h2 id="rust-crates">Rust Crates</h2>
+<p>Where required, configurable variables within crates are managed according to the <a href="#Crate-Configuration">configuration convention</a>.</p>
+<h3 id="trustchain-core">trustchain-core</h3>
+<h4 id="error-handling">Error handling</h4>
+<ul>
+<li>Enums<ul>
+<li>Implement <code>std::error::Error</code> with <code>thiserror</code> crate</li>
+<li>Add variants that wrap other errors (e.g. SSI error) so they can be passed</li>
+<li>Where possible do not convert error to string</li>
+<li>One variant pattern with extra context is:<ul>
+<li><code>MyError::Variant(String, ErrorTypeToWrap)</code></li>
+<li>
+<h2 id="todo-add-example">TODO: add example</h2>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="immutable-verifier">Immutable verifier</h4>
+<ul>
+<li>TODO: add info on <code>Mutex</code> and <code>Arc</code> from issue 89</li>
+<li>Principle: lock at lowest possible level to avoid bottlenecks</li>
+<li>Thread safe shared ownership with <code>Arc</code> and mutability with <code>Mutex</code></li>
+</ul>
+<h3 id="trustchain-ion">trustchain-ion</h3>
+<h3 id="trustchain-cli">trustchain-cli</h3>
+<p>Install with:
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cargo<span class="w"> </span>install<span class="w"> </span>--path<span class="w"> </span>crates/trustchain-cli
+</code></pre></div></p>
+<h5 id="creating-a-did">Creating a DID</h5>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>trustchain-cli<span class="w"> </span>did<span class="w"> </span>create<span class="w"> </span>--verbose<span class="w"> </span>--file<span class="w"> </span>~/.trustchain/doc_states/my_doc_state.json
+</code></pre></div>
+<p>Checking the queue on the ION node:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>&gt; use ion-testnet-core
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>&gt; db
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>ion-testnet-core
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>&gt; db[&quot;queued-operations&quot;]
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>ion-testnet-core.queued-operations
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>&gt; db.getCollectionNames()
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>[
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>        &quot;confirmations&quot;,
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>        &quot;operations&quot;,
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>        &quot;queued-operations&quot;,
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>        &quot;service&quot;,
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>        &quot;transactions&quot;,
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>        &quot;unresolvable-transactions&quot;
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>]
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>&gt; db[&quot;queued-operations&quot;].count()
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>1
+</code></pre></div></p>
+<h5 id="attesting-to-did">Attesting to DID</h5>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>trustchain-cli<span class="w"> </span>did<span class="w"> </span>attest<span class="w"> </span>--did<span class="w"> </span>UPSTREAM_DID<span class="w"> </span>--controlled_did<span class="w"> </span>DOWNSTREAM_DID
+</code></pre></div>
+<h5 id="verify">Verify</h5>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>trustchain-cli<span class="w"> </span>did<span class="w"> </span>verify<span class="w"> </span>--did<span class="w"> </span>DOWSTREAM_DID_TO_VERIFY
+</code></pre></div>
+<p>E.g. for Turing:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>cargo run --bin trustchain-cli -- did verify --did did:ion:test:EiDSE2lEM65nYrEqVvQO5C3scYhkv1KmZzq0S0iZmNKf1Q
+</code></pre></div></p>
+<h5 id="publish-dids">Publish DIDs</h5>
+<p>Run:
+```bash!
+./scripts/publish.sh
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>and all operations in the `~/.trustchain/operations/*` will be posted to the ION server at `localhost:3000`.
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>__You then need to manually move the operations (once satisifed published ok) to ~/.trustchain/operations/sent/./__
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>```bash
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>mv ~/.trustchain/operations/*.json* ~/.trustchain/operations/sent/./
+</code></pre></div></p>
+<h3 id="trustchain-ffi">trustchain-ffi</h3>
+<ul>
+<li>Modules:<ul>
+<li><code>mobile</code></li>
+<li><code>gui</code></li>
+</ul>
+</li>
+<li>Each module has a set of free functions that are to be called on the Dart side</li>
+<li>Functions have a return type <code>anyhow::Result&lt;String&gt;</code> so that error handling can be sent over FFI</li>
+</ul>
+<h4 id="todo-remove-as-outdated-old-notes-from-trustchain-mobile-set-up-for-ffi">(TODO: remove as outdated) Old notes from <code>trustchain-mobile</code> set-up for FFI</h4>
+<h5 id="trustchain-ffi-with-flutter-rust-bridge">Trustchain FFI with flutter rust bridge</h5>
+<p>Provides Trustchain functionality in credible with FFI through <a href="https://github.com/fzyzcjy/flutter_rust_bridge"><code>flutter_rust_bridge</code></a>.</p>
+<h6 id="install">Install</h6>
+<p>The below steps follow the guide in <a href="https://cjycode.com/flutter_rust_bridge/integrate.html">section 5</a>:</p>
+<ul>
+<li>Clone <a href="https://github.com/alan-turing-institute/trustchain">trustchain</a> to a path adjacent to credible root path.</li>
+<li>Install cargo <a href="">dependencies</a>:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>cargo install flutter_rust_bridge_codegen@1.64.0
+</code></pre></div></li>
+<li>Follow android <a href="https://cjycode.com/flutter_rust_bridge/template/setup_android.html">instructions</a></li>
+<li>Add targets:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>rustup target add \
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    aarch64-linux-android \
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    armv7-linux-androideabi \
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    x86_64-linux-android \
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    i686-linux-android
+</code></pre></div></li>
+<li>Add <code>ANDROID_NDK</code> as a <a href="https://cjycode.com/flutter_rust_bridge/template/setup_android.html#android_ndk-gradle-property">gradle property</a>:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>echo &quot;ANDROID_NDK=(path to NDK)&quot; &gt;&gt; ~/.gradle/gradle.properties
+</code></pre></div></li>
+<li>Install <a href="https://cjycode.com/flutter_rust_bridge/template/setup_android.html"><code>cargo ndk</code></a>:
+<div class="language-shell highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cargo<span class="w"> </span>install<span class="w"> </span>cargo-ndk<span class="w"> </span>--version<span class="w"> </span><span class="m">2</span>.6.0
+</code></pre></div></li>
+</ul>
+<h6 id="build">Build</h6>
+<p>With an android emulator, build can be completed from credible root with:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>flutter run
+</code></pre></div>
+Upon any modifications to the Trustchain Rust API, the FFI needs to be rebuilt with:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>flutter_rust_bridge_codegen \
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    -r ../trustchain/trustchain-ion/src/api.rs \
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    -d lib/bridge_generated.dart
+</code></pre></div></p>
+<h3 id="trustchain-http">trustchain-http</h3>
+<ul>
+<li>Three functionalities are provided in initial crate:<ul>
+<li>Issuer of credentials</li>
+<li>Verifier</li>
+<li>Trustchain resolver/chain/CR</li>
+</ul>
+</li>
+<li>The server is run from a binary running an axum app inside a tokio async runtime<ul>
+<li><code>#[tokio::main]</code> for async main</li>
+<li><code>#[tokio::test]</code> for async test</li>
+</ul>
+</li>
+<li>Use axum for server impl (this uses <code>hyper</code> behind the scenes). Actix will not play nicely mixed with axum/hyper but can't remember why!</li>
+<li>Use <code>reqwest</code> over <code>hyper</code> for client requests</li>
+<li>Use traits for <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L27-L43">API definition</a> and then impl for a <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L45">struct</a> to bring <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L82-L122">handler methods</a>. These handler methods return <code>impl IntoResponse</code> an axum type that makes the everything easy to connect together. Very similar to FFI but not free functions.</li>
+<li><code>TrustchainHTTPAPI</code> trait returns <code>Result&lt;T, TrustchainHTTPError&gt;</code></li>
+<li>Handler methods convert <code>Result&lt;T, TrustchainHTTPError&gt;</code> into <code>impl Response</code> with the power of <code>impl IntoResponse for Result&lt;T, E&gt;</code> already implemented.</li>
+<li><code>TrustchainHTTPError</code> will:<ul>
+<li>Have variants corresponding to different HTTP status error types (e.g. Internal server error) but also have variants that wrap other Trustchain errors (e.g. <code>VerifierError</code>)</li>
+<li>Will have an <code>impl IntoResponse for TrustchainHTTPError</code> (see <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/errors.rs#L46-L66">initial implementation</a> passing on the <code>TrustchainHTTPError</code> as a <code>String</code> along with a <code>StatusCode</code>). By implementing the <code>axum</code> crate's <code>IntoResponse</code>, we can explicitly map each variant to a <code>StatusCode</code> and benefit from being able to directly return types: <code>Result&lt;T: IntoResponse, TrustchainHTTPError&gt;</code>.</li>
+</ul>
+</li>
+<li>A shared <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/state.rs#L8-L11">AppState</a> is made available  to the handlers (e.g. for <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L86">DIDChain handler</a>). This allows anything in the state struct (currently a <code>ServerConfig</code> struct and an <code>IONVerifier</code>) to be used inside the <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L89-L92">handler</a>. The <code>AppState</code>, as it does not implement <code>Clone</code> (the <code>IONVerifier</code> field cannot impl <code>Clone</code> and should be only be borrowed anyway as it contains a cache), needs to be passed into the shared state with an <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/bin/main.rs#L33">atomic reference counter</a>. The <code>IONVerifier</code> is wrapped in a tokio read-write lock (<a href="https://docs.rs/tokio/latest/tokio/sync/struct.RwLock.html"><code>RWLock</code></a>) so that it can be mutable to allow data to be stored but so that race conditions are avoided within the async context we are using it. In practice, this means that when it is used inside a handler, a call to either make the lock <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/bin/main.rs#L105">read</a> or <a href="https://github.com/alan-turing-institute/trustchain/blob/c17ad8e4753a104442f95f1015b960698b2c2eb6/trustchain-http/src/resolver.rs#L89">write</a> if mutability is required. <a href="https://docs.rs/tokio/latest/tokio/sync/struct.RwLock.html"><code>RWLock</code></a> is preferred over <a href="https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html"><code>Mutex</code></a> so that we only lock the <code>IONVerfier</code> when a write is required as opposed to when only read is required (as a resolver). We could implement a separate resolver field too inside the <code>AppState</code> and just use a <code>Mutex</code> if preferred. We could also revert to making <code>IONVerifier</code> instances in each handler call if verification will "lock out" other requests waiting for it to be freed (this may be an issue calling IPFS for data not cached on the server's IPFS node).</li>
+<li>Tests:<ul>
+<li>One big integration test for each of the three: issuer, verifier, TC node purposes</li>
+<li>Q: Should we do lots of unit tests for each part???</li>
+</ul>
+</li>
+</ul>
+<h4 id="getting-started-with-trustchain-http">Getting Started with trustchain-http</h4>
+<ul>
+<li>Set-up <a href="https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Developer-Notes#ssh-config-file">ssh config</a>: Add the following config (with your azure key) to <code>~/.ssh/config</code>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>Host ion
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    HostName 51.104.16.53
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    User ionuser
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    IdentityFile ~/.ssh/&lt;YOUR_AZURE_KEY&gt;
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    LocalForward 3000 localhost:3000
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    LocalForward 18332 localhost:18332
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    LocalForward 27017 localhost:27017
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    LocalForward 5001 localhost:5001
+</code></pre></div>
+Then call:
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>ssh<span class="w"> </span>ion
+</code></pre></div></li>
+<li>Start the <a href="https://github.com/alan-turing-institute/trustchain/wiki/Trustchain-Developer-Notes#using-ion">ION node</a>.</li>
+<li>Symlink from SharePoint <code>dot_trustchain</code> directory to <code>~/.trustchain</code>.<ul>
+<li>Find the absolute path to the <code>dot_trustchain</code> folder in your local OneDrive directory (eg. <code>/Users/&lt;my_user&gt;/Library/CloudStorage/OneDrive-TheAlanTuringInstitute/dot_trustchain</code>).</li>
+<li>
+<p><code>cd</code> to the desired target directory (eg. <code>~</code>), and symlink with:</p>
+<p><div class="language-text highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ln -s /Users/&lt;my_user&gt;/Library/CloudStorage/OneDrive-TheAlanTuringInstitute/dot_trustchain .trustchain
+</code></pre></div>
+- Add the following to your shell profile (e.g. <code>~/.zshrc</code>) and source it.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a># Trustchain
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>export TRUSTCHAIN_CONFIG=~/.trustchain/trustchain_config.toml
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>export TRUSTCHAIN_DATA=~/.trustchain/
+</code></pre></div>
+- Clone the <code>trustchain</code> repo and checkout a branch with the <code>trustchain-http</code> crate (currently <code>55-issuer-backend-traits</code>).
+- Run the server with:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>cargo run -p trustchain-http
+</code></pre></div>
+- Install <a href="https://www.postman.com/downloads/">Postman</a>
+- Open the Postman workspace at: <code>~/.trustchain/postman_workspaces/*</code>
+- Test by executing the pre-loaded HTTP requests in the Postman workspace.</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>Branches (at May 2023):
+- Current root for HTTP work: <code>55-issuer-backend-traits</code>
+- Implementing verifier routes: <code>55-issuer-backend-traits-verifier-todo</code>
+- Challenge-Response: <code>94-challenge-response</code></p>
+<h5 id="copying-dot-trustchain-to-a-vm">Copying dot trustchain to a VM</h5>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>rsync<span class="w"> </span>-azvuv<span class="w"> </span>--prune-empty-dirs<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">    </span>/Users/sgreenbury/ati/trustworthy-id/dot_trustchain<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span>ion:./<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span>--include<span class="o">=</span><span class="s1">&#39;dot_trustchain/key_manager/*/signing_key.json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">    </span>--include<span class="o">=</span><span class="s1">&#39;**/trustchain_config.toml&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">    </span>--include<span class="o">=</span><span class="s1">&#39;dot_trustchain/credentials/offers/*.json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">    </span>--include<span class="o">=</span><span class="s1">&#39;dot_trustchain/presentations/requests/*.json&#39;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="w">    </span>--include<span class="o">=</span><span class="s1">&#39;*/&#39;</span><span class="w"> </span>--exclude<span class="o">=</span><span class="s1">&#39;*&#39;</span>
+</code></pre></div>
+<h5 id="running-the-http-server-on-the-vm-over-https">Running the HTTP server on the VM over https</h5>
+<ul>
+<li>Go trustchain repo, install from branch you would like to serve:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>cargo install --path crates/trustchain-http
+</code></pre></div></li>
+<li>
+<p>Allow the binary to access 443 without sudo:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>sudo setcap CAP_NET_BIND_SERVICE=+eip .cargo/bin/trustchain-http
+</code></pre></div>
+:::info
+Note: the above <code>setcap</code> command must be re-run whenever the trustchain-http crate is rebuilt.
+:::</p>
+</li>
+<li>
+<p>Then run the server with:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>trustchain-http
+</code></pre></div></p>
+</li>
+</ul>
+<h4 id="creating-a-new-http-endpoint-in-trustchain-http">Creating a new HTTP endpoint in trustchain-http</h4>
+<ul>
+<li>Inside the <code>trustchain-http</code> crate, add a new route in the <code>TrustchainRouter</code> impl block in the <code>server.rs</code> module.</li>
+<li>Create a new module in the <code>trustchain-http</code> crate to handle request to the new route (or use an existing handler module). Add the new module in <code>lib.rs</code>.</li>
+<li>In the handler module, create a struct representing the information in the HTTP GET/POST request. This will destructure the strings in the request into Rust types and should have the annotations:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>#[derive(Debug, Clone, Deserialize, Serialize)]
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>#[serde(rename_all = &quot;camelCase&quot;)]
+</code></pre></div></li>
+<li>Write an async "backend trait" (similar to the example in <code>TrustchainHTTP</code>). Each method in this trait must return a <code>Result</code> type in which the success and error types both implement <code>IntoResponse</code> (in which case the <code>Result</code> type itself automatically implements the same trait).</li>
+<li>Write a trivial struct for your implementations of the backend trait (similar to <code>pub struct TrustchainHTTPHandler {}</code>).</li>
+<li>Implement the backend trait for the new struct.</li>
+<li>Also inside the same struct that implements the backend trait, implement a handler method (that's <em>not</em> in the trait) to provide the glue between the route and the backend Rust code:<ul>
+<li>arguments must be "extractors" (e.g. <code>Path</code>, <code>Query</code>, <code>Json</code>, <code>State</code>, etc.) corresponding to the HTTP request. For instance, a query parameter (after a <code>?</code> in the HTTP POST request) requires a <code>Query</code> extractor.</li>
+<li>return type must be <code>impl IntoResponse</code></li>
+<li>In the body of the handler method, make a call to a Rust method in the "backend trait" (that's implemented for the same struct that contains the handler method).</li>
+<li>Note: handler methods <em>could</em> be free functions, but by convention we include them in the impl block for the same struct that implements the backend trait.</li>
+</ul>
+</li>
+<li>If you need new error variant, go to <code>trustchain-http/src/errors.rs</code> and make a new variant. Add a new block in the <code>impl IntoResponse</code> part, e.g.:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>            err @ TrustchainHTTPError::NoCredentialIssuer =&gt; {
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>                (StatusCode::BAD_REQUEST, err.to_string())
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>            }
+</code></pre></div></li>
+<li>Use the Axum test helper crate to create a unit test for your new endpoint:<ul>
+<li>Create a <code>tests</code> module as a child of you handler module and import The Axum test helper:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>    use axum_test_helper::TestClient;
+</code></pre></div></li>
+<li>Inside the <code>tests</code> module, create a new (async) test case for your endpoint. Annotate it with <code>#[tokio::test]</code>.</li>
+<li>Copy the boilerplate code from an existing test:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>    let app = TrustchainRouter::from(HTTPConfig::default()).into_router();
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    let uri = &quot;/&lt;your-endpoint&gt;&quot;.to_string();
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    let client = TestClient::new(app);
+</code></pre></div></li>
+<li>Make the request to the client, e.g.:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>    let response = client.post(&amp;uri)
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>        .json(&lt;your-POST-request-params&gt;)
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>        .send()
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>        .await;
+</code></pre></div></li>
+<li>This sends a request to a server instance running on a random ephemeral port (thank you Axum helper!)</li>
+<li>Add a test assertion, e.g.:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>assert_eq!(response.status(), 200)
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>assert_eq!(response.text().await, &quot;Hello world!&quot;)
+</code></pre></div></li>
+<li>Run the specific test in VS Code by clicking "Run Test" above the test case, or run the whole test suite using cargo.</li>
+</ul>
+</li>
+</ul>
+<h2 id="running-tests">Running Tests</h2>
+<p>Tests are implemented at either:
+- module level within a library crate (unit test)
+- separate test path adjacent to the library crate integration tests</p>
+<p>Some tests require ION (IPFS, mongo, bitcoin) and trustchain nodes (trustchain-http) to be running locally. When this is the case, <code>#[ignored="A REASON"]</code> should be placed above the <code>fn test_fn()</code>:
+<div class="language-rust highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="cp">#[test]</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a><span class="cp">#[ignored=</span><span class="s">&quot;A REASON&quot;</span><span class="cp">]</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a><span class="k">fn</span><span class="w"> </span><span class="nf">test_fn</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a><span class="w">    </span><span class="c1">// ...</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a><span class="p">}</span>
+</code></pre></div></p>
+<h3 id="set-up">Set-up</h3>
+<ul>
+<li>TODO: add description of init()</li>
+</ul>
+<h2 id="coding-conventions">Coding Conventions</h2>
+<h3 id="crate-configuration">Crate Configuration</h3>
+<h4 id="defining-config-variables">Defining config variables</h4>
+<p>When handling configurable variables, a distiction has been made between <em>crate-level constants</em>, <em>user-configurable variables</em>, and <em>environment variables</em>.
+- <em>Crate-level constants</em> are defined in the <code>lib.rs</code> file at the root of the crate.
+    - They are part of the core funtionality of the crate and will be the same for all crate use cases.
+    - Any unit tests or integration tests may depend on these constants, as they are part of the core funtionality of the crate.
+- <em>User-configurable variables</em> are defined in the <code>trustchain_config.toml</code> file.
+    - One configuration file is used for all of the Trustchain crates being used, with one section in the file for each crate being configured.
+    - The may only be used in <em>ignored</em> tests (annotated with <code>#[ignore = "&lt;Reason for ignore&gt;"</code>), because they depend on the user setting an enviornment variable, <code>TRUSTCHAIN_CONFIG</code>, that points to a valid <code>trustchain_config.toml</code> file.
+    - An example <code>trustchain_config.toml</code> file for a project containing the <code>trustchain-core</code> and <code>trustchain-myexample</code> crates <em>only</em>, would have the following structure:
+        <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>[core]
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>dummy_variable_1 = 12345
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>[myexample]
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>dummy_variable_2 = 123456
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>dummy_variable_3 = &quot;dummy string&quot;
+</code></pre></div>
+- <em>Environment variables</em> are variables set in the calling shell that can be referenced in either library or binary code with <code>std::env::var("ENV_VARIABLE_NAME")</code>. There are two in use and have corresponding <code>lib.rs</code> <code>&amp;str</code> constants:
+    - <code>TRUSTCHAIN_DATA</code>: this is the directory path for key manager and HTTP features (SSL certificates, credential store, etc).
+    - <code>TRUSTCHAIN_CONFIG</code>: this is the file path for the main Trustchain <code>.toml</code> configuration file.
+These may be set independently and during <code>cargo test</code> <code>TRUSTCHAIN_DATA</code> is set specifically to a tempdir location inside <a href="TODO"><code>init()</code></a>.</p>
+<h4 id="referencing-config-variables">Referencing config variables</h4>
+<p>The convention for referencing the <em>user-configurable variables</em> in Rust code is to introduce a <code>config.rs</code> file at the root of the crate. The role of the file is to load the variables from <code>trustchain_config.toml</code> that relate to that crate. An example <code>config.rs</code> file for a new crate <code>trustchain-myexample</code> is as follows:</p>
+<div class="language-rust highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="k">use</span><span class="w"> </span><span class="k">crate</span><span class="p">::</span><span class="n">TRUSTCHAIN_CONFIG</span><span class="p">;</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="k">use</span><span class="w"> </span><span class="n">lazy_static</span><span class="p">::</span><span class="n">lazy_static</span><span class="p">;</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="k">use</span><span class="w"> </span><span class="n">serde</span><span class="p">::{</span><span class="n">Deserialize</span><span class="p">,</span><span class="w"> </span><span class="n">Serialize</span><span class="p">};</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="k">use</span><span class="w"> </span><span class="n">std</span><span class="p">::</span><span class="n">fs</span><span class="p">;</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="k">use</span><span class="w"> </span><span class="n">toml</span><span class="p">;</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a><span class="n">lazy_static</span><span class="o">!</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a><span class="w">    </span><span class="sd">/// Lazy static reference to core configuration loaded from `trustchain_config.toml`.</span>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="k">static</span><span class="w"> </span><span class="k">ref</span><span class="w"> </span><span class="n">MYEXAMPLE_CONFIG</span><span class="p">:</span><span class="w"> </span><span class="nc">MyexampleConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_toml</span><span class="p">(</span>
+<a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">fs</span><span class="p">::</span><span class="n">read_to_string</span><span class="p">(</span><span class="n">std</span><span class="p">::</span><span class="n">env</span><span class="p">::</span><span class="n">var</span><span class="p">(</span><span class="n">TRUSTCHAIN_CONFIG</span><span class="p">).</span><span class="n">unwrap</span><span class="p">().</span><span class="n">as_str</span><span class="p">())</span>
+<a id="__codelineno-30-11" name="__codelineno-30-11" href="#__codelineno-30-11"></a><span class="w">        </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Error reading trustchain_config.toml&quot;</span><span class="p">));</span>
+<a id="__codelineno-30-12" name="__codelineno-30-12" href="#__codelineno-30-12"></a><span class="p">}</span>
+<a id="__codelineno-30-13" name="__codelineno-30-13" href="#__codelineno-30-13"></a>
+<a id="__codelineno-30-14" name="__codelineno-30-14" href="#__codelineno-30-14"></a><span class="sd">/// Parses and returns core configuration.</span>
+<a id="__codelineno-30-15" name="__codelineno-30-15" href="#__codelineno-30-15"></a><span class="k">fn</span><span class="w"> </span><span class="nf">parse_toml</span><span class="p">(</span><span class="n">toml_str</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="kt">str</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">MyexampleConfig</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-30-16" name="__codelineno-30-16" href="#__codelineno-30-16"></a><span class="w">    </span><span class="n">toml</span><span class="p">::</span><span class="n">from_str</span><span class="p">::</span><span class="o">&lt;</span><span class="n">Config</span><span class="o">&gt;</span><span class="p">(</span><span class="n">toml_str</span><span class="p">)</span>
+<a id="__codelineno-30-17" name="__codelineno-30-17" href="#__codelineno-30-17"></a><span class="w">        </span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Error parsing trustchain_config.toml&quot;</span><span class="p">)</span>
+<a id="__codelineno-30-18" name="__codelineno-30-18" href="#__codelineno-30-18"></a><span class="w">        </span><span class="p">.</span><span class="n">core</span>
+<a id="__codelineno-30-19" name="__codelineno-30-19" href="#__codelineno-30-19"></a><span class="p">}</span>
+<a id="__codelineno-30-20" name="__codelineno-30-20" href="#__codelineno-30-20"></a>
+<a id="__codelineno-30-21" name="__codelineno-30-21" href="#__codelineno-30-21"></a><span class="sd">/// Gets `trustchain-core` configuration variables.</span>
+<a id="__codelineno-30-22" name="__codelineno-30-22" href="#__codelineno-30-22"></a><span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">myexample_config</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="kp">&amp;</span><span class="o">&#39;</span><span class="nb">static</span><span class="w"> </span><span class="nc">MYEXAMPLE_CONFIG</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-30-23" name="__codelineno-30-23" href="#__codelineno-30-23"></a><span class="w">    </span><span class="o">&amp;</span><span class="n">MYEXAMPLE_CONFIG</span>
+<a id="__codelineno-30-24" name="__codelineno-30-24" href="#__codelineno-30-24"></a><span class="p">}</span>
+<a id="__codelineno-30-25" name="__codelineno-30-25" href="#__codelineno-30-25"></a>
+<a id="__codelineno-30-26" name="__codelineno-30-26" href="#__codelineno-30-26"></a><span class="sd">/// Configuration variables for `trustchain-core` crate.</span>
+<a id="__codelineno-30-27" name="__codelineno-30-27" href="#__codelineno-30-27"></a><span class="cp">#[derive(Serialize, Deserialize, PartialEq, Debug)]</span>
+<a id="__codelineno-30-28" name="__codelineno-30-28" href="#__codelineno-30-28"></a><span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">MyexampleConfig</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-30-29" name="__codelineno-30-29" href="#__codelineno-30-29"></a><span class="w">    </span><span class="sd">/// Variables defined in the &#39;myexample&#39; section of trustchain_config.toml</span>
+<a id="__codelineno-30-30" name="__codelineno-30-30" href="#__codelineno-30-30"></a><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">dummy_variable_2</span><span class="p">:</span><span class="w"> </span><span class="kt">u32</span><span class="p">,</span>
+<a id="__codelineno-30-31" name="__codelineno-30-31" href="#__codelineno-30-31"></a><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">dummy_variable_3</span><span class="p">:</span><span class="w"> </span><span class="nb">String</span>
+<a id="__codelineno-30-32" name="__codelineno-30-32" href="#__codelineno-30-32"></a><span class="p">}</span>
+<a id="__codelineno-30-33" name="__codelineno-30-33" href="#__codelineno-30-33"></a>
+<a id="__codelineno-30-34" name="__codelineno-30-34" href="#__codelineno-30-34"></a><span class="sd">/// Wrapper struct for parsing the `myexample` table.</span>
+<a id="__codelineno-30-35" name="__codelineno-30-35" href="#__codelineno-30-35"></a><span class="cp">#[derive(Serialize, Deserialize, PartialEq, Debug)]</span>
+<a id="__codelineno-30-36" name="__codelineno-30-36" href="#__codelineno-30-36"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Config</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-30-37" name="__codelineno-30-37" href="#__codelineno-30-37"></a><span class="w">    </span><span class="sd">/// Core configuration data.</span>
+<a id="__codelineno-30-38" name="__codelineno-30-38" href="#__codelineno-30-38"></a><span class="w">    </span><span class="n">myexample</span><span class="p">:</span><span class="w"> </span><span class="nc">MyexampleConfig</span><span class="p">,</span>
+<a id="__codelineno-30-39" name="__codelineno-30-39" href="#__codelineno-30-39"></a><span class="p">}</span>
+</code></pre></div>
+<p>The above module exposes a function <code>myexample_config()</code> which is used elsewhere in the crate to access the variables:
+<div class="language-rust highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="k">use</span><span class="w"> </span><span class="k">crate</span><span class="p">::</span><span class="n">config</span><span class="p">::</span><span class="n">myexample_config</span><span class="p">;</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="kd">let</span><span class="w"> </span><span class="n">var_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">myexample_config</span><span class="p">().</span><span class="n">dummy_variable_2</span>
+</code></pre></div></p>
+<h4 id="use-of-config-variables">Use of config variables</h4>
+<p>In library code, config variables should be passed as arguments to functions that depend on them, rather than accessing from a static reference (as described above).</p>
+<p>This avoids any dependency on local config files, which causes problems (e.g. when writing unit tests).</p>
+<p>For example, the <code>Verifier</code> API <strong>should</strong> look this this:
+<div class="language-rust highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">new</span><span class="p">(</span><span class="n">resolver</span><span class="p">:</span><span class="w"> </span><span class="nc">Resolver</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">config</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">IONConfig</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">Self</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="c1">// Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">rpc_client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bitcoincore_rpc</span><span class="p">::</span><span class="n">Client</span><span class="p">::</span><span class="n">new</span><span class="p">(</span>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">config</span><span class="p">.</span><span class="n">bitcoin_connection_string</span><span class="p">,</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="w">        </span><span class="n">bitcoincore_rpc</span><span class="p">::</span><span class="n">Auth</span><span class="p">::</span><span class="n">UserPass</span><span class="p">(</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="w">            </span><span class="n">config</span><span class="p">.</span><span class="n">bitcoin_rpc_username</span><span class="p">.</span><span class="n">clone</span><span class="p">(),</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a><span class="w">            </span><span class="n">config</span><span class="p">.</span><span class="n">bitcoin_rpc_password</span><span class="p">.</span><span class="n">clone</span><span class="p">(),</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="w">        </span><span class="p">),</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="w">    </span><span class="p">)</span>
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="w">    </span><span class="c1">// Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.</span>
+<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="w">    </span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+<a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a><span class="p">}</span>
+</code></pre></div>
+and <strong>should not</strong> use a getter for the static reference, like this:
+<div class="language-rust highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="c1">// DON&#39;T DO THIS!</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a><span class="k">pub</span><span class="w"> </span><span class="k">fn</span><span class="w"> </span><span class="nf">new</span><span class="p">(</span><span class="n">resolver</span><span class="p">:</span><span class="w"> </span><span class="nc">Resolver</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">Self</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a><span class="c1">// Construct a Bitcoin RPC client to communicate with the ION Bitcoin node.</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">rpc_client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bitcoincore_rpc</span><span class="p">::</span><span class="n">Client</span><span class="p">::</span><span class="n">new</span><span class="p">(</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a><span class="w">        </span><span class="o">&amp;</span><span class="n">config</span><span class="p">.</span><span class="n">bitcoin_connection_string</span><span class="p">,</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a><span class="w">        </span><span class="n">bitcoincore_rpc</span><span class="p">::</span><span class="n">Auth</span><span class="p">::</span><span class="n">UserPass</span><span class="p">(</span>
+<a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a><span class="w">            </span><span class="n">ion_config</span><span class="p">().</span><span class="n">bitcoin_rpc_username</span><span class="p">.</span><span class="n">clone</span><span class="p">(),</span>
+<a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a><span class="w">            </span><span class="n">ion_config</span><span class="p">().</span><span class="n">bitcoin_rpc_password</span><span class="p">.</span><span class="n">clone</span><span class="p">(),</span>
+<a id="__codelineno-33-9" name="__codelineno-33-9" href="#__codelineno-33-9"></a><span class="w">        </span><span class="p">),</span>
+<a id="__codelineno-33-10" name="__codelineno-33-10" href="#__codelineno-33-10"></a><span class="w">    </span><span class="p">)</span>
+<a id="__codelineno-33-11" name="__codelineno-33-11" href="#__codelineno-33-11"></a><span class="w">    </span><span class="c1">// Safe to use unwrap() here, as Client::new can only return Err when using cookie authentication.</span>
+<a id="__codelineno-33-12" name="__codelineno-33-12" href="#__codelineno-33-12"></a><span class="w">    </span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+<a id="__codelineno-33-13" name="__codelineno-33-13" href="#__codelineno-33-13"></a><span class="p">}</span>
+</code></pre></div></p>
+<h3 id="error-handling_1">Error Handling</h3>
+<h4 id="use-of-map_error">Use of <code>map_error</code></h4>
+<p>Where error enums do not explicitly implement the <code>From&lt;T&gt;</code> conversion trait, use <code>.map_err()</code> followed by the question mark operator <code>?</code> to allow ergonomic error propagation.</p>
+<h4 id="error-enums">Error enums</h4>
+<p>Module-specific error enums should be defined in the module. Error enums used in multiple modules within a crate should be defined in an <code>error.rs</code> module of the crate and make use of <a href="https://docs.rs/thiserror/latest/thiserror/"><code>thiserror</code></a> to simplify implementation.</p>
+<p><code>From&lt;T&gt;</code> can be implemented manually for types as currently in the <a href="https://github.com/alan-turing-institute/trustchain/blob/1c131881925ed23daf614785865640ce3a7e734f/trustchain-http/src/errors.rs#L46-L80"><code>trustchain-http</code></a> crate but can also be more straightforwardly implemented with thiserror. See <a href="https://github.com/alan-turing-institute/trustchain/blob/1c131881925ed23daf614785865640ce3a7e734f/trustchain-core/src/key_manager.rs#L38-L40"><code>KeyManagerError</code></a>.</p>
+<h4 id="ffi-error-handling-with-anyhowresultt">FFI Error handling with <code>anyhow::Result&lt;T&gt;</code></h4>
+<p>Notes:
+- <code>flutter_rust_bridge</code> currently does <strong>not</strong> support returning the Rust <code>Result</code> type over the bridge. Instead, returning <code>anyhow::Result&lt;T&gt;</code> is supported.
+- Whilst a generic over the error varient, <code>anyhow::Result&lt;T,E&gt;</code>, is supported by <code>anyhow</code>, the bridge only supports an <code>anyhow</code> error varient of type <code>anyhow::Error</code> (the shorthand for which is <code>anyhow::Result&lt;T&gt;</code>).</p>
+<p>How to implement:
+- <code>anyhow::Result&lt;String&gt;</code> and <code>anyhow::Result&lt;()&gt;</code> are to two return types used for any of the ffi functions (called from Dart).
+- The <code>String</code> option is flexible to cover any serialised Rust types. A Dart model with a deserialisation method will handle the json string on the Dart side.
+- See the example Rust code below, demonstrating an ffi function to be called by Dart:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>use thiserror::Error;
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>#[derive(Error, Debug)]
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>enum MyFFIError {
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>    #[error(&quot;JSON Deserialisation Error: {0}.&quot;)]
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>    FailedToDeserialise(serde_json::Error),
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>    #[error(&quot;My_func Error: {0}.&quot;)]
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>    FailedToDoIt(Box&lt;dyn std::error::Error&gt;),
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a>}
+<a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>
+<a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>pub fn my_ffi_function(arg1: String) -&gt; anyhow::Result&lt;String&gt; {
+<a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a>
+<a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>    match TrustchainAPI::my_function(&amp;arg1) {
+<a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a>
+<a id="__codelineno-34-17" name="__codelineno-34-17" href="#__codelineno-34-17"></a>        Ok(my_answer) =&gt; Ok(serde_json::to_string_pretty(&amp;my_answer)
+<a id="__codelineno-34-18" name="__codelineno-34-18" href="#__codelineno-34-18"></a>            .expect(&quot;Serialize implemented for my_answer struct&quot;)),
+<a id="__codelineno-34-19" name="__codelineno-34-19" href="#__codelineno-34-19"></a>
+<a id="__codelineno-34-20" name="__codelineno-34-20" href="#__codelineno-34-20"></a>        Err(err) =&gt; Err(anyhow!(&quot;{}&quot;, MyFFIError::FailedToDoIt(err))),
+<a id="__codelineno-34-21" name="__codelineno-34-21" href="#__codelineno-34-21"></a>    }
+<a id="__codelineno-34-22" name="__codelineno-34-22" href="#__codelineno-34-22"></a>}
+</code></pre></div></p>
+<p>Some notes on the above:
+- Aligned with the wider convention on custom Error enums, <code>thiserror::Error</code> is derived with the <code>#[error("...")]</code> macro.
+- Under the hood, the <code>anyhow!()</code> macro uses this to build the string passed over the bridge to Dart.
+- The error received by Dart will be: <code>"My_func Error: &lt;Whatever the Boxed error returned from my_function was&gt;."</code>
+- Dart code can pattern match on the first part of the string, before the colon.
+- <strong>When implementing a new variant on an ffi error enum in Rust, a corresponding varient must be added to the dart <code>FfiError</code> enum, maintained in the <code>trustchain-dart</code> repository.</strong>
+- Under certain circumstances, it is possible to return <code>Err(MyFFIError::my_varient(err).into())</code> without using the <code>anyhow!()</code> macro. However, this shortcut will <strong>not</strong> work if <code>MyFFIError</code> contains varients wrapping <code>Box&lt;dyn Error&gt;</code> (boxed trait objects).
+- In line with the wider convention on error handling, it is possible to have a custom error enum wrapping a tuple <code>(String, Error)</code>, in order to provide some additional information:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>#[error(&quot;JSON Deserialisation Error: {1} \n Info: {0}&quot;)]
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    FailedToDeserialiseVerbose(String, serde_json::Error),
+</code></pre></div></p>
+<hr />
+<h2 id="trustchain-mobile-details">Trustchain Mobile details</h2>
+<p>Trustchain mobile installation instructions: https://github.com/alan-turing-institute/trustchain-mobile/blob/dev/install_trustchain_mobile.md</p>
+<h3 id="building-for-an-android-emulator">Building for an Android emulator</h3>
+<p>TODO</p>
+<h3 id="building-app-for-android-physical-device">Building app for Android physical device</h3>
+<ul>
+<li>
+<p>Build app:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>flutter build apk --debug --dart-define-from-file flutter-config.json
+</code></pre></div>
+with <code>flutter-config.json</code> containing a default endpoint, for example:
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="p">{</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a><span class="w">    </span><span class="nt">&quot;trustchainEndpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://trustchain.uksouth.cloudapp.azure.com&quot;</span><span class="p">,</span>
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a><span class="w">    </span><span class="nt">&quot;rootEventTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&lt;YOUR_ROOT_EVENT_TIME&gt;&quot;</span>
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="p">}</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Log in to trustchaindevstest google account:</p>
+</li>
+<li>Go to <a href="https://drive.google.com/drive/my-drive">drive</a></li>
+<li>Upload the built apk to drive. Path should be:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>build/app/outputs/flutter-apk/app-debug.apk
+</code></pre></div></li>
+<li>Update shared permissions/access settings on google drive for the file to "Share with anyone by link"</li>
+<li>Copy link</li>
+<li>
+<p>Use e.g. <code>qrencode</code> command line util (or any QR code maker) to generate a QR code picture:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>brew install qrencode
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>qrencode &lt;LINK&gt; -o qrcode.png
+</code></pre></div>
+A recent one is:
+https://drive.google.com/file/d/1tXvnOI8Zbqav-JwM2tKtuo84kGfVinBt/view</p>
+</li>
+<li>
+<p>Open with preview and scan from device to download the file</p>
+</li>
+<li>Open the APK and allow to install</li>
+</ul>
+<hr />
+<h2 id="trustchain-gui-details">Trustchain GUI details</h2>
+<h2 id="trustchain-dart-details">Trustchain Dart details</h2>
+<p>In principal, front-end applications on all platforms should share as much code in Trustchain Dart as possible.</p>
+<p>This work was not completed. Trustchain Mobile currently <strong>does not</strong> depend on Trustchain Dart. Trustchain GUI <strong>does</strong> depend on Trustchain Dart, but there is some dupicate code between the two repositories.</p>
+<h3 id="platform-agnostic-error-handling">Platform agnostic error handling</h3>
+<ul>
+<li><code>FfiError</code>, an extended dart enum, maps all Rust error variants returned over the ffi.<ul>
+<li>The enum variants contain string constants within them (analogous to Rust enums containing data).</li>
+<li>A static method on <code>FfiError</code>, called <code>parseFfiError()</code>, automatically supports any new enum variants added to FfiError and parses the serialised Rust errors into <code>FfiError</code> variants.</li>
+</ul>
+</li>
+</ul>
+<h3 id="dart-models-of-trustchain-structs">Dart models of Trustchain structs</h3>
+<p>This work was not completed.
+- Platform agnostic dart models, constructable from serialised Rust structs.</p>
+<h3 id="shared-ui-widgets">Shared UI widgets</h3>
+<p>This work was not completed.
+- Trustchain Mobile and Trustchain GUI use <em>different</em> dart widgets to display the same trustchain Rust structs.
+- <strong>Platform agnostic widgets</strong> could be shared and ensure consistent UI for applications on all platforms.
+- <strong>Palettes, styling and assets</strong> should be maintained in this repository to ensure consistency across applications on all platforms.</p>
+<h2 id="documentation">Documentation</h2>
+<p>The Trustchain Docs documentation site is built with <a href="https://squidfunk.github.io/mkdocs-material/">Material for MkDocs</a>.</p>
+<h3 id="terminal-commands">Terminal commands</h3>
+<p>All Terminal commands in the documentation should be rendered in full-line code blocks (not inline) and tagged with the identifier <code>console</code> after the three opening backticks. They should include the <code>$</code> character to indicate the command prompt.</p>
+<p>The prompt character helps to distinguish between Terminal commands and other code snippets that should not be entered at the command line, and is omitted when the "Copy to clipboard" icon is clicked (or the code is selected).</p>
+<p>For example, the Markdown code block:
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>```console
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>echo &quot;hello, world&quot;
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>```
+</code></pre></div>
+will be rendered as:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="go">echo &quot;hello, world&quot;</span>
+</code></pre></div>
+but only the command <code>echo "hello, world"</code> will be copied to the clipboard.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>The feature to omit the command prompt character when copying to the clipboard is <a href="https://github.com/squidfunk/mkdocs-material/issues/3647#issuecomment-1108132654">not implemented</a> in Material for MkDocs. Instead it was added via custom Javascript following <a href="https://github.com/SensorsIot/IOTstack/pull/547">this approach</a>.</p>
+</div>
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../deployment/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Deployment">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Deployment
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../faq/" class="md-footer__link md-footer__link--next" aria-label="Next: FAQ">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                FAQ
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

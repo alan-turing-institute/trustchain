@@ -1,0 +1,1342 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../getting-started/">
+      
+      
+        <link rel="next" href="../http-server/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Usage - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#usage" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Usage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#trustchain-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trustchain CLI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#did-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DID Resolution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#did-issuance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DID Issuance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DID Issuance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#did-document-content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DID document content
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create-the-did" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the DID
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publish-the-did-document" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish the DID document
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-did-issuance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream DID Issuance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Downstream DID Issuance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attest-to-the-ddid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attest to the dDID
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publish-the-updated-ddid-document" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publish the updated dDID document
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#downstream-did-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downstream DID Verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-issuance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential Issuance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential Verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="usage">Usage</h1>
+<p>This page contains instructions for using the Trustchain command line interface (CLI).</p>
+<p>Depending on your role within the network of Trustchain users you may need to perform some or all of the operations described below. For more information, see the <a href="../roles/">User Roles</a> page.</p>
+<div class="admonition info">
+<p class="admonition-title">Prerequisites</p>
+<p>To use the Trustchain CLI, first make sure that you have followed the installation and configuration instructions on the <a href="../getting-started/">Getting Started</a> page.</p>
+<p>Your ION node will also need to be up and running, either locally or on a remote machine to which you are connected via SSH and with port forwarding. Instructions for restarting ION, and setting up port forwarding, can be found <a href="../ion/#running-ion">here</a>.</p>
+</div>
+<h2 id="trustchain-cli">Trustchain CLI</h2>
+<p>To invoke the Trustchain CLI, open a Terminal and run this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">trustchain-cli</span>
+</code></pre></div>
+You should see a list of available commands and some usage hints.</p>
+<p>If instead you get an error that the <code>trustchain-cli</code> command is not found, make sure you have followed all of the installation steps on the <a href="../getting-started/">Getting Started</a> page.</p>
+<p>The CLI is organised into a set of subcommands for different types of operation:</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>did</code></td>
+<td>DID functionality: create, attest, resolve, verify.</td>
+</tr>
+<tr>
+<td><code>vc</code></td>
+<td>Verifiable credential functionality: sign and verify.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>Data provenance functionality: sign and verify.</td>
+</tr>
+<tr>
+<td><code>cr</code></td>
+<td>Challenge-response functionality for dDID issuance.</td>
+</tr>
+</tbody>
+</table>
+<p>To get help with a particular subcommand, use the <code>--help</code> flag (or <code>-h</code> for short). For example, to get help with the CLI commands relating to DIDs:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">trustchain-cli did --help</span>
+</code></pre></div></p>
+<h2 id="did-resolution">DID Resolution</h2>
+<p>DID Resolution is a process defined in the <a href="https://www.w3.org/TR/did-core/#did-resolution">W3C standard</a> for Decentralised Identifiers (DIDs).</p>
+<p>It takes as input a DID (string identifier) and returns the corresponding DID document, containing the public keys and service endpoints (URLs) that belong to the legal entity that is the DID subject. DID document metadata is also returned.</p>
+<p>To resolve a DID using the Trustchain CLI, execute this command replacing <code>&lt;DID&gt;</code> with the DID of interest:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">trustchain-cli did resolve --did &lt;DID&gt;</span>
+</code></pre></div></p>
+<p>If the DID is found, the complete DID document (and document metadata) will be printed to the terminal.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Mainnet</label><label for="__tabbed_1_2">Testnet4</label><label for="__tabbed_1_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="admonition example">
+<p class="admonition-title">Example: DID resolution on Mainnet</p>
+<p>To test that Trustchain and ION are working correctly, try resolving this example DID:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">trustchain-cli did resolve --did did:ion:EiClkZMDxPKqC9c-umQfTkR8vvZ9JPhl_xLDI9Nfk38w5w</span>
+</code></pre></div></p>
+</div>
+</div>
+<div class="tabbed-block">
+<div class="admonition example">
+<p class="admonition-title">Example: DID resolution on Testnet4</p>
+<p>To test that Trustchain and ION are working correctly, try resolving this example DID:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">trustchain-cli did resolve --did did:ion:test:EiBt8NTmSKf3jt_FMKf-r6JMSJIp7njcTTPe24USYu4B9w</span>
+</code></pre></div></p>
+</div>
+</div>
+<div class="tabbed-block">
+<div class="admonition example">
+<p class="admonition-title">Example: DID resolution on Testnet3</p>
+<p>To test that Trustchain and ION are working correctly, try resolving this example DID:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">trustchain-cli did resolve --did did:ion:test:EiClWZ1MnE8PHjH6y4e4nCKgtKnI1DK1foZiP61I86b6pw</span>
+</code></pre></div></p>
+</div>
+</div>
+</div>
+</div>
+<h2 id="did-issuance">DID Issuance</h2>
+<p>With the Trustchain CLI, you can create and publish your own Decentralised Identifiers. This process must be carried out by the DID subject because it involves generating new public-private key pairs.</p>
+<h4 id="did-document-content">DID document content</h4>
+<p>Use the template below to create a JSON object that will be included in your new DID document. This JSON object may include either or both of the <code>services</code> in the template.</p>
+<p>Services are part of the W3C <a href="https://www.w3.org/TR/did-1.0/#services">DID specification</a>. They are used in DID documents to express ways of communicating with the DID subject via a service endpoint (URL), and can relate to any type of service the DID subject wants to advertise.</p>
+<p>In the template below:</p>
+<ul>
+<li>the first service has type <code>Identity</code> and is used to identify the DID subject by their Web domain,</li>
+<li>the second service has type <code>CredentialEndpoint</code> and can be used by credential issuing authorities to advertise their issuance endpoint (URL).</li>
+</ul>
+<p>Other services may also be included, at the DID subject's discretion.</p>
+<p>Using a text editor, make a copy of the following template and modify it so it contains the services and endpoints that you wish to include in your DID, then save the file.</p>
+<p>The file can be saved anywhere, but we recommend storing it in a directory named <code>doc_states</code> inside the <code>TRUSTCHAIN_DATA</code> directory. That way it will be easy to find later, when you use it to create your DID document.</p>
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">{</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">   </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">      </span><span class="p">{</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">         </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TrustchainID&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">         </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Identity&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">         </span><span class="nt">&quot;serviceEndpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://www.example.com&quot;</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="p">},</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">      </span><span class="p">{</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">         </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TrustchainHTTP&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">         </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;CredentialEndpoint&quot;</span><span class="p">,</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">         </span><span class="nt">&quot;serviceEndpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://example.com/credentials&quot;</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">   </span><span class="p">]</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="p">}</span>
+</code></pre></div>
+<h4 id="create-the-did">Create the DID</h4>
+<p>Having defined the document content, we can now use the Trustchain CLI to create the DID itself. Run the following command, replacing <code>&lt;DID_CONTENT_FILE&gt;</code> with the path to the DID document content file (from the previous step):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="go">trustchain-cli did create --file_path &lt;DID_CONTENT_FILE&gt;</span>
+</code></pre></div></p>
+<div class="admonition example">
+<p class="admonition-title">Example: DID creation</p>
+<p>Suppose you named your DID document content file <code>did_content.json</code> and saved it in the folder <code>$TRUSTCHAIN_DATA/doc_states/</code>. Then you would create the DID with the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">trustchain-cli did create --file_path $TRUSTCHAIN_DATA/doc_states/did_content.json</span>
+</code></pre></div></p>
+</div>
+<p>The <code>create</code> command prints the new DID in the terminal window.</p>
+<p>It also creates a new file inside the folder <code>$TRUSTCHAIN_DATA/operations/</code>. To see the contents of this file, replace <code>&lt;DID&gt;</code> with the newly-created DID in the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">cat $TRUSTCHAIN_DATA/operations/create_operation_&lt;DID&gt;.json</span>
+</code></pre></div></p>
+<p>Inside this file you will be able to see the services inserted from the DID document content file.</p>
+<p>You will also see a public key of type <code>JsonWebSignature2020</code>. This public key was generated automatically by the Trustchain CLI and inserted into the file, so it will be part of the published DID document content.</p>
+<p>The counterpart private key was saved at <code>$TRUSTCHAIN_DATA/key_manager/</code> in a subfolder with the same name as the DID. This private key will enable the DID subject to perform signing operations, such as attesting to downsteam DIDs or digital credentials. Anyone will be able to verify those digital signatures by obtaining the corresponding public key from the published DID document.</p>
+<p>In fact, three private key were generated by the CLI when the DID was created. All are contained in the same subfolder which will now contain the following files:</p>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>signing_key.json</code></td>
+<td>Private key counterpart to the public key in the DID document.</td>
+</tr>
+<tr>
+<td><code>update_key.json</code></td>
+<td>Private key required to make the next update to the DID document.</td>
+</tr>
+<tr>
+<td><code>recovery_key.json</code></td>
+<td>Private key required to recover the DID (in case other keys are lost/compromised).</td>
+</tr>
+</tbody>
+</table>
+<details class="question">
+<summary>Can my DID document contain multiple signing keys?</summary>
+<p>By default, a single public-private key pair is automatically generated for all signing/attestation purposes. However, it is possible to include multiple keys in a single DID document.</p>
+<p>This can be useful if different keys are intended to be used for different purposes, or if the DID refers to an organisation in which different individuals or departments wish to hold their own keys.</p>
+<p>To include multiple public keys in your DID document, simply include them in the <a href="#did-document-content">DID document content</a> before creating the DID, as in this example:
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">    </span><span class="nt">&quot;publicKeys&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">            </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;D6eRSvf6rIfhmPqQDkoCnDVnMzA3lqUPG-2VxIAm0j8&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JsonWebSignature2020&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">            </span><span class="nt">&quot;publicKeyJwk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">                </span><span class="nt">&quot;kty&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EC&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">                </span><span class="nt">&quot;crv&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;secp256k1&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="w">                </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WxRuakVQKfKPs70LwvZnvr1UhhVd2QPtu4PfEc5os_M&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="w">                </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;4lb0D5ORUnsEU_Oh1xp19CzltTDH7IBVp2B0ZEU1qQs&quot;</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="w">            </span><span class="p">},</span>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="w">            </span><span class="nt">&quot;purposes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="w">                </span><span class="s2">&quot;assertionMethod&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="w">                </span><span class="s2">&quot;authentication&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="w">                </span><span class="s2">&quot;keyAgreement&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="w">                </span><span class="s2">&quot;capabilityInvocation&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="w">                </span><span class="s2">&quot;capabilityDelegation&quot;</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="w">            </span><span class="p">]</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="w">            </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;u4HckebM8ltNrU_8qOXtSD1SIE6mlCskFR7p0vTFd3U&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a><span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JsonWebSignature2020&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a><span class="w">            </span><span class="nt">&quot;publicKeyJwk&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a><span class="w">                </span><span class="nt">&quot;kty&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;EC&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a><span class="w">                </span><span class="nt">&quot;crv&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;secp256k1&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a><span class="w">                </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;459af8dOpARVLRbozIvdQPGK9rTCh1e2ZVipBn8E5Lk&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a><span class="w">                </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Rn6iPKS1cNU73eoQpaYt0Z8q3t9duOZNolJEFdAaFS0&quot;</span>
+<a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a><span class="w">            </span><span class="p">},</span>
+<a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a><span class="w">            </span><span class="nt">&quot;purposes&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a><span class="w">                </span><span class="s2">&quot;assertionMethod&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a><span class="w">                </span><span class="s2">&quot;authentication&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a><span class="w">            </span><span class="p">]</span>
+<a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-10-34" name="__codelineno-10-34" href="#__codelineno-10-34"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-10-35" name="__codelineno-10-35" href="#__codelineno-10-35"></a><span class="w">    </span><span class="nt">&quot;services&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-10-36" name="__codelineno-10-36" href="#__codelineno-10-36"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-10-37" name="__codelineno-10-37" href="#__codelineno-10-37"></a><span class="w">            </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TrustchainID&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-38" name="__codelineno-10-38" href="#__codelineno-10-38"></a><span class="w">            </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Identity&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-39" name="__codelineno-10-39" href="#__codelineno-10-39"></a><span class="w">            </span><span class="nt">&quot;serviceEndpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;https://www.example.com&quot;</span>
+<a id="__codelineno-10-40" name="__codelineno-10-40" href="#__codelineno-10-40"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-10-41" name="__codelineno-10-41" href="#__codelineno-10-41"></a><span class="w">    </span><span class="p">]</span>
+<a id="__codelineno-10-42" name="__codelineno-10-42" href="#__codelineno-10-42"></a><span class="p">}</span>
+</code></pre></div>
+Then run the usual command to create the DID:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">trustchain-cli did create --file_path &lt;DID_CONTENT_FILE&gt;</span>
+</code></pre></div>
+When a list of public keys is specified in the DID document content (as above), Trustchain will not generate any new signing keys when creating the DID.</p>
+<p>To enable Trustchain's key management system to access the corresponding private keys, for signing purposes, you will need to copy and paste those private keys into a file named <code>signing_key.json</code> inside the key manager folder:
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">$TRUSTCHAIN_DATA</span>/key_manager/&lt;DID&gt;/signing_key.json
+</code></pre></div>
+where <code>&lt;DID&gt;</code> is the particular DID in question.</p>
+<p>The format of the <code>signing_key.json</code> file must be a list:
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">[</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="err">KEY</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="err">KEY</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="err">...</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">]</span>
+</code></pre></div>
+where <code>KEY1</code>, <code>KEY2</code>, etc. are how they would appear if the individual keys were in a file on their own.</p>
+<p>Full support for managing DIDs with multiple keys will be added in a future version of the Trustchain CLI.</p>
+</details>
+<h4 id="publish-the-did-document">Publish the DID document</h4>
+<div class="admonition warning">
+<p class="admonition-title">Note: Publishing new DIDs requires a funded Bitcoin wallet</p>
+<p>Publishing a Trustchain DID involves embedding information into a Bitcoin transaction and broadcasting it to the Bitcoin network. This makes the information accessible to everyone, globally, via the Bitcoin transaction ledger.</p>
+<p>This process will be taken care of by the Trustchain CLI, via the embedded ION node which itself contains a node on the Bitcoin network. However, since each Bitcoin transaction includes a processing fee, <strong>you must have funds in your Bitcoin wallet before publishing any DIDs</strong>.</p>
+<p>Instructions on how to fund your Bitcoin wallet are available <a href="../ion/#funding-your-bitcoin-wallet">here</a>.</p>
+</div>
+<p>Currently the Trustchain CLI does not include a command for publishing DIDs. This will be added in a future version. In the meantime, DIDs can be published by running a script from the command line.</p>
+<div class="admonition warning">
+<p class="admonition-title">Note: The publish script assumes the default ION port number (3000)</p>
+<p>By default, the ION server listens on port 3000. If you have configured ION to listen on a different port, you will need to manually edit the publish script. If you are unsure, view the ION config file with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="go">cat $ION_CORE_CONFIG_FILE_PATH</span>
+</code></pre></div>
+and check the value of the <code>port</code> parameter. If the value is not <code>3000</code>, you will need to change the value of the <code>port</code> variable at the top of the publish script to have the same value. To edit the script, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="go">nano &quot;$TRUSTCHAIN_REPO&quot;/scripts/publish.sh</span>
+</code></pre></div></p>
+</div>
+<p>When you are ready to publish one or more DIDs, execute the <code>publish.sh</code> script by running the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="go">&quot;$TRUSTCHAIN_REPO&quot;/scripts/publish.sh</span>
+</code></pre></div></p>
+<p>This script will attempt to publish all of the DID operations (JSON files) that are found in the <code>$TRUSTCHAIN_DATA/operations/</code> directory. It does this by sending each of them to your ION server as an HTTP POST request. The response to each of these requests is checked for success (HTTP status code 200).</p>
+<p>If successful, the output should look something like this:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Found 2 DID operations.
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>Publishing:
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>- create_operation_EiBvWFdG7JUVpGu4z0qTc7WkqerZSU-K7_osR8QVPMYciw.json ✅
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>- create_operation_EiDzJNlBiKahsykDcAfC1C6StUurvbIyERrkDBmWIXiPzg.json ✅
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>All DID operations were published successfully
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>Files moved to the &#39;sent/&#39; subdirectory
+</code></pre></div></p>
+<p>The script reports the outcome of each publication attempt. If any attempt failed, the HTTP error code will be reported along with the path to the output JSON file containing any error messages.</p>
+<p>Each JSON file will be moved to either the <code>sent/</code> or <code>failed/</code> subdirectory.</p>
+<p>After the <code>publish.sh</code> script has run, there will be some delay before the newly-published DID can be resolved. This is due to i) the ION publication mechanism, which supports batching of DID operations to reduce transaction fees, and ii) the Bitcoin network processing time. For more details, see the information panels below.</p>
+<p>Once the publication transaction has been processed, confirm that the DID was successfully published by attempting to resolve it <a href="#did-resolution">using the CLI</a>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:3"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><input id="__tabbed_2_3" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Mainnet</label><label for="__tabbed_2_2">Testnet4</label><label for="__tabbed_2_3">Testnet3 (Deprecated)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<details class="info">
+<summary>ION DID publication mechanism</summary>
+<p>The <code>publish.sh</code> script takes all of the DID operations in <code>$TRUSTCHAIN_DATA/operations/</code> and dispatches them to the local ION node for publishing. They are then placed in the collection of <code>queued-operations</code> inside ION's Mongo database.</p>
+<p>To view the contents of this database, open the MongoDB shell with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="go">mongosh</span>
+</code></pre></div>
+Then run the following MongoDB commands (omitting the <code>&gt;</code> prompt character) to select the database:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="go">&gt; ion-mainnet-core</span>
+</code></pre></div>
+and check how many queued DID operations exist:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="go">&gt; db[&quot;queued-operations&quot;].countDocuments()</span>
+</code></pre></div>
+The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the <code>publish.sh</code> script, the number of queued operations will increase to one (or more, if there were multiple files inside <code>$TRUSTCHAIN_DATA/operations/</code> when the script was executed).</p>
+<p>Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the <code>batchingIntervalInSeconds</code> parameter, found in the ION core config file. To view this file, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="go">less $ION_CORE_CONFIG_FILE_PATH</span>
+</code></pre></div></p>
+<p>The default batching interval is 600 seconds. This can be reduced by changing the value of the <code>batchingIntervalInSeconds</code> parameter and restarting ION.</p>
+</details>
+<details class="info">
+<summary>Bitcoin network processing time</summary>
+<p>When a new (or updated) DID document is published, it will take some time for the Bitcoin network to <a href="https://bitcoin.org/en/how-it-works#processing">process</a> the relevant transaction so that it becomes visible to all other network participants.</p>
+<p>Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI <code>resolve</code> command.</p>
+<p>Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.</p>
+</details>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Identifying your DID transaction</p>
+<p>While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="go">bitcoin-cli -rpcwallet=&quot;sidetreeDefaultWallet&quot; listreceivedbyaddress 1 true</span>
+</code></pre></div>
+Then copy the <strong>first address</strong> in the list and paste it into the search bar at <a href="https://mempool.space/">mempool.space</a>.</p>
+<p>This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, <em>including any unconfirmed transactions</em>.</p>
+<p>Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.</p>
+<p>Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.</p>
+<p>Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.</p>
+<p>By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "<span class="arithmatex">\(n\)</span> Confirmations", where <span class="arithmatex">\(n\)</span> is the number of Bitcoin blocks mined since the one containing this transaction.</p>
+<p>As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.</p>
+<p><strong>If your are publishing a root DID</strong>, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date &amp; time that it was confirmed). The timestamp can be found on the same page as the transaction status on <a href="https://mempool.space/">mempool.space</a>.</p>
+</div>
+</div>
+<div class="tabbed-block">
+<details class="info">
+<summary>ION DID publication mechanism</summary>
+<p>The <code>publish.sh</code> script takes all of the DID operations in <code>$TRUSTCHAIN_DATA/operations/</code> and dispatches them to the local ION node for publishing. They are then placed in the collection of <code>queued-operations</code> inside ION's Mongo database.</p>
+<p>To view the contents of this database, open the MongoDB shell with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="go">mongosh</span>
+</code></pre></div>
+Then run the following MongoDB commands (omitting the <code>&gt;</code> prompt character) to select the database:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="go">&gt; use ion-testnet-core</span>
+</code></pre></div>
+and check how many queued DID operations exist:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="go">&gt; db[&quot;queued-operations&quot;].countDocuments()</span>
+</code></pre></div>
+The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the <code>publish.sh</code> script, the number of queued operations will increase to one (or more, if there were multiple files inside <code>$TRUSTCHAIN_DATA/operations/</code> when the script was executed).</p>
+<p>Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the <code>batchingIntervalInSeconds</code> parameter, found in the ION core config file. To view this file, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="go">less $ION_CORE_CONFIG_FILE_PATH</span>
+</code></pre></div></p>
+<p>The default batching interval is 600 seconds. This can be reduced by changing the value of the <code>batchingIntervalInSeconds</code> parameter and restarting ION.</p>
+</details>
+<details class="info">
+<summary>Bitcoin network processing time</summary>
+<p>When a new (or updated) DID document is published, it will take some time for the Bitcoin network to <a href="https://bitcoin.org/en/how-it-works#processing">process</a> the relevant transaction so that it becomes visible to all other network participants.</p>
+<p>Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI <code>resolve</code> command.</p>
+<p>Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.</p>
+</details>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Identifying your DID transaction</p>
+<p>While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="go">bitcoin-cli -rpcwallet=&quot;sidetreeDefaultWallet&quot; listreceivedbyaddress 1 true</span>
+</code></pre></div>
+Then copy the <strong>first address</strong> in the list and paste it into the search bar at <a href="https://mempool.space/testnet4">mempool.space</a>.</p>
+<p>This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, <em>including any unconfirmed transactions</em>.</p>
+<p>Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.</p>
+<p>Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.</p>
+<p>Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.</p>
+<p>By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "<span class="arithmatex">\(n\)</span> Confirmations", where <span class="arithmatex">\(n\)</span> is the number of Bitcoin blocks mined since the one containing this transaction.</p>
+<p>As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.</p>
+<p><strong>If your are publishing a root DID</strong>, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date &amp; time that it was confirmed). The timestamp can be found on the same page as the transaction status on <a href="https://mempool.space/testnet4">mempool.space</a>.</p>
+</div>
+</div>
+<div class="tabbed-block">
+<details class="info">
+<summary>ION DID publication mechanism</summary>
+<p>The <code>publish.sh</code> script takes all of the DID operations in <code>$TRUSTCHAIN_DATA/operations/</code> and dispatches them to the local ION node for publishing. They are then placed in the collection of <code>queued-operations</code> inside ION's Mongo database.</p>
+<p>To view the contents of this database, open the MongoDB shell with this command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="go">mongosh</span>
+</code></pre></div>
+Then run the following MongoDB commands (omitting the <code>&gt;</code> prompt character) to select the database:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="go">&gt; use ion-testnet-core</span>
+</code></pre></div>
+and check how many queued DID operations exist:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="go">&gt; db[&quot;queued-operations&quot;].countDocuments()</span>
+</code></pre></div>
+The output from this command will usually be zero, indicating that there are no queued operations. Immediately after running the <code>publish.sh</code> script, the number of queued operations will increase to one (or more, if there were multiple files inside <code>$TRUSTCHAIN_DATA/operations/</code> when the script was executed).</p>
+<p>Periodically, ION will check if there are any queued operations and, if any exist, it will batch them together and publish them in a single Bitcoin operation. The frequency with which this check is performed can be controlled by setting the <code>batchingIntervalInSeconds</code> parameter, found in the ION core config file. To view this file, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="go">less $ION_CORE_CONFIG_FILE_PATH</span>
+</code></pre></div></p>
+<p>The default batching interval is 600 seconds. This can be reduced by changing the value of the <code>batchingIntervalInSeconds</code> parameter and restarting ION.</p>
+</details>
+<details class="info">
+<summary>Bitcoin network processing time</summary>
+<p>When a new (or updated) DID document is published, it will take some time for the Bitcoin network to <a href="https://bitcoin.org/en/how-it-works#processing">process</a> the relevant transaction so that it becomes visible to all other network participants.</p>
+<p>Only after this processing has finished will it be possible to resolve the DID using the Trustchain CLI <code>resolve</code> command.</p>
+<p>Typically, the processing time will be between 10 and 60 minutes, but it might be longer depending on factors such as the level of congestion on the Bitcoin network and the size of the fee inserted in the relevant transaction.</p>
+</details>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Identifying your DID transaction</p>
+<p>While you are waiting for your DID to be published, you can track its progress by observing the Bitcoin wallet address used to publish the DID operation. Run this command to list your Bitcoin addresses:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="go">bitcoin-cli -rpcwallet=&quot;sidetreeDefaultWallet&quot; listreceivedbyaddress 1 true</span>
+</code></pre></div>
+Then copy the <strong>first address</strong> in the list and paste it into the search bar at <a href="https://mempool.space/testnet">mempool.space</a>.</p>
+<p>This search will return information about your Bitcoin address, including the number of confirmed transactions that have taken place and the unspent amount in the address (i.e. its current balance). Below the summary information will be a list showing every transaction associated with this address, <em>including any unconfirmed transactions</em>.</p>
+<p>Assuming the ION publication mechanism has executed (see the panel above), the first transaction in the list will be the new one that was created by that process.</p>
+<p>Click on the first transaction ID (this is a long string of hexadecimal characters that uniquely identifies the transactions). This takes you to a new page with details about that particular transaction.</p>
+<p>Check the "status" of the transaction. If it is marked as "Unconfirmed", this indicates that it has not yet been processed by the Bitcoin network. In that case it will not yet be possible to resolve the new DID.</p>
+<p>By refreshing this page, you can check its progress. When the transaction has been processed its status will change to "<span class="arithmatex">\(n\)</span> Confirmations", where <span class="arithmatex">\(n\)</span> is the number of Bitcoin blocks mined since the one containing this transaction.</p>
+<p>As soon as the transaction has one or more confirmations, it should be possible to resolve the newly-published DID.</p>
+<p><strong>If your are publishing a root DID</strong>, make a note of the transaction ID so you can easily find it later. You should also make a note of the transactions's timestamp (i.e. the exact date &amp; time that it was confirmed). The timestamp can be found on the same page as the transaction status on <a href="https://mempool.space/testnet">mempool.space</a>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Batching DID operations</p>
+<p>To save time and reduce transaction fees, multiple DID operations can be batched into a single Bitcoin transaction. In fact, ION supports batching of up to 10,000 operations per transaction.</p>
+<p>To perform batching, simply repeat the create operation as many times as you like before running the <code>publish.sh</code> script. Then run the script once to publish all operations in a single batch.</p>
+<p>The only exception to this rule is that <strong>the root DID must not be published in a batched transaction</strong>. It must be the unique DID operation associated with the transaction in which it is published. The reason for this condition is to enable fast and efficient scanning of the Bitcoin blockchain to identify potential root DID operations.</p>
+</div>
+<h2 id="downstream-did-issuance">Downstream DID Issuance</h2>
+<p>This process must be carried out by the DID controller, that is, the legal entity whose attestation will appear on the downstream DID. The DID controller must itself be the subject of another DID document that is already published. We refer to the controller's DID as the <em>upstream DID</em> (uDID).</p>
+<div class="admonition info">
+<p class="admonition-title">Challenge-response protocol</p>
+<p>The interaction between the upstream and downstream entities, when issuing a new downstream DID, must be performed carefully so that the dDID controller (upstream entity) can be confident that the information included in the downstream DID document is correct, before attesting to it.</p>
+<p>The proper way to manage this interaction is via a challenge-response protocol, that includes rigorous checks of both the identity of the legal entities involved and of the dDID document content.</p>
+<p>The latest version of the Trustchain CLI includes such a challenge-response protocol. In earlier versions, dDID issuance is a manual process, as described here.</p>
+</div>
+<p>Issuing a downstream DID is a two-step process. The first step is for the dDID subject to publish their (regular) DID by following the steps in the <a href="#did-issuance">DID Issuance</a> section above.</p>
+<p>The second step is for the dDID controller to attest to the DID by adding their signature and re-publishing an updated DID document.</p>
+<h4 id="attest-to-the-ddid">Attest to the dDID</h4>
+<p>This step must be carried out by the <a href="../roles/#ddid-issuer">dDID issuer</a>.</p>
+<p>We assume that the downsteam legal entity has published their candidate dDID document and shared their candidate dDID (string identifier) with the controller. In the following commands, replace <code>&lt;CANDIDATE_dDID&gt;</code> with the candidate dDID and <code>&lt;uDID&gt;</code> with the controller's DID.</p>
+<p>First check that the candidate dDID can be successfully resolved:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="go">trustchain-cli did resolve --did &lt;CANDIDATE_dDID&gt;</span>
+</code></pre></div></p>
+<p>Next, use the CLI to attest to the dDID:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="go">trustchain-cli did attest --did &lt;uDID&gt; --controlled_did &lt;CANDIDATE_dDID&gt;</span>
+</code></pre></div></p>
+<h4 id="publish-the-updated-ddid-document">Publish the updated dDID document</h4>
+<p>To publish the updated dDID document, containing the controller's attestation, follow exactly the <a href="#publish-the-did-document">same steps</a> as above for publishing a regular DID document.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Batching DID update operations</p>
+<p>As mentioned above, DID operations can be batched to save time and money. This remains true for the update operations used to convert a DID into a dDID. The only constraint is that create and update operations for the same DID cannot be batched into the same transaction, since to perform the attestion the DID must have already been published.</p>
+<p>Therefore, when issuing multiple dDIDs the most efficient approach is to batch together as many create operations as possible, publish them all in a single transaction, wait for that to be processed, and then batch together as many update operations as possible in a subsequent transaction.</p>
+</div>
+<h2 id="downstream-did-verification">Downstream DID Verification</h2>
+<p>To verify a downstream DID, run the following command with the relevant <code>&lt;dDID&gt;</code> identifier:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="go">trustchain-cli did verify --did &lt;dDID&gt;</span>
+</code></pre></div>
+The Trustchain CLI will perform the following verification process and report the result:</p>
+<ol>
+<li>Resolve the given dDID document.</li>
+<li>Identify the controller's uDID from the dDID metadata. If no controller is found, the verification fails.</li>
+<li>If the uDID is itself a downstream DID, repeat steps 1 &amp; 2 until reaching the root DID.</li>
+<li>Verify that the timestamp on the root DID exactly matches the <a href="../getting-started/#trustchain-configuration-file">configured</a> <code>root_event_time</code> parameter. If the timestamp does not match, the verification fails.</li>
+<li>Starting at the root DID, descend down the DID chain and verify each attestation signature using the public key from the next upstream DID document. If any signature is invalid, the verification fails.</li>
+<li>If all of the attestation signatures in the chain are valid, the verification is successful.</li>
+</ol>
+<p>This process ensures that the exact content of the downstream DID (including the public keys of the downstream legal entity) has been attested to by a recognised upstream entity, whose own public keys have themselves been attested to in a chain of signatures leading back to the root DID, whose exact time of publication has also been verified.</p>
+<h2 id="credential-issuance">Credential Issuance</h2>
+<p>This section is under construction.</p>
+<h2 id="credential-verification">Credential Verification</h2>
+<p>This section is under construction.</p>
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Getting Started
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../http-server/" class="md-footer__link md-footer__link--next" aria-label="Next: HTTP Server">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                HTTP Server
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

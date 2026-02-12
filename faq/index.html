@@ -1,0 +1,889 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../http-server/">
+      
+      
+        <link rel="next" href="../technical-notes/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>FAQ - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#faq" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              FAQ
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#q-do-we-really-need-a-new-approach-to-public-key-infrastructure-why-not-use-the-existing-web-pki" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q: Do we really need a new approach to public key infrastructure? Why not use the existing Web PKI?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q-what-is-meant-by-the-term-independently-verifiable-timestamping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q: What is meant by the term "independently verifiable timestamping"?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q-why-is-independently-verifiable-timestamping-important-in-trustchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q: Why is independently verifiable timestamping important in Trustchain?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q-could-trustchain-be-implemented-on-a-proof-of-stake-blockchain-such-as-ethereum-instead-of-bitcoin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q: Could Trustchain be implemented on a proof-of-stake blockchain, such as Ethereum, instead of Bitcoin?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#q-isnt-bitcoin-wasteful-does-trustchain-contribute-to-bitcoins-energy-consumption" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q: Isn't Bitcoin wasteful? Does Trustchain contribute to Bitcoin's energy consumption?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="faq">FAQ</h1>
+<p>Welcome to the Trustchain frequently asked questions (FAQ) page.</p>
+<h3 id="q-do-we-really-need-a-new-approach-to-public-key-infrastructure-why-not-use-the-existing-web-pki">Q: Do we really need a new approach to public key infrastructure? Why not use the existing Web PKI?</h3>
+<p>In principle, public keys contained in X.509 certificates (and attested to by Certificate Authorities) could be used for the purpose of credential verification. However such a system cannot provide the level of trustworthiness necessary in the context of digital identity.</p>
+<p>The existing Web PKI suffers from known vulnerabilities, which have occasionally been exploited in the past. Some of these issues are described in a 2016 memo from the IETF, a review of which can be found <a href="https://github.com/alan-turing-institute/trustchain/wiki/Trustchain:-Review-of-Web-PKI">here</a>.</p>
+<p>But the fundamental problem with using the Web PKI for digital identity is the artificial nature of the trust relationships between Certificate Authorities and the entities they certify. They are artificial in the sense that there was no pre-existing relationship. Instead one has been manufactured on request, purely for the purpose of sharing public keys.</p>
+<p>As such, it is impossible for relying parties to evaluate the level of trust they should place in an entity simply because they are the subject of an X.509 certificate, or whether that entity is an appropriate authority to issue credentials of a particular kind.</p>
+<p>Contrast this to the hierarchical connections in Trustchain, which are digital representations of genuine trust relationships that already existed between recognisable and relatable entities in the physical world.</p>
+<h3 id="q-what-is-meant-by-the-term-independently-verifiable-timestamping">Q: What is meant by the term "independently verifiable timestamping"?</h3>
+<p><em>Timestamping</em> refers to the process of attaching date/time information to a piece of data which serves as a proof that the data existed at that time. <em>Verifiable timestamping</em> means that there exists some mechanism by which that proof can be verified.</p>
+<p><em>Independently verifiable timestamping</em> means that the mechanism used to verify a timestamp is available to anybody, and does not require any special knowledge or trust in any third party.</p>
+<p>For a full explanation of the timestamping process and verification mechanism, see <a href="../technical-notes/#independently-verifiable-timestamping">this technical note</a>.</p>
+<h3 id="q-why-is-independently-verifiable-timestamping-important-in-trustchain">Q: Why is independently verifiable timestamping important in Trustchain?</h3>
+<p>Trustchain builds on the <a href="https://identity.foundation/ion/">Identity Overlay Network</a> (ION), which itself leverages Bitcoin's proof of work mechanism to publish DID documents with independently verifiable timestamps.</p>
+<p>Crucially, the timestamp verification process can be performed by anyone, without requiring any prior knowledge on the part of the verifier (e.g. knowledge of a particular public key).</p>
+<p>Verifiable timestamping plays an important role in the design of Trustchain by enabling three core mechanisms:</p>
+<ol>
+<li>
+<p><strong>Secure and efficient sharing of the root DID</strong></p>
+<p>All participants in the system must agree on the same root DID which is to act as the root of trust for all downstream DID connections. How should this be achieved?</p>
+<p>The DID itself is typically a long string of base64-encoded characters, making it difficult to transcribe and easy to confuse. Therefore it can only realistically be shared by electronic means, and transcribed by copying &amp; pasting. However this raises the question of how users are to be confident that they have been sent the correct root DID, and not a fraudulent one.</p>
+<p>In Trustchain, verifiable timestamping provides a much simpler and more reliable way to share this vital information. Only the date on which the root DID was published needs to be shared, together with a short 3-character confirmation code (which is a fragment of the corresponding Bitcoin transaction ID).</p>
+<p>A calendar date is short enough, and familiar enough, to be shared via non-digital channels (incuding TV, radio, newspapers, physical notice boards and word of mouth). This means that the process of sharing/publicising the root DID need not depend on any existing public key infrastructure.</p>
+</li>
+<li>
+<p><strong>Defence against root DID spoofing</strong></p>
+<p>Since the data registry used to publish DID information is open and permissionless, there is a risk that an attacker might publish fake (or "spoof") DIDs which, if accepted as valid, could enable them to issue fraudulent credentials.</p>
+<p>The digital signatures on downstream DIDs prevent such an attack, but the root DID is unsigned so a different mechanism is required to avoid spoofing.</p>
+<p>We assume here that the date (and confirmation code) of the root DID are known to all participants, having been shared according to the procedure outlined in point 1 above.</p>
+<p>Under this assumption, the timestamp on the root DID completely neutralises any spoofing attack that takes place before or after the date on which the genuine root transaction was published. Although an attack is theoretically possible on the same date, any attack that takes place outside of that particular 24 hour period is nullified.</p>
+<p>This is good start, but in fact the advantage is much greater. After the 24 hours have elapsed, we can observe all of the DID transactions that were published on the same date as the root, and simply check that no "spoof" transaction exists whose confirmation code matches that of the genuine root transaction. Having done this, we can be certain that no attacker has published, or will ever publish, a fake root transaction that could be confused with our honest one.</p>
+</li>
+<li>
+<p><strong>Guaranteed complete DID revocation checks</strong></p>
+<p>Credential verifiers need to be confident that they have an up-to-date list of any DIDs that have been revoked. Imperfect revocation checking is recognised as a weak point in the Web PKI (see Section 3.2 of this <a href="https://datatracker.ietf.org/doc/html/draft-iab-web-pki-problems-01.txt#section-3-2">IETF memo</a>), but in Trustchain the fact that all DIDs are verifiably timestamped provides a guarantee that all revocation information, up to the time of the latest available Bitcoin block, is known.</p>
+<p>Bitcoin's chain of proof of work enables anyone to verify that they haven't missed any DID transactions in the middle of the chain. And verifiable timestamping makes it possible to verify that nothing has been missed off the end. One just needs to look at the timestamp of the most recent available block to be certain that all of the DID operations published up to that time have been observed.</p>
+<p>Verifiers can therefore be certain that they have received all revocation notifications up to a given time.</p>
+</li>
+</ol>
+<h3 id="q-could-trustchain-be-implemented-on-a-proof-of-stake-blockchain-such-as-ethereum-instead-of-bitcoin">Q: Could Trustchain be implemented on a proof-of-stake blockchain, such as Ethereum, instead of Bitcoin?</h3>
+<p>No, the Trustchain security model depends specifically on proof-of-work because it enables a timestamp verification mechanism that does not require any prior knowledge on the part of the verifier (as explained in <a href="../technical-notes/#independently-verifiable-timestamping">this technical note</a>). This enables any participant to confirm that the root DID was published on a particular date, which is how they can be certain it is genuine.</p>
+<p>In a proof-of-stake system, since there is no proof-of-work, the only verification mechanism available is the digital signature. Evidently, digital signatures are not suitable for sharing root public keys because another public key would be needed in advance, in order to verify the signature on the root certificate. Logically then, proof-of-stake cannot provide a mechanism for sharing a root public key.</p>
+<p>In particular, proof-of-stake does not enable independently verifiable timestamping. To see this, let us consider how the security of Trustchain would be affected if proof-of-work were to be replaced by proof-of-stake.</p>
+<p>Suppose the hash of a root DID were embedded in an Ethereum transaction instead of a Bitcoin transaction. Anyone running an Ethereum full node could verify that the transaction was included in a particular block, and they could read the timestamp on that block.</p>
+<p>But how can they be sure that the timestamp is accurate and the block was indeed published on the date claimed?</p>
+<p>They can verify that the block is contained in a proof-of-stake chain that meets the requirements specified by the Ethereum protocol. But how costly would it be for an attacker to produce a fraudulent chain which still meets these requirements?</p>
+<p>Since the protocol demands no computational work, the answer is that an attacker could very cheaply produce an alternative data structure that still constitutes a valid proof-of-stake chain. The only requirement is that it must contain a sequence of transaction data with appropriate digital signatures to conform to the Ethereum protocol. But digital signatures can be produced at essentially zero cost.</p>
+<p>To dissuade this sort of unwanted behaviour, the Ethereum protocol imposes a financial penalty on any participant that proposes multiple alternative chains (a measure known as "slashing"). However, this sanction can only be applied if the attacker has units of Ether (the ETH token) staked at the time the attack takes place. Therefore long-range attacks, after the attacker has withdrawn their staked Ether, are essentially costless.</p>
+<p>In this scenario the Trustchain user would have no way of verifying that the chain (and the timestamp) they are observing is genuine. It could be the original chain that was constructed at regular intervals over the preceding months and years, or it could be a new chain containing deceptive timestamps that <em>appear</em> to date back years. There is no way for the verifier to reliably and independently distinguish between these two possibilities.</p>
+<p>In the case of proof-of-work, the situation is very different. The attacker would need to redo all of the computational work that has been done by the network since the timestamp in question. At the time of writing (April 2025), the Bitcoin network continuously computes around <span class="arithmatex">\(8\times10^{20}\)</span> SHA-256 hash digests every second, which means the blockchain data structure itself is extremely (and verifiably) costly to produce. Therefore, while theoretically possible, an attack which rewrites the history of the Bitcoin blockchain is infeasible, particularly over timeframes of several months or years.</p>
+<p>For an in-depth analysis of the different security guarantees afforded by proof-of-work versus proof-of-stake, see Andrew Poelstra's 2015 article <a href="https://cdn.nakamotoinstitute.org/docs/on-stake-and-consensus.pdf">On Stake and Consensus</a>.</p>
+<h3 id="q-isnt-bitcoin-wasteful-does-trustchain-contribute-to-bitcoins-energy-consumption">Q: Isn't Bitcoin wasteful? Does Trustchain contribute to Bitcoin's energy consumption?</h3>
+<p>The Bitcoin protocol employs the proof of work (PoW) mechanism to achieve consensus across a peer-to-peer network regarding the order of monetary transactions. This enables it to solve the <a href="https://en.wikipedia.org/wiki/Double-spending">double-spending problem</a> without the need for any central authority. The result is a signal that is unforgeably costly to produce and can be independently verified by anybody.</p>
+<p>A similar mechanism can be observed in certain biological systems, a phenomenon known as the <a href="https://en.wikipedia.org/wiki/Handicap_principle">handicap principle</a>. In this context, reliable signalling between individual animals is achieved through the apparent squandering of scarce resources to produce the signal.</p>
+<p>Like the handicapping behaviour that demonstrates biological fitness, proof of work may appear wasteful at first glance. However on closer inspection we see that the benefits accruing from the improved reliability of the signal outweigh the cost of the resources consumed in producing it. If this were not the case we would not observe the behaviour in the first place, since it would yield no economic (or biological) advantage.</p>
+<p>Trustchain (via the <a href="https://identity.foundation/ion/">ION system</a>) makes use of the same incorruptible signals generated by Bitcoin's proof of work to endow DID documents and metadata with independently verifiable timestamps, which form the basis of its security model. No new consumption of energy is needed because the work is already being done by the Bitcoin network. This implies a greater overall efficiency, since the same work is being put to greater use.</p>
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../http-server/" class="md-footer__link md-footer__link--prev" aria-label="Previous: HTTP Server">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                HTTP Server
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../technical-notes/" class="md-footer__link md-footer__link--next" aria-label="Next: Technical Notes">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Technical Notes
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>
