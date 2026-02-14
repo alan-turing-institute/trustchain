@@ -1,3 +1,6 @@
+use log::info;
+use trustchain_rpc::config::{rpc_config, RPC_CONFIG};
+
 // use trustchain_api::{
 //     api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
 //     TrustchainAPI,
@@ -19,6 +22,11 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(filter)
         .finish()
         .try_init()?;
+
+    let config = RPC_CONFIG.clone();
+
+    // Print config
+    info!("{}", config);
 
     let (server_addr, handle) = run_server().await?;
 

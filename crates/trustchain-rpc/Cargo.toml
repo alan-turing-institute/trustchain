@@ -12,11 +12,14 @@ path = "src/bin/main.rs"
 
 anyhow = { workspace = true }
 jsonrpsee = { version = "0.26.0", features = ["http-client", "server"] }
-# log = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-# toml = { workspace = true }
+toml = { workspace = true }
 tracing = { workspace = true } # "0.1.44"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 # trustchain-api = { path = "../trustchain-api" }
-# trustchain-core = { path = "../trustchain-core" }
+trustchain-core = { path = "../trustchain-core" }
 # trustchain-ion = { path = "../trustchain-ion" }
