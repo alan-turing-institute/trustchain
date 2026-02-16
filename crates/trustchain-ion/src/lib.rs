@@ -20,6 +20,7 @@ use crate::utils::BITCOIN_NETWORK;
 use bitcoin::Network;
 use did_ion::sidetree::HTTPSidetreeDIDResolver;
 use lazy_static::lazy_static;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::string::FromUtf8Error;
 use std::{io, num::ParseIntError};
@@ -58,7 +59,21 @@ impl Endpoint {
 
 /// ION DID resolver.
 pub fn http_resolver(endpoint: &str) -> HTTPSidetreeDIDResolver<ION> {
-    HTTPSidetreeDIDResolver::new(endpoint)
+    let mut sidetree_api_url = endpoint.to_string();
+    if sidetree_api_url.len() == 0 {
+        sidetree_api_url = DEFAULT_ION_ENDPOINT.to_string();
+    }
+    // The HTTPSidetreeDIDResolver constructor appends the W3C standard
+    // suffix "identifiers/" to the given endpoint (URL), but does not
+    // check for a trailing '/' character, so we do that here.
+    if sidetree_api_url.chars().last().unwrap() != '/' {
+        sidetree_api_url = format!("{sidetree_api_url}/");
+    }
+    debug!(
+        "Constructing HTTPSidetreeDIDResolver with endpoint: {}",
+        sidetree_api_url
+    );
+    HTTPSidetreeDIDResolver::new(&sidetree_api_url)
 }
 
 /// Trustchain ION DID resolver for full client.
@@ -180,6 +195,8 @@ pub const ATTEST_OPERATION_FILENAME_PREFIX: &str = "attest_operation_";
 // ION
 pub const ION_METHOD: &str = "ion";
 pub const ION_TEST_METHOD: &str = "ion:test";
+pub const DEFAULT_ION_ENDPOINT: &str = "http://localhost:3000/";
+pub const DEFAULT_ION_PORT: u16 = 3000;
 
 // MongoDB
 pub const MONGO_COLLECTION_OPERATIONS: &str = "operations";

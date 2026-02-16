@@ -20,6 +20,7 @@ ipfs-api-backend-hyper = { workspace = true, features = ["with-send-sync"] }
 ipfs-hasher = { workspace = true }
 k256 = { workspace = true }
 lazy_static = { workspace = true }
+log = { workspace = true }
 mongodb = { workspace = true }
 reqwest = { workspace = true }
 secp256k1 = { workspace = true }
