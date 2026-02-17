@@ -1,17 +1,10 @@
 use log::info;
-use trustchain_rpc::config::{rpc_config, RPC_CONFIG};
-
-// use trustchain_api::{
-//     api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
-//     TrustchainAPI,
-// };
-
-use std::net::SocketAddr;
+use trustchain_rpc::config::RPC_CONFIG;
+use trustchain_rpc::server::run_server;
 
 use jsonrpsee::core::client::ClientT;
 use jsonrpsee::http_client::HttpClient;
 use jsonrpsee::rpc_params;
-use jsonrpsee::server::{RpcModule, Server};
 use tracing_subscriber::util::SubscriberInitExt;
 
 #[tokio::main]
@@ -28,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     // Print config
     info!("{}", config);
 
-    let (server_addr, handle) = run_server().await?;
+    let (server_addr, handle) = run_server(config).await?;
 
     // TODO: log an info level message here to indicate that the server has started
     // (similar to trustchain-http main).
@@ -45,18 +38,4 @@ async fn main() -> anyhow::Result<()> {
     handle.stopped().await;
 
     Ok(())
-}
-
-async fn run_server() -> anyhow::Result<(SocketAddr, jsonrpsee::server::ServerHandle)> {
-    let server = Server::builder()
-        .build("127.0.0.1:4444".parse::<SocketAddr>()?)
-        .await?;
-    let mut module = RpcModule::new(());
-    module.register_method("say_hello", |_, _, _| "ho")?;
-
-    let addr = server.local_addr()?;
-    let handle = server.start(module);
-
-    // Return the server address and handle (to manage shutdown).
-    Ok((addr, handle))
 }

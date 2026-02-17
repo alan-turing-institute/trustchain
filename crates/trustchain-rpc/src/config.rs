@@ -7,8 +7,9 @@ use std::{
     str::FromStr,
 };
 use toml;
-use trustchain_core::verifier::Timestamp;
 use trustchain_core::TRUSTCHAIN_CONFIG;
+use trustchain_core::verifier::Timestamp;
+use trustchain_ion::DEFAULT_ION_PORT;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 4444;
@@ -20,6 +21,10 @@ pub struct RPCConfig {
     pub host: Option<IpAddr>,
     /// Port for RPC server.
     pub port: Option<u16>,
+    /// ION host.
+    pub ion_host: Option<IpAddr>,
+    /// ION port.
+    pub ion_port: Option<u16>,
     // /// Path containing certificate and key necessary for https.
     // pub https_path: Option<String>,
     /// Root event time for verifier.
@@ -37,6 +42,8 @@ impl Default for RPCConfig {
         Self {
             host: Some(IpAddr::from_str(DEFAULT_HOST).unwrap()),
             port: Some(DEFAULT_PORT),
+            ion_host: Some(IpAddr::from_str(DEFAULT_HOST).unwrap()),
+            ion_port: Some(DEFAULT_ION_PORT),
             // https_path: None,
             root_event_time: None,
         }
@@ -48,8 +55,8 @@ impl RPCConfig {
     pub fn to_address(&self) -> String {
         format!(
             "{}:{}",
-            self.host.expect("Default it not configured"),
-            self.port.expect("Default it not configured")
+            self.host.expect("Default if not configured"),
+            self.port.expect("Default if not configured")
         )
         .parse()
         .unwrap()
@@ -60,10 +67,22 @@ impl RPCConfig {
         self.to_address().parse::<SocketAddr>().unwrap()
     }
 
+    pub fn ion_endpoint(&self) -> String {
+        format!(
+            "http://{}:{}/",
+            self.ion_host.expect("Default if not configured"),
+            self.ion_port.expect("Default if not configured")
+        )
+        .parse()
+        .unwrap()
+    }
+
     fn fill_from(self, other: Self) -> Self {
         Self {
             host: self.host.or(other.host),
             port: self.port.or(other.port),
+            ion_host: self.ion_host.or(other.ion_host),
+            ion_port: self.ion_port.or(other.ion_port),
             root_event_time: self.root_event_time.or(other.root_event_time),
         }
     }
@@ -100,9 +119,7 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_deserialize() {
-        let config_string = r#"
+    const CONFIG_STR: &str = r#"
         [rpc]
         host = "127.0.0.1"
         port = 4444
@@ -111,7 +128,15 @@ mod tests {
         key = "value"
         "#;
 
-        let config: RPCConfig = parse_toml(&config_string);
+    #[test]
+    fn test_deserialize() {
+        let config: RPCConfig = parse_toml(CONFIG_STR);
         assert_eq!(config, RPCConfig::default());
+    }
+
+    #[test]
+    fn test_ion_endpoint() {
+        let config: RPCConfig = parse_toml(CONFIG_STR);
+        assert_eq!(config.ion_endpoint().chars().last().unwrap(), '/');
     }
 }

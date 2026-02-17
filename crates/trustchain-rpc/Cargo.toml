@@ -11,15 +11,18 @@ path = "src/bin/main.rs"
 [dependencies]
 
 anyhow = { workspace = true }
+did-ion = { workspace = true }
 jsonrpsee = { version = "0.26.0", features = ["http-client", "server"] }
 lazy_static = { workspace = true }
 log = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+ssi = { workspace = true, features = ["http-did"] }
 tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
 tracing = { workspace = true } # "0.1.44"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-# trustchain-api = { path = "../trustchain-api" }
+trustchain-api = { path = "../trustchain-api" }
 trustchain-core = { path = "../trustchain-core" }
-# trustchain-ion = { path = "../trustchain-ion" }
+trustchain-http = { path = "../trustchain-http" }
+trustchain-ion = { path = "../trustchain-ion" }
