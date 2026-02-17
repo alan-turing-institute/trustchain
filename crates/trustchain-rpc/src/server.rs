@@ -1,6 +1,6 @@
 use jsonrpsee::server::{RpcModule, Server};
 use std::{net::SocketAddr, sync::Arc};
-use trustchain_api::{TrustchainAPI, api::TrustchainDIDAPI};
+use trustchain_api::{api::TrustchainDIDAPI, TrustchainAPI};
 use trustchain_core::verifier::Verifier;
 
 use crate::{config::RPCConfig, state::AppState};

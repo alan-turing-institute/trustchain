@@ -7,8 +7,8 @@ use std::{
     str::FromStr,
 };
 use toml;
-use trustchain_core::TRUSTCHAIN_CONFIG;
 use trustchain_core::verifier::Timestamp;
+use trustchain_core::TRUSTCHAIN_CONFIG;
 use trustchain_ion::DEFAULT_ION_PORT;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
