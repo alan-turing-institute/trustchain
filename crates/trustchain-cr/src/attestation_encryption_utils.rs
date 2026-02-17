@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use josekit::jwe::ECDH_ES;
 use josekit::jwk::Jwk;
-use josekit::jws::{JwsHeader, ES256K};
+use josekit::jws::{ES256K, JwsHeader};
 use josekit::jwt::{self, JwtPayload};
 use serde_json::Value;
 use ssi::did::{Document, VerificationMethod};

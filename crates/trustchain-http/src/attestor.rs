@@ -1,12 +1,3 @@
-use crate::attestation_encryption_utils::{
-    extract_key_ids_and_jwk, josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity,
-    SignEncrypt,
-};
-use crate::attestation_utils::{
-    attestation_request_basepath, attestation_request_path, ContentCRChallenge,
-    ContentCRInitiation, CustomResponse, ElementwiseSerializeDeserialize, IdentityCRChallenge,
-    IdentityCRInitiation, Nonce, TrustchainCRError,
-};
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;
@@ -23,6 +14,15 @@ use trustchain_api::api::TrustchainDIDAPI;
 use trustchain_api::TrustchainAPI;
 use trustchain_core::attestor::AttestorError;
 use trustchain_core::verifier::Verifier;
+use trustchain_cr::attestation_encryption_utils::{
+    extract_key_ids_and_jwk, josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity,
+    SignEncrypt,
+};
+use trustchain_cr::attestation_utils::{
+    attestation_request_basepath, attestation_request_path, ContentCRChallenge,
+    ContentCRInitiation, CustomResponse, ElementwiseSerializeDeserialize, IdentityCRChallenge,
+    IdentityCRInitiation, Nonce, TrustchainCRError,
+};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -428,12 +428,11 @@ fn verify_nonce(payload: JwtPayload, path: &PathBuf) -> Result<(), TrustchainCRE
 #[cfg(test)]
 mod tests {
     use crate::data::TEST_UPDATE_KEY;
-    use crate::{
-        attestation_utils::RequesterDetails, config::HTTPConfig, server::TrustchainRouter,
-    };
+    use crate::{config::HTTPConfig, server::TrustchainRouter};
     use axum_test_helper::TestClient;
     use ssi::jwk::JWK;
     use tempfile::tempdir;
+    use trustchain_cr::attestation_utils::RequesterDetails;
 
     use super::*;
 

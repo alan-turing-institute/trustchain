@@ -38,6 +38,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 trustchain-api = { path = "../trustchain-api" }
 trustchain-core = { path = "../trustchain-core" }
+trustchain-cr = { path = "../trustchain-cr" }
 trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]

@@ -6,7 +6,7 @@ use ssi::did::Service;
 use trustchain_core::utils::generate_key;
 use trustchain_ion::attestor::IONAttestor;
 
-use crate::{
+use trustchain_cr::{
     attestation_encryption_utils::{
         josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
     },

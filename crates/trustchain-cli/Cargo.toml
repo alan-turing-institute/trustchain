@@ -19,5 +19,6 @@ tokio = { workspace = true, features = ["full"] }
 toml = { workspace = true }
 trustchain-api = { path = "../trustchain-api" }
 trustchain-core = { path = "../trustchain-core" }
+trustchain-cr = { path = "../trustchain-cr" }
 trustchain-http = { path = "../trustchain-http" }
 trustchain-ion = { path = "../trustchain-ion" }

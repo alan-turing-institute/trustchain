@@ -10,15 +10,15 @@ use std::{
 use is_empty::IsEmpty;
 use josekit::JoseError;
 use josekit::{jwk::Jwk, jwt::JwtPayload};
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{Rng, distributions::Alphanumeric, thread_rng};
 use serde::{Deserialize, Serialize};
-use serde_json::{to_string_pretty as to_json, Value};
+use serde_json::{Value, to_string_pretty as to_json};
 use serde_with::skip_serializing_none;
 use ssi::{did::Service, jwk::JWK};
 use ssi::{did::ServiceEndpoint, one_or_many::OneOrMany};
 use std::fs::OpenOptions;
 use thiserror::Error;
-use trustchain_core::{attestor::AttestorError, key_manager::KeyManagerError, TRUSTCHAIN_DATA};
+use trustchain_core::{TRUSTCHAIN_DATA, attestor::AttestorError, key_manager::KeyManagerError};
 
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {
@@ -847,9 +847,9 @@ impl ElementwiseSerializeDeserialize for CRState {
 /// Returns message that corresponds to the current state of the challenge-response process.
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
-        CurrentCRState::NotStarted => {
-            String::from("No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.")
-        }
+        CurrentCRState::NotStarted => String::from(
+            "No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.",
+        ),
         CurrentCRState::IdentityCRInitiated => {
             String::from("Identity challenge-response initiated. Await response.")
         }
@@ -865,9 +865,7 @@ fn get_status_message(current_state: &CurrentCRState) -> String {
         CurrentCRState::ContentChallengeComplete => {
             String::from("Content challenge has been presented. Await response.")
         }
-        CurrentCRState::ContentResponseComplete => {
-            String::from("Challenge-response complete.")
-        }
+        CurrentCRState::ContentResponseComplete => String::from("Challenge-response complete."),
     }
 }
 

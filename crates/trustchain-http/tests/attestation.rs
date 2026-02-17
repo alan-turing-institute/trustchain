@@ -3,8 +3,8 @@ use bitcoin::Network;
 use port_check::is_port_reachable;
 use tokio::runtime::Runtime;
 use trustchain_core::verifier::Verifier;
-use trustchain_http::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
-use trustchain_http::attestation_utils::{
+use trustchain_cr::attestation_encryption_utils::{josekit_to_ssi_jwk, ssi_to_josekit_jwk};
+use trustchain_cr::attestation_utils::{
     attestation_request_path, CRState, ElementwiseSerializeDeserialize, IdentityCRChallenge,
     IdentityCRInitiation,
 };

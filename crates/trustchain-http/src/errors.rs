@@ -11,7 +11,7 @@ use trustchain_core::{
 };
 use trustchain_ion::root::TrustchainRootError;
 
-use crate::attestation_utils::TrustchainCRError;
+use trustchain_cr::attestation_utils::TrustchainCRError;
 
 /// Trustchain HTTP error type.
 // TODO: refine and add doc comments for error variants
