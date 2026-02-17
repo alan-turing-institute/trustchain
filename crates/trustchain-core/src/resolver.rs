@@ -6,6 +6,7 @@ use serde_json::Value;
 use ssi::did::{Document, Service, ServiceEndpoint};
 use ssi::did_resolve::{
     DIDResolver, DocumentMetadata, Metadata, ResolutionInputMetadata, ResolutionMetadata,
+    ResolutionResult,
 };
 use ssi::one_or_many::OneOrMany;
 use std::collections::HashMap;
@@ -38,6 +39,9 @@ pub enum ResolverError {
     /// General resolver error with resolution metadata.
     #[error("Resolver error with resolution metadata.")]
     FailureWithMetadata(ResolutionMetadata),
+    /// General resolver error without resolution metadata.
+    #[error("Resolver error without resolution metadata.")]
+    FailureWithoutMetadata,
 }
 
 /// Type for resolver result.
@@ -49,6 +53,45 @@ pub type ResolverResult = Result<
     ),
     ResolverError,
 >;
+
+/// Maps from the SSI library ResolutionResult type into Trustchain's ResolverResult.
+/// This adapter converts the library struct into a Result type for more convenient error handling.
+pub fn map_resolution_result(resolution_result: ResolutionResult) -> ResolverResult {
+    let resolution_metadata = match resolution_result.did_resolution_metadata {
+        Some(res_metadata) => res_metadata,
+        None => return Err(ResolverError::FailureWithoutMetadata),
+    };
+    match (
+        resolution_result.did_document,
+        resolution_result.did_document_metadata,
+    ) {
+        (None, None) => Ok((resolution_metadata, None, None)),
+        (None, Some(doc_metadata)) => Ok((resolution_metadata, None, Some(doc_metadata))),
+        (Some(doc), None) => Ok((resolution_metadata, Some(doc), None)),
+        (Some(doc), Some(doc_metadata)) => Ok((resolution_metadata, Some(doc), Some(doc_metadata))),
+    }
+}
+
+/// Maps from the Trustchain ResolverResult type into the SSI library's ResolutionResult.
+/// This adapter converts the local Result type, useful for error handling, into the library struct
+/// which contains embedded error information but is not itself a Result type.
+pub fn map_resolver_result(resolver_result: ResolverResult) -> ResolutionResult {
+    let (res_metadata, doc, doc_metadata) =
+        if let Ok((res_metadata, doc, doc_metadata)) = resolver_result {
+            (Some(res_metadata), doc, doc_metadata)
+        } else {
+            (None, None, None)
+        };
+    ResolutionResult {
+        context: Some(serde_json::Value::String(
+            "https://w3id.org/did-resolution/v1".to_string(),
+        )),
+        did_document: doc,
+        did_resolution_metadata: res_metadata,
+        did_document_metadata: doc_metadata,
+        property_set: None,
+    }
+}
 
 /// Adds the controller property to a resolved DID document, using the
 /// value passed in the controller_did argument. This must be the DID of
@@ -286,6 +329,7 @@ pub trait TrustchainResolver: DIDResolver + AsDIDResolver {
             {
                 Err(ResolverError::ConnectionFailure)
             } else if did_res_meta_error == "invalidDid" {
+                // TODO: Why `NonExistentDID` here? That suggests DIDNotFound. Why not `InvalidDID`?
                 Err(ResolverError::NonExistentDID(did.to_string()))
             } else if did_res_meta_error == "notFound" {
                 Err(ResolverError::DIDNotFound(did.to_string()))
