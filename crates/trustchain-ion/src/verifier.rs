@@ -563,14 +563,14 @@ mod tests {
     use super::*;
     use crate::{
         data::{
-            TESTNET3_TEST_PROVISIONAL_INDEX_FILE_HEX, TESTNET4_TEST_PROVISIONAL_INDEX_FILE_HEX,
             TEST_BLOCK_HEADER_HEX, TEST_CHUNK_FILE_HEX, TEST_CORE_INDEX_FILE_HEX,
-            TEST_MERKLE_BLOCK_HEX, TEST_TRANSACTION_HEX,
+            TEST_MERKLE_BLOCK_HEX, TEST_TRANSACTION_HEX, TESTNET3_TEST_PROVISIONAL_INDEX_FILE_HEX,
+            TESTNET4_TEST_PROVISIONAL_INDEX_FILE_HEX,
         },
         trustchain_resolver,
         utils::BITCOIN_NETWORK,
     };
-    use bitcoin::{block::Header, MerkleBlock, Network};
+    use bitcoin::{MerkleBlock, Network, block::Header};
     use flate2::read::GzDecoder;
     use std::{io::Read, str::FromStr};
     use trustchain_core::commitment::TrivialCommitment;
@@ -756,10 +756,12 @@ mod tests {
                     Err(_) => panic!(),
                 };
                 assert!(value.is_object());
-                assert!(value
-                    .as_object()
-                    .unwrap()
-                    .contains_key("provisionalIndexFileUri"));
+                assert!(
+                    value
+                        .as_object()
+                        .unwrap()
+                        .contains_key("provisionalIndexFileUri")
+                );
             }
             Network::Testnet4 => {
                 let cid = "QmXceEyzDLbw9VwqqENtZSGETUcNjudiNzvvY9ECjGwwfW";
@@ -774,10 +776,12 @@ mod tests {
                     Err(_) => panic!(),
                 };
                 assert!(value.is_object());
-                assert!(value
-                    .as_object()
-                    .unwrap()
-                    .contains_key("provisionalIndexFileUri"));
+                assert!(
+                    value
+                        .as_object()
+                        .unwrap()
+                        .contains_key("provisionalIndexFileUri")
+                );
             }
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
@@ -899,10 +903,12 @@ mod tests {
             Err(_) => panic!(),
         };
         assert!(value.is_object());
-        assert!(value
-            .as_object()
-            .unwrap()
-            .contains_key("provisionalIndexFileUri"));
+        assert!(
+            value
+                .as_object()
+                .unwrap()
+                .contains_key("provisionalIndexFileUri")
+        );
     }
 
     #[test]

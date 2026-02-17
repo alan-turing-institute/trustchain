@@ -1,15 +1,15 @@
 use chrono::NaiveDate;
-use futures::{future, StreamExt};
+use futures::{StreamExt, future};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use trustchain_core::utils::get_did_from_suffix;
 
 use crate::{
+    ION_TEST_METHOD, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TXN_TIME, TrustchainBitcoinError,
+    TrustchainMongodbError,
     utils::{
         block_height_range_on_date, locate_transaction, query_mongodb_on_interval, transaction,
     },
-    TrustchainBitcoinError, TrustchainMongodbError, ION_TEST_METHOD, MONGO_FILTER_DID_SUFFIX,
-    MONGO_FILTER_TXN_TIME,
 };
 
 /// An error relating to the root DID.

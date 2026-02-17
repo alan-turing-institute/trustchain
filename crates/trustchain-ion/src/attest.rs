@@ -1,18 +1,18 @@
 //! ION operation for DID attestation.
-use crate::ion::IONTest as ION;
 use crate::ATTEST_OPERATION_FILENAME_PREFIX;
+use crate::ion::IONTest as ION;
 use did_ion::sidetree::DIDStatePatch;
 use did_ion::sidetree::PublicKeyJwk;
 use did_ion::sidetree::{DIDSuffix, Operation, Sidetree};
 use serde_json::to_string_pretty as to_json;
 use std::convert::TryFrom;
+use trustchain_core::JSON_FILE_EXTENSION;
+use trustchain_core::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 use trustchain_core::controller::Controller;
 use trustchain_core::key_manager::{ControllerKeyManager, KeyType};
 use trustchain_core::resolver::TrustchainResolver;
 use trustchain_core::subject::Subject;
 use trustchain_core::utils::get_operations_path;
-use trustchain_core::JSON_FILE_EXTENSION;
-use trustchain_core::TRUSTCHAIN_PROOF_SERVICE_ID_VALUE;
 
 use crate::controller::IONController;
 use crate::trustchain_resolver;

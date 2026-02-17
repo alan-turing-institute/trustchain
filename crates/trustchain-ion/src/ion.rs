@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Context, Result};
-use did_ion::sidetree::{is_secp256k1, Sidetree, SidetreeClient, SidetreeError};
+use anyhow::{Context, Result, anyhow};
+use did_ion::sidetree::{Sidetree, SidetreeClient, SidetreeError, is_secp256k1};
 use ssi::jwk::{Algorithm, JWK};
 
 pub const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
