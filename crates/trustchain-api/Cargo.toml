@@ -7,15 +7,25 @@ edition = "2021"
 [dependencies]
 
 async-trait = { workspace = true }
+axum = { workspace = true }
 chrono = { workspace = true }
 did-ion = { workspace = true }
 futures = { workspace = true }
 hex = { workspace = true }
+hyper = { workspace = true }
+josekit = { workspace = true }
+jsonrpsee = { workspace = true }
+jsonrpsee-types = { workspace = true }
+log = { workspace = true }
 ps_sig = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
+thiserror = { workspace = true }
 trustchain-core = { path = "../trustchain-core" }
+trustchain-cr = { path = "../trustchain-cr" }
 trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]

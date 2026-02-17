@@ -197,18 +197,23 @@ impl TrustchainAttestorHTTPHandler {
             .to_owned();
         // resolve candidate DID
         let result = TrustchainAPI::resolve(&ddid, app_state.verifier.resolver()).await;
-        let candidate_doc = match result {
-            Ok((_, Some(doc), _)) => doc,
-            Ok((_, None, _)) | Err(_) => {
-                let response = CustomResponse {
-                    message: "Resolution of candidate DID failed.".to_string(),
-                    data: None,
-                };
-                return Ok((
-                    StatusCode::BAD_REQUEST,
-                    serde_json::to_string(&response).map_err(TrustchainCRError::Serde)?,
-                ));
+
+        // Get the candidate DID document or return if failed to resolve.
+        let fail_response = CustomResponse {
+            message: "Resolution of candidate DID failed.".to_string(),
+            data: None,
+        };
+        let fail_return = (
+            StatusCode::BAD_REQUEST,
+            serde_json::to_string(&fail_response).map_err(TrustchainCRError::Serde)?,
+        );
+        let candidate_doc = if let Ok(res_result) = result {
+            match res_result.did_document {
+                Some(doc) => doc,
+                None => return Ok(fail_return),
             }
+        } else {
+            return Ok(fail_return);
         };
         // TODO: check if resolved candidate DID contains expected update_p_key
 

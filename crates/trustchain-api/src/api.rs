@@ -1,10 +1,10 @@
-use crate::{TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
+use crate::{errors::TrustchainAPIError, TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
 use sha2::{Digest, Sha256};
 use ssi::{
-    did_resolve::DIDResolver,
+    did_resolve::{DIDResolver, ResolutionResult},
     jsonld::ContextLoader,
     ldp::LinkedDataDocument,
     vc::{Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, URI},
@@ -14,7 +14,7 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{ResolverResult, TrustchainResolver},
+    resolver::{map_resolver_result, TrustchainResolver},
     vc::{CredentialError, DataCredentialError},
     verifier::{Timestamp, Verifier, VerifierError},
     vp::PresentationError,
@@ -41,10 +41,18 @@ pub trait TrustchainDIDAPI {
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }
+
     /// Resolves a given DID using given endpoint.
-    async fn resolve(did: &str, resolver: &dyn TrustchainResolver) -> ResolverResult {
-        // Result metadata, Document, Document metadata
-        resolver.resolve_as_result(did).await
+    async fn resolve(
+        did: &str,
+        resolver: &dyn TrustchainResolver,
+    ) -> Result<ResolutionResult, TrustchainAPIError> {
+        let resolver_result = resolver.resolve_as_result(did).await;
+        match resolver_result {
+            Ok(_) => Ok(map_resolver_result(resolver_result)),
+            // TODO: convert to (unknown) resolver error
+            _ => Err(TrustchainAPIError::InternalError),
+        }
     }
 
     /// Verifies a given DID using a resolver available at given endpoint, returning a result.
@@ -348,7 +356,8 @@ pub trait TrustchainDataAPI {
 #[cfg(test)]
 mod tests {
     use crate::api::{
-        TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATA_CREDENTIAL_TEMPLATE,
+        TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI,
+        DATA_CREDENTIAL_TEMPLATE,
     };
     use crate::TrustchainAPI;
     use bitcoin::Network;
@@ -463,6 +472,26 @@ mod tests {
           }
         }
       }"###;
+
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
+    async fn test_resolve() {
+        init();
+
+        let did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg", // root
+            Network::Testnet4 => "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA", // root
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let result = TrustchainAPI::resolve(did, &resolver).await;
+        assert!(result.is_ok());
+    }
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]

@@ -15,6 +15,7 @@ use trustchain_api::{
 };
 use trustchain_cli::{config::cli_config, print_status};
 use trustchain_core::{
+    resolver::map_resolution_result,
     utils::extract_keys,
     vc::{CredentialError, DataCredentialError},
     verifier::Verifier,
@@ -248,7 +249,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (res_meta, doc, doc_meta) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -387,7 +389,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // verify DID before resolving and extracting endpoint
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _result = verifier.verify(did, root_event_time.into()).await?;
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let services = doc.unwrap().service;
 
                     // user promt for org name and operator name
@@ -492,7 +495,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         panic!("Provided attestation request not found. Path does not exist.");
                     }
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let doc = doc.unwrap();
                     // extract attestor public key from did document
                     let public_keys = extract_keys(&doc);
@@ -526,7 +530,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // resolve DID, get services and attestor public key
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let doc = doc.unwrap();
                     let public_keys = extract_keys(&doc);
                     let attestor_public_key_ssi = public_keys.first().unwrap();

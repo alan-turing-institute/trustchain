@@ -9,13 +9,10 @@ use axum::Json;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
-use ssi::{
-    did::Document,
-    did_resolve::{DocumentMetadata, ResolutionResult},
-};
+use ssi::did_resolve::ResolutionResult;
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::resolver::TrustchainResolver;
+use trustchain_core::resolver::{map_resolver_result, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{TrustchainVerifier, VerificationBundle};
 
@@ -52,11 +49,10 @@ impl TrustchainHTTP for TrustchainHTTPHandler {
         resolver: &dyn TrustchainResolver,
     ) -> Result<ResolutionResult, TrustchainHTTPError> {
         debug!("Resolving...");
-        let result = resolver.resolve_as_result(did).await?;
-
-        debug!("Resolved result: {:?}", result);
-        match result {
-            (_, Some(doc), Some(doc_meta)) => Ok(Self::to_resolution_result(doc, doc_meta)),
+        let resolver_result = resolver.resolve_as_result(did).await;
+        debug!("Resolved result: {:?}", resolver_result);
+        match resolver_result {
+            Ok(_) => Ok(map_resolver_result(resolver_result)),
             // TODO: convert to (unknown) resolver error
             _ => Err(TrustchainHTTPError::InternalError),
         }
@@ -132,20 +128,13 @@ impl TrustchainHTTPHandler {
             .await
             .map(|bundle| (StatusCode::OK, Json(bundle)))
     }
-    /// Converts a DID document and metadata to a `ResolutionResult` type.
-    pub fn to_resolution_result(doc: Document, doc_meta: DocumentMetadata) -> ResolutionResult {
-        ResolutionResult {
-            context: Some(serde_json::Value::String(
-                "https://w3id.org/did-resolution/v1".to_string(),
-            )),
-            did_document: Some(doc),
-            did_resolution_metadata: None,
-            did_document_metadata: Some(doc_meta),
-            property_set: None,
-        }
-    }
 }
 
+// TODO: The `DIDChainResolutionResult` type isn't needed; we should use DIDChain instead.
+// Superficially there is a resemblance to `ResolutionResult` from the SSI library, but
+// here we have no resolution metadata so the similarity is artificial.
+// However, this change will involve changing the return type of the `TrustchainHTTP::resolve_chain`
+// method, which affects the mobile app as consumer. So it's postponed.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// Type for converting a `DIDChain` to a chain of DID documents with [W3C](https://w3c-ccg.github.io/did-resolution/#did-resolution-result)
@@ -160,7 +149,15 @@ impl DIDChainResolutionResult {
             did_chain: did_chain
                 .to_vec()
                 .into_iter()
-                .map(|(doc, doc_meta)| TrustchainHTTPHandler::to_resolution_result(doc, doc_meta))
+                .map(|(doc, doc_meta)| ResolutionResult {
+                    context: Some(serde_json::Value::String(
+                        "https://w3id.org/did-resolution/v1".to_string(),
+                    )),
+                    did_document: Some(doc),
+                    did_resolution_metadata: None,
+                    did_document_metadata: Some(doc_meta),
+                    property_set: None,
+                })
                 .collect::<Vec<_>>(),
         }
     }
