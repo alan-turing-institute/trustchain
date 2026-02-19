@@ -10,37 +10,27 @@ pub async fn run_server(
 ) -> anyhow::Result<(SocketAddr, jsonrpsee::server::ServerHandle)> {
     let server = Server::builder().build(config.to_socket_address()).await?;
 
-    // Set up persistent, shared state.
+    // Set up persistent, shared state, accessible as context during call execution.
     let shared_state = Arc::new(AppState::new(config.clone())).clone();
-    let root_event_time = config.root_event_time;
+    let mut module = RpcModule::new(shared_state);
 
-    let mut module = RpcModule::new(());
-
-    module.register_async_method("resolve", move |params, _, _| {
-        let state = shared_state.clone();
-        async move {
-            let did = params
-                .parse::<String>()
-                .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-            tracing::info!("Resolving DID: {:?}", did);
-            let resolver = state.verifier.resolver();
-            TrustchainAPI::resolve(&did, resolver).await
-        }
+    module.register_async_method("resolve", |params, ctx, _| async move {
+        let did = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Resolving DID: {:?}", did);
+        let resolver = ctx.verifier.resolver();
+        TrustchainAPI::resolve(&did, resolver).await
     })?;
 
-    let shared_state = Arc::new(AppState::new(config.clone())).clone();
-
-    module.register_async_method("verify", move |params, _, _| {
-        let state = shared_state.clone();
-        async move {
-            let did = params
-                .parse::<String>()
-                .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-            tracing::info!("Verifying DID: {:?}", did);
-            match root_event_time {
-                Some(time) => TrustchainAPI::verify(&did, time, &state.verifier).await,
-                None => Err(TrustchainAPIError::RootEventTimeNotSet),
-            }
+    module.register_async_method("verify", |params, ctx, _| async move {
+        let did = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Verifying DID: {:?}", did);
+        match ctx.config.root_event_time {
+            Some(time) => TrustchainAPI::verify(&did, time, &ctx.verifier).await,
+            None => Err(TrustchainAPIError::RootEventTimeNotSet),
         }
     })?;
 
