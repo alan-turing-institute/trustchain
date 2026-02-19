@@ -1,5 +1,5 @@
 //! Error type and conversions.
-use axum::{Json, response::IntoResponse};
+use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
 use josekit::JoseError;
 use jsonrpsee_types::error::{ErrorCode, ErrorObject, ErrorObjectOwned};
@@ -61,6 +61,8 @@ pub enum TrustchainAPIError {
     RootEventTimeNotSet,
     #[error("Attestation request failed.")]
     FailedAttestationRequest,
+    #[error("Failed to parse parameters. Error: {0}")]
+    ParseError(String),
 }
 
 impl From<ResolverError> for TrustchainAPIError {
@@ -200,6 +202,9 @@ impl IntoResponse for TrustchainAPIError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::FailedAttestationRequest => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainAPIError::ParseError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };
