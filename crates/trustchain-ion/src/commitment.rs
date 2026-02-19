@@ -2,7 +2,7 @@
 use bitcoin::MerkleBlock;
 use bitcoin::Transaction;
 use ipfs_hasher::IpfsHasher;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use ssi::did::Document;
 use std::convert::TryInto;
@@ -14,11 +14,11 @@ use trustchain_core::commitment::{DIDCommitment, TrivialCommitment};
 use trustchain_core::utils::{HasEndpoints, HasKeys};
 use trustchain_core::verifier::Timestamp;
 
-use crate::MERKLE_ROOT_KEY;
-use crate::TIMESTAMP_KEY;
 use crate::sidetree::CoreIndexFile;
 use crate::utils::tx_to_op_return_cid;
 use crate::utils::{decode_block_header, decode_ipfs_content, reverse_endianness};
+use crate::MERKLE_ROOT_KEY;
+use crate::TIMESTAMP_KEY;
 
 const CID_KEY: &str = "cid";
 const DELTAS_KEY: &str = "deltas";
@@ -624,8 +624,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        data::{TEST_BLOCK_HEADER_HEX, TESTNET4_TEST_ROOT_DOCUMENT},
-        utils::{BITCOIN_NETWORK, block_header, merkle_proof, query_ipfs, transaction},
+        data::{TESTNET4_TEST_ROOT_DOCUMENT, TEST_BLOCK_HEADER_HEX},
+        utils::{block_header, merkle_proof, query_ipfs, transaction, BITCOIN_NETWORK},
     };
 
     #[test]
@@ -1129,11 +1129,9 @@ mod tests {
                 ));
 
                 // Verify the provisional index file commitment.
-                assert!(
-                    &prov_index_file_commitment
-                        .verify(prov_index_file_cid)
-                        .is_ok()
-                );
+                assert!(&prov_index_file_commitment
+                    .verify(prov_index_file_cid)
+                    .is_ok());
 
                 // The third one commits to the core index file CID
                 // and is expected to contain the provision index file CID.
@@ -1148,11 +1146,9 @@ mod tests {
                 ));
 
                 // Verify the core index file commitment.
-                assert!(
-                    &core_index_file_commitment
-                        .verify(core_index_file_cid)
-                        .is_ok()
-                );
+                assert!(&core_index_file_commitment
+                    .verify(core_index_file_cid)
+                    .is_ok());
 
                 // The fourth one commits to the Bitcoin transaction ID
                 // and is expected to contain the core index file CID.
@@ -1273,11 +1269,9 @@ mod tests {
                 ));
 
                 // Verify the provisional index file commitment.
-                assert!(
-                    &prov_index_file_commitment
-                        .verify(prov_index_file_cid)
-                        .is_ok()
-                );
+                assert!(&prov_index_file_commitment
+                    .verify(prov_index_file_cid)
+                    .is_ok());
 
                 // The third one commits to the core index file CID
                 // and is expected to contain the provision index file CID.
@@ -1292,11 +1286,9 @@ mod tests {
                 ));
 
                 // Verify the core index file commitment.
-                assert!(
-                    &core_index_file_commitment
-                        .verify(core_index_file_cid)
-                        .is_ok()
-                );
+                assert!(&core_index_file_commitment
+                    .verify(core_index_file_cid)
+                    .is_ok());
 
                 // The fourth one commits to the Bitcoin transaction ID
                 // and is expected to contain the core index file CID.

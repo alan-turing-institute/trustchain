@@ -1,38 +1,38 @@
 //! ION-related utilities.
-use crate::data::{SAMPLE_CID, sample_did};
+use crate::data::{sample_did, SAMPLE_CID};
 use crate::data::{
     TESTNET3_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET3_TEST_ROOT_PLUS_2_SIGNING_KEYS,
     TESTNET4_TEST_ROOT_PLUS_1_SIGNING_KEY, TESTNET4_TEST_ROOT_PLUS_2_SIGNING_KEYS,
 };
 use crate::{
-    MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME, config::ion_config,
+    config::ion_config, MONGO_FILTER_OP_INDEX, MONGO_FILTER_TXN_NUMBER, MONGO_FILTER_TXN_TIME,
 };
-use bitcoin::{Network, Transaction, block::Header, blockdata::block::BlockHash};
+use bitcoin::{block::Header, blockdata::block::BlockHash, Network, Transaction};
 use bitcoincore_rpc::json::GetBlockchainInfoResult;
-use bitcoincore_rpc::{RpcApi, bitcoincore_rpc_json::BlockStatsFields};
+use bitcoincore_rpc::{bitcoincore_rpc_json::BlockStatsFields, RpcApi};
 use chrono::NaiveDate;
 use flate2::read::GzDecoder;
 use futures::TryStreamExt;
 use ipfs_api_backend_hyper::{IpfsApi, IpfsClient};
 use lazy_static::lazy_static;
-use mongodb::{Cursor, bson::doc, options::ClientOptions};
-use serde_json::{Value, json};
+use mongodb::{bson::doc, options::ClientOptions, Cursor};
+use serde_json::{json, Value};
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Once;
 use std::{cmp::Ordering, collections::HashMap};
-use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_core::key_manager::{KeyManager, KeyType};
 use trustchain_core::resolver::TrustchainResolver;
+use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_core::{utils::get_did_suffix, verifier::VerifierError};
 
 use crate::{
+    trustchain_resolver, TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError,
     BITS_KEY, HASH_PREV_BLOCK_KEY, MERKLE_ROOT_KEY, MONGO_COLLECTION_OPERATIONS,
     MONGO_CREATE_OPERATION, MONGO_FILTER_DID_SUFFIX, MONGO_FILTER_TYPE, NONCE_KEY, TIMESTAMP_KEY,
-    TrustchainBitcoinError, TrustchainIpfsError, TrustchainMongodbError, VERSION_KEY,
-    trustchain_resolver,
+    VERSION_KEY,
 };
 
 const ION_METHOD_WITH_DELIMITER: &str = "ion:";

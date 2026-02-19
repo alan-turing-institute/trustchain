@@ -15,8 +15,8 @@ use std::str::FromStr;
 use trustchain_core::resolver::{ResolverError, TrustchainResolver};
 
 use crate::utils::{decode_ipfs_content, query_ipfs};
-use crate::{CONTROLLER_KEY, SERVICE_TYPE_IPFS_KEY};
 use crate::{FullClient, LightClient};
+use crate::{CONTROLLER_KEY, SERVICE_TYPE_IPFS_KEY};
 
 /// Struct for performing resolution from a sidetree server to generate
 /// Trustchain DID document and DID document metadata.

@@ -2,17 +2,17 @@
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;
+use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::Json;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
 use ssi::did_resolve::ResolutionResult;
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::resolver::{map_resolver_result, TrustchainResolver};
+use trustchain_core::resolver::{TrustchainResolver, map_resolver_result};
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{TrustchainVerifier, VerificationBundle};
 
@@ -130,15 +130,10 @@ impl TrustchainHTTPHandler {
     }
 }
 
-// TODO: The `DIDChainResolutionResult` type isn't needed; we should use DIDChain instead.
-// Superficially there is a resemblance to `ResolutionResult` from the SSI library, but
-// here we have no resolution metadata so the similarity is artificial.
-// However, this change will involve changing the return type of the `TrustchainHTTP::resolve_chain`
-// method, which affects the mobile app as consumer. So it's postponed.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// Type for converting a `DIDChain` to a chain of DID documents with [W3C](https://w3c-ccg.github.io/did-resolution/#did-resolution-result)
-/// data structure.
+/// data structure, convenient for handling by the mobile app.
 pub struct DIDChainResolutionResult {
     did_chain: Vec<ResolutionResult>,
 }
@@ -251,8 +246,12 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => format!("/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/chain/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
+            Network::Testnet => format!(
+                "/did/chain/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"
+            ),
+            Network::Testnet4 => format!(
+                "/did/chain/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"
+            ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }
@@ -295,10 +294,12 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         // A wrapped CommitmentError is now returned here mapped to VerifierError::InvalidRoot
         // println!("{}", response.text().await);
-        assert!(response
-            .text()
-            .await
-            .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID error:"#),)
+        assert!(
+            response
+                .text()
+                .await
+                .starts_with(r#"{"error":"Trustchain Verifier error: Invalid root DID error:"#),
+        )
     }
 
     #[tokio::test]
@@ -311,8 +312,12 @@ mod tests {
             .as_ref()
             .expect("Integration test requires Bitcoin")
         {
-            Network::Testnet => format!("/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"),
-            Network::Testnet4 => format!("/did/bundle/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"),
+            Network::Testnet => format!(
+                "/did/bundle/did:ion:test:EiAtHHKFJWAk5AsM3tgCut3OiBY4ekHTf66AAjoysXL65Q?root_event_time=1666265405"
+            ),
+            Network::Testnet4 => format!(
+                "/did/bundle/did:ion:test:EiBdezm5h0cCTfeoDjKoFrpc6cf2Np4RoMSbFyEel-u8og?root_event_time=1766953540"
+            ),
             network @ _ => {
                 panic!("No test fixtures for network: {:?}", network);
             }

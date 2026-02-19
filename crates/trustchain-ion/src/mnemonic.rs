@@ -3,10 +3,10 @@ use bip39::Mnemonic;
 use bitcoin::bip32::{DerivationPath, Xpriv};
 use bitcoin::secp256k1::Secp256k1;
 use did_ion::sidetree::Sidetree;
-use ed25519_dalek_bip32::ExtendedSigningKey;
 use ed25519_dalek_bip32::derivation_path::DerivationPath as Ed25519DerivationPath;
 use ed25519_dalek_bip32::derivation_path::DerivationPathParseError;
-use ssi::jwk::{Base64urlUInt, ECParams, JWK, OctetParams, Params};
+use ed25519_dalek_bip32::ExtendedSigningKey;
+use ssi::jwk::{Base64urlUInt, ECParams, OctetParams, Params, JWK};
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -170,9 +170,9 @@ pub fn generate_keys(mnemonic: &Mnemonic, index: Option<u32>) -> Result<IONKeys,
 mod tests {
     use super::*;
 
-    use bitcoin::Address;
     use bitcoin::bip32::{DerivationPath, Xpriv};
     use bitcoin::secp256k1::Secp256k1;
+    use bitcoin::Address;
     use ssi::jwk::ECParams;
     use ssi::jwk::JWK;
     use std::str::FromStr;

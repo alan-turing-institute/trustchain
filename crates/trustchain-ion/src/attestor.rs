@@ -230,8 +230,8 @@ impl Holder for IONAttestor {
 mod tests {
     use super::*;
     use crate::trustchain_resolver;
-    use crate::utils::BITCOIN_NETWORK;
     use crate::utils::init;
+    use crate::utils::BITCOIN_NETWORK;
     use bitcoin::Network;
     use ssi::did::Document;
     use ssi::vc::CredentialOrJWT;

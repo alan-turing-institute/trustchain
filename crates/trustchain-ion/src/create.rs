@@ -1,9 +1,9 @@
 //! ION operation for DID creation.
-use crate::CREATE_OPERATION_FILENAME_PREFIX;
 use crate::attestor::{AttestorData, IONAttestor};
 use crate::controller::{ControllerData, IONController};
 use crate::ion::IONTest as ION;
 use crate::mnemonic::IONKeys;
+use crate::CREATE_OPERATION_FILENAME_PREFIX;
 use bip39::Mnemonic;
 use did_ion::sidetree::{CreateOperation, DIDStatePatch};
 use did_ion::sidetree::{DocumentState, PublicKeyEntry, PublicKeyJwk};
@@ -12,9 +12,9 @@ use serde_json::to_string_pretty as to_json;
 use ssi::jwk::JWK;
 use ssi::one_or_many::OneOrMany;
 use std::convert::TryFrom;
-use trustchain_core::JSON_FILE_EXTENSION;
 use trustchain_core::controller::Controller;
 use trustchain_core::utils::{generate_key, get_operations_path};
+use trustchain_core::JSON_FILE_EXTENSION;
 
 /// Collection of methods to return DID information from an operation.
 pub trait OperationDID {
