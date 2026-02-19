@@ -7,24 +7,25 @@ use serde::{Deserialize, Serialize};
 use ssi::{
     jsonld::ContextLoader,
     jwk::JWK,
-    ldp::{now_ns, Proof},
+    ldp::{Proof, now_ns},
     one_or_many::OneOrMany,
     vc::{Credential, CredentialSubject, LinkedDataProofOptions, Presentation},
 };
 use thiserror::Error;
 use tokio::runtime::Runtime;
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainVCAPI, TrustchainVPAPI},
     TrustchainAPI,
+    api::{TrustchainDIDAPI, TrustchainVCAPI, TrustchainVPAPI},
+    errors::TrustchainAPIError,
 };
 use trustchain_core::{
-    resolver::{map_resolution_result, ResolverError},
+    resolver::{ResolverError, map_resolution_result},
     vc::CredentialError,
     verifier::VerifierError,
     vp::PresentationError,
 };
 use trustchain_ion::{
-    create::{mnemonic_to_create_and_keys, OperationDID},
+    create::{OperationDID, mnemonic_to_create_and_keys},
     trustchain_resolver_light_client,
     verifier::TrustchainVerifier,
 };
@@ -114,9 +115,9 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
         );
         Ok(TrustchainAPI::verify(&did, root_event_time, &verifier)
             .await
-            .map_err(FFIMobileError::FailedToVerifyDID)
             .and_then(|did_chain| {
-                serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
+                serde_json::to_string_pretty(&did_chain)
+                    .map_err(TrustchainAPIError::FailedToSerialize)
             })?)
     })
 }
@@ -283,8 +284,8 @@ mod tests {
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::utils::canonicalize_str;
     use trustchain_http::config::HTTPConfig;
-    use trustchain_ion::utils::init;
     use trustchain_ion::utils::BITCOIN_NETWORK;
+    use trustchain_ion::utils::init;
 
     use crate::config::parse_toml;
 

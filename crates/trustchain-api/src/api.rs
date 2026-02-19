@@ -1,7 +1,7 @@
-use crate::{errors::TrustchainAPIError, TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
+use crate::{DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE, TrustchainAPI, errors::TrustchainAPIError};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{StreamExt, TryStreamExt, stream};
 use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::{DIDResolver, ResolutionResult},
@@ -14,9 +14,9 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{map_resolver_result, TrustchainResolver},
+    resolver::{TrustchainResolver, map_resolver_result},
     vc::{CredentialError, DataCredentialError},
-    verifier::{Timestamp, Verifier, VerifierError},
+    verifier::{Timestamp, Verifier},
     vp::PresentationError,
 };
 use trustchain_ion::{
@@ -47,11 +47,12 @@ pub trait TrustchainDIDAPI {
         did: &str,
         resolver: &dyn TrustchainResolver,
     ) -> Result<ResolutionResult, TrustchainAPIError> {
-        let resolver_result = resolver.resolve_as_result(did).await;
-        match resolver_result {
-            Ok(_) => Ok(map_resolver_result(resolver_result)),
-            // TODO: convert to (unknown) resolver error
-            _ => Err(TrustchainAPIError::InternalError),
+        // Note: the awkwardness here is a result of the upstream `ResolutionResult`
+        // which is not a Result type but may encode a resolution error, hence the
+        // adapter function `map_resolver_result` that converts to a Result type.
+        match resolver.resolve_as_result(did).await {
+            Ok(result) => Ok(map_resolver_result(Ok(result))),
+            Err(e) => Err(TrustchainAPIError::from(e)),
         }
     }
 
@@ -60,12 +61,15 @@ pub trait TrustchainDIDAPI {
         did: &str,
         root_event_time: Timestamp,
         verifier: &U,
-    ) -> Result<DIDChain, VerifierError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        verifier.verify(did, root_event_time).await
+        verifier
+            .verify(did, root_event_time)
+            .await
+            .map_err(|err| err.into())
     }
 
     // // TODO: the below have no CLI implementation currently but are planned
@@ -355,24 +359,24 @@ pub trait TrustchainDataAPI {
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{
-        TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI,
-        DATA_CREDENTIAL_TEMPLATE,
-    };
     use crate::TrustchainAPI;
+    use crate::api::{
+        DATA_CREDENTIAL_TEMPLATE, TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI,
+        TrustchainVPAPI,
+    };
     use bitcoin::Network;
     use did_ion::sidetree::PublicKeyEntry;
     use sha2::{Digest, Sha256};
     use ssi::jsonld::ContextLoader;
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime, URI};
+    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, URI, VCDateTime};
     use trustchain_core::vc::{CredentialError, DataCredentialError};
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::trustchain_resolver;
-    use trustchain_ion::utils::{init, BITCOIN_NETWORK};
+    use trustchain_ion::utils::{BITCOIN_NETWORK, init};
     use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
@@ -937,8 +941,8 @@ mod tests {
     #[test]
     fn get_key_entry() {
         use ps_sig::keys::Params;
-        use ssi::jwk::rss::generate_keys_jwk;
         use ssi::jwk::JWK;
+        use ssi::jwk::rss::generate_keys_jwk;
 
         let key: JWK = generate_keys_jwk(64, &Params::new("test".to_string().as_bytes())).unwrap();
         println!("{}", serde_json::to_string_pretty(&key).unwrap());

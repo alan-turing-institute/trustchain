@@ -1,5 +1,5 @@
 //! Error type and conversions.
-use axum::{response::IntoResponse, Json};
+use axum::{Json, response::IntoResponse};
 use hyper::StatusCode;
 use josekit::JoseError;
 use jsonrpsee_types::error::{ErrorCode, ErrorObject, ErrorObjectOwned};
@@ -53,8 +53,10 @@ pub enum TrustchainAPIError {
     InvalidSignature,
     #[error("Request does not exist.")]
     RequestDoesNotExist,
-    #[error("Could not deserialize data: {0}")]
+    #[error("JSON Deserialization Error: {0}.")]
     FailedToDeserialize(#[from] serde_json::Error),
+    #[error("JSON Serialization Error: {0}.")]
+    FailedToSerialize(serde_json::Error),
     #[error("Root event time not configured for verification.")]
     RootEventTimeNotSet,
     #[error("Attestation request failed.")]
@@ -191,6 +193,9 @@ impl IntoResponse for TrustchainAPIError {
             err @ TrustchainAPIError::FailedToDeserialize(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
+            err @ TrustchainAPIError::FailedToSerialize(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
             err @ TrustchainAPIError::RootEventTimeNotSet => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
@@ -211,11 +216,16 @@ impl IntoResponse for TrustchainAPIError {
 // register_method and register_async_method.
 impl From<TrustchainAPIError> for ErrorObjectOwned {
     fn from(err: TrustchainAPIError) -> Self {
-        // TODO: consider using the ServerError(i32) variant to define more granular errors.
+        // Report the specific error via the message field.
+        // TODO: Support error handling on the consumer side by specifying error codes in the
+        // range -32000 to -32099 and using the ErrorCode::ServerError(i32) variant.
+        // See the JSON RPC spec: https://www.jsonrpc.org/specification#error_object
         match err {
             TrustchainAPIError::InternalError => ErrorObject::from(ErrorCode::InternalError),
             TrustchainAPIError::RequestDoesNotExist => ErrorObject::from(ErrorCode::InvalidRequest),
-            _ => ErrorObject::from(ErrorCode::InternalError),
+            ref e @ _ => {
+                ErrorObject::owned::<()>(ErrorCode::InternalError.code(), e.to_string(), None)
+            }
         }
     }
 }
