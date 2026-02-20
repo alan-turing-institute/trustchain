@@ -268,7 +268,7 @@ pub trait TrustchainDataAPI {
         key_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Credential, IssuerError> {
+    ) -> Result<Credential, TrustchainAPIError> {
         // Read the data credential template.
         let mut credential = Credential::from_json_unsigned(DATA_CREDENTIAL_TEMPLATE).unwrap();
         // Add the issuer & issuanceDate attributes.

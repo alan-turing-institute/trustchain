@@ -63,6 +63,8 @@ pub enum TrustchainAPIError {
     FailedAttestationRequest,
     #[error("Failed to parse parameters. Error: {0}")]
     ParseError(String),
+    #[error("Failed to read file. Error: {0}")]
+    FileReadError(String),
 }
 
 impl From<ResolverError> for TrustchainAPIError {
@@ -205,6 +207,9 @@ impl IntoResponse for TrustchainAPIError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::ParseError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainAPIError::FileReadError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
         };
