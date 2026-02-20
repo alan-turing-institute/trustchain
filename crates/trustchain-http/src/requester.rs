@@ -6,17 +6,17 @@ use ssi::did::Service;
 use trustchain_core::utils::generate_key;
 use trustchain_ion::attestor::IONAttestor;
 
-use trustchain_cr::{
+use crate::{
+    ATTESTATION_FRAGMENT,
     attestation_encryption_utils::{
-        josekit_to_ssi_jwk, ssi_to_josekit_jwk, DecryptVerify, Entity, SignEncrypt,
+        DecryptVerify, Entity, SignEncrypt, josekit_to_ssi_jwk, ssi_to_josekit_jwk,
     },
     attestation_utils::{
-        attestation_request_path, matching_endpoint, ContentCRChallenge, ContentCRInitiation,
-        ElementwiseSerializeDeserialize, IdentityCRChallenge, IdentityCRInitiation,
-        RequesterDetails,
+        ContentCRChallenge, ContentCRInitiation, ElementwiseSerializeDeserialize,
+        IdentityCRChallenge, IdentityCRInitiation, RequesterDetails, attestation_request_path,
+        matching_endpoint,
     },
     attestation_utils::{CustomResponse, Nonce, TrustchainCRError},
-    ATTESTATION_FRAGMENT,
 };
 
 /// Initiates part 1 attestation request (identity challenge-response).

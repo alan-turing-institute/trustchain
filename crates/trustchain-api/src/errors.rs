@@ -1,5 +1,5 @@
 //! Error type and conversions.
-use axum::{Json, response::IntoResponse};
+use axum::{response::IntoResponse, Json};
 use hyper::StatusCode;
 use josekit::JoseError;
 use jsonrpsee_types::error::{ErrorCode, ErrorObject, ErrorObjectOwned};
@@ -16,8 +16,6 @@ use trustchain_core::{
     vp::PresentationError,
 };
 use trustchain_ion::root::TrustchainRootError;
-
-use trustchain_cr::attestation_utils::TrustchainCRError;
 
 /// Trustchain API error type.
 // TODO: refine and add doc comments for error variants
@@ -42,8 +40,6 @@ pub enum TrustchainAPIError {
     JoseError(#[from] JoseError),
     #[error("Trustchain key manager error: {0}")]
     KeyManagerError(KeyManagerError),
-    #[error("Trustchain challenge-response error: {0}")]
-    CRError(TrustchainCRError),
     #[error("Credential does not exist.")]
     CredentialDoesNotExist,
     #[error("No issuer available.")]
@@ -116,12 +112,6 @@ impl From<KeyManagerError> for TrustchainAPIError {
     }
 }
 
-impl From<TrustchainCRError> for TrustchainAPIError {
-    fn from(err: TrustchainCRError) -> Self {
-        TrustchainAPIError::CRError(err)
-    }
-}
-
 // Make TrustchainAPIError suitable for axum responses.
 //
 // See axum IntoRespone example:
@@ -169,9 +159,6 @@ impl IntoResponse for TrustchainAPIError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::JoseError(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-            }
-            err @ TrustchainAPIError::CRError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::CredentialDoesNotExist => {

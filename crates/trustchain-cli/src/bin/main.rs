@@ -22,14 +22,12 @@ use trustchain_core::{
     verifier::Verifier,
     JSON_FILE_EXTENSION, TRUSTCHAIN_DATA,
 };
-use trustchain_cr::{
+use trustchain_http::attestor::present_identity_challenge;
+use trustchain_http::{
     attestation_encryption_utils::ssi_to_josekit_jwk,
     attestation_utils::{
         CRState, ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError,
     },
-};
-use trustchain_http::{
-    attestor::present_identity_challenge,
     requester::{identity_response, initiate_content_challenge, initiate_identity_challenge},
 };
 use trustchain_ion::{

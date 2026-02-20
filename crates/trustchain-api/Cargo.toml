@@ -25,7 +25,6 @@ sha2 = { workspace = true }
 ssi = { workspace = true, features = ["http-did", "secp256k1", "rss"] }
 thiserror = { workspace = true }
 trustchain-core = { path = "../trustchain-core" }
-trustchain-cr = { path = "../trustchain-cr" }
 trustchain-ion = { path = "../trustchain-ion" }
 
 [dev-dependencies]
