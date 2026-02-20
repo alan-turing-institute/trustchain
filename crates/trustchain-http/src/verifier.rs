@@ -1,9 +1,8 @@
 //! Handlers and trait for verifying VCs and VPs and providing presentation requests.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
+use crate::qrcode::{DIDQRCode, str_to_qr_code_html};
 use crate::state::AppState;
-use async_trait::async_trait;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse};
@@ -11,68 +10,18 @@ use axum::Json;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;
-use ssi::ldp::LinkedDataDocument;
 use ssi::vc::{Credential, Presentation};
 use std::sync::Arc;
-use trustchain_api::api::TrustchainVPAPI;
+use trustchain_api::api::{TrustchainVCAPI, TrustchainVPAPI};
+use trustchain_api::errors::TrustchainAPIError;
 use trustchain_api::TrustchainAPI;
-use trustchain_core::verifier::{Timestamp, Verifier};
-use trustchain_ion::verifier::TrustchainVerifier;
+use trustchain_core::verifier::Timestamp;
 
 /// A type for presentation requests. See [VP request spec](https://w3c-ccg.github.io/vp-request-spec/)
 /// for further details.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct PresentationRequest(Value);
-
-/// An API for a Trustchain verifier server.
-#[async_trait]
-pub trait TrustchainVerifierHTTP {
-    /// Verifies verifiable presentation.
-    async fn verify_presentation<T: DIDResolver + Send + Sync>(
-        presentation: &Presentation,
-        root_event_time: Timestamp,
-        verifier: &TrustchainVerifier<T>,
-    ) -> Result<(), TrustchainHTTPError> {
-        Ok(TrustchainAPI::verify_presentation(
-            presentation,
-            None,
-            root_event_time,
-            verifier,
-            // TODO [#128]: move into API upon context loader added to app_state
-            &mut ContextLoader::default(),
-        )
-        .await?)
-    }
-    /// Verifies verifiable credential.
-    async fn verify_credential<T: DIDResolver + Send + Sync>(
-        credential: &Credential,
-        root_event_time: Timestamp,
-        verifier: &TrustchainVerifier<T>,
-    ) -> Result<(), TrustchainHTTPError> {
-        let verify_credential_result = credential
-            .verify(
-                None,
-                verifier.resolver().as_did_resolver(),
-                &mut ContextLoader::default(),
-            )
-            .await;
-        if !verify_credential_result.errors.is_empty() {
-            return Err(TrustchainHTTPError::InvalidSignature);
-        }
-        match credential.get_issuer() {
-            Some(issuer) => Ok(verifier.verify(issuer, root_event_time).await.map(|_| ())?),
-            _ => Err(TrustchainHTTPError::NoCredentialIssuer),
-        }
-    }
-}
-
-/// Handler for verification of credentials and presentations.
-pub struct TrustchainVerifierHTTPHandler;
-
-impl TrustchainVerifierHTTP for TrustchainVerifierHTTPHandler {}
-
 /// Struct for deserializing credential and corresponding root event time.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,98 +39,97 @@ pub enum PresentationOrCredential {
     Credential(Credential),
 }
 
-impl TrustchainVerifierHTTPHandler {
-    /// API endpoint taking the UUID of a presentation request.
-    pub async fn get_verifier(
-        Path(id): Path<String>,
-        State(app_state): State<Arc<AppState>>,
-    ) -> impl IntoResponse {
-        app_state
-            .presentation_requests
-            .get(&id)
-            .ok_or(TrustchainHTTPError::RequestDoesNotExist)
-            .map(|request| (StatusCode::OK, Json(request.to_owned())))
-    }
-    /// Handler for presentation or credential received from POST.
-    pub async fn post_verifier(
-        Json(verification_info): Json<PostVerifier>,
-        app_state: Arc<AppState>,
-    ) -> impl IntoResponse {
-        let verification_info_json = serde_json::to_string_pretty(&verification_info)
-            .map_err(TrustchainHTTPError::FailedToDeserialize)?;
-        info!("Received verification information:\n{verification_info_json}",);
+pub async fn get_verifier(
+    Path(id): Path<String>,
+    State(app_state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    app_state
+        .presentation_requests
+        .get(&id)
+        .ok_or(TrustchainHTTPError::RequestDoesNotExist)
+        .map(|request| (StatusCode::OK, Json(request.to_owned())))
+}
+/// Handler for presentation or credential received from POST.
+pub async fn post_verifier(
+    Json(verification_info): Json<PostVerifier>,
+    app_state: Arc<AppState>,
+) -> impl IntoResponse {
+    let verification_info_json = serde_json::to_string_pretty(&verification_info)
+        .map_err(TrustchainAPIError::FailedToDeserialize)?;
+    info!("Received verification information:\n{verification_info_json}",);
 
-        match verification_info.presentation_or_credential {
-            PresentationOrCredential::Presentation(ref presentation) => {
-                TrustchainVerifierHTTPHandler::verify_presentation(
-                    presentation,
-                    app_state
-                        .config
-                        .root_event_time
-                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
-                    &app_state.verifier,
-                )
-                .await
-                .map(|_| {
-                    info!("Presentation verification...ok ✅:\n{verification_info_json}");
-                    (StatusCode::OK, Html("Presentation received and verified!"))
-                })
-                .map_err(|err| {
-                    info!("Presentation verification...error ❌:\n{err}");
-                    err
-                })
-            }
-            PresentationOrCredential::Credential(ref credential) => {
-                TrustchainVerifierHTTPHandler::verify_credential(
-                    credential,
-                    app_state
-                        .config
-                        .root_event_time
-                        .ok_or(TrustchainHTTPError::RootEventTimeNotSet)?,
-                    &app_state.verifier,
-                )
-                .await
-                .map(|_| {
-                    info!("Credential verification...ok ✅:\n{verification_info_json}");
-                    (StatusCode::OK, Html("Credential received and verified!"))
-                })
-                .map_err(|err| {
-                    info!("Credential verification...error ❌:\n{err}");
-                    err
-                })
-            }
-        }
-    }
-
-    /// Generates a QR code for receiving requests, default to first request in cache
-    pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> impl IntoResponse {
-        app_state
-            .presentation_requests
-            .iter()
-            .next()
-            .ok_or(TrustchainHTTPError::RequestDoesNotExist)
-            .map(|(uid, _)| {
-                let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
-                    serde_json::to_string(&DIDQRCode {
-                        did: app_state.config.server_did.as_ref().unwrap().to_owned(),
-                        service: "TrustchainHTTP".to_string(),
-                        relative_ref: Some(format!("/vc/verifier/{uid}")),
-                    })
-                    .unwrap()
-                } else {
-                    format!(
-                        "{}://{}:{}/vc/verifier/{uid}",
-                        http_config().http_scheme(),
-                        app_state.config.host_display,
-                        app_state.config.port
-                    )
-                };
-                (
-                    StatusCode::OK,
-                    Html(str_to_qr_code_html(&qr_code_str, "Verifier")),
-                )
+    match verification_info.presentation_or_credential {
+        PresentationOrCredential::Presentation(ref presentation) => {
+            TrustchainAPI::verify_presentation(
+                presentation,
+                None,
+                app_state
+                    .config
+                    .root_event_time
+                    .ok_or(TrustchainAPIError::RootEventTimeNotSet)?,
+                &app_state.verifier,
+                &mut ContextLoader::default(),
+            )
+            .await
+            .map(|_| {
+                info!("Presentation verification...ok ✅:\n{verification_info_json}");
+                (StatusCode::OK, Html("Presentation received and verified!"))
             })
+            .map_err(|err| {
+                info!("Presentation verification...error ❌:\n{err}");
+                err
+            })
+        }
+        PresentationOrCredential::Credential(ref credential) => TrustchainAPI::verify_credential(
+            credential,
+            None,
+            app_state
+                .config
+                .root_event_time
+                .ok_or(TrustchainAPIError::RootEventTimeNotSet)?,
+            &app_state.verifier,
+            &mut ContextLoader::default(),
+        )
+        .await
+        .map(|_| {
+            info!("Credential verification...ok ✅:\n{verification_info_json}");
+            (StatusCode::OK, Html("Credential received and verified!"))
+        })
+        .map_err(|err| {
+            info!("Credential verification...error ❌:\n{err}");
+            err
+        }),
     }
+}
+
+/// Generates a QR code for receiving requests, default to first request in cache
+pub async fn get_verifier_qrcode(State(app_state): State<Arc<AppState>>) -> impl IntoResponse {
+    app_state
+        .presentation_requests
+        .iter()
+        .next()
+        .ok_or(TrustchainHTTPError::RequestDoesNotExist)
+        .map(|(uid, _)| {
+            let qr_code_str = if http_config().verifiable_endpoints.unwrap_or(true) {
+                serde_json::to_string(&DIDQRCode {
+                    did: app_state.config.server_did.as_ref().unwrap().to_owned(),
+                    service: "TrustchainHTTP".to_string(),
+                    relative_ref: Some(format!("/vc/verifier/{uid}")),
+                })
+                .unwrap()
+            } else {
+                format!(
+                    "{}://{}:{}/vc/verifier/{uid}",
+                    http_config().http_scheme(),
+                    app_state.config.host_display,
+                    app_state.config.port
+                )
+            };
+            (
+                StatusCode::OK,
+                Html(str_to_qr_code_html(&qr_code_str, "Verifier")),
+            )
+        })
 }
 
 #[cfg(test)]

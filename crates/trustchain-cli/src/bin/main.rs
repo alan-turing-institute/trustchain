@@ -11,6 +11,7 @@ use std::{
 };
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
+    errors::TrustchainAPIError,
     TrustchainAPI,
 };
 use trustchain_cli::{config::cli_config, print_status};
@@ -341,13 +342,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        Err(cred_err) => {
-                            handle_credential_error(cred_err)?;
-                        }
                         Ok(_) => {
                             println!("Proof.... ✅");
                             println!("Issuer... ✅");
                         }
+                        Err(err) => match err {
+                            TrustchainAPIError::FailedToVerifyCredential(e) => {
+                                handle_credential_error(e)?;
+                            }
+                            _ => {
+                                println!("Verify.. ❌ Failed (with API error)");
+                            }
+                        },
                     }
 
                     // Show chain
@@ -417,7 +423,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await?;
                     identity_cr_initiation.elementwise_serialize(&path)?;
                     println!("Successfully initiated attestation request.");
-                    println!("You will receive more information on the challenge-response process via alternative communication channel.");
+                    println!(
+                        "You will receive more information on the challenge-response process via alternative communication channel."
+                    );
                 }
                 Some(("present", sub_matches)) => {
                     // get attestation request path from provided input
@@ -621,22 +629,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        Err(DataCredentialError::CredentialError(cred_err)) => {
-                            handle_credential_error(cred_err)?;
-                        }
-                        Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
-                            println!("Digest... ❌ (mismatched data hash digests)");
-                        }
-                        Err(DataCredentialError::MissingAttribute(att)) => {
-                            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
-                        }
-                        Err(DataCredentialError::ManyCredentialSubject(subjects)) => {
-                            println!("Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})");
-                        }
                         Ok(_) => {
                             println!("Proof.... ✅");
                             println!("Issuer... ✅");
                             println!("Digest... ✅");
+                        }
+                        Err(TrustchainAPIError::FailedToVerifyDataCredential(
+                            DataCredentialError::CredentialError(cred_err),
+                        )) => {
+                            handle_credential_error(cred_err)?;
+                        }
+                        Err(TrustchainAPIError::FailedToVerifyDataCredential(data_cred_err)) => {
+                            handle_data_credential_error(data_cred_err)?;
+                        }
+                        _ => {
+                            println!("Verify.. ❌ Failed (with API error)");
                         }
                     };
                     // Show chain
@@ -700,6 +707,26 @@ fn handle_credential_error(err: CredentialError) -> Result<(), CredentialError> 
         CredentialError::FailedToDecodeJWT => {
             println!("Proof.... ❌");
             println!("Issuer... ❌");
+        }
+    }
+    Err(err)
+}
+
+fn handle_data_credential_error(err: DataCredentialError) -> Result<(), DataCredentialError> {
+    match err {
+        DataCredentialError::MismatchedHashDigests(_, _) => {
+            println!("Digest... ❌ (mismatched data hash digests)");
+        }
+        DataCredentialError::MissingAttribute(ref att) => {
+            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
+        }
+        DataCredentialError::ManyCredentialSubject(ref subjects) => {
+            println!(
+                "Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})"
+            );
+        }
+        DataCredentialError::CredentialError(cred_err) => {
+            return handle_credential_error(cred_err).map_err(DataCredentialError::CredentialError);
         }
     }
     Err(err)

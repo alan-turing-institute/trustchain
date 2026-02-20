@@ -3,7 +3,7 @@ use jsonrpsee::{
     server::{RpcModule, Server},
 };
 use serde::{Deserialize, Serialize};
-use ssi::jsonld::ContextLoader;
+use ssi::{jsonld::ContextLoader, vc::Credential};
 use std::{fs::read, net::SocketAddr, sync::Arc};
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainDataAPI},
@@ -51,7 +51,9 @@ fn register_did_methods(
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
         tracing::info!("Verifying DID: {:?}", did);
         match ctx.config.root_event_time {
-            Some(time) => TrustchainAPI::verify(&did, time, &ctx.verifier).await,
+            Some(root_event_time) => {
+                TrustchainAPI::verify(&did, root_event_time, &ctx.verifier).await
+            }
             None => Err(TrustchainAPIError::RootEventTimeNotSet),
         }
     })?;
@@ -74,8 +76,10 @@ fn register_data_methods(
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
         tracing::info!("SignDataParams: {:?}", params);
 
+        // Read the data bytes from the given file path.
         let bytes = read(params.path.clone())
             .map_err(|e| TrustchainAPIError::FileReadError(e.to_string()))?;
+
         let mut context_loader = ContextLoader::default();
         let result = TrustchainAPI::sign_data(
             &bytes,
@@ -107,5 +111,41 @@ fn register_data_methods(
             },
         }
     })?;
+
+    module.register_async_method("verify_data", |params, ctx, _| async move {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct VerifyDataParams {
+            path: String,
+            credential: String,
+        }
+
+        let params = params
+            .parse::<VerifyDataParams>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("VerifyDataParams: {:?}", params);
+
+        // Read the data bytes from the given file path.
+        let bytes = read(params.path.clone())
+            .map_err(|e| TrustchainAPIError::FileReadError(e.to_string()))?;
+
+        // Deserialize the credential.
+        let credential: Credential = serde_json::from_str(&params.credential)
+            .map_err(TrustchainAPIError::FailedToDeserialize)?;
+
+        let mut context_loader = ContextLoader::default();
+        match ctx.config.root_event_time {
+            Some(root_event_time) => Ok(TrustchainAPI::verify_data(
+                &bytes,
+                &credential,
+                None,
+                root_event_time,
+                &ctx.verifier,
+                &mut context_loader,
+            )
+            .await?),
+            None => return Err(TrustchainAPIError::RootEventTimeNotSet),
+        }
+    })?;
+
     Ok(module)
 }

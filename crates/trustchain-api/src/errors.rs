@@ -1,14 +1,19 @@
 //! Error type and conversions.
-use axum::{response::IntoResponse, Json};
+use axum::{Json, response::IntoResponse};
 use hyper::StatusCode;
 use josekit::JoseError;
 use jsonrpsee_types::error::{ErrorCode, ErrorObject, ErrorObjectOwned};
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
-    attestor::AttestorError, commitment::CommitmentError, issuer::IssuerError,
-    key_manager::KeyManagerError, resolver::ResolverError, vc::CredentialError,
-    verifier::VerifierError, vp::PresentationError,
+    attestor::AttestorError,
+    commitment::CommitmentError,
+    issuer::IssuerError,
+    key_manager::KeyManagerError,
+    resolver::ResolverError,
+    vc::{CredentialError, DataCredentialError},
+    verifier::VerifierError,
+    vp::PresentationError,
 };
 use trustchain_ion::root::TrustchainRootError;
 
@@ -30,8 +35,6 @@ pub enum TrustchainAPIError {
     IssuerError(IssuerError),
     #[error("Trustchain root error: {0}")]
     RootError(TrustchainRootError),
-    #[error("Trustchain presentation error: {0}")]
-    PresentationError(PresentationError),
     #[error("Trustchain attestor error: {0}")]
     AttestorError(#[from] AttestorError),
     // TODO: once needed in http propagate
@@ -47,8 +50,12 @@ pub enum TrustchainAPIError {
     NoCredentialIssuer,
     #[error("Wrapped reqwest error: {0}")]
     ReqwestError(reqwest::Error),
-    #[error("Failed to verify credential.")]
-    FailedToVerifyCredential,
+    #[error("Failed to verify credential: {0}")]
+    FailedToVerifyCredential(CredentialError),
+    #[error("Failed to verify presentation: {0}")]
+    FailedToVerifyPresentation(PresentationError),
+    #[error("Failed to verify data credential: {0}")]
+    FailedToVerifyDataCredential(DataCredentialError),
     #[error("Invalid signature.")]
     InvalidSignature,
     #[error("Request does not exist.")]
@@ -99,7 +106,7 @@ impl From<TrustchainRootError> for TrustchainAPIError {
 
 impl From<PresentationError> for TrustchainAPIError {
     fn from(err: PresentationError) -> Self {
-        TrustchainAPIError::PresentationError(err)
+        TrustchainAPIError::FailedToVerifyPresentation(err)
     }
 }
 
@@ -145,13 +152,17 @@ impl IntoResponse for TrustchainAPIError {
             err @ TrustchainAPIError::ResolverError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            err @ TrustchainAPIError::PresentationError(PresentationError::CredentialError(
-                CredentialError::VerifierError(VerifierError::CommitmentFailure(_)),
-            ))
-            | err @ TrustchainAPIError::PresentationError(PresentationError::CredentialError(
-                CredentialError::VerifierError(VerifierError::InvalidRoot(_)),
-            )) => (StatusCode::OK, err.to_string()),
-            err @ TrustchainAPIError::PresentationError(_) => {
+            err @ TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::CredentialError(CredentialError::VerifierError(
+                    VerifierError::CommitmentFailure(_),
+                )),
+            )
+            | err @ TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::CredentialError(CredentialError::VerifierError(
+                    VerifierError::InvalidRoot(_),
+                )),
+            ) => (StatusCode::OK, err.to_string()),
+            err @ TrustchainAPIError::FailedToVerifyPresentation(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::KeyManagerError(_) => {
@@ -185,7 +196,10 @@ impl IntoResponse for TrustchainAPIError {
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             },
-            err @ TrustchainAPIError::FailedToVerifyCredential => {
+            err @ TrustchainAPIError::FailedToVerifyCredential(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainAPIError::FailedToVerifyDataCredential(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::InvalidSignature => {

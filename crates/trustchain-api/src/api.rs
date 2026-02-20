@@ -1,7 +1,7 @@
 use crate::{DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE, TrustchainAPI, errors::TrustchainAPIError};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
-use futures::{StreamExt, TryStreamExt, stream};
+use futures::{stream, StreamExt, TryStreamExt};
 use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::{DIDResolver, ResolutionResult},
@@ -14,7 +14,7 @@ use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
     issuer::{Issuer, IssuerError},
-    resolver::{TrustchainResolver, map_resolver_result},
+    resolver::{map_resolver_result, TrustchainResolver},
     vc::{CredentialError, DataCredentialError},
     verifier::{Timestamp, Verifier},
     vp::PresentationError,
@@ -123,7 +123,7 @@ pub trait TrustchainVCAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<DIDChain, CredentialError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -137,12 +137,17 @@ pub trait TrustchainVCAPI {
             )
             .await;
         if !result.errors.is_empty() {
-            return Err(CredentialError::VerificationResultError(result));
+            return Err(TrustchainAPIError::FailedToVerifyCredential(
+                CredentialError::VerificationResultError(result),
+            ));
         }
         // Verify issuer
-        let issuer = credential
-            .get_issuer()
-            .ok_or(CredentialError::NoIssuerPresent)?;
+        let issuer =
+            credential
+                .get_issuer()
+                .ok_or(TrustchainAPIError::FailedToVerifyCredential(
+                    CredentialError::NoIssuerPresent,
+                ))?;
         Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
@@ -178,7 +183,7 @@ pub trait TrustchainVPAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<(), PresentationError>
+    ) -> Result<(), TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -234,7 +239,7 @@ pub trait TrustchainVPAPI {
                                 )
                                 .await
                                 .map(|_| ()),
-                                Err(e) => Err(e),
+                                Err(e) => Err(TrustchainAPIError::FailedToVerifyCredential(e)),
                             }
                         }
                     }
@@ -251,7 +256,9 @@ pub trait TrustchainVPAPI {
             )
             .await;
         if !result.errors.is_empty() {
-            return Err(PresentationError::VerifiedHolderUnauthenticated(result));
+            return Err(TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::VerifiedHolderUnauthenticated(result),
+            ));
         }
         Ok(())
     }
@@ -311,7 +318,7 @@ pub trait TrustchainDataAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<DIDChain, DataCredentialError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -325,23 +332,25 @@ pub trait TrustchainDataAPI {
             .to_single()
             .ok_or(DataCredentialError::ManyCredentialSubject(
                 credential.credential_subject.clone(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .property_set
             .as_ref()
             .ok_or(DataCredentialError::MissingAttribute(
                 "property_set".to_string(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .get(DATA_ATTRIBUTE)
             .ok_or(DataCredentialError::MissingAttribute(
                 DATA_ATTRIBUTE.to_string(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .as_str()
             .expect("dataset attribute is a str");
 
         if actual_hash != expected_hash {
-            return Err(DataCredentialError::MismatchedHashDigests(
-                expected_hash.to_string(),
-                actual_hash,
+            return Err(TrustchainAPIError::FailedToVerifyDataCredential(
+                DataCredentialError::MismatchedHashDigests(expected_hash.to_string(), actual_hash),
             ));
         };
         // Verify the data credential.
@@ -353,17 +362,17 @@ pub trait TrustchainDataAPI {
             context_loader,
         )
         .await
-        .map_err(DataCredentialError::CredentialError)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::TrustchainAPI;
     use crate::api::{
         DATA_CREDENTIAL_TEMPLATE, TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI,
         TrustchainVPAPI,
     };
+    use crate::errors::TrustchainAPIError;
+    use crate::TrustchainAPI;
     use bitcoin::Network;
     use did_ion::sidetree::PublicKeyEntry;
     use sha2::{Digest, Sha256};
@@ -550,7 +559,10 @@ mod tests {
             &mut context_loader,
         )
         .await;
-        if let CredentialError::VerificationResultError(ver_res) = res.err().unwrap() {
+        if let TrustchainAPIError::FailedToVerifyCredential(
+            CredentialError::VerificationResultError(ver_res),
+        ) = res.err().unwrap()
+        {
             assert_eq!(ver_res.errors, vec!["signature error"]);
         } else {
             panic!("should error with VerificationResultError varient of CredentialError")
@@ -891,7 +903,9 @@ mod tests {
                 &mut ContextLoader::default()
             )
             .await,
-            Err(PresentationError::VerifiedHolderUnauthenticated(..))
+            Err(TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::VerifiedHolderUnauthenticated(..)
+            ))
         ));
     }
 
@@ -1019,7 +1033,10 @@ mod tests {
         .await;
         assert!(res.is_err());
 
-        if let DataCredentialError::MismatchedHashDigests(expected, actual) = res.err().unwrap() {
+        if let TrustchainAPIError::FailedToVerifyDataCredential(
+            DataCredentialError::MismatchedHashDigests(expected, actual),
+        ) = res.err().unwrap()
+        {
             assert_eq!(expected, expected_hash);
             assert_ne!(actual, expected_hash);
         } else {

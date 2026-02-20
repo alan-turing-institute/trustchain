@@ -7,25 +7,25 @@ use serde::{Deserialize, Serialize};
 use ssi::{
     jsonld::ContextLoader,
     jwk::JWK,
-    ldp::{Proof, now_ns},
+    ldp::{now_ns, Proof},
     one_or_many::OneOrMany,
     vc::{Credential, CredentialSubject, LinkedDataProofOptions, Presentation},
 };
 use thiserror::Error;
 use tokio::runtime::Runtime;
 use trustchain_api::{
-    TrustchainAPI,
     api::{TrustchainDIDAPI, TrustchainVCAPI, TrustchainVPAPI},
     errors::TrustchainAPIError,
+    TrustchainAPI,
 };
 use trustchain_core::{
-    resolver::{ResolverError, map_resolution_result},
+    resolver::{map_resolution_result, ResolverError},
     vc::CredentialError,
     verifier::VerifierError,
     vp::PresentationError,
 };
 use trustchain_ion::{
-    create::{OperationDID, mnemonic_to_create_and_keys},
+    create::{mnemonic_to_create_and_keys, OperationDID},
     trustchain_resolver_light_client,
     verifier::TrustchainVerifier,
 };
@@ -153,9 +153,8 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
             &mut ContextLoader::default(),
         )
         .await
-        .map_err(FFIMobileError::FailedToVerifyCredential)
         .and_then(|did_chain| {
-            serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
+            serde_json::to_string_pretty(&did_chain).map_err(TrustchainAPIError::FailedToSerialize)
         })?)
     })
 }
@@ -252,8 +251,7 @@ pub fn vp_verify_presentation(presentation: String, opts: String) -> Result<()> 
             &verifier,
             &mut ContextLoader::default(),
         )
-        .await
-        .map_err(FFIMobileError::FailedToVerifyPresentation)?)
+        .await?)
     })
 }
 

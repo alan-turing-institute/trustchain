@@ -2,17 +2,17 @@
 use crate::errors::TrustchainHTTPError;
 use crate::state::AppState;
 use async_trait::async_trait;
-use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use axum::Json;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use ssi::did_resolve::DIDResolver;
 use ssi::did_resolve::ResolutionResult;
 use std::sync::Arc;
 use trustchain_core::chain::{Chain, DIDChain};
-use trustchain_core::resolver::{TrustchainResolver, map_resolver_result};
+use trustchain_core::resolver::{map_resolver_result, TrustchainResolver};
 use trustchain_core::verifier::{Timestamp, Verifier, VerifierError};
 use trustchain_ion::verifier::{TrustchainVerifier, VerificationBundle};
 
