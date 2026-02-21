@@ -30,18 +30,17 @@ use trustchain_ion::{
 /// API for Trustchain DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
-    /// Creates a controlled DID from a passed document state, writing the associated create
-    /// operation to file in the operations path returning the file name including the created DID
-    /// suffix.
-    // TODO: consider replacing error variant with specific IONError/DIDError in future version.
+    /// Creates a DID from a passed document state, writing the associated create operation to file
+    /// in the operations path & returning the file name including the created DID suffix.
     fn create(
         document_state: Option<DocumentState>,
         verbose: bool,
-    ) -> Result<String, Box<dyn Error>> {
+    ) -> Result<String, TrustchainAPIError> {
         create_operation(document_state, verbose)
+            .map_err(|e| TrustchainAPIError::FailedCreateRequest(e.to_string()))
     }
-    /// An uDID attests to a dDID, writing the associated update operation to file in the operations
-    /// path.
+
+    /// A uDID attests to a dDID, writing the update operation to file in the operations path.
     async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
         attest_operation(did, controlled_did, verbose).await
     }

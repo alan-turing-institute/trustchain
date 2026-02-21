@@ -62,6 +62,8 @@ pub enum TrustchainAPIError {
     FailedToSerialize(serde_json::Error),
     #[error("Root event time not configured for verification.")]
     RootEventTimeNotSet,
+    #[error("Create DID request failed. Error: {0}")]
+    FailedCreateRequest(String),
     #[error("Attestation request failed.")]
     FailedAttestationRequest,
     #[error("Failed to parse parameters. Error: {0}")]
@@ -202,6 +204,9 @@ impl axum::response::IntoResponse for TrustchainAPIError {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::RootEventTimeNotSet => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+            err @ TrustchainAPIError::FailedCreateRequest(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::FailedAttestationRequest => {

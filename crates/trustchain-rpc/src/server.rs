@@ -4,7 +4,11 @@ use jsonrpsee::{
 };
 use serde::{Deserialize, Serialize};
 use ssi::{jsonld::ContextLoader, vc::Credential};
-use std::{fs::read, net::SocketAddr, sync::Arc};
+use std::{
+    fs::{self, read},
+    net::SocketAddr,
+    sync::Arc,
+};
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainDataAPI},
     errors::TrustchainAPIError,
@@ -36,6 +40,21 @@ pub async fn run_server(
 fn register_did_methods(
     mut module: RpcModule<Arc<AppState>>,
 ) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
+    module.register_async_method("create", |params, _, _| async move {
+        let path = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+
+        // Read the document state from the given file path.
+        let doc_state = match fs::File::open(path.clone()) {
+            Ok(file) => serde_json::from_reader(file)?,
+            Err(e) => return Err(TrustchainAPIError::FileReadError(e.to_string())),
+        };
+        tracing::info!("Creating DID from doc state at: {}", path);
+        TrustchainAPI::create(doc_state, false)
+            .map_err(|e| TrustchainAPIError::FailedCreateRequest(e.to_string()))
+    })?;
+
     module.register_async_method("resolve", |params, ctx, _| async move {
         let did = params
             .parse::<String>()
