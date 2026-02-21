@@ -57,6 +57,28 @@ fn register_did_methods(
             None => Err(TrustchainAPIError::RootEventTimeNotSet),
         }
     })?;
+
+    module.register_async_method("chain", |params, ctx, _| async move {
+        let did = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Getting chain for DID: {:?}", did);
+        match ctx.config.root_event_time {
+            Some(root_event_time) => {
+                TrustchainAPI::chain(&did, root_event_time, &ctx.verifier).await
+            }
+            None => Err(TrustchainAPIError::RootEventTimeNotSet),
+        }
+    })?;
+
+    module.register_async_method("bundle", |params, ctx, _| async move {
+        let did = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Getting verification bundle for DID: {:?}", did);
+        TrustchainAPI::bundle(&did, &ctx.verifier).await
+    })?;
+
     Ok(module)
 }
 
