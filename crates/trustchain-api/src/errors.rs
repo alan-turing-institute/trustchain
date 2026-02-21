@@ -64,8 +64,8 @@ pub enum TrustchainAPIError {
     RootEventTimeNotSet,
     #[error("Create DID request failed. Error: {0}")]
     FailedCreateRequest(String),
-    #[error("Attestation request failed.")]
-    FailedAttestationRequest,
+    #[error("Attestation request failed. Error: {0}")]
+    FailedAttestationRequest(String),
     #[error("Failed to parse parameters. Error: {0}")]
     ParseError(String),
     #[error("Failed to read file. Error: {0}")]
@@ -209,7 +209,7 @@ impl axum::response::IntoResponse for TrustchainAPIError {
             err @ TrustchainAPIError::FailedCreateRequest(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
-            err @ TrustchainAPIError::FailedAttestationRequest => {
+            err @ TrustchainAPIError::FailedAttestationRequest(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             }
             err @ TrustchainAPIError::ParseError(_) => {

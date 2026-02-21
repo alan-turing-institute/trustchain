@@ -41,8 +41,15 @@ pub trait TrustchainDIDAPI {
     }
 
     /// A uDID attests to a dDID, writing the update operation to file in the operations path.
-    async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        attest_operation(did, controlled_did, verbose).await
+    // async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    async fn attest(
+        did: &str,
+        controlled_did: &str,
+        verbose: bool,
+    ) -> Result<(), TrustchainAPIError> {
+        attest_operation(did, controlled_did, verbose)
+            .await
+            .map_err(|e| TrustchainAPIError::FailedAttestationRequest(e.to_string()))
     }
 
     /// Resolves a given DID using given endpoint.

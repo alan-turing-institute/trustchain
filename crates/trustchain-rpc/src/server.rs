@@ -52,7 +52,20 @@ fn register_did_methods(
         };
         tracing::info!("Creating DID from doc state at: {}", path);
         TrustchainAPI::create(doc_state, false)
-            .map_err(|e| TrustchainAPIError::FailedCreateRequest(e.to_string()))
+    })?;
+
+    module.register_async_method("attest", |params, _, _| async move {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct AttestParams {
+            did: String,
+            controlled_did: String,
+        }
+        let params = params
+            .parse::<AttestParams>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("AttestParams: {:?}", params);
+
+        TrustchainAPI::attest(&params.did, &params.controlled_did, false).await
     })?;
 
     module.register_async_method("resolve", |params, ctx, _| async move {
