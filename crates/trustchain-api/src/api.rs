@@ -1,4 +1,4 @@
-use crate::{DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE, TrustchainAPI, errors::TrustchainAPIError};
+use crate::{errors::TrustchainAPIError, TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
@@ -20,7 +20,11 @@ use trustchain_core::{
     vp::PresentationError,
 };
 use trustchain_ion::{
-    attest::attest_operation, attestor::IONAttestor, create::create_operation, trustchain_resolver,
+    attest::attest_operation,
+    attestor::IONAttestor,
+    create::create_operation,
+    trustchain_resolver,
+    verifier::{TrustchainVerifier, VerificationBundle},
 };
 
 /// API for Trustchain DID functionality.
@@ -70,6 +74,31 @@ pub trait TrustchainDIDAPI {
             .verify(did, root_event_time)
             .await
             .map_err(|err| err.into())
+    }
+
+    /// Returns the uDID chain for the given dDID, or an error if no valid upsteam chain is found.
+    async fn chain<T, U>(
+        did: &str,
+        root_event_time: Timestamp,
+        verifier: &U,
+    ) -> Result<DIDChain, TrustchainAPIError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
+        Self::verify(did, root_event_time, verifier).await
+    }
+
+    /// Returns the verification bundle needed to verify the given dDID.
+    async fn bundle<T>(
+        did: &str,
+        verifier: &TrustchainVerifier<T>,
+    ) -> Result<VerificationBundle, TrustchainAPIError>
+    where
+        T: DIDResolver + Send + Sync,
+    {
+        let bundle = verifier.verification_bundle(did).await?;
+        Ok((*bundle).clone())
     }
 
     // // TODO: the below have no CLI implementation currently but are planned
@@ -368,8 +397,8 @@ pub trait TrustchainDataAPI {
 #[cfg(test)]
 mod tests {
     use crate::api::{
-        DATA_CREDENTIAL_TEMPLATE, TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI,
-        TrustchainVPAPI,
+        TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI,
+        DATA_CREDENTIAL_TEMPLATE,
     };
     use crate::errors::TrustchainAPIError;
     use crate::TrustchainAPI;
@@ -379,13 +408,13 @@ mod tests {
     use ssi::jsonld::ContextLoader;
     use ssi::ldp::now_ns;
     use ssi::one_or_many::OneOrMany;
-    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, URI, VCDateTime};
+    use ssi::vc::{Credential, CredentialOrJWT, CredentialSubject, Presentation, VCDateTime, URI};
     use trustchain_core::vc::{CredentialError, DataCredentialError};
     use trustchain_core::vp::PresentationError;
     use trustchain_core::{holder::Holder, issuer::Issuer};
     use trustchain_ion::attestor::IONAttestor;
     use trustchain_ion::trustchain_resolver;
-    use trustchain_ion::utils::{BITCOIN_NETWORK, init};
+    use trustchain_ion::utils::{init, BITCOIN_NETWORK};
     use trustchain_ion::verifier::TrustchainVerifier;
 
     // The root event time of DID documents in `trustchain-ion/src/data.rs` used for unit tests and the test below.
@@ -955,8 +984,8 @@ mod tests {
     #[test]
     fn get_key_entry() {
         use ps_sig::keys::Params;
-        use ssi::jwk::JWK;
         use ssi::jwk::rss::generate_keys_jwk;
+        use ssi::jwk::JWK;
 
         let key: JWK = generate_keys_jwk(64, &Params::new("test".to_string().as_bytes())).unwrap();
         println!("{}", serde_json::to_string_pretty(&key).unwrap());

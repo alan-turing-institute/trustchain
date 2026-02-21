@@ -1,8 +1,8 @@
 //! Error type and conversions.
-use axum::{response::IntoResponse, Json};
+use axum::Json;
 use hyper::StatusCode;
 use josekit::JoseError;
-use jsonrpsee_types::error::{ErrorCode, ErrorObject, ErrorObjectOwned};
+use jsonrpsee_types::error::{ErrorCode, ErrorObject};
 use serde_json::json;
 use thiserror::Error;
 use trustchain_core::{
@@ -116,7 +116,7 @@ impl From<KeyManagerError> for TrustchainAPIError {
 //
 // See axum IntoRespone example:
 // https://github.com/tokio-rs/axum/blob/main/examples/jwt/src/main.rs#L147-L160
-impl IntoResponse for TrustchainAPIError {
+impl axum::response::IntoResponse for TrustchainAPIError {
     fn into_response(self) -> axum::response::Response {
         // TODO: determine correct status codes for errors
         let (status, err_message) = match self {
@@ -225,7 +225,7 @@ impl IntoResponse for TrustchainAPIError {
 // for TrustchainAPIError to implement jsonsonrpsee::IntoResponse, which means this error type is
 // suitable for use in the return value of a closure passed to the jsonrpsee functions
 // register_method and register_async_method.
-impl From<TrustchainAPIError> for ErrorObjectOwned {
+impl From<TrustchainAPIError> for jsonrpsee_types::error::ErrorObjectOwned {
     fn from(err: TrustchainAPIError) -> Self {
         // Report the specific error via the message field.
         // TODO: Support error handling on the consumer side by specifying error codes in the
