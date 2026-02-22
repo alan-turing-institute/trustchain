@@ -10,7 +10,7 @@ use std::{
     sync::Arc,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainDataAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
     errors::TrustchainAPIError,
     TrustchainAPI,
 };
@@ -28,6 +28,7 @@ pub async fn run_server(
     let mut module = RpcModule::new(shared_state);
 
     module = register_did_methods(module)?;
+    module = register_vc_methods(module)?;
     module = register_data_methods(module)?;
 
     let addr = server.local_addr()?;
@@ -114,6 +115,72 @@ fn register_did_methods(
     Ok(module)
 }
 
+fn register_vc_methods(
+    mut module: RpcModule<Arc<AppState>>,
+) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
+    module.register_async_method("sign", |params, ctx, _| async move {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct SignParams {
+            credential: String,
+            did: String,
+            key_id: Option<String>,
+        }
+
+        let params = params
+            .parse::<SignParams>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("SignParams: {:?}", params);
+
+        // Deserialize the credential.
+        let credential = serde_json::from_str(&params.credential)
+            .map_err(TrustchainAPIError::FailedToDeserialize)?;
+
+        let mut context_loader = ContextLoader::default();
+        let result = TrustchainAPI::sign(
+            credential,
+            &params.did,
+            None,
+            params.key_id.as_deref(),
+            ctx.verifier.resolver(),
+            &mut context_loader,
+        )
+        .await;
+        match result {
+            Ok(credential) => {
+                tracing::info!("Signed credential.");
+                return Ok(credential);
+            }
+            Err(e) => Err(handle_failed_sign_attempt(e, &params.did)),
+        }
+    })?;
+
+    module.register_async_method("verify_credential", |params, ctx, _| async move {
+        let credential_str = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+
+        // Deserialize the credential.
+        let credential: Credential = serde_json::from_str(&credential_str)
+            .map_err(TrustchainAPIError::FailedToDeserialize)?;
+
+        tracing::info!("Verifying credential.");
+        let mut context_loader = ContextLoader::default();
+        match ctx.config.root_event_time {
+            Some(root_event_time) => Ok(TrustchainAPI::verify_credential(
+                &credential,
+                None,
+                root_event_time,
+                &ctx.verifier,
+                &mut context_loader,
+            )
+            .await?),
+            None => return Err(TrustchainAPIError::RootEventTimeNotSet),
+        }
+    })?;
+
+    Ok(module)
+}
+
 fn register_data_methods(
     mut module: RpcModule<Arc<AppState>>,
 ) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
@@ -149,20 +216,7 @@ fn register_data_methods(
                 tracing::info!("Signed file {}; {} bytes.", params.path, bytes.len());
                 return Ok(credential);
             }
-            Err(e) => match e {
-                // Handle the Key Manager error explicitly (as likely most common).
-                TrustchainAPIError::IssuerError(issuer_error) => match issuer_error {
-                    trustchain_core::issuer::IssuerError::KeyManager(key_manager_error) => {
-                        tracing::warn!(
-                            "Failed attempt to sign data. Key not found for DID: {}",
-                            &params.did
-                        );
-                        return Err(TrustchainAPIError::KeyManagerError(key_manager_error));
-                    }
-                    _ => return Err(TrustchainAPIError::IssuerError(issuer_error)),
-                },
-                _ => return Err(e),
-            },
+            Err(e) => Err(handle_failed_sign_attempt(e, &params.did)),
         }
     })?;
 
@@ -202,4 +256,21 @@ fn register_data_methods(
     })?;
 
     Ok(module)
+}
+
+fn handle_failed_sign_attempt(err: TrustchainAPIError, did: &str) -> TrustchainAPIError {
+    match err {
+        // Handle the Key Manager error explicitly (as likely most common).
+        TrustchainAPIError::IssuerError(issuer_error) => match issuer_error {
+            trustchain_core::issuer::IssuerError::KeyManager(key_manager_error) => {
+                tracing::warn!(
+                    "Failed attempt to sign data. Key not found for DID: {}",
+                    did
+                );
+                return TrustchainAPIError::KeyManagerError(key_manager_error);
+            }
+            _ => return TrustchainAPIError::IssuerError(issuer_error),
+        },
+        _ => return err,
+    }
 }

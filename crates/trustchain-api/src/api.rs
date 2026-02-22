@@ -9,11 +9,10 @@ use ssi::{
     ldp::LinkedDataDocument,
     vc::{Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, URI},
 };
-use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
-    issuer::{Issuer, IssuerError},
+    issuer::Issuer,
     resolver::{map_resolver_result, TrustchainResolver},
     vc::{CredentialError, DataCredentialError},
     verifier::{Timestamp, Verifier},
@@ -137,10 +136,10 @@ pub trait TrustchainVCAPI {
         key_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Credential, IssuerError> {
+    ) -> Result<Credential, TrustchainAPIError> {
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        attestor
+        Ok(attestor
             .sign(
                 &credential,
                 linked_data_proof_options,
@@ -148,7 +147,7 @@ pub trait TrustchainVCAPI {
                 resolver,
                 context_loader,
             )
-            .await
+            .await?)
     }
 
     /// Verifies a credential
