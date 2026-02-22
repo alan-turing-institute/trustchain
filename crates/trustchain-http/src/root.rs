@@ -30,7 +30,7 @@ pub async fn get_root_candidates(
         Some(d) => d,
         None => return Err(RootError::InvalidDate(year.year, month.month, day.day).into()),
     };
-    TrustchainAPI::root_candidates(date, &app_state.root_candidates)
+    TrustchainAPI::root_candidates(date, Some(&app_state.root_candidates))
         .await
         .map(|vec| (StatusCode::OK, Json(vec)))
 }

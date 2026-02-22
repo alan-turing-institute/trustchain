@@ -367,7 +367,7 @@ fn register_root_methods(
                 return Err(RootError::InvalidDate(params.year, params.month, params.day).into())
             }
         };
-        TrustchainAPI::root_candidates(date, &ctx.root_candidates).await
+        TrustchainAPI::root_candidates(date, Some(&ctx.root_candidates)).await
     })?;
 
     module.register_async_method("block_timestamp", |params, _, _| async move {

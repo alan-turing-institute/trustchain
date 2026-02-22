@@ -410,23 +410,21 @@ pub trait TrustchainDataAPI {
 pub trait TrustchainRootAPI {
     async fn root_candidates(
         date: NaiveDate,
-        root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
+        root_candidates: Option<&RwLock<HashMap<NaiveDate, RootCandidatesResult>>>,
     ) -> Result<RootCandidatesResult, TrustchainAPIError> {
-        {
-            let read_guard = root_candidates.read().unwrap();
-            // Return the cached vector of root DID candidates, if available.
+        // Return the cached vector of root DID candidates, if available.
+        if let Some(cache) = root_candidates {
+            let read_guard = cache.read().unwrap();
             if read_guard.contains_key(&date) {
                 return Ok(read_guard.get(&date).cloned().unwrap());
             }
         }
         let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
-
-        // Add the results to the cache.
-        debug!("Adding root candidates to cache: {:?}", &result);
-        root_candidates
-            .write()
-            .unwrap()
-            .insert(date, result.clone());
+        // Add the results to the cache, if available.
+        if let Some(cache) = root_candidates {
+            debug!("Adding root candidates to cache: {:?}", &result);
+            cache.write().unwrap().insert(date, result.clone());
+        }
         Ok(result)
     }
 

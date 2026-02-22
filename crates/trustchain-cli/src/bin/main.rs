@@ -1,5 +1,6 @@
 //! Trustchain CLI binary
-use clap::{arg, ArgAction, Command};
+use chrono::NaiveDate;
+use clap::{arg, value_parser, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
 use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
@@ -10,7 +11,7 @@ use std::{
     path::PathBuf,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainRootAPI, TrustchainVCAPI},
     errors::TrustchainAPIError,
     TrustchainAPI,
 };
@@ -33,6 +34,7 @@ use trustchain_http::{
 use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},
+    root::RootError,
     trustchain_resolver,
     verifier::TrustchainVerifier,
     CREATE_OPERATION_FILENAME_PREFIX,
@@ -184,9 +186,27 @@ fn cli() -> Command {
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-p --path <TEMP_P_KEY_ID_FOR_PATH>).required(true))
                         .arg(arg!(-e --entity <ATTESTOR_OR_REQUESTER>).required(true))
+                ),
+        )
+        .subcommand(
+            Command::new("root")
+                .about("Root DID functionality: candidates and timestamps.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .allow_external_subcommands(true)
+                .subcommand(
+                    Command::new("candidates")
+                        .about("Displays candidate root DIDs for a given date.")
+                        .arg(arg!(-y --year <YEAR>).value_parser(value_parser!(i32)).required(true))
+                        .arg(arg!(-m --month <MONTH>).value_parser(value_parser!(u32)).required(true))
+                        .arg(arg!(-d --day <MONTH>).value_parser(value_parser!(u32)).required(true))
                 )
-
-            )
+                .subcommand(
+                    Command::new("blocktime")
+                        .about("Displays the Unix timestamp for a given block height.")
+                        .arg(arg!(-b --height <BLOCK_HEIGHT>).value_parser(value_parser!(u64)).required(true))
+                ),
+        )
 }
 
 #[tokio::main]
@@ -678,6 +698,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => panic!("Unrecognised DATA subcommand."),
             }
         }
+        Some(("root", sub_matches)) => match sub_matches.subcommand() {
+            Some(("candidates", sub_matches)) => {
+                let year = sub_matches.get_one::<i32>("year").unwrap();
+                let month = sub_matches.get_one::<u32>("month").unwrap();
+                let day = sub_matches.get_one::<u32>("day").unwrap();
+
+                let date = match NaiveDate::from_ymd_opt(*year, *month, *day) {
+                    Some(d) => d,
+                    None => return Err(RootError::InvalidDate(*year, *month, *day).into()),
+                };
+                let root_candidates = TrustchainAPI::root_candidates(date, None)
+                    .await
+                    .expect("Failed to identify root DID candidates");
+                println!("{}", &to_string_pretty(&root_candidates).unwrap());
+            }
+            Some(("blocktime", sub_matches)) => {
+                let height = sub_matches.get_one::<u64>("height").unwrap();
+
+                let timestamp = TrustchainAPI::block_timestamp(*height)
+                    .await
+                    .expect("Failed to get block timestamp");
+                println!("{}", &to_string_pretty(&timestamp).unwrap());
+            }
+            _ => panic!("Unrecognised Root subcommand."),
+        },
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
