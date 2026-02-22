@@ -3,14 +3,17 @@ use jsonrpsee::{
     server::{RpcModule, Server},
 };
 use serde::{Deserialize, Serialize};
-use ssi::{jsonld::ContextLoader, vc::Credential};
+use ssi::{
+    jsonld::ContextLoader,
+    vc::{Credential, Presentation},
+};
 use std::{
     fs::{self, read},
     net::SocketAddr,
     sync::Arc,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI},
     errors::TrustchainAPIError,
     TrustchainAPI,
 };
@@ -29,6 +32,7 @@ pub async fn run_server(
 
     module = register_did_methods(module)?;
     module = register_vc_methods(module)?;
+    module = register_vp_methods(module)?;
     module = register_data_methods(module)?;
 
     let addr = server.local_addr()?;
@@ -120,16 +124,16 @@ fn register_vc_methods(
 ) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
     module.register_async_method("sign", |params, ctx, _| async move {
         #[derive(Debug, Deserialize, Serialize)]
-        struct SignParams {
+        struct SignCredentialParams {
             credential: String,
             did: String,
             key_id: Option<String>,
         }
 
         let params = params
-            .parse::<SignParams>()
+            .parse::<SignCredentialParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("SignParams: {:?}", params);
+        tracing::info!("SignCredentialParams: {:?}", params);
 
         // Deserialize the credential.
         let credential = serde_json::from_str(&params.credential)
@@ -168,6 +172,72 @@ fn register_vc_methods(
         match ctx.config.root_event_time {
             Some(root_event_time) => Ok(TrustchainAPI::verify_credential(
                 &credential,
+                None,
+                root_event_time,
+                &ctx.verifier,
+                &mut context_loader,
+            )
+            .await?),
+            None => return Err(TrustchainAPIError::RootEventTimeNotSet),
+        }
+    })?;
+
+    Ok(module)
+}
+
+fn register_vp_methods(
+    mut module: RpcModule<Arc<AppState>>,
+) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
+    module.register_async_method("sign_presentation", |params, ctx, _| async move {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct SignPresentationParams {
+            presentation: String,
+            did: String,
+            key_id: Option<String>,
+        }
+
+        let params = params
+            .parse::<SignPresentationParams>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("SignPresentationParams: {:?}", params);
+
+        // Deserialize the credential.
+        let presentation = serde_json::from_str(&params.presentation)
+            .map_err(TrustchainAPIError::FailedToDeserialize)?;
+
+        let mut context_loader = ContextLoader::default();
+        let result = TrustchainAPI::sign_presentation(
+            presentation,
+            &params.did,
+            None,
+            params.key_id.as_deref(),
+            ctx.verifier.resolver(),
+            &mut context_loader,
+        )
+        .await;
+        match result {
+            Ok(presentation) => {
+                tracing::info!("Signed presentation.");
+                return Ok(presentation);
+            }
+            Err(e) => Err(handle_failed_sign_attempt(e, &params.did)),
+        }
+    })?;
+
+    module.register_async_method("verify_presentation", |params, ctx, _| async move {
+        let presentation_str = params
+            .parse::<String>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+
+        // Deserialize the presentation.
+        let presentation: Presentation = serde_json::from_str(&presentation_str)
+            .map_err(TrustchainAPIError::FailedToDeserialize)?;
+
+        tracing::info!("Verifying credential.");
+        let mut context_loader = ContextLoader::default();
+        match ctx.config.root_event_time {
+            Some(root_event_time) => Ok(TrustchainAPI::verify_presentation(
+                &presentation,
                 None,
                 root_event_time,
                 &ctx.verifier,

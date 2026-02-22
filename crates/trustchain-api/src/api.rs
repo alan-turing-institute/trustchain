@@ -22,7 +22,6 @@ use trustchain_ion::{
     attest::attest_operation,
     attestor::IONAttestor,
     create::create_operation,
-    trustchain_resolver,
     verifier::{TrustchainVerifier, VerificationBundle},
 };
 
@@ -193,23 +192,23 @@ pub trait TrustchainVPAPI {
     async fn sign_presentation(
         presentation: Presentation,
         did: &str,
-        key_id: Option<&str>,
-        endpoint: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
+        key_id: Option<&str>,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Presentation, PresentationError> {
-        let resolver = trustchain_resolver(endpoint);
+    ) -> Result<Presentation, TrustchainAPIError> {
         let attestor = IONAttestor::new(did);
         Ok(attestor
             .sign_presentation(
                 &presentation,
                 linked_data_proof_options,
                 key_id,
-                &resolver,
+                resolver,
                 context_loader,
             )
             .await?)
     }
+
     /// Verifies a verifiable presentation.
     async fn verify_presentation<T, U>(
         presentation: &Presentation,
