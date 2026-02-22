@@ -84,7 +84,7 @@ impl TrustchainRouter {
                 )
                 .route(
                     "/did/:id",
-                    get(resolver::TrustchainHTTPHandler::get_did_resolution)
+                    get(resolver::get_did_resolution)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 // Duplicate `did` and `identifier` routes as the resolver expects a
@@ -92,17 +92,17 @@ impl TrustchainRouter {
                 // See [here](https://docs.rs/did-ion/0.1.0/src/did_ion/sidetree.rs.html#1392-1400).
                 .route(
                     "/identifiers/:id",
-                    get(resolver::TrustchainHTTPHandler::get_did_resolution)
+                    get(resolver::get_did_resolution)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
                     "/did/chain/:id",
-                    get(resolver::TrustchainHTTPHandler::get_chain_resolution)
+                    get(resolver::get_chain_resolution)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
                     "/did/bundle/:id",
-                    get(resolver::TrustchainHTTPHandler::get_verification_bundle)
+                    get(resolver::get_verification_bundle)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
                 .route(
@@ -122,17 +122,14 @@ impl TrustchainRouter {
                 )
                 .route(
                     "/did/attestor/identity/initiate",
-                    post(attestor::TrustchainAttestorHTTPHandler::post_identity_initiation),
+                    post(attestor::post_identity_initiation),
                 )
                 .route(
                     "/did/attestor/identity/respond/:key_id",
                     post({
                         let state = shared_state.clone();
                         move |(key_id, response)| {
-                            attestor::TrustchainAttestorHTTPHandler::post_identity_response(
-                                (key_id, response),
-                                state,
-                            )
+                            attestor::post_identity_response((key_id, response), state)
                         }
                     }),
                 )
@@ -142,10 +139,7 @@ impl TrustchainRouter {
                     post({
                         let state = shared_state.clone();
                         move |(key_id, ddid)| {
-                            attestor::TrustchainAttestorHTTPHandler::post_content_initiation(
-                                (key_id, ddid),
-                                state,
-                            )
+                            attestor::post_content_initiation((key_id, ddid), state)
                         }
                     }),
                 )
@@ -153,11 +147,7 @@ impl TrustchainRouter {
                     "/did/attestor/content/respond/:key_id",
                     post({
                         let state = shared_state.clone();
-                        move |key_id| {
-                            attestor::TrustchainAttestorHTTPHandler::post_content_response(
-                                key_id, state,
-                            )
-                        }
+                        move |key_id| attestor::post_content_response(key_id, state)
                     }),
                 )
                 .with_state(shared_state),

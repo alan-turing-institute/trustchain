@@ -14,52 +14,47 @@ use trustchain_api::TrustchainAPI;
 use trustchain_core::chain::{Chain, DIDChain};
 use trustchain_core::verifier::{Timestamp, Verifier};
 
-/// Type for implementing handlers for requests for DID documents, chains, and
-/// verification bundles. `TrustchainHTTPHandler` is a thin wrapper around
-/// `TrustchainDIDAPI` to return values implementing `axum::response::IntoResponse`.
-pub struct TrustchainHTTPHandler {}
-
 #[derive(Deserialize, Serialize, Debug)]
 /// Struct for deserializing `root_event_time` from handler's query param.
 pub struct RootEventTime {
     pub root_event_time: Timestamp,
 }
 
-impl TrustchainHTTPHandler {
-    /// Handles a get request for DID resolution.
-    pub async fn get_did_resolution(
-        Path(did): Path<String>,
-        State(app_state): State<Arc<AppState>>,
-    ) -> impl IntoResponse {
-        debug!("Handling resolve request for: {}", did.as_str());
-        TrustchainAPI::resolve(did.as_str(), app_state.verifier.resolver())
-            .await
-            .map(|result| (StatusCode::OK, Json(result)))
-    }
+// Handlers for requests for DID documents, chains, and verification bundles. These are thin
+// wrappers around `TrustchainDIDAPI` to return values implementing `axum::response::IntoResponse`.
 
-    // Explicit return type required here as multiple `impl IntoResponse`s are possible.
-    /// Handles a get request for a DID chain.
-    pub async fn get_chain_resolution(
-        Path(did): Path<String>,
-        Query(root_event_time): Query<RootEventTime>,
-        State(app_state): State<Arc<AppState>>,
-    ) -> Result<(StatusCode, Json<DIDChainResolutionResult>), TrustchainAPIError> {
-        debug!("Handling chain request for: {}", did.as_str());
-        let chain =
-            TrustchainAPI::chain(&did, root_event_time.root_event_time, &app_state.verifier)
-                .await?;
-        Ok((StatusCode::OK, Json(DIDChainResolutionResult::new(&chain))))
-    }
-    /// Handles a get request for a DID verification bundle.
-    pub async fn get_verification_bundle(
-        Path(did): Path<String>,
-        State(app_state): State<Arc<AppState>>,
-    ) -> impl IntoResponse {
-        debug!("Handling verification bundle request for: {}", did.as_str());
-        TrustchainAPI::bundle(&did, &app_state.verifier)
-            .await
-            .map(|bundle| (StatusCode::OK, Json(bundle)))
-    }
+/// Handles a get request for DID resolution.
+pub async fn get_did_resolution(
+    Path(did): Path<String>,
+    State(app_state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    debug!("Handling resolve request for: {}", did.as_str());
+    TrustchainAPI::resolve(did.as_str(), app_state.verifier.resolver())
+        .await
+        .map(|result| (StatusCode::OK, Json(result)))
+}
+
+// Explicit return type required here as multiple `impl IntoResponse`s are possible.
+/// Handles a get request for a DID chain.
+pub async fn get_chain_resolution(
+    Path(did): Path<String>,
+    Query(root_event_time): Query<RootEventTime>,
+    State(app_state): State<Arc<AppState>>,
+) -> Result<(StatusCode, Json<DIDChainResolutionResult>), TrustchainAPIError> {
+    debug!("Handling chain request for: {}", did.as_str());
+    let chain =
+        TrustchainAPI::chain(&did, root_event_time.root_event_time, &app_state.verifier).await?;
+    Ok((StatusCode::OK, Json(DIDChainResolutionResult::new(&chain))))
+}
+/// Handles a get request for a DID verification bundle.
+pub async fn get_verification_bundle(
+    Path(did): Path<String>,
+    State(app_state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    debug!("Handling verification bundle request for: {}", did.as_str());
+    TrustchainAPI::bundle(&did, &app_state.verifier)
+        .await
+        .map(|bundle| (StatusCode::OK, Json(bundle)))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
