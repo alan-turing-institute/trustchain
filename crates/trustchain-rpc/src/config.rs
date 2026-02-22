@@ -25,8 +25,6 @@ pub struct RPCConfig {
     pub ion_host: Option<IpAddr>,
     /// ION port.
     pub ion_port: Option<u16>,
-    // /// Path containing certificate and key necessary for https.
-    // pub https_path: Option<String>,
     /// Root event time for verifier.
     pub root_event_time: Option<Timestamp>,
 }
@@ -44,7 +42,6 @@ impl Default for RPCConfig {
             port: Some(DEFAULT_PORT),
             ion_host: Some(IpAddr::from_str(DEFAULT_HOST).unwrap()),
             ion_port: Some(DEFAULT_ION_PORT),
-            // https_path: None,
             root_event_time: None,
         }
     }

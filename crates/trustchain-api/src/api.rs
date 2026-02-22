@@ -1,7 +1,12 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
 use crate::{errors::TrustchainAPIError, TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
+use chrono::NaiveDate;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use log::debug;
 use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::{DIDResolver, ResolutionResult},
@@ -22,6 +27,8 @@ use trustchain_ion::{
     attest::attest_operation,
     attestor::IONAttestor,
     create::create_operation,
+    root::{root_did_candidates, RootCandidatesResult, RootError, TimestampResult},
+    utils::time_at_block_height,
     verifier::{TrustchainVerifier, VerificationBundle},
 };
 
@@ -395,6 +402,39 @@ pub trait TrustchainDataAPI {
             context_loader,
         )
         .await
+    }
+}
+
+/// API for Trustchain root DID functionality.
+#[async_trait]
+pub trait TrustchainRootAPI {
+    async fn root_candidates(
+        date: NaiveDate,
+        root_candidates: &RwLock<HashMap<NaiveDate, RootCandidatesResult>>,
+    ) -> Result<RootCandidatesResult, TrustchainAPIError> {
+        {
+            let read_guard = root_candidates.read().unwrap();
+            // Return the cached vector of root DID candidates, if available.
+            if read_guard.contains_key(&date) {
+                return Ok(read_guard.get(&date).cloned().unwrap());
+            }
+        }
+        let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
+
+        // Add the results to the cache.
+        debug!("Adding root candidates to cache: {:?}", &result);
+        root_candidates
+            .write()
+            .unwrap()
+            .insert(date, result.clone());
+        Ok(result)
+    }
+
+    async fn block_timestamp(height: u64) -> Result<TimestampResult, TrustchainAPIError> {
+        let timestamp = time_at_block_height(height, None)
+            .map_err(|err| RootError::FailedToParseBlockHeight(err.to_string()))?;
+        debug!("Got block timestamp {} for block {}", &timestamp, height);
+        Ok(TimestampResult::new(timestamp))
     }
 }
 

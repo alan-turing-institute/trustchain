@@ -2,7 +2,9 @@
 pub mod api;
 pub mod errors;
 
-use crate::api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI};
+use crate::api::{
+    TrustchainDIDAPI, TrustchainDataAPI, TrustchainRootAPI, TrustchainVCAPI, TrustchainVPAPI,
+};
 
 /// A type for implementing API traits on.
 pub struct TrustchainAPI;
@@ -11,6 +13,7 @@ impl TrustchainDIDAPI for TrustchainAPI {}
 impl TrustchainVCAPI for TrustchainAPI {}
 impl TrustchainVPAPI for TrustchainAPI {}
 impl TrustchainDataAPI for TrustchainAPI {}
+impl TrustchainRootAPI for TrustchainAPI {}
 
 /// A template for data credentials.
 /// Uses the dataset attribute from schema.org.

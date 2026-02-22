@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use jsonrpsee::{
     core::RegisterMethodError,
     server::{RpcModule, Server},
@@ -13,11 +14,14 @@ use std::{
     sync::Arc,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI},
+    api::{
+        TrustchainDIDAPI, TrustchainDataAPI, TrustchainRootAPI, TrustchainVCAPI, TrustchainVPAPI,
+    },
     errors::TrustchainAPIError,
     TrustchainAPI,
 };
 use trustchain_core::verifier::Verifier;
+use trustchain_ion::root::RootError;
 
 use crate::{config::RPCConfig, state::AppState};
 
@@ -34,6 +38,7 @@ pub async fn run_server(
     module = register_vc_methods(module)?;
     module = register_vp_methods(module)?;
     module = register_data_methods(module)?;
+    module = register_root_methods(module)?;
 
     let addr = server.local_addr()?;
     let handle = server.start(module);
@@ -68,7 +73,7 @@ fn register_did_methods(
         let params = params
             .parse::<AttestParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("AttestParams: {:?}", params);
+        tracing::info!("Handling dDID attest request: {:?}", params);
 
         TrustchainAPI::attest(&params.did, &params.controlled_did, false).await
     })?;
@@ -129,11 +134,10 @@ fn register_vc_methods(
             did: String,
             key_id: Option<String>,
         }
-
         let params = params
             .parse::<SignCredentialParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("SignCredentialParams: {:?}", params);
+        tracing::info!("Handling sign VC request: {:?}", params);
 
         // Deserialize the credential.
         let credential = serde_json::from_str(&params.credential)
@@ -195,11 +199,10 @@ fn register_vp_methods(
             did: String,
             key_id: Option<String>,
         }
-
         let params = params
             .parse::<SignPresentationParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("SignPresentationParams: {:?}", params);
+        tracing::info!("Handling sign VP request: {:?}", params);
 
         // Deserialize the credential.
         let presentation = serde_json::from_str(&params.presentation)
@@ -261,11 +264,10 @@ fn register_data_methods(
             did: String,
             key_id: Option<String>,
         }
-
         let params = params
             .parse::<SignDataParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("SignDataParams: {:?}", params);
+        tracing::info!("Handling sign data request: {:?}", params);
 
         // Read the data bytes from the given file path.
         let bytes = read(params.path.clone())
@@ -296,11 +298,10 @@ fn register_data_methods(
             path: String,
             credential: String,
         }
-
         let params = params
             .parse::<VerifyDataParams>()
             .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
-        tracing::info!("VerifyDataParams: {:?}", params);
+        tracing::info!("Handling verify data request: {:?}", params);
 
         // Read the data bytes from the given file path.
         let bytes = read(params.path.clone())
@@ -343,4 +344,40 @@ fn handle_failed_sign_attempt(err: TrustchainAPIError, did: &str) -> TrustchainA
         },
         _ => return err,
     }
+}
+
+fn register_root_methods(
+    mut module: RpcModule<Arc<AppState>>,
+) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
+    module.register_async_method("root_candidates", |params, ctx, _| async move {
+        #[derive(Debug, Deserialize, Serialize)]
+        struct RootCandidatesParams {
+            year: i32,
+            month: u32,
+            day: u32,
+        }
+        let params = params
+            .parse::<RootCandidatesParams>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Handling root candidates request: {:?}", params);
+
+        let date = match NaiveDate::from_ymd_opt(params.year, params.month, params.day) {
+            Some(d) => d,
+            None => {
+                return Err(RootError::InvalidDate(params.year, params.month, params.day).into())
+            }
+        };
+        TrustchainAPI::root_candidates(date, &ctx.root_candidates).await
+    })?;
+
+    module.register_async_method("block_timestamp", |params, _, _| async move {
+        let height = params
+            .parse::<u64>()
+            .map_err(|e| TrustchainAPIError::ParseError(e.to_string()))?;
+        tracing::info!("Getting timestamp for block height: {}", height);
+
+        TrustchainAPI::block_timestamp(height).await
+    })?;
+
+    Ok(module)
 }

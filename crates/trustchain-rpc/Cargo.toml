@@ -11,6 +11,7 @@ path = "src/bin/main.rs"
 [dependencies]
 
 anyhow = { workspace = true }
+chrono = { workspace = true }
 did-ion = { workspace = true }
 jsonrpsee = { version = "0.26.0", features = ["http-client", "server"] }
 lazy_static = { workspace = true }

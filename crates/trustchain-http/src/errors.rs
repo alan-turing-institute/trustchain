@@ -9,7 +9,7 @@ use trustchain_core::{
     key_manager::KeyManagerError, resolver::ResolverError, vc::CredentialError,
     verifier::VerifierError, vp::PresentationError,
 };
-use trustchain_ion::root::TrustchainRootError;
+use trustchain_ion::root::RootError;
 
 use crate::attestation_utils::TrustchainCRError;
 
@@ -28,7 +28,7 @@ pub enum TrustchainHTTPError {
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
     #[error("Trustchain root error: {0}")]
-    RootError(TrustchainRootError),
+    RootError(RootError),
     #[error("Trustchain presentation error: {0}")]
     PresentationError(PresentationError),
     #[error("Trustchain attestor error: {0}")]
@@ -84,8 +84,8 @@ impl From<IssuerError> for TrustchainHTTPError {
     }
 }
 
-impl From<TrustchainRootError> for TrustchainHTTPError {
-    fn from(err: TrustchainRootError) -> Self {
+impl From<RootError> for TrustchainHTTPError {
+    fn from(err: RootError) -> Self {
         TrustchainHTTPError::RootError(err)
     }
 }
@@ -166,13 +166,13 @@ impl IntoResponse for TrustchainHTTPError {
                 err.to_string(),
             ),
             ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
-                TrustchainRootError::NoUniqueRootEvent(_) => {
+                RootError::NoUniqueRootEvent(_) => {
                     (StatusCode::BAD_REQUEST, err.to_string())
                 }
-                TrustchainRootError::InvalidDate(_, _, _) => {
+                RootError::InvalidDate(_, _, _) => {
                     (StatusCode::BAD_REQUEST, err.to_string())
                 }
-                TrustchainRootError::FailedToParseBlockHeight(_) => {
+                RootError::FailedToParseBlockHeight(_) => {
                     (StatusCode::BAD_REQUEST, err.to_string())
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),

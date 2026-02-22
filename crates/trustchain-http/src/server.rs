@@ -105,14 +105,8 @@ impl TrustchainRouter {
                     get(resolver::get_verification_bundle)
                         .layer(ServiceBuilder::new().layer(middleware::from_fn(validate_did))),
                 )
-                .route(
-                    "/root",
-                    get(root::TrustchainRootHTTPHandler::get_root_candidates),
-                )
-                .route(
-                    "/root/timestamp/:height",
-                    get(root::TrustchainRootHTTPHandler::get_block_timestamp),
-                )
+                .route("/root", get(root::get_root_candidates))
+                .route("/root/timestamp/:height", get(root::get_block_timestamp))
                 .route(
                     "/operations",
                     post({

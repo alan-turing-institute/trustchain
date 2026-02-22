@@ -15,7 +15,7 @@ use trustchain_core::{
     verifier::VerifierError,
     vp::PresentationError,
 };
-use trustchain_ion::root::TrustchainRootError;
+use trustchain_ion::root::RootError;
 
 /// Trustchain API error type.
 // TODO: refine and add doc comments for error variants
@@ -32,7 +32,7 @@ pub enum TrustchainAPIError {
     #[error("Trustchain issuer error: {0}")]
     IssuerError(IssuerError),
     #[error("Trustchain root error: {0}")]
-    RootError(TrustchainRootError),
+    RootError(RootError),
     #[error("Trustchain attestor error: {0}")]
     AttestorError(#[from] AttestorError),
     // TODO: once needed in http propagate
@@ -96,8 +96,8 @@ impl From<IssuerError> for TrustchainAPIError {
     }
 }
 
-impl From<TrustchainRootError> for TrustchainAPIError {
-    fn from(err: TrustchainRootError) -> Self {
+impl From<RootError> for TrustchainAPIError {
+    fn from(err: RootError) -> Self {
         TrustchainAPIError::RootError(err)
     }
 }
@@ -174,13 +174,9 @@ impl axum::response::IntoResponse for TrustchainAPIError {
                 err.to_string(),
             ),
             ref err @ TrustchainAPIError::RootError(ref variant) => match variant {
-                TrustchainRootError::NoUniqueRootEvent(_) => {
-                    (StatusCode::BAD_REQUEST, err.to_string())
-                }
-                TrustchainRootError::InvalidDate(_, _, _) => {
-                    (StatusCode::BAD_REQUEST, err.to_string())
-                }
-                TrustchainRootError::FailedToParseBlockHeight(_) => {
+                RootError::NoUniqueRootEvent(_) => (StatusCode::BAD_REQUEST, err.to_string()),
+                RootError::InvalidDate(_, _, _) => (StatusCode::BAD_REQUEST, err.to_string()),
+                RootError::FailedToParseBlockHeight(_) => {
                     (StatusCode::BAD_REQUEST, err.to_string())
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
