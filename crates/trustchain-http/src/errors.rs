@@ -166,12 +166,8 @@ impl IntoResponse for TrustchainHTTPError {
                 err.to_string(),
             ),
             ref err @ TrustchainHTTPError::RootError(ref variant) => match variant {
-                RootError::NoUniqueRootEvent(_) => {
-                    (StatusCode::BAD_REQUEST, err.to_string())
-                }
-                RootError::InvalidDate(_, _, _) => {
-                    (StatusCode::BAD_REQUEST, err.to_string())
-                }
+                RootError::NoUniqueRootEvent(_) => (StatusCode::BAD_REQUEST, err.to_string()),
+                RootError::InvalidDate(_, _, _) => (StatusCode::BAD_REQUEST, err.to_string()),
                 RootError::FailedToParseBlockHeight(_) => {
                     (StatusCode::BAD_REQUEST, err.to_string())
                 }

@@ -282,8 +282,8 @@ mod tests {
     use ssi::vc::CredentialOrJWT;
     use trustchain_core::utils::canonicalize_str;
     use trustchain_http::config::HTTPConfig;
-    use trustchain_ion::utils::BITCOIN_NETWORK;
     use trustchain_ion::utils::init;
+    use trustchain_ion::utils::BITCOIN_NETWORK;
 
     use crate::config::parse_toml;
 

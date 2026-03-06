@@ -10,15 +10,15 @@ use std::{
 use is_empty::IsEmpty;
 use josekit::JoseError;
 use josekit::{jwk::Jwk, jwt::JwtPayload};
-use rand::{Rng, distributions::Alphanumeric, thread_rng};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, to_string_pretty as to_json};
+use serde_json::{to_string_pretty as to_json, Value};
 use serde_with::skip_serializing_none;
 use ssi::{did::Service, jwk::JWK};
 use ssi::{did::ServiceEndpoint, one_or_many::OneOrMany};
 use std::fs::OpenOptions;
 use thiserror::Error;
-use trustchain_core::{TRUSTCHAIN_DATA, attestor::AttestorError, key_manager::KeyManagerError};
+use trustchain_core::{attestor::AttestorError, key_manager::KeyManagerError, TRUSTCHAIN_DATA};
 
 #[derive(Error, Debug)]
 pub enum TrustchainCRError {

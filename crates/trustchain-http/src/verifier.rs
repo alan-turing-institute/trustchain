@@ -1,7 +1,7 @@
 //! Handlers and trait for verifying VCs and VPs and providing presentation requests.
 use crate::config::http_config;
 use crate::errors::TrustchainHTTPError;
-use crate::qrcode::{DIDQRCode, str_to_qr_code_html};
+use crate::qrcode::{str_to_qr_code_html, DIDQRCode};
 use crate::state::AppState;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
