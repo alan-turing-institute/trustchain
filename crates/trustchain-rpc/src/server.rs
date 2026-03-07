@@ -127,7 +127,7 @@ fn register_did_methods(
 fn register_vc_methods(
     mut module: RpcModule<Arc<AppState>>,
 ) -> Result<RpcModule<Arc<AppState>>, RegisterMethodError> {
-    module.register_async_method("sign", |params, ctx, _| async move {
+    module.register_async_method("sign_credential", |params, ctx, _| async move {
         #[derive(Debug, Deserialize, Serialize)]
         struct SignCredentialParams {
             credential: String,
