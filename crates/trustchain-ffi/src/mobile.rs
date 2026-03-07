@@ -15,10 +15,14 @@ use thiserror::Error;
 use tokio::runtime::Runtime;
 use trustchain_api::{
     api::{TrustchainDIDAPI, TrustchainVCAPI, TrustchainVPAPI},
+    errors::TrustchainAPIError,
     TrustchainAPI,
 };
 use trustchain_core::{
-    resolver::ResolverError, vc::CredentialError, verifier::VerifierError, vp::PresentationError,
+    resolver::{map_resolution_result, ResolverError},
+    vc::CredentialError,
+    verifier::VerifierError,
+    vp::PresentationError,
 };
 use trustchain_ion::{
     create::{mnemonic_to_create_and_keys, OperationDID},
@@ -87,12 +91,13 @@ pub fn did_resolve(did: String, opts: String) -> Result<String> {
         trustchain_resolver_light_client(&endpoint_opts.trustchain_endpoint().to_address());
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        Ok(TrustchainAPI::resolve(&did, &resolver)
-            .await
-            .map_err(FFIMobileError::FailedToResolveDID)
-            .and_then(|(_, doc, _)| {
-                serde_json::to_string_pretty(&doc).map_err(FFIMobileError::FailedToSerialize)
-            })?)
+        Ok(
+            map_resolution_result(TrustchainAPI::resolve(&did, &resolver).await?)
+                .map_err(FFIMobileError::FailedToResolveDID)
+                .and_then(|(_, doc, _)| {
+                    serde_json::to_string_pretty(&doc).map_err(FFIMobileError::FailedToSerialize)
+                })?,
+        )
     })
 }
 
@@ -110,9 +115,9 @@ pub fn did_verify(did: String, opts: String) -> Result<String> {
         );
         Ok(TrustchainAPI::verify(&did, root_event_time, &verifier)
             .await
-            .map_err(FFIMobileError::FailedToVerifyDID)
             .and_then(|did_chain| {
-                serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
+                serde_json::to_string_pretty(&did_chain)
+                    .map_err(TrustchainAPIError::FailedToSerialize)
             })?)
     })
 }
@@ -148,9 +153,8 @@ pub fn vc_verify_credential(credential: String, opts: String) -> Result<String> 
             &mut ContextLoader::default(),
         )
         .await
-        .map_err(FFIMobileError::FailedToVerifyCredential)
         .and_then(|did_chain| {
-            serde_json::to_string_pretty(&did_chain).map_err(FFIMobileError::FailedToSerialize)
+            serde_json::to_string_pretty(&did_chain).map_err(TrustchainAPIError::FailedToSerialize)
         })?)
     })
 }
@@ -247,8 +251,7 @@ pub fn vp_verify_presentation(presentation: String, opts: String) -> Result<()> 
             &verifier,
             &mut ContextLoader::default(),
         )
-        .await
-        .map_err(FFIMobileError::FailedToVerifyPresentation)?)
+        .await?)
     })
 }
 

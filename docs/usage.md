@@ -27,7 +27,8 @@ The CLI is organised into a set of subcommands for different types of operation:
 | `did`         | DID functionality: create, attest, resolve, verify.   |
 | `vc`          | Verifiable credential functionality: sign and verify. |
 | `data`        | Data provenance functionality: sign and verify.       |
-| `cr`          | Challenge-response functionality for dDID issuance.   |
+| `cr`          | Challenge-response functionality for downstream DID attestation.   |
+| `root`        | Root DID functionality: candidates and timestamps. |
 
 To get help with a particular subcommand, use the `--help` flag (or `-h` for short). For example, to get help with the CLI commands relating to DIDs:
 ```console

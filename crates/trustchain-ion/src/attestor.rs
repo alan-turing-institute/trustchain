@@ -3,7 +3,6 @@ use crate::ion::IONTest as ION;
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
 use ssi::did::Document;
-use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions, Presentation, URI};
 use ssi::{jwk::JWK, one_or_many::OneOrMany};
@@ -12,6 +11,7 @@ use trustchain_core::holder::{Holder, HolderError};
 use trustchain_core::issuer::{Issuer, IssuerError};
 use trustchain_core::key_manager::KeyType;
 use trustchain_core::resolver::TrustchainResolver;
+use trustchain_core::vp::PresentationError;
 use trustchain_core::{
     attestor::{Attestor, AttestorError},
     key_manager::{AttestorKeyManager, KeyManager, KeyManagerError},
@@ -188,14 +188,14 @@ impl Holder for IONAttestor {
     //   - ensure_or_pick_verification_relationship tries to resolve the holder DID and check its
     //      verification methods
     //   - so the holder's DID must be resolvable
-    async fn sign_presentation<T: DIDResolver>(
+    async fn sign_presentation(
         &self,
         presentation: &Presentation,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Presentation, HolderError> {
+    ) -> Result<Presentation, PresentationError> {
         // If no ldp options passed, use default with ProofPurpose::Authentication.
         let options = linked_data_proof_options.unwrap_or(LinkedDataProofOptions {
             proof_purpose: Some(ssi::vc::ProofPurpose::Authentication),
@@ -203,14 +203,14 @@ impl Holder for IONAttestor {
         });
 
         // Get the signing key.
-        let signing_key = self.signing_key(key_id)?;
+        let signing_key = self.signing_key(key_id).map_err(HolderError::KeyManager)?;
 
         let mut vp = presentation.clone();
         // Check holder field is correctly populated
         match presentation.holder.as_ref() {
             Some(URI::String(holder)) => {
                 if holder != &self.did {
-                    return Err(HolderError::MismatchedHolder);
+                    return Err(HolderError::MismatchedHolder.into());
                 }
             }
             None => vp.holder = Some(URI::String(self.did.clone())),

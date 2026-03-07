@@ -1,14 +1,19 @@
 //! API for DID, VC and VP functionality.
 pub mod api;
-use crate::api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI};
+pub mod errors;
 
-/// A type for implementing CLI traits on.
+use crate::api::{
+    TrustchainDIDAPI, TrustchainDataAPI, TrustchainRootAPI, TrustchainVCAPI, TrustchainVPAPI,
+};
+
+/// A type for implementing API traits on.
 pub struct TrustchainAPI;
 
 impl TrustchainDIDAPI for TrustchainAPI {}
 impl TrustchainVCAPI for TrustchainAPI {}
 impl TrustchainVPAPI for TrustchainAPI {}
 impl TrustchainDataAPI for TrustchainAPI {}
+impl TrustchainRootAPI for TrustchainAPI {}
 
 /// A template for data credentials.
 /// Uses the dataset attribute from schema.org.

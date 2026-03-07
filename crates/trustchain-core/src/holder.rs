@@ -1,8 +1,9 @@
 //! DID issuer API.
 use crate::key_manager::KeyManagerError;
+use crate::resolver::TrustchainResolver;
 use crate::subject::Subject;
+use crate::vp::PresentationError;
 use async_trait::async_trait;
-use ssi::did_resolve::DIDResolver;
 use ssi::jsonld::ContextLoader;
 use ssi::vc::{LinkedDataProofOptions, Presentation};
 use thiserror::Error;
@@ -48,12 +49,12 @@ pub trait Holder: Subject {
     /// Attests to a given presentation of one or many credentials returning the presentation with a
     /// proof. The `@context` of the presentation has linked-data fields strictly checked as part of
     /// proof generation.
-    async fn sign_presentation<T: DIDResolver>(
+    async fn sign_presentation(
         &self,
         presentation: &Presentation,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
-        resolver: &T,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Presentation, HolderError>;
+    ) -> Result<Presentation, PresentationError>;
 }

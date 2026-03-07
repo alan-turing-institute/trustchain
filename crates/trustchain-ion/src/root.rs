@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use futures::{future, StreamExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use trustchain_core::utils::get_did_from_suffix;
+use trustchain_core::{utils::get_did_from_suffix, verifier::Timestamp};
 
 use crate::{
     utils::{
@@ -14,7 +14,7 @@ use crate::{
 
 /// An error relating to the root DID.
 #[derive(Error, Debug)]
-pub enum TrustchainRootError {
+pub enum RootError {
     /// Bitcoin RPC interface error while processing root event date.
     #[error("Bitcoin RPC error while processing root event date.")]
     BitcoinRpcError(TrustchainBitcoinError),
@@ -32,15 +32,15 @@ pub enum TrustchainRootError {
     FailedToParseBlockHeight(String),
 }
 
-impl From<TrustchainBitcoinError> for TrustchainRootError {
+impl From<TrustchainBitcoinError> for RootError {
     fn from(err: TrustchainBitcoinError) -> Self {
-        TrustchainRootError::BitcoinRpcError(err)
+        RootError::BitcoinRpcError(err)
     }
 }
 
-impl From<TrustchainMongodbError> for TrustchainRootError {
+impl From<TrustchainMongodbError> for RootError {
     fn from(err: TrustchainMongodbError) -> Self {
-        TrustchainRootError::MongoDbError(err)
+        RootError::MongoDbError(err)
     }
 }
 
@@ -53,13 +53,41 @@ pub struct RootCandidate {
     pub block_height: u64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+/// Serializable type representing the result of a request for root DID candidates on a given date.
+pub struct RootCandidatesResult {
+    pub date: NaiveDate,
+    pub root_candidates: Vec<RootCandidate>,
+}
+
+impl RootCandidatesResult {
+    pub fn new(date: NaiveDate, root_candidates: Vec<RootCandidate>) -> Self {
+        Self {
+            date,
+            root_candidates,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+/// Serializable type representing the result of a request for root DID candidates on a given date.
+pub struct TimestampResult {
+    pub timestamp: Timestamp,
+}
+
+impl TimestampResult {
+    pub fn new(timestamp: Timestamp) -> Self {
+        Self { timestamp }
+    }
+}
+
 /// Identifies potential root DIDs whose (UTC) timestamp matches a given date.
 /// Root DID candidates are those that are found in ION create operations with
 /// operation index zero (opIndex = 0). As such, root DIDs must be created in
 /// the first DID operation associated with a particular Bitcoin transaction.
-pub async fn root_did_candidates(
-    date: NaiveDate,
-) -> Result<Vec<RootCandidate>, TrustchainRootError> {
+pub async fn root_did_candidates(date: NaiveDate) -> Result<Vec<RootCandidate>, RootError> {
     let block_height_range = block_height_range_on_date(date, None, None)?;
     let cursor =
         query_mongodb_on_interval(block_height_range.0 as u32, block_height_range.1 as u32).await?;

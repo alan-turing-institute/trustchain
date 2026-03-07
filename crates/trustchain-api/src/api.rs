@@ -1,50 +1,74 @@
-use crate::{TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
+use std::collections::HashMap;
+use std::sync::RwLock;
+
+use crate::{errors::TrustchainAPIError, TrustchainAPI, DATA_ATTRIBUTE, DATA_CREDENTIAL_TEMPLATE};
 use async_trait::async_trait;
+use chrono::NaiveDate;
 use did_ion::sidetree::DocumentState;
 use futures::{stream, StreamExt, TryStreamExt};
+use log::debug;
 use sha2::{Digest, Sha256};
 use ssi::{
-    did_resolve::DIDResolver,
+    did_resolve::{DIDResolver, ResolutionResult},
     jsonld::ContextLoader,
     ldp::LinkedDataDocument,
     vc::{Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, URI},
 };
-use std::error::Error;
 use trustchain_core::{
     chain::DIDChain,
     holder::Holder,
-    issuer::{Issuer, IssuerError},
-    resolver::{ResolverResult, TrustchainResolver},
+    issuer::Issuer,
+    resolver::{map_resolver_result, TrustchainResolver},
     vc::{CredentialError, DataCredentialError},
-    verifier::{Timestamp, Verifier, VerifierError},
+    verifier::{Timestamp, Verifier},
     vp::PresentationError,
 };
 use trustchain_ion::{
-    attest::attest_operation, attestor::IONAttestor, create::create_operation, trustchain_resolver,
+    attest::attest_operation,
+    attestor::IONAttestor,
+    create::create_operation,
+    root::{root_did_candidates, RootCandidatesResult, RootError, TimestampResult},
+    utils::time_at_block_height,
+    verifier::{TrustchainVerifier, VerificationBundle},
 };
 
 /// API for Trustchain DID functionality.
 #[async_trait]
 pub trait TrustchainDIDAPI {
-    /// Creates a controlled DID from a passed document state, writing the associated create
-    /// operation to file in the operations path returning the file name including the created DID
-    /// suffix.
-    // TODO: consider replacing error variant with specific IONError/DIDError in future version.
+    /// Creates a DID from a passed document state, writing the associated create operation to file
+    /// in the operations path & returning the file name including the created DID suffix.
     fn create(
         document_state: Option<DocumentState>,
         verbose: bool,
-    ) -> Result<String, Box<dyn Error>> {
+    ) -> Result<String, TrustchainAPIError> {
         create_operation(document_state, verbose)
+            .map_err(|e| TrustchainAPIError::FailedCreateRequest(e.to_string()))
     }
-    /// An uDID attests to a dDID, writing the associated update operation to file in the operations
-    /// path.
-    async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
-        attest_operation(did, controlled_did, verbose).await
+
+    /// A uDID attests to a dDID, writing the update operation to file in the operations path.
+    // async fn attest(did: &str, controlled_did: &str, verbose: bool) -> Result<(), Box<dyn Error>> {
+    async fn attest(
+        did: &str,
+        controlled_did: &str,
+        verbose: bool,
+    ) -> Result<(), TrustchainAPIError> {
+        attest_operation(did, controlled_did, verbose)
+            .await
+            .map_err(|e| TrustchainAPIError::FailedAttestationRequest(e.to_string()))
     }
+
     /// Resolves a given DID using given endpoint.
-    async fn resolve(did: &str, resolver: &dyn TrustchainResolver) -> ResolverResult {
-        // Result metadata, Document, Document metadata
-        resolver.resolve_as_result(did).await
+    async fn resolve(
+        did: &str,
+        resolver: &dyn TrustchainResolver,
+    ) -> Result<ResolutionResult, TrustchainAPIError> {
+        // Note: the awkwardness here is a result of the upstream `ResolutionResult`
+        // which is not a Result type but may encode a resolution error, hence the
+        // adapter function `map_resolver_result` that converts to a Result type.
+        match resolver.resolve_as_result(did).await {
+            Ok(result) => Ok(map_resolver_result(Ok(result))),
+            Err(e) => Err(TrustchainAPIError::from(e)),
+        }
     }
 
     /// Verifies a given DID using a resolver available at given endpoint, returning a result.
@@ -52,12 +76,40 @@ pub trait TrustchainDIDAPI {
         did: &str,
         root_event_time: Timestamp,
         verifier: &U,
-    ) -> Result<DIDChain, VerifierError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
     {
-        verifier.verify(did, root_event_time).await
+        verifier
+            .verify(did, root_event_time)
+            .await
+            .map_err(|err| err.into())
+    }
+
+    /// Returns the uDID chain for the given dDID, or an error if no valid upsteam chain is found.
+    async fn chain<T, U>(
+        did: &str,
+        root_event_time: Timestamp,
+        verifier: &U,
+    ) -> Result<DIDChain, TrustchainAPIError>
+    where
+        T: DIDResolver + Send,
+        U: Verifier<T> + Send + Sync,
+    {
+        Self::verify(did, root_event_time, verifier).await
+    }
+
+    /// Returns the verification bundle needed to verify the given dDID.
+    async fn bundle<T>(
+        did: &str,
+        verifier: &TrustchainVerifier<T>,
+    ) -> Result<VerificationBundle, TrustchainAPIError>
+    where
+        T: DIDResolver + Send + Sync,
+    {
+        let bundle = verifier.verification_bundle(did).await?;
+        Ok((*bundle).clone())
     }
 
     // // TODO: the below have no CLI implementation currently but are planned
@@ -90,10 +142,10 @@ pub trait TrustchainVCAPI {
         key_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Credential, IssuerError> {
+    ) -> Result<Credential, TrustchainAPIError> {
         credential.issuer = Some(ssi::vc::Issuer::URI(URI::String(did.to_string())));
         let attestor = IONAttestor::new(did);
-        attestor
+        Ok(attestor
             .sign(
                 &credential,
                 linked_data_proof_options,
@@ -101,7 +153,7 @@ pub trait TrustchainVCAPI {
                 resolver,
                 context_loader,
             )
-            .await
+            .await?)
     }
 
     /// Verifies a credential
@@ -111,7 +163,7 @@ pub trait TrustchainVCAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<DIDChain, CredentialError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -125,12 +177,17 @@ pub trait TrustchainVCAPI {
             )
             .await;
         if !result.errors.is_empty() {
-            return Err(CredentialError::VerificationResultError(result));
+            return Err(TrustchainAPIError::FailedToVerifyCredential(
+                CredentialError::VerificationResultError(result),
+            ));
         }
         // Verify issuer
-        let issuer = credential
-            .get_issuer()
-            .ok_or(CredentialError::NoIssuerPresent)?;
+        let issuer =
+            credential
+                .get_issuer()
+                .ok_or(TrustchainAPIError::FailedToVerifyCredential(
+                    CredentialError::NoIssuerPresent,
+                ))?;
         Ok(verifier.verify(issuer, root_event_time).await?)
     }
 }
@@ -142,23 +199,23 @@ pub trait TrustchainVPAPI {
     async fn sign_presentation(
         presentation: Presentation,
         did: &str,
-        key_id: Option<&str>,
-        endpoint: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
+        key_id: Option<&str>,
+        resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Presentation, PresentationError> {
-        let resolver = trustchain_resolver(endpoint);
+    ) -> Result<Presentation, TrustchainAPIError> {
         let attestor = IONAttestor::new(did);
         Ok(attestor
             .sign_presentation(
                 &presentation,
                 linked_data_proof_options,
                 key_id,
-                &resolver,
+                resolver,
                 context_loader,
             )
             .await?)
     }
+
     /// Verifies a verifiable presentation.
     async fn verify_presentation<T, U>(
         presentation: &Presentation,
@@ -166,7 +223,7 @@ pub trait TrustchainVPAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<(), PresentationError>
+    ) -> Result<(), TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -222,7 +279,7 @@ pub trait TrustchainVPAPI {
                                 )
                                 .await
                                 .map(|_| ()),
-                                Err(e) => Err(e),
+                                Err(e) => Err(TrustchainAPIError::FailedToVerifyCredential(e)),
                             }
                         }
                     }
@@ -239,7 +296,9 @@ pub trait TrustchainVPAPI {
             )
             .await;
         if !result.errors.is_empty() {
-            return Err(PresentationError::VerifiedHolderUnauthenticated(result));
+            return Err(TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::VerifiedHolderUnauthenticated(result),
+            ));
         }
         Ok(())
     }
@@ -256,7 +315,7 @@ pub trait TrustchainDataAPI {
         key_id: Option<&str>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
-    ) -> Result<Credential, IssuerError> {
+    ) -> Result<Credential, TrustchainAPIError> {
         // Read the data credential template.
         let mut credential = Credential::from_json_unsigned(DATA_CREDENTIAL_TEMPLATE).unwrap();
         // Add the issuer & issuanceDate attributes.
@@ -299,7 +358,7 @@ pub trait TrustchainDataAPI {
         root_event_time: Timestamp,
         verifier: &U,
         context_loader: &mut ContextLoader,
-    ) -> Result<DIDChain, DataCredentialError>
+    ) -> Result<DIDChain, TrustchainAPIError>
     where
         T: DIDResolver + Send,
         U: Verifier<T> + Send + Sync,
@@ -313,23 +372,25 @@ pub trait TrustchainDataAPI {
             .to_single()
             .ok_or(DataCredentialError::ManyCredentialSubject(
                 credential.credential_subject.clone(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .property_set
             .as_ref()
             .ok_or(DataCredentialError::MissingAttribute(
                 "property_set".to_string(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .get(DATA_ATTRIBUTE)
             .ok_or(DataCredentialError::MissingAttribute(
                 DATA_ATTRIBUTE.to_string(),
-            ))?
+            ))
+            .map_err(TrustchainAPIError::FailedToVerifyDataCredential)?
             .as_str()
             .expect("dataset attribute is a str");
 
         if actual_hash != expected_hash {
-            return Err(DataCredentialError::MismatchedHashDigests(
-                expected_hash.to_string(),
-                actual_hash,
+            return Err(TrustchainAPIError::FailedToVerifyDataCredential(
+                DataCredentialError::MismatchedHashDigests(expected_hash.to_string(), actual_hash),
             ));
         };
         // Verify the data credential.
@@ -341,15 +402,47 @@ pub trait TrustchainDataAPI {
             context_loader,
         )
         .await
-        .map_err(DataCredentialError::CredentialError)
+    }
+}
+
+/// API for Trustchain root DID functionality.
+#[async_trait]
+pub trait TrustchainRootAPI {
+    async fn root_candidates(
+        date: NaiveDate,
+        root_candidates: Option<&RwLock<HashMap<NaiveDate, RootCandidatesResult>>>,
+    ) -> Result<RootCandidatesResult, TrustchainAPIError> {
+        // Return the cached vector of root DID candidates, if available.
+        if let Some(cache) = root_candidates {
+            let read_guard = cache.read().unwrap();
+            if read_guard.contains_key(&date) {
+                return Ok(read_guard.get(&date).cloned().unwrap());
+            }
+        }
+        let result = RootCandidatesResult::new(date, root_did_candidates(date).await?);
+        // Add the results to the cache, if available.
+        if let Some(cache) = root_candidates {
+            debug!("Adding root candidates to cache: {:?}", &result);
+            cache.write().unwrap().insert(date, result.clone());
+        }
+        Ok(result)
+    }
+
+    async fn block_timestamp(height: u64) -> Result<TimestampResult, TrustchainAPIError> {
+        let timestamp = time_at_block_height(height, None)
+            .map_err(|err| RootError::FailedToParseBlockHeight(err.to_string()))?;
+        debug!("Got block timestamp {} for block {}", &timestamp, height);
+        Ok(TimestampResult::new(timestamp))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::api::{
-        TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI, DATA_CREDENTIAL_TEMPLATE,
+        TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI, TrustchainVPAPI,
+        DATA_CREDENTIAL_TEMPLATE,
     };
+    use crate::errors::TrustchainAPIError;
     use crate::TrustchainAPI;
     use bitcoin::Network;
     use did_ion::sidetree::PublicKeyEntry;
@@ -466,6 +559,26 @@ mod tests {
 
     #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
     #[tokio::test]
+    async fn test_resolve() {
+        init();
+
+        let did = match BITCOIN_NETWORK
+            .as_ref()
+            .expect("Integration test requires Bitcoin")
+        {
+            Network::Testnet => "did:ion:test:EiCClfEdkTv_aM3UnBBhlOV89LlGhpQAbfeZLFdFxVFkEg", // root
+            Network::Testnet4 => "did:ion:test:EiDnaq8k5I4xGy1NjKZkNgcFwNt1Jm6mLm0TVVes7riyMA", // root
+            network @ _ => {
+                panic!("No test fixtures for network: {:?}", network);
+            }
+        };
+        let resolver = trustchain_resolver("http://localhost:3000/");
+        let result = TrustchainAPI::resolve(did, &resolver).await;
+        assert!(result.is_ok());
+    }
+
+    #[ignore = "requires a running Sidetree node listening on http://localhost:3000"]
+    #[tokio::test]
     async fn test_verify_credential() {
         init();
 
@@ -517,7 +630,10 @@ mod tests {
             &mut context_loader,
         )
         .await;
-        if let CredentialError::VerificationResultError(ver_res) = res.err().unwrap() {
+        if let TrustchainAPIError::FailedToVerifyCredential(
+            CredentialError::VerificationResultError(ver_res),
+        ) = res.err().unwrap()
+        {
             assert_eq!(ver_res.errors, vec!["signature error"]);
         } else {
             panic!("should error with VerificationResultError varient of CredentialError")
@@ -858,7 +974,9 @@ mod tests {
                 &mut ContextLoader::default()
             )
             .await,
-            Err(PresentationError::VerifiedHolderUnauthenticated(..))
+            Err(TrustchainAPIError::FailedToVerifyPresentation(
+                PresentationError::VerifiedHolderUnauthenticated(..)
+            ))
         ));
     }
 
@@ -986,7 +1104,10 @@ mod tests {
         .await;
         assert!(res.is_err());
 
-        if let DataCredentialError::MismatchedHashDigests(expected, actual) = res.err().unwrap() {
+        if let TrustchainAPIError::FailedToVerifyDataCredential(
+            DataCredentialError::MismatchedHashDigests(expected, actual),
+        ) = res.err().unwrap()
+        {
             assert_eq!(expected, expected_hash);
             assert_ne!(actual, expected_hash);
         } else {

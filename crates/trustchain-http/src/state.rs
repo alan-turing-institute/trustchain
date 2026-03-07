@@ -1,5 +1,4 @@
 //! Trustchain HTTP router shared state.
-use crate::root::RootCandidatesResult;
 use crate::store::CredentialStoreItem;
 use crate::{config::HTTPConfig, verifier::PresentationRequest};
 use chrono::NaiveDate;
@@ -9,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use trustchain_core::TRUSTCHAIN_DATA;
 use trustchain_ion::ion::IONTest as ION;
+use trustchain_ion::root::RootCandidatesResult;
 use trustchain_ion::trustchain_resolver;
 use trustchain_ion::verifier::TrustchainVerifier;
 

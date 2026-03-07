@@ -847,9 +847,9 @@ impl ElementwiseSerializeDeserialize for CRState {
 /// Returns message that corresponds to the current state of the challenge-response process.
 fn get_status_message(current_state: &CurrentCRState) -> String {
     match current_state {
-        CurrentCRState::NotStarted => {
-            String::from("No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.")
-        }
+        CurrentCRState::NotStarted => String::from(
+            "No records found for this challenge-response identifier or entity. \nThe challenge-response process has not been initiated yet.",
+        ),
         CurrentCRState::IdentityCRInitiated => {
             String::from("Identity challenge-response initiated. Await response.")
         }
@@ -865,9 +865,7 @@ fn get_status_message(current_state: &CurrentCRState) -> String {
         CurrentCRState::ContentChallengeComplete => {
             String::from("Content challenge has been presented. Await response.")
         }
-        CurrentCRState::ContentResponseComplete => {
-            String::from("Challenge-response complete.")
-        }
+        CurrentCRState::ContentResponseComplete => String::from("Challenge-response complete."),
     }
 }
 

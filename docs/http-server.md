@@ -4,9 +4,9 @@ Trustchain includes a built-in HTTP server that can be used to issue and verify 
 
 !!! info "Prerequisites"
 
-    To use the Trustchain HTTP server, first make sure that you have followed the installation and configuration instructions on the [Getting Started](getting-started.md) page.
+    To use the Trustchain HTTP server, first make sure you have followed the installation and configuration instructions on the [Getting Started](getting-started.md) page.
 
-    Your ION node will also need to be up and running, either locally or on a remote machine to which you are connected via SSH and with port forwarding. Instructions for restarting ION, and setting up port forwarding, can be found [here](ion.md#running-ion).
+    Your ION node will also need to be up and running, either locally or on a remote machine to which you are connected via SSH with port forwarding. Instructions for running ION, and setting up port forwarding, can be found [here](ion.md#running-ion).
 
 ## Installation
 
@@ -17,7 +17,7 @@ cargo install --path "$TRUSTCHAIN_REPO"/crates/trustchain-http
 
 ## Configuration
 
-Before starting the HTTP server some configuation parameters will need to be set. Execute the following command to open the Trustchain configuration file `trustchain_config.toml` for editing:
+Before starting the HTTP server some configuation parameters will need to be set. Open the Trustchain [configuration file](getting-started.md#trustchain-configuration-file) for editing:
 ```console
 nano $TRUSTCHAIN_CONFIG
 ```
@@ -53,7 +53,7 @@ Under the section headed `[http]`, add or edit the following configuration param
 
 ### Network configuration
 
-To make your Trustchain HTTP server reachable from the public Internet you will need to configure your local network to allow connections to the port given in the `trustchain_config.toml` file, and to route them to your Trustchain node.
+To make your Trustchain HTTP server reachable from the public Internet you will need to configure your local network to allow connections to the port given in the Trustchain [configuration file](getting-started.md#trustchain-configuration-file), and to route them to your Trustchain node.
 
 If your Trustchain node is running on a virtual machine (VM) in the cloud, navigate to your cloud provider's web portal and open the network settings page for the VM. Then create an "inbound port rule" to allow incoming traffic to the relevant port.
 

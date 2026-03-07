@@ -6,6 +6,7 @@ nav:
     - getting-started.md
     - usage.md
     - http-server.md
+    - rpc-interface.md
     # - deployment.md
     - faq.md
     # - glossary.md

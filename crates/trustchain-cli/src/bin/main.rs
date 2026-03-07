@@ -1,5 +1,6 @@
 //! Trustchain CLI binary
-use clap::{arg, ArgAction, Command};
+use chrono::NaiveDate;
+use clap::{arg, value_parser, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
 use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
@@ -10,27 +11,30 @@ use std::{
     path::PathBuf,
 };
 use trustchain_api::{
-    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainVCAPI},
+    api::{TrustchainDIDAPI, TrustchainDataAPI, TrustchainRootAPI, TrustchainVCAPI},
+    errors::TrustchainAPIError,
     TrustchainAPI,
 };
 use trustchain_cli::{config::cli_config, print_status};
 use trustchain_core::{
+    resolver::map_resolution_result,
     utils::extract_keys,
     vc::{CredentialError, DataCredentialError},
     verifier::Verifier,
     JSON_FILE_EXTENSION, TRUSTCHAIN_DATA,
 };
+use trustchain_http::attestor::present_identity_challenge;
 use trustchain_http::{
     attestation_encryption_utils::ssi_to_josekit_jwk,
     attestation_utils::{
         CRState, ElementwiseSerializeDeserialize, IdentityCRInitiation, TrustchainCRError,
     },
-    attestor::present_identity_challenge,
     requester::{identity_response, initiate_content_challenge, initiate_identity_challenge},
 };
 use trustchain_ion::{
     attest::attest_operation,
     create::{create_operation, create_operation_mnemonic},
+    root::RootError,
     trustchain_resolver,
     verifier::TrustchainVerifier,
     CREATE_OPERATION_FILENAME_PREFIX,
@@ -182,9 +186,27 @@ fn cli() -> Command {
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-p --path <TEMP_P_KEY_ID_FOR_PATH>).required(true))
                         .arg(arg!(-e --entity <ATTESTOR_OR_REQUESTER>).required(true))
+                ),
+        )
+        .subcommand(
+            Command::new("root")
+                .about("Root DID functionality: candidates and timestamps.")
+                .subcommand_required(true)
+                .arg_required_else_help(true)
+                .allow_external_subcommands(true)
+                .subcommand(
+                    Command::new("candidates")
+                        .about("Displays candidate root DIDs for a given date.")
+                        .arg(arg!(-y --year <YEAR>).value_parser(value_parser!(i32)).required(true))
+                        .arg(arg!(-m --month <MONTH>).value_parser(value_parser!(u32)).required(true))
+                        .arg(arg!(-d --day <MONTH>).value_parser(value_parser!(u32)).required(true))
                 )
-
-            )
+                .subcommand(
+                    Command::new("blocktime")
+                        .about("Displays the Unix timestamp for a given block height.")
+                        .arg(arg!(-b --height <BLOCK_HEIGHT>).value_parser(value_parser!(u64)).required(true))
+                ),
+        )
 }
 
 #[tokio::main]
@@ -246,7 +268,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(("resolve", sub_matches)) => {
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _verbose = matches!(sub_matches.get_one::<bool>("verbose"), Some(true));
-                    let (res_meta, doc, doc_meta) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (res_meta, doc, doc_meta) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     // Print results
                     println!("---");
                     println!("Document:");
@@ -337,13 +360,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        Err(cred_err) => {
-                            handle_credential_error(cred_err)?;
-                        }
                         Ok(_) => {
                             println!("Proof.... ✅");
                             println!("Issuer... ✅");
                         }
+                        Err(err) => match err {
+                            TrustchainAPIError::FailedToVerifyCredential(e) => {
+                                handle_credential_error(e)?;
+                            }
+                            _ => {
+                                println!("Verify.. ❌ Failed (with API error)");
+                            }
+                        },
                     }
 
                     // Show chain
@@ -385,7 +413,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // verify DID before resolving and extracting endpoint
                     let did = sub_matches.get_one::<String>("did").unwrap();
                     let _result = verifier.verify(did, root_event_time.into()).await?;
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let services = doc.unwrap().service;
 
                     // user promt for org name and operator name
@@ -412,7 +441,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await?;
                     identity_cr_initiation.elementwise_serialize(&path)?;
                     println!("Successfully initiated attestation request.");
-                    println!("You will receive more information on the challenge-response process via alternative communication channel.");
+                    println!(
+                        "You will receive more information on the challenge-response process via alternative communication channel."
+                    );
                 }
                 Some(("present", sub_matches)) => {
                     // get attestation request path from provided input
@@ -490,7 +521,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         panic!("Provided attestation request not found. Path does not exist.");
                     }
                     let did = sub_matches.get_one::<String>("did").unwrap();
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let doc = doc.unwrap();
                     // extract attestor public key from did document
                     let public_keys = extract_keys(&doc);
@@ -524,7 +556,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // resolve DID, get services and attestor public key
-                    let (_, doc, _) = TrustchainAPI::resolve(did, resolver).await?;
+                    let (_, doc, _) =
+                        map_resolution_result(TrustchainAPI::resolve(did, resolver).await?)?;
                     let doc = doc.unwrap();
                     let public_keys = extract_keys(&doc);
                     let attestor_public_key_ssi = public_keys.first().unwrap();
@@ -614,22 +647,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .await;
                     // Handle result
                     match verify_result {
-                        Err(DataCredentialError::CredentialError(cred_err)) => {
-                            handle_credential_error(cred_err)?;
-                        }
-                        Err(DataCredentialError::MismatchedHashDigests(_, _)) => {
-                            println!("Digest... ❌ (mismatched data hash digests)");
-                        }
-                        Err(DataCredentialError::MissingAttribute(att)) => {
-                            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
-                        }
-                        Err(DataCredentialError::ManyCredentialSubject(subjects)) => {
-                            println!("Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})");
-                        }
                         Ok(_) => {
                             println!("Proof.... ✅");
                             println!("Issuer... ✅");
                             println!("Digest... ✅");
+                        }
+                        Err(TrustchainAPIError::FailedToVerifyDataCredential(
+                            DataCredentialError::CredentialError(cred_err),
+                        )) => {
+                            handle_credential_error(cred_err)?;
+                        }
+                        Err(TrustchainAPIError::FailedToVerifyDataCredential(data_cred_err)) => {
+                            handle_data_credential_error(data_cred_err)?;
+                        }
+                        _ => {
+                            println!("Verify.. ❌ Failed (with API error)");
                         }
                     };
                     // Show chain
@@ -666,6 +698,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => panic!("Unrecognised DATA subcommand."),
             }
         }
+        Some(("root", sub_matches)) => match sub_matches.subcommand() {
+            Some(("candidates", sub_matches)) => {
+                let year = sub_matches.get_one::<i32>("year").unwrap();
+                let month = sub_matches.get_one::<u32>("month").unwrap();
+                let day = sub_matches.get_one::<u32>("day").unwrap();
+
+                let date = match NaiveDate::from_ymd_opt(*year, *month, *day) {
+                    Some(d) => d,
+                    None => return Err(RootError::InvalidDate(*year, *month, *day).into()),
+                };
+                let root_candidates = TrustchainAPI::root_candidates(date, None)
+                    .await
+                    .expect("Failed to identify root DID candidates");
+                println!("{}", &to_string_pretty(&root_candidates).unwrap());
+            }
+            Some(("blocktime", sub_matches)) => {
+                let height = sub_matches.get_one::<u64>("height").unwrap();
+
+                let timestamp = TrustchainAPI::block_timestamp(*height)
+                    .await
+                    .expect("Failed to get block timestamp");
+                println!("{}", &to_string_pretty(&timestamp).unwrap());
+            }
+            _ => panic!("Unrecognised Root subcommand."),
+        },
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
@@ -693,6 +750,26 @@ fn handle_credential_error(err: CredentialError) -> Result<(), CredentialError> 
         CredentialError::FailedToDecodeJWT => {
             println!("Proof.... ❌");
             println!("Issuer... ❌");
+        }
+    }
+    Err(err)
+}
+
+fn handle_data_credential_error(err: DataCredentialError) -> Result<(), DataCredentialError> {
+    match err {
+        DataCredentialError::MismatchedHashDigests(_, _) => {
+            println!("Digest... ❌ (mismatched data hash digests)");
+        }
+        DataCredentialError::MissingAttribute(ref att) => {
+            println!("Invalid credential... ❌ (missing attribute: \"{att}\")");
+        }
+        DataCredentialError::ManyCredentialSubject(ref subjects) => {
+            println!(
+                "Invalid credential... ❌ (only one subject permitted, multiple subjects found: {subjects:?})"
+            );
+        }
+        DataCredentialError::CredentialError(cred_err) => {
+            return handle_credential_error(cred_err).map_err(DataCredentialError::CredentialError);
         }
     }
     Err(err)
