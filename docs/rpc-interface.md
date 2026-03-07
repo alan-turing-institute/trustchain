@@ -190,7 +190,7 @@ Example JSON request:
 ```json
 {
     "jsonrpc": "2.0",
-    "method": "chain",
+    "method": "bundle",
     "params": "did:ion:test:EiBijhXD8AGKu891yTssu69qRwwC46IfOphnfI9XzXQp5Q",
     "id": 1
 }
