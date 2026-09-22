@@ -509,12 +509,109 @@ The Trustchain CLI will perform the following verification process and report th
 
  This process ensures that the exact content of the downstream DID (including the public keys of the downstream legal entity) has been attested to by a recognised upstream entity, whose own public keys have themselves been attested to in a chain of signatures leading back to the root DID, whose exact time of publication has also been verified.
 
-## Credential Issuance
+## Credential Signing
 
-This section is under construction.
+!!! info "Verifiable Credentials"
+
+    Verifiable Credentials are defined in a [W3C standard](https://www.w3.org/TR/vc-data-model-2.0/) as a mechanism for expressing a set of claims, made by an _issuer_, about an individual _subject_. These claims are encoded as attributes inside the credential data structure, together with the DIDs of the subject and the issuer. The issuer then signs the credential to attest to the information it contains.
+
+    Typically, the signed credential is held by the subject, who can present it at a later date to a _verifier_. The verifier resolves the issuer's DID to obtain their public key, and uses it to verify the signature on the credential, thereby establishing its authenticity.
+
+    In Trustchain, the issuer's DID is itself verifiable via the mechanism described [above](#downstream-did-verification).
+
+The Trustchain CLI can be used to sign a credential directly, using the `vc sign` subcommand. 
+
+This is the raw signing operation that underlies credential issuance, but on its own it is not intended for practical use because it involves no interaction with a credential subject. The subject's DID must therefore be present in the data structure before signing. The interactive [credential issuance process](http-server.md#credential-issuance) via the Trustchain HTTP server is much closer to the workflow expected in practice.
+
+#### Credential template
+
+Using a text editor, create a JSON file containing the credential to be signed. Unlike the offer templates used by the HTTP server, this file must be a complete credential: in particular, `credentialSubject.id` should already be set to the DID of the credential subject. Only the `issuer` field is filled in automatically, using the signer's DID.
+
+```json
+{
+   "@context": [
+      "https://www.w3.org/2018/credentials/v1",
+      "https://www.w3.org/2018/credentials/examples/v1"
+   ],
+   "type": ["VerifiableCredential"],
+   "credentialSubject": {
+      "id": "<SUBJECT_DID>",
+      "givenName": "John",
+      "familyName": "Sims",
+      "degree": {
+         "type": "BachelorDegree",
+         "name": "Bachelor of Arts",
+         "college": "University of Oxbridge"
+      }
+   }
+}
+```
+
+#### Sign the credential
+
+!!! info "Prerequisite: signing requires the issuer's private key"
+
+    Note that the issuer's private key must be accessible in order to generate the signature. The key must be found under the `key_manager` directory inside the [Trustchain data directory](getting-started.md#trustchain-data-directory). This is the location in which keys are stored when a [new DID is created](usage.md#create-the-did) using the Trustchain CLI.
+
+To sign the credential run the following command, replacing `<DID>` with the issuer's DID and `<CREDENTIAL_FILE>` with the path to the credential template file:
+```console
+trustchain-cli vc sign --did <DID> --credential_file <CREDENTIAL_FILE>
+```
+
+The signed credential, including its cryptographic proof, will be printed to the terminal.
+
+!!! example "Example: signing a credential"
+
+    Suppose you named your credential file `credential.json` and saved it in the folder `$TRUSTCHAIN_DATA/credentials/`. Then the signing command would look like this (but with your issuer's DID):
+    ```console
+    trustchain-cli vc sign --did did:ion:test:EiDz95rNCN2Iji3qAsySSXT8oHBEtrRqH55sH4wqEELF9g --credential_file $TRUSTCHAIN_DATA/credentials/credential.json
+    ```
+
+If the issuer's DID document contains multiple signing keys, the `--key_id` flag can be used to select which one is to be used.
 
 ## Credential Verification
 
-This section is under construction.
+The Trustchain CLI can be used to verify a credential, using the `vc verify` subcommand.
+
+As with credential issuance, the CLI provides the raw verification operation but may be impractical in a live deployment. For this reason, credential verification can also be performed via the [Trustchain HTTP server](http-server.md#credential-verification) and the Trustchain Mobile app.
+
+To verify a credential using the Trustchain CLI, run the following command, replacing `<CREDENTIAL_FILE>` with the path to the credential JSON file (including its signature) that you wish to verify:
+```console
+trustchain-cli vc verify --credential_file <CREDENTIAL_FILE>
+```
+
+!!! tip "Tip: Reading a credential from standard input"
+
+    If the `--credential_file` flag is omitted, the credential is instead read from standard input. This makes it possible to sign and verify a credential in a single step, by piping the output of `vc sign` directly into `vc verify`:
+    ```console
+    trustchain-cli vc sign --did <DID> --credential_file <CREDENTIAL_FILE> | trustchain-cli vc verify
+    ```
+
+The Trustchain CLI will perform the following verification process and report the result:
+
+ 1. Verify the credential's own cryptographic signature (Linked Data Proof), using the public key found in the DID document of the credential's `issuer`. If the signature is invalid, or the credential has no `issuer` field, the verification fails.
+ 2. Resolve the issuer's DID and verify its full chain back to the root DID, checking the root's timestamp against the [configured](getting-started.md#trustchain-configuration-file) `root_event_time` parameter. (This is exactly the same as the downstream DID verification process described [above](#downstream-did-verification).)
+
+If both checks succeed, the following confirmation is printed to the terminal:
+```{ .text .no-copy }
+Proof.... ✅
+Issuer... ✅
+```
+
+If either check fails, an error message describing the problem is printed instead, and the command exits with a non-zero status code.
+
+!!! tip "Tip: Overriding the root event time"
+
+    By default, `root_event_time` is taken from the [Trustchain configuration file](getting-started.md#trustchain-configuration-file). To verify against a different network without editing the config file, supply the `-t`/`--root_event_time` flag instead:
+    ```console
+    trustchain-cli vc verify --credential_file <CREDENTIAL_FILE> --root_event_time <ROOT_EVENT_TIME>
+    ```
+
+!!! tip "Tip: Verbose output"
+
+    Add the `-v` flag to also print the full DID chain from the issuer back to the root DID, or `-vv` to additionally print the issuer's complete DID document and document metadata:
+    ```console
+    trustchain-cli vc verify --credential_file <CREDENTIAL_FILE> -vv
+    ```
 
 &nbsp;
