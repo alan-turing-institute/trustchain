@@ -150,6 +150,7 @@ pub trait TrustchainVCAPI {
                 &credential,
                 linked_data_proof_options,
                 key_id,
+                None,
                 resolver,
                 context_loader,
             )
@@ -344,6 +345,7 @@ pub trait TrustchainDataAPI {
                 &credential,
                 linked_data_proof_options,
                 key_id,
+                None,
                 resolver,
                 context_loader,
             )
@@ -686,7 +688,14 @@ mod tests {
 
         let attestor = IONAttestor::new(issuer_did_suffix);
         let signed_vc = attestor
-            .sign(&vc, None, key_id, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                key_id,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await
             .unwrap();
 
@@ -762,7 +771,14 @@ mod tests {
         let attestor = IONAttestor::new(issuer_did_suffix);
 
         let mut signed_vc = attestor
-            .sign(&vc, None, key_id, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                key_id,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await
             .unwrap();
         // println!("{}", serde_json::to_string_pretty(&signed_vc).unwrap());
@@ -995,7 +1011,14 @@ mod tests {
             }
         };
         attestor
-            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await
             .unwrap()
     }
@@ -1018,7 +1041,14 @@ mod tests {
             .expect("Template credential has a dataset property.");
         *data_element = hex::encode(Sha256::digest(bytes)).to_string().into();
         attestor
-            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await
             .unwrap()
     }
