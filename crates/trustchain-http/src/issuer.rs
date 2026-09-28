@@ -104,25 +104,14 @@ impl TrustchainIssuerHTTP for TrustchainIssuerHTTPHandler {
         }
 
         let issuer = IONAttestor::new(&credential_store_item.issuer_did);
-        let key_id = if rss {
-            // TODO: move key management filtering logic into AttestorKeyManager.
-            let signing_keys = issuer.signing_keys()?;
-            signing_keys
-                .into_iter()
-                .filter(|key| matches!(key.get_algorithm(), Some(Algorithm::RSS2023)))
-                .map(|jwk| jwk.thumbprint())
-                .take(1)
-                .collect::<Result<String, _>>()
-                .ok()
-        } else {
-            None
-        };
+        let algorithm = rss.then_some(Algorithm::RSS2023);
 
         Ok(issuer
             .sign(
                 &credential,
                 None,
-                key_id.as_deref(),
+                None,
+                algorithm,
                 resolver,
                 // TODO: add context loader to app_state
                 &mut ContextLoader::default(),

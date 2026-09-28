@@ -2,10 +2,14 @@
 use crate::ion::IONTest as ION;
 use async_trait::async_trait;
 use did_ion::sidetree::Sidetree;
+use log::warn;
 use ssi::did::Document;
 use ssi::jsonld::ContextLoader;
 use ssi::vc::{Credential, LinkedDataProofOptions, Presentation, URI};
-use ssi::{jwk::JWK, one_or_many::OneOrMany};
+use ssi::{
+    jwk::{Algorithm, JWK},
+    one_or_many::OneOrMany,
+};
 use std::convert::TryFrom;
 use trustchain_core::holder::{Holder, HolderError};
 use trustchain_core::issuer::{Issuer, IssuerError};
@@ -40,36 +44,57 @@ impl IONAttestor {
         self.read_signing_keys(self.did_suffix())
     }
 
-    /// Gets the signing key with ID `key_id` of the attestor.
+    /// Gets the first signing key matching a given `key_id` (by key ID or
+    /// thumbprint) and `algorithm`, if given. Logs a warning if no matching
+    /// key is found.
     // TODO: made public to use in challenge-response. Consider refactoring key manager.
-    pub fn signing_key(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        let keys = self.signing_keys()?;
-        // If no key_id is given, return the first available key.
-        if let Some(key_id) = key_id {
-            // Iterate over the available keys.
-            for key_in_loop in keys.into_iter() {
-                // If the key has a key_id which matches the given key_id, return it.
-                if let Some(key_in_loop_id) = &key_in_loop.key_id {
-                    if key_in_loop_id == key_id {
-                        return Ok(key_in_loop);
-                    }
-                }
-                if key_in_loop.thumbprint()? == key_id {
-                    return Ok(key_in_loop);
+    pub fn signing_key(
+        &self,
+        key_id: Option<&str>,
+        algorithm: Option<Algorithm>,
+    ) -> Result<JWK, KeyManagerError> {
+        let keys = match self.signing_keys() {
+            Ok(keys) => keys,
+            Err(e) => {
+                warn!("No signing key found belonging to {:?}.", self.did);
+                return Err(e);
+            }
+        };
+        // Iterate over the available keys and return the first that matches.
+        for key_in_loop in keys.into_iter() {
+            if let Some(algorithm) = algorithm {
+                if key_in_loop.get_algorithm() != Some(algorithm) {
+                    continue;
                 }
             }
-            // If none of the keys has a matching key_id, the required key does not exist.
-            Err(KeyManagerError::FailedToLoadKey)
-        } else {
-            match keys.first() {
-                Some(key) => Ok(key.to_owned()),
-                None => Err(KeyManagerError::FailedToLoadKey),
+            if let Some(key_id) = key_id {
+                // Match the given key_id against the key's ID or thumbprint.
+                if key_in_loop.key_id.as_deref() != Some(key_id)
+                    && key_in_loop.thumbprint()? != key_id
+                {
+                    continue;
+                }
             }
+            return Ok(key_in_loop);
         }
+        // If none of the keys matches, the required key does not exist.
+        let criteria = match (key_id, algorithm) {
+            (None, None) => String::new(),
+            (Some(key_id), None) => format!(" with ID {:?}", key_id),
+            (None, Some(algorithm)) => format!(" with algorithm {:?}", algorithm),
+            (Some(key_id), Some(algorithm)) => {
+                format!(" with ID {:?} and algorithm {:?}", key_id, algorithm)
+            }
+        };
+        warn!(
+            "No signing key found{} belonging to {:?}.",
+            criteria, self.did
+        );
+        Err(KeyManagerError::FailedToLoadKey)
     }
     /// Get the IONAttestor's public signing key.
     pub fn signing_pk(&self, key_id: Option<&str>) -> Result<JWK, KeyManagerError> {
-        Ok(self.signing_key(key_id)?.to_public())
+        Ok(self.signing_key(key_id, None)?.to_public())
     }
 }
 
@@ -126,7 +151,7 @@ impl Attestor for IONAttestor {
         let doc_canon_hash = ION::hash(doc_canon.as_bytes());
 
         // Get the signing key.
-        let signing_key = match self.signing_key(key_id) {
+        let signing_key = match self.signing_key(key_id, None) {
             Ok(key) => key,
             Err(_) => {
                 if let Some(key_id) = key_id {
@@ -155,11 +180,12 @@ impl Issuer for IONAttestor {
         credential: &Credential,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
+        algorithm: Option<Algorithm>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, IssuerError> {
         // Get the signing key.
-        let signing_key = self.signing_key(key_id)?;
+        let signing_key = self.signing_key(key_id, algorithm)?;
 
         // Generate proof
         let proof = credential
@@ -203,7 +229,9 @@ impl Holder for IONAttestor {
         });
 
         // Get the signing key.
-        let signing_key = self.signing_key(key_id).map_err(HolderError::KeyManager)?;
+        let signing_key = self
+            .signing_key(key_id, None)
+            .map_err(HolderError::KeyManager)?;
 
         let mut vp = presentation.clone();
         // Check holder field is correctly populated
@@ -324,7 +352,14 @@ mod tests {
 
         // Attest to doc
         let vc_with_proof = target
-            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await;
 
         // Check attest was ok
@@ -369,7 +404,14 @@ mod tests {
         // Sign credential (expect failure).
         // Note: Signing a vc with a Some() issuer field requires a running ion node
         let vc_with_proof = attestor
-            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await;
         assert!(vc_with_proof.is_err());
 
@@ -410,7 +452,14 @@ mod tests {
 
         let vc = serde_json::from_str(TEST_CREDENTIAL).unwrap();
         let vc_with_proof = issuer
-            .sign(&vc, None, None, &resolver, &mut ContextLoader::default())
+            .sign(
+                &vc,
+                None,
+                None,
+                None,
+                &resolver,
+                &mut ContextLoader::default(),
+            )
             .await
             .unwrap();
 
@@ -458,15 +507,63 @@ mod tests {
             IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
 
         // With None passed, expect first key
-        let actual_key = target.signing_key(None)?;
+        let actual_key = target.signing_key(None, None)?;
         assert_eq!(expected_key, actual_key);
 
         // With key_id passed, expect correct key returned
-        let actual_key = target.signing_key(Some("0"))?;
+        let actual_key = target.signing_key(Some("0"), None)?;
         assert_eq!(expected_key, actual_key);
 
         // With a non-matching key_id, expect KeyManagerError::FailedToLoadKey
-        let actual_key_res = target.signing_key(Some("1"));
+        let actual_key_res = target.signing_key(Some("1"), None);
+        assert!(matches!(
+            actual_key_res,
+            Err(KeyManagerError::FailedToLoadKey)
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn test_signing_key_with_algorithm() -> Result<(), Box<dyn std::error::Error>> {
+        // Initialize temp path for saving keys
+        init();
+
+        // Set-up keys and attestor
+        let did = "did:example:test_signing_key_with_algorithm";
+
+        // Load keys (both secp256k1, so inferred algorithm is ES256K)
+        let mut keys: Vec<JWK> = serde_json::from_str(TEST_SIGNING_KEYS)?;
+
+        // Attach a key_id to first key and set an explicit algorithm on last key only
+        keys.first_mut().unwrap().key_id = Some("0".to_string());
+        keys.last_mut().unwrap().algorithm = Some(Algorithm::RSS2023);
+        let first_key = keys.first().unwrap().clone();
+        let last_key = keys.last().unwrap().clone();
+
+        // Target
+        let target =
+            IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
+
+        // With an algorithm passed, expect first key with that algorithm
+        let actual_key = target.signing_key(None, Some(Algorithm::ES256K))?;
+        assert_eq!(first_key, actual_key);
+        let actual_key = target.signing_key(None, Some(Algorithm::RSS2023))?;
+        assert_eq!(last_key, actual_key);
+
+        // With key_id and algorithm passed, expect key matching both
+        let thumbprint = last_key.thumbprint()?;
+        let actual_key = target.signing_key(Some(&thumbprint), Some(Algorithm::RSS2023))?;
+        assert_eq!(last_key, actual_key);
+
+        // With a non-matching algorithm, expect KeyManagerError::FailedToLoadKey
+        let actual_key_res = target.signing_key(None, Some(Algorithm::EdDSA));
+        assert!(matches!(
+            actual_key_res,
+            Err(KeyManagerError::FailedToLoadKey)
+        ));
+
+        // With a key_id whose key does not match the algorithm, expect KeyManagerError::FailedToLoadKey
+        let actual_key_res = target.signing_key(Some("0"), Some(Algorithm::RSS2023));
         assert!(matches!(
             actual_key_res,
             Err(KeyManagerError::FailedToLoadKey)
@@ -490,7 +587,7 @@ mod tests {
             IONAttestor::try_from(AttestorData::new(did.to_string(), OneOrMany::Many(keys)))?;
 
         // With thumbprint passed, expect correct key returned.
-        let actual_key = target.signing_key(Some(&expected_key.thumbprint().unwrap()))?;
+        let actual_key = target.signing_key(Some(&expected_key.thumbprint().unwrap()), None)?;
         assert_eq!(expected_key, actual_key);
 
         Ok(())
