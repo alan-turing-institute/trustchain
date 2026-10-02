@@ -6,6 +6,7 @@ use jsonrpsee::{
 use serde::{Deserialize, Serialize};
 use ssi::{
     jsonld::ContextLoader,
+    jwk::Algorithm,
     vc::{Credential, Presentation},
 };
 use std::{
@@ -133,6 +134,7 @@ fn register_vc_methods(
             credential: String,
             did: String,
             key_id: Option<String>,
+            algorithm: Option<Algorithm>,
         }
         let params = params
             .parse::<SignCredentialParams>()
@@ -149,6 +151,7 @@ fn register_vc_methods(
             &params.did,
             None,
             params.key_id.as_deref(),
+            params.algorithm,
             ctx.verifier.resolver(),
             &mut context_loader,
         )

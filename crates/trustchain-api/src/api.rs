@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use ssi::{
     did_resolve::{DIDResolver, ResolutionResult},
     jsonld::ContextLoader,
+    jwk::Algorithm,
     ldp::LinkedDataDocument,
     vc::{Credential, CredentialOrJWT, LinkedDataProofOptions, Presentation, URI},
 };
@@ -134,12 +135,13 @@ pub trait TrustchainDIDAPI {
 /// API for Trustchain VC functionality.
 #[async_trait]
 pub trait TrustchainVCAPI {
-    /// Signs a credential.
+    /// Signs a credential. The signing key can be selected by `key_id` and/or `algorithm`.
     async fn sign(
         mut credential: Credential,
         did: &str,
         linked_data_proof_options: Option<LinkedDataProofOptions>,
         key_id: Option<&str>,
+        algorithm: Option<Algorithm>,
         resolver: &dyn TrustchainResolver,
         context_loader: &mut ContextLoader,
     ) -> Result<Credential, TrustchainAPIError> {
@@ -150,7 +152,7 @@ pub trait TrustchainVCAPI {
                 &credential,
                 linked_data_proof_options,
                 key_id,
-                None,
+                algorithm,
                 resolver,
                 context_loader,
             )

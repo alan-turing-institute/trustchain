@@ -209,6 +209,7 @@ Example JSON request:
 | credential | String | The credential to be signed, in JSON format |
 | did | String | The DID of the signer |
 | key_id | String | Optional. The ID of the signing key in the signer's DID document |
+| algorithm | String | Optional. The signature algorithm of the signing key, e.g. `"RSS2023"` to sign with an [RSS key](http-server.md#credential-issuance) |
 
 Example JSON request:
 ```json
