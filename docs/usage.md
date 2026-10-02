@@ -569,6 +569,8 @@ The signed credential, including its cryptographic proof, will be printed to the
 
 If the issuer's DID document contains multiple signing keys, the `--key_id` flag can be used to select which one is to be used.
 
+To sign the credential with an RSS (Redactable Signature Scheme) key instead of the issuer's default signing key, add the `--rss` flag. RSS signatures allow the holder to redact information when presenting the credential (see [RSS credentials](http-server.md#credential-issuance)). To use this option, the issuer must have an RSS key in their signing key file `signing_key.json`, located under the subfolder of `$TRUSTCHAIN_DATA/key_manager/` corresponding to their DID. If no such key exists, the `vc sign` command will fail when used with the `--rss` flag.
+
 ## Credential Verification
 
 The Trustchain CLI can be used to verify a credential, using the `vc verify` subcommand.

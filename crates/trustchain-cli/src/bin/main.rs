@@ -3,10 +3,10 @@ use chrono::NaiveDate;
 use clap::{arg, value_parser, ArgAction, Command};
 use core::panic;
 use serde_json::to_string_pretty;
-use ssi::{jsonld::ContextLoader, ldp::LinkedDataDocument, vc::Credential};
+use ssi::{jsonld::ContextLoader, jwk::Algorithm, ldp::LinkedDataDocument, vc::Credential};
 use std::{
     fs::File,
-    io::{self, stdin, BufReader},
+    io::{self, stdin, BufReader, IsTerminal},
     path::Path,
     path::PathBuf,
 };
@@ -17,6 +17,8 @@ use trustchain_api::{
 };
 use trustchain_cli::{config::cli_config, print_status};
 use trustchain_core::{
+    issuer::IssuerError,
+    key_manager::KeyManagerError,
     resolver::map_resolution_result,
     utils::extract_keys,
     vc::{CredentialError, DataCredentialError},
@@ -100,14 +102,18 @@ fn cli() -> Command {
                         .about("Signs a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::SetTrue))
                         .arg(arg!(-d --did <DID>).required(true))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
-                        .arg(arg!(--key_id <KEY_ID>).required(false)),
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
+                        .arg(arg!(--key_id <KEY_ID>).required(false))
+                        .arg(
+                            arg!(--rss "Sign with an RSS (redactable signature scheme) key.")
+                                .action(ArgAction::SetTrue),
+                        ),
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verifies a credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
-                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-f --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false)),
                 ),
         )
@@ -130,7 +136,7 @@ fn cli() -> Command {
                         .about("Verifies a data credential.")
                         .arg(arg!(-v - -verbose).action(ArgAction::Count))
                         .arg(arg!(-f --data_file <DATA_FILE>).required(true))
-                        .arg(arg!(-c --credential_file <CREDENTIAL_FILE>).required(true))
+                        .arg(arg!(-c --credential_file <CREDENTIAL_FILE>).required(false))
                         .arg(arg!(-t --root_event_time <ROOT_EVENT_TIME>).required(false))
                 ),
         )
@@ -315,24 +321,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let key_id = sub_matches
                         .get_one::<String>("key_id")
                         .map(|string| string.as_str());
-                    let credential: Credential =
-                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
-                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
-                        } else {
-                            let buffer = BufReader::new(stdin());
-                            serde_json::from_reader(buffer).unwrap()
-                        };
+                    let algorithm = sub_matches.get_flag("rss").then_some(Algorithm::RSS2023);
+                    let credential =
+                        read_credential(sub_matches.get_one::<String>("credential_file"));
 
-                    let credential_with_proof = TrustchainAPI::sign(
+                    let credential_with_proof = match TrustchainAPI::sign(
                         credential,
                         did,
                         None,
                         key_id,
+                        algorithm,
                         resolver,
                         &mut context_loader,
                     )
                     .await
-                    .expect("Failed to issue credential.");
+                    {
+                        Ok(credential) => credential,
+                        Err(TrustchainAPIError::IssuerError(IssuerError::KeyManager(
+                            KeyManagerError::FailedToLoadKey,
+                        ))) => {
+                            if let (Some(key_id), Some(Algorithm::RSS2023)) = (key_id, algorithm) {
+                                eprintln!(
+                                    "Failed to issue credential. No RSS signing key with ID {:?} was found for this issuer.",
+                                    key_id
+                                );
+                            } else if algorithm == Some(Algorithm::RSS2023) {
+                                eprintln!(
+                                    "Failed to issue credential. No RSS signing key was found for this issuer."
+                                );
+                            } else if let Some(key_id) = key_id {
+                                eprintln!(
+                                    "Failed to issue credential. No signing key with ID {:?} was found for this issuer.",
+                                    key_id
+                                );
+                            } else {
+                                eprintln!(
+                                    "Failed to issue credential. No signing key was found for this issuer."
+                                );
+                            }
+                            std::process::exit(1);
+                        }
+                        Err(e) => panic!("Failed to issue credential.: {:?}", e),
+                    };
                     println!("{}", &to_string_pretty(&credential_with_proof).unwrap());
                 }
                 Some(("verify", sub_matches)) => {
@@ -342,13 +372,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None => cli_config().root_event_time.into(),
                     };
                     // Deserialize
-                    let credential: Credential =
-                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
-                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
-                        } else {
-                            let buffer = BufReader::new(stdin());
-                            serde_json::from_reader(buffer).unwrap()
-                        };
+                    let credential =
+                        read_credential(sub_matches.get_one::<String>("credential_file"));
                     // Verify credential
                     let verify_result = TrustchainAPI::verify_credential(
                         &credential,
@@ -627,13 +652,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     };
                     let data = Path::new(sub_matches.get_one::<String>("data_file").unwrap());
                     // Deserialize
-                    let credential: Credential =
-                        if let Some(path) = sub_matches.get_one::<String>("credential_file") {
-                            serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
-                        } else {
-                            let buffer = BufReader::new(stdin());
-                            serde_json::from_reader(buffer).unwrap()
-                        };
+                    let credential =
+                        read_credential(sub_matches.get_one::<String>("credential_file"));
                     let bytes = std::fs::read(data)?;
 
                     let verify_result = TrustchainAPI::verify_data(
@@ -726,6 +746,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => panic!("Unrecognised subcommand."),
     }
     Ok(())
+}
+
+/// Reads a credential from the given file path or, if no path is given, from standard input.
+/// Exits with an error message if no path is given and standard input is a terminal.
+fn read_credential(path: Option<&String>) -> Credential {
+    if let Some(path) = path {
+        serde_json::from_reader(&*std::fs::read(path).unwrap()).unwrap()
+    } else {
+        if stdin().is_terminal() {
+            eprintln!(
+                "No credential provided: use --credential_file or pipe a credential via standard input."
+            );
+            std::process::exit(1);
+        }
+        serde_json::from_reader(BufReader::new(stdin())).unwrap()
+    }
 }
 
 fn handle_credential_error(err: CredentialError) -> Result<(), CredentialError> {
