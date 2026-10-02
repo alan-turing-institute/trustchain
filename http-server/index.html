@@ -1,0 +1,1334 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../usage/">
+      
+      
+        <link rel="next" href="../rpc-interface/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/trustchain-icon-circular-thick.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>HTTP Server - Trustchain Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#http-server" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Trustchain Docs" class="md-header__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Trustchain Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              HTTP Server
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Trustchain Docs" class="md-nav__button md-logo" aria-label="Trustchain Docs" data-md-component="logo">
+      
+  <img src="../assets/trustchain-icon-circular-thick.png" alt="logo">
+
+    </a>
+    Trustchain Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trustchain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demonstration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Roles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#network-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#https-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTPS configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-http-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the HTTP server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-issuance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential Issuance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Credential Issuance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#credential-offer-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential offer cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-a-credential-offer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving a credential offer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credential-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credential Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Credential Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#presentation-request-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Presentation request cache
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serving-a-presentation-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serving a presentation request
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification process
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rpc-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RPC Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../technical-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ION
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../acknowledgements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="http-server">HTTP Server</h1>
+<p>Trustchain includes a built-in HTTP server that can be used to issue and verify digital credentials via an HTTP API. The server can also respond to requests made by the Trustchain Mobile app.</p>
+<div class="admonition info">
+<p class="admonition-title">Prerequisites</p>
+<p>To use the Trustchain HTTP server, first make sure you have followed the installation and configuration instructions on the <a href="../getting-started/">Getting Started</a> page.</p>
+<p>Your ION node will also need to be up and running, either locally or on a remote machine to which you are connected via SSH with port forwarding. Instructions for running ION, and setting up port forwarding, can be found <a href="../ion/#running-ion">here</a>.</p>
+</div>
+<h2 id="installation">Installation</h2>
+<p>To install the Trustchain HTTP server, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">cargo install --path "$TRUSTCHAIN_REPO"/crates/trustchain-http</span>
+</code></pre></div></p>
+<h2 id="configuration">Configuration</h2>
+<p>Before starting the HTTP server some configuation parameters will need to be set. Open the Trustchain <a href="../getting-started/#trustchain-configuration-file">configuration file</a> for editing:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">nano $TRUSTCHAIN_CONFIG</span>
+</code></pre></div></p>
+<p>Under the section headed <code>[http]</code>, add or edit the following configuration parameters:</p>
+<ul>
+<li>Set the <code>root_event_time</code> parameter to the integer root DID timestamp for your network (in Unix Time).</li>
+<li>Set the <code>host_display</code> parameter to the fully qualified domain name of your Trustchain HTTP server.</li>
+<li>Set the <code>host</code> parameter to the host address for the server. If you want the server to be accessible only on a local network, set this to <code>"127.0.0.1"</code> (localhost). If you want the server to be accessible from the Internet, set it to <code>"0.0.0.0"</code>. In this case, ensure both your router and server are protected by a properly configured firewall.</li>
+<li>Set the <code>port</code> parameter to the port number on which your server will listen for HTTP requests.</li>
+<li>Set the <code>https</code> parameter to either <code>true</code> or <code>false</code>, depending on whether your server will use TLS for encrypted communications.</li>
+<li>If <code>https</code> is set to <code>true</code>, set the  <code>https_path</code> parameter to the directory containing the certificate and key necessary for accepting HTTPS connections. See the section on <a href="#https-configuration">HTTPS configuration</a> for more details.</li>
+<li>Set the <code>ion_host</code> parameter to the host name of your ION instance. If ION is running on the local machine, set this to the loopback address <code>"127.0.0.1"</code>.</li>
+<li>Set the <code>ion_port</code> parameter to the port number of your ION instance. By default, ION listens on port <code>3000</code>.</li>
+<li>If you intend to use your server for credential verification and/or for dDID attestation (via the Trustchain challenge-response protocol), and you already have your own DID for this purpose, set it as the <code>server_did</code> parameter. If the server is only intended to respond to requests from the Trustchain Mobile app, e.g. for <a href="#credential-issuance">issuing verifiable credentials</a>, this parameter is not required and can be omitted.</li>
+</ul>
+<div class="admonition example">
+<p class="admonition-title">Example HTTP server configuration</p>
+<p>After completing the above steps, the <code>[http]</code> section of <code>trustchain_config.toml</code> should look similar to the following example:</p>
+<div class="language-bash highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="o">[</span>http<span class="o">]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">root_event_time</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">1769521645</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nv">host_display</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&lt;YOUR_SERVER_HOSTNAME&gt;"</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nv">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">443</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nv">https</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nv">https_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"~/.trustchain/http/self_signed_certs"</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nv">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"0.0.0.0"</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="nv">ion_host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"127.0.0.1"</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nv">ion_port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">3000</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="nv">server_did</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"&lt;YOUR_SERVER_DID&gt;"</span>
+</code></pre></div>
+</div>
+<h3 id="network-configuration">Network configuration</h3>
+<p>To make your Trustchain HTTP server reachable from the public Internet you will need to configure your local network to allow connections to the port given in the Trustchain <a href="../getting-started/#trustchain-configuration-file">configuration file</a>, and to route them to your Trustchain node.</p>
+<p>If your Trustchain node is running on a virtual machine (VM) in the cloud, navigate to your cloud provider's web portal and open the network settings page for the VM. Then create an "inbound port rule" to allow incoming traffic to the relevant port.</p>
+<p>If your node is running on a computer in your local network, the network configuration steps are as follows:</p>
+<ul>
+<li>On your router, configure the firewall to allow connections to the port configured for the Trustchain server, and configure port forwarding (for the same port) to the IP address of your Trustchain node on the local network. To enable this, you may want to assign a static local IP address to your Trustchain node.</li>
+<li>If there is a firewall running on your Trustchain node, ensure it is configured to allow inbound connections to the relevant port.</li>
+</ul>
+<h3 id="https-configuration">HTTPS configuration</h3>
+<p>It is strongly advisable to configure your Trustchain HTTP server to use TLS (Transport Layer Security) for encrypted communictions via HTTPS. This is done by setting the <code>https</code> config parameter to <code>true</code> and the <code>port</code> parameter to <code>443</code>, which is the default HTTPS port number.</p>
+<div class="admonition info">
+<p class="admonition-title">HTTPS is required to support Trustchain Mobile</p>
+<p>The Trustchain HTTP server is designed to handle requests from the Trustchain Mobile app, for operations such as the issuance and verification of <a href="https://www.w3.org/TR/vc-data-model-2.0/">Verifiable Credentials</a>.</p>
+<p>If you intend to use the HTTP server for this purpose, it is essential that you configure it with HTTPS support. The Trustchain Mobile app will refuse to connect to a server that does not have a valid TLS certificate.</p>
+</div>
+<p>To support HTTPS, you will need a TLS certificate and associated cryptographic keys.</p>
+<p>If you do not already have a TLS certificate, you can obtain one by using a free and open source service called <a href="https://certbot.eff.org/">Certbot</a>. Certbot is a software tool for automatically generating <a href="https://letsencrypt.org/">Let's Encrypt</a> certificates for web servers to enable HTTPS, which is precisely what is needed here.</p>
+<p>Follow the steps in the <a href="https://certbot.eff.org/instructions?ws=other&amp;os=ubuntubionic">Certbot setup instructions</a> to generate a TLS certificate.</p>
+<p>At the end of Step 6, you should see output similar to the following:
+<div class="language-text no-copy highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Successfully received certificate.
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Certificate is saved at: /etc/letsencrypt/live/trustchain.example.com/fullchain.pem
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Key is saved at:         /etc/letsencrypt/live/trustchain.example.com/privkey.pem
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>This certificate expires on 2024-02-25.
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>These files will be updated when the certificate renews.
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>Certbot has set up a scheduled task to automatically renew this certificate in the background.
+</code></pre></div></p>
+<p>Step 7 of the Certbot instructions requires you to install your new TLS certificate. To do this:</p>
+<ul>
+<li>make a new directory to store the certificate:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="go">mkdir -p "$TRUSTCHAIN_DATA"/http/self_signed_certs</span>
+</code></pre></div></li>
+<li>copy the certificate file <code>fullchain.pem</code> and the key file <code>privkey.pem</code> from the locations given in the output from Step 6 (above), to the new directory, e.g.:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="go">sudo cp /etc/letsencrypt/live/trustchain.example.com/fullchain.pem "$TRUSTCHAIN_DATA"/http/self_signed_certs</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">sudo cp /etc/letsencrypt/live/trustchain.example.com/privkey.pem "$TRUSTCHAIN_DATA"/http/self_signed_certs</span>
+</code></pre></div></li>
+<li>change the ownership of those files so they are owned by the user and group that will run the Trustchain server (replace <code>&lt;USER&gt;</code> and <code>&lt;GROUP&gt;</code> in the following commands):
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">sudo chown &lt;USER&gt;:&lt;GROUP&gt; "$TRUSTCHAIN_DATA"/http/self_signed_certs/fullchain.pem</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">sudo chown &lt;USER&gt;:&lt;GROUP&gt; "$TRUSTCHAIN_DATA"/http/self_signed_certs/privkey.pem</span>
+</code></pre></div></li>
+<li>create symbolic links to the certificate and key files:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="go">ln -s "$TRUSTCHAIN_DATA"/http/self_signed_certs/fullchain.pem "$TRUSTCHAIN_DATA"/http/self_signed_certs/cert.pem</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">ln -s "$TRUSTCHAIN_DATA"/http/self_signed_certs/privkey.pem "$TRUSTCHAIN_DATA"/http/self_signed_certs/key.pem</span>
+</code></pre></div></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Running the Trustchain HTTP server on port 443</p>
+<p>By default, elevated privileges are required when binding a process to port 443. Therefore, if you have configured the HTTP server to listen on port 443, you will need to run the following command (once) to allow a non-root user to start the server:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">sudo setcap CAP_NET_BIND_SERVICE=+eip $HOME/.cargo/bin/trustchain-http</span>
+</code></pre></div></p>
+</div>
+<h2 id="running-the-http-server">Running the HTTP server</h2>
+<p>Open a new Terminal window and invoke the Trustchain HTTP server with the following command:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">trustchain-http</span>
+</code></pre></div></p>
+<p>The server will listen on the port specified in the <code>trustchain_config.toml</code> file. Server log messages will be printed to this terminal window, so you will see a new message whenever the server responds to a request.</p>
+<h2 id="credential-issuance">Credential Issuance</h2>
+<p>The Trustchain HTTP server can be used to issue <a href="../usage/#credential-signing">verifiable credentials</a> on behalf of a published DID, via its built-in API. This is done by defining one or more <em>credential offers</em> in advance, which the server then makes available for prospective credential holders to redeem.</p>
+<p>This process must be carried out by the <a href="../roles/#credential-issuer">credential issuer</a>, that is, the legal entity who attests to the information asserted by the credential and whose DID will appear in its <code>issuer</code> field.</p>
+<div class="admonition info">
+<p class="admonition-title">Prerequisites</p>
+<p>The Trustchain HTTP server must be installed and configured as described <a href="#installation">above</a>. Additional configuration required for issuing credentials will be explained in this section.</p>
+<p>The DID for credential issuer must already have been published, by following the <a href="../usage/#did-issuance">DID Issuance</a> process.</p>
+<p>The private key belonging to the issuing entity must be accessible from the running HTTP server instance, so it can be used to sign each credential before it is issued. The key must be found under the <code>key_manager</code> directory inside the <a href="../getting-started/#trustchain-data-directory">Trustchain data directory</a>. This is the location in which keys are stored when a <a href="../usage/#create-the-did">new DID is created</a> using the Trustchain CLI.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Trustchain Mobile credential wallet app</p>
+<p>Trustchain Mobile is a credential wallet app designed to interact with the Trustchain HTTP server via the credential issuance API described in this section. Note: to support the app, the server must be <a href="#https-configuration">configured for HTTPS</a>.</p>
+<p>A demo version of the app can be downloaded using the QR code displayed below, or you can build the app from its <a href="https://github.com/alan-turing-institute/trustchain-mobile">source code</a>. In either case, you will need to turn on "Developer options" on your mobile device to allow the installation to proceed.</p>
+<p>Once installed, follow these steps to get started.</p>
+<ul>
+<li>On first use of the app, note down the 12-word passphrase and generate your own DID.</li>
+<li>In the Settings page:<ul>
+<li>set the Trustchain endpoint (URL) to the address of your Trustchain server,</li>
+<li>then set the root event date for your network.</li>
+</ul>
+</li>
+<li>Use the app's QR code scanner to scan a credential issuance QR code generated by the server (as explained below).</li>
+<li>Follow the on-screen prompts to accept the credential offer and add it to your wallet.</li>
+<li>Any credential in the wallet can be presented as QR code, which can be verified by any other Trustchain Mobile user.</li>
+</ul>
+<p><strong>Install Trustchain Mobile (demo version):</strong></p>
+<p><img alt="Install Trustchain Mobile" src="../assets/install-trustchain-mobile.png" style="height:120px" /></p>
+</div>
+<h4 id="credential-offer-cache">Credential offer cache</h4>
+<p>Credential offers are defined by adding entries to a JSON file located at:
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nv">$TRUSTCHAIN_DATA</span>/credentials/offers/cache.json
+</code></pre></div></p>
+<p>This file is read once, when the Trustchain HTTP server starts up. If it does not exist, the server will start with no credential offers available.</p>
+<div class="admonition warning">
+<p class="admonition-title">Note: The <code>offers</code> directory is not created automatically</p>
+<p>Unlike some other Trustchain data directories, <code>$TRUSTCHAIN_DATA/credentials/offers/</code> is not created for you. If it does not already exist, create it before adding the cache file:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="go">mkdir -p "$TRUSTCHAIN_DATA"/credentials/offers</span>
+</code></pre></div></p>
+</div>
+<p>Using a text editor, create (or edit) the <code>cache.json</code> file so that it contains a single JSON object. Each key in this object is a unique identifier for one credential offer, and each value is itself an object with two fields:</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:5.8em">Field</div></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>did</code></td>
+<td>The DID of the credential issuer. This DID must already be published, with its signing key available in the <a href="../usage/#create-the-did">key manager</a> folder on this machine.</td>
+</tr>
+<tr>
+<td><code>credential</code></td>
+<td>A template for the credential to be issued, in <a href="https://www.w3.org/TR/vc-data-model-2.0/">W3C Verifiable Credential</a> JSON-LD format.</td>
+</tr>
+</tbody>
+</table>
+<p>You do not need to include <code>issuer</code>, <code>issuanceDate</code> or <code>id</code> fields inside the credential template: these are populated automatically by the server. The <code>id</code> field is a sub-field of <code>credentialSubject</code> and contains the DID of the credential subject, which is uploaded to the server during the issuance process.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip: Generating a unique identifier</p>
+<p>Any unique string can be used as the key for a credential offer, but a <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">UUID</a> is recommended. To generate one, run:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="go">uuidgen</span>
+</code></pre></div></p>
+</div>
+<div class="admonition example">
+<p class="admonition-title">Example: credential offer cache</p>
+<p>The following <code>cache.json</code> file defines two offers, both issued by the same DID: a Bachelor of Arts degree credential, and a Master of Science degree credential.
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">{</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">"7426a2e8-f932-11ed-968a-4bb02079f142"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span><span class="nt">"did"</span><span class="p">:</span><span class="w"> </span><span class="s2">"did:ion:test:EiDz95rNCN2Iji3qAsySSXT8oHBEtrRqH55sH4wqEELF9g"</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="nt">"credential"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">      </span><span class="nt">"@context"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">        </span><span class="s2">"https://www.w3.org/2018/credentials/v1"</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">        </span><span class="s2">"https://www.w3.org/2018/credentials/examples/v1"</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">      </span><span class="p">],</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"VerifiableCredential"</span><span class="p">],</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="w">      </span><span class="nt">"credentialSubject"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="w">        </span><span class="nt">"givenName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"John"</span><span class="p">,</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">        </span><span class="nt">"familyName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Sims"</span><span class="p">,</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">        </span><span class="nt">"degree"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"BachelorDegree"</span><span class="p">,</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">          </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Bachelor of Arts"</span><span class="p">,</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">          </span><span class="nt">"college"</span><span class="p">:</span><span class="w"> </span><span class="s2">"University of Oxbridge"</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">  </span><span class="p">},</span>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a><span class="w">  </span><span class="nt">"481935de-f93d-11ed-a309-d7ec1d02e89c"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="w">    </span><span class="nt">"did"</span><span class="p">:</span><span class="w"> </span><span class="s2">"did:ion:test:EiDz95rNCN2Iji3qAsySSXT8oHBEtrRqH55sH4wqEELF9g"</span><span class="p">,</span>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="w">    </span><span class="nt">"credential"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-24" name="__codelineno-13-24" href="#__codelineno-13-24"></a><span class="w">      </span><span class="nt">"@context"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-13-25" name="__codelineno-13-25" href="#__codelineno-13-25"></a><span class="w">        </span><span class="s2">"https://www.w3.org/2018/credentials/v1"</span><span class="p">,</span>
+<a id="__codelineno-13-26" name="__codelineno-13-26" href="#__codelineno-13-26"></a><span class="w">        </span><span class="s2">"https://www.w3.org/2018/credentials/examples/v1"</span>
+<a id="__codelineno-13-27" name="__codelineno-13-27" href="#__codelineno-13-27"></a><span class="w">      </span><span class="p">],</span>
+<a id="__codelineno-13-28" name="__codelineno-13-28" href="#__codelineno-13-28"></a><span class="w">      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"VerifiableCredential"</span><span class="p">],</span>
+<a id="__codelineno-13-29" name="__codelineno-13-29" href="#__codelineno-13-29"></a><span class="w">      </span><span class="nt">"credentialSubject"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-30" name="__codelineno-13-30" href="#__codelineno-13-30"></a><span class="w">        </span><span class="nt">"givenName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Jane"</span><span class="p">,</span>
+<a id="__codelineno-13-31" name="__codelineno-13-31" href="#__codelineno-13-31"></a><span class="w">        </span><span class="nt">"familyName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Smith"</span><span class="p">,</span>
+<a id="__codelineno-13-32" name="__codelineno-13-32" href="#__codelineno-13-32"></a><span class="w">        </span><span class="nt">"degree"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-13-33" name="__codelineno-13-33" href="#__codelineno-13-33"></a><span class="w">          </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MastersDegree"</span><span class="p">,</span>
+<a id="__codelineno-13-34" name="__codelineno-13-34" href="#__codelineno-13-34"></a><span class="w">          </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Master of Science"</span><span class="p">,</span>
+<a id="__codelineno-13-35" name="__codelineno-13-35" href="#__codelineno-13-35"></a><span class="w">          </span><span class="nt">"college"</span><span class="p">:</span><span class="w"> </span><span class="s2">"University of Oxbridge"</span>
+<a id="__codelineno-13-36" name="__codelineno-13-36" href="#__codelineno-13-36"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-13-37" name="__codelineno-13-37" href="#__codelineno-13-37"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-13-38" name="__codelineno-13-38" href="#__codelineno-13-38"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-13-39" name="__codelineno-13-39" href="#__codelineno-13-39"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-13-40" name="__codelineno-13-40" href="#__codelineno-13-40"></a><span class="p">}</span>
+</code></pre></div></p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Note: Restart required after editing the cache</p>
+<p>The credential offer cache is only read when the Trustchain HTTP server starts up. After creating or editing <code>cache.json</code>, you must (re)start the server for your changes to take effect.</p>
+</div>
+<h4 id="serving-a-credential-offer">Serving a credential offer</h4>
+<p>Once an offer is present in the cache, it can be issued via the following endpoints, where <code>&lt;KEY&gt;</code> is the key used to identify the credential template in <code>cache.json</code>:</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:9em">Endpoint</div></th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/issuer/&lt;KEY&gt;</code></td>
+<td>GET</td>
+<td>Returns an HTML page displaying a QR code for the offer, suitable for scanning with the Trustchain Mobile app.</td>
+</tr>
+<tr>
+<td><code>/vc/issuer/&lt;KEY&gt;</code></td>
+<td>GET</td>
+<td>Returns a JSON preview of the credential to be issued, valid for 60 minutes.</td>
+</tr>
+<tr>
+<td><code>/vc/issuer/&lt;KEY&gt;</code></td>
+<td>POST</td>
+<td>Given the subject's DID, returns the final, signed Verifiable Credential.</td>
+</tr>
+</tbody>
+</table>
+<p>To offer the credential, share a link of the form:
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>https://&lt;HOST_DISPLAY&gt;:&lt;PORT&gt;/issuer/&lt;KEY&gt;
+</code></pre></div>
+replacing <code>&lt;HOST_DISPLAY&gt;</code> and <code>&lt;PORT&gt;</code> with the <a href="#configuration"><code>host_display</code> and <code>port</code></a> values from your Trustchain configuration file.</p>
+<p>Opening this link displays a QR code that can be scanned using the Trustchain Mobile app to redeem the offer. The QR code encodes the issuer's DID, which the app resolves to confirm its validity and to obtain the server's credential issuance endpoint (URL), before connecting to it.</p>
+<p>The two steps performed by the app can also be carried out from the command line. First, retrieve a preview of the credential on offer:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="go">curl https://&lt;HOST_DISPLAY&gt;:&lt;PORT&gt;/vc/issuer/&lt;KEY&gt;</span>
+</code></pre></div></p>
+<p>Then, submit the subject's DID to receive the signed credential:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="go">curl -X POST https://&lt;HOST_DISPLAY&gt;:&lt;PORT&gt;/vc/issuer/&lt;KEY&gt; \</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="go">    -H "Content-Type: application/json" \</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="go">    -d '{"subject_id": "&lt;SUBJECT_DID&gt;"}'</span>
+</code></pre></div></p>
+<p>The response contains the complete Verifiable Credential, signed by the issuer.</p>
+<p>Credential offers are not consumed when redeemed. The same offer can be issued to multiple subjects, or issued more than once to the same subject, until it is removed from <code>cache.json</code> and the server is restarted.</p>
+<div class="admonition warning">
+<p class="admonition-title">Practical credential issuance</p>
+<p>The issuance process described above, and built into the Trustchain HTTP server by default, is sufficient to demonstrate how credentials offers can be made and redeemed by a user of the Trustchain Mobile app. However it is only illustrative.</p>
+<p>The credential offers, given in the example above, contain hard-coded attributes (such as the subject's name) which in practice would need to be inserted at the time of issuance.</p>
+<p>Also, before issuing a credential the prospective holder would need to authenticate themself to the server.</p>
+<p>These important practicalities are application-specific and will depend on the relationship between credential issuer and subject. As such, the example above is intended as an illustration of how the Trustchain server can be incorporated into the credential issuance process, not as a complete practical guide.</p>
+</div>
+<details class="info">
+<summary>RSS (Redactable Signature Scheme) credentials</summary>
+<p>RSS signatures allow the holder to redact information when presenting a credential, so that only only certain fields are disclosed to the verifier. This is a privacy feature included in Trustchain but is not part of the Verifiable Credentials standard.</p>
+<p>Corresponding <code>_rss</code> endpoints are available (<code>/issuer_rss/&lt;KEY&gt;</code>, <code>/vc_rss/issuer/&lt;KEY&gt;</code>) for the issuance of RSS credentials. Credentials issued via these endpoints are signed using an RSS key contained in the issuer's DID document, instead of their default signing key. </p>
+<p>Note, however, that a single RSS key is around 40 kB in size, which is too large to fit in a standard ION DID document, and therefore a non-standard DID issuance mechanism is required to support this feature.</p>
+</details>
+<h2 id="credential-verification">Credential Verification</h2>
+<div class="admonition tip">
+<p class="admonition-title">Credential verification via the Trustchain Mobile app</p>
+<p>A convenient method for verifying credentials is built into the Trustchain Mobile app. </p>
+<p>When viewing a credential in the wallet app, the holder can hit the share button to generate a verifiable presentation in the form of a QR code. This presentation contains all of the information in the credential, plus a signature from the subject (i.e. the holder) and a timestamp generated at the time of sharing. This signature proves that the current holder of the credential is indeed the authentic subject, making fraudulent sharing impractical.</p>
+<p>The verifier, using the same app on a different device, then scans the QR code to read and verify the presentation. This process is automatic, and includes verification of the issuer's DID and signature on the credential, as well as the holder's signature and the timestamp. Any presentation whose timestamp is more than 15 minutes old is flagged as "stale".</p>
+</div>
+<p>The Trustchain HTTP server can also verify credentials and presentations submitted to it via its HTTP API. This works in a similar way to credential issuance: one or more <em>presentation requests</em> are defined in advance, and these are served to holders who wish to present a credential for verification.</p>
+<p>This process must be carried out by the <a href="../roles/#credential-verifier">credential verifier</a>.</p>
+<div class="admonition info">
+<p class="admonition-title">Prerequisites</p>
+<p>The Trustchain HTTP server must be running, with the <code>root_event_time</code> <a href="#configuration">configuration parameter</a> set. See <a href="#running-the-http-server">Running the HTTP server</a> above.</p>
+<p>To generate a QR code via the <code>/verifier</code> endpoint (see below), the <code>server_did</code> <a href="#configuration">configuration parameter</a> must also be set.</p>
+</div>
+<h4 id="presentation-request-cache">Presentation request cache</h4>
+<p>Presentation requests are defined by adding entries to a JSON file located at:
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nv">$TRUSTCHAIN_DATA</span>/presentations/requests/cache.json
+</code></pre></div></p>
+<p>This file is read once, when the Trustchain HTTP server starts up, in the same way as the <a href="#credential-offer-cache">credential offer cache</a> used for issuance. As with that cache, <code>$TRUSTCHAIN_DATA/presentations/requests/</code> is not created automatically:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="go">mkdir -p "$TRUSTCHAIN_DATA"/presentations/requests</span>
+</code></pre></div></p>
+<p>Each entry is a JSON object, keyed by a unique identifier, conforming to the <a href="https://w3c-ccg.github.io/vp-request-spec/">Verifiable Presentation Request</a> specification. In particular, it should contain a <code>challenge</code> for the holder to sign, and a <code>domain</code> identifying the verifier.</p>
+<div class="admonition example">
+<p class="admonition-title">Example: presentation request cache</p>
+<div class="language-json highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="p">{</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span><span class="nt">"b9519df2-35c1-11ee-8314-7f66e4585b4f"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">    </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"VerifiablePresentationRequest"</span><span class="p">,</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">    </span><span class="nt">"query"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">      </span><span class="p">{</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"QueryByExample"</span><span class="p">,</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">        </span><span class="nt">"credentialQuery"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">          </span><span class="nt">"reason"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Request credential"</span><span class="p">,</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">          </span><span class="nt">"example"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">            </span><span class="nt">"@context"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="w">              </span><span class="s2">"https://www.w3.org/2018/credentials/v1"</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="w">            </span><span class="p">],</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"VerifiableCredential"</span>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="w">          </span><span class="p">}</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="w">        </span><span class="p">}</span>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="w">    </span><span class="nt">"challenge"</span><span class="p">:</span><span class="w"> </span><span class="s2">"a877fb0a-11dd-11ee-9df7-9be7abdeee2d"</span><span class="p">,</span>
+<a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a><span class="w">    </span><span class="nt">"domain"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://example.com"</span>
+<a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a><span class="p">}</span>
+</code></pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Note: Restart required after editing the cache</p>
+<p>Like the credential offer cache, the presentation request cache is only read when the Trustchain HTTP server starts up. After creating or editing <code>cache.json</code>, you must (re)start the server for your changes to take effect.</p>
+</div>
+<h4 id="serving-a-presentation-request">Serving a presentation request</h4>
+<p>Once a request is present in the cache, it can be used by a holder via the following endpoints, where <code>&lt;KEY&gt;</code> is the request's key from <code>cache.json</code>:</p>
+<table>
+<thead>
+<tr>
+<th><div style="width:10em">Endpoint</div></th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/verifier</code></td>
+<td>GET</td>
+<td>Returns an HTML page displaying a QR code, suitable for scanning with the Trustchain Mobile app.</td>
+</tr>
+<tr>
+<td><code>/vc/verifier/&lt;KEY&gt;</code></td>
+<td>GET</td>
+<td>Returns the presentation request JSON (including its <code>challenge</code> and <code>domain</code>).</td>
+</tr>
+<tr>
+<td><code>/vc/verifier/&lt;KEY&gt;</code></td>
+<td>POST</td>
+<td>Accepts a credential or presentation from the holder, verifies it, and returns the result.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Note: The QR code always serves one arbitrary request</p>
+<p>Unlike credential issuance, where each offer has its own link, <code>/verifier</code> always generates a QR code for a single presentation request, chosen arbitrarily from the cache. If you need to issue several distinct presentation requests at once, share each request's <code>/vc/verifier/&lt;KEY&gt;</code> link directly instead of relying on the <code>/verifier</code> QR code.</p>
+</div>
+<p>To request a credential from a holder, share a link of the form:
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>https://&lt;HOST_DISPLAY&gt;:&lt;PORT&gt;/verifier
+</code></pre></div>
+replacing <code>&lt;HOST_DISPLAY&gt;</code> and <code>&lt;PORT&gt;</code> with the <a href="#configuration"><code>host_display</code> and <code>port</code></a> values from your Trustchain configuration file. As with credential issuance, opening this link displays a QR code that can be scanned using the Trustchain Mobile app. The QR code encodes the verifier's DID, which the app resolves to confirm its validity and to obtain the verification endpoint (URL).</p>
+<p>To submit a credential for verification directly via the command line, send a <code>POST</code> request containing a JSON body of the following form to <code>/vc/verifier/&lt;KEY&gt;</code>:
+<div class="language-console highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="go">curl -X POST https://&lt;HOST_DISPLAY&gt;:&lt;PORT&gt;/vc/verifier/&lt;KEY&gt; \</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="go">    -H "Content-Type: application/json" \</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="go">    -d '{</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="go">      "presentationOrCredential": { "credential": &lt;CREDENTIAL&gt; },</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="go">      "rootEventTime": &lt;ROOT_EVENT_TIME&gt;</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="go">    }'</span>
+</code></pre></div>
+Similarly, to submit a full Verifiable Presentation, replace <code>"credential": &lt;CREDENTIAL&gt;</code> with <code>"presentation": &lt;PRESENTATION&gt;</code> in the above command.</p>
+<div class="admonition info">
+<p class="admonition-title">Note: <code>rootEventTime</code> in the request body is not used for verification</p>
+<p>The request body must include a <code>rootEventTime</code> field to satisfy the JSON schema, but the server always verifies against its own configured <a href="#configuration"><code>root_event_time</code></a> parameter, not the value supplied by the caller.</p>
+</div>
+<p>On success, the server responds with <code>200 OK</code> and the message <code>Credential received and verified!</code> (or <code>Presentation received and verified!</code>). On failure, it responds with a JSON body of the form <code>{"error": "&lt;message&gt;"}</code>.</p>
+<h4 id="verification-process">Verification process</h4>
+<p>Whichever submission mechanism is used, the Trustchain HTTP server performs the same checks as the CLI's <a href="../usage/#credential-verification"><code>vc verify</code></a> command:</p>
+<ol>
+<li>Verify each credential's own cryptographic signature (Linked Data Proof), using the public key found in the DID document of its <code>issuer</code>.</li>
+<li>Resolve each issuer's DID and verify its full chain back to the root DID, checking the root's timestamp against the configured <code>root_event_time</code>.</li>
+</ol>
+<p>If a full presentation is submitted (rather than a bare credential), the holder's own signature over the presentation is also verified, using the signing key referenced in its proof.</p>
+<div class="admonition warning">
+<p class="admonition-title">Note: The presentation's <code>challenge</code> and <code>domain</code> are not checked</p>
+<p>Although each presentation request includes a <code>challenge</code> and <code>domain</code>, as set out in the Verifiable Presentation Request <a href="https://w3c-ccg.github.io/vp-request-spec/">specification</a>, the current implementation does not verify that a submitted presentation's proof actually contains the matching values. This means the server does not yet enforce that a presentation was created specifically in response to its request, only that it carries a valid signature from its holder.</p>
+</div>
+<p>&nbsp;</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../usage/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Usage">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Usage
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../rpc-interface/" class="md-footer__link md-footer__link--next" aria-label="Next: RPC Interface">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                RPC Interface
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/alan-turing-institute/trustchain/" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.integrate", "navigation.top", "search.suggest", "search.highlight", "content.tabs.link", "content.code.annotation", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/extra.js"></script>
+      
+        <script src="../javascripts/katex.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/katex.min.js"></script>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.7/contrib/auto-render.min.js"></script>
+      
+    
+  </body>
+</html>

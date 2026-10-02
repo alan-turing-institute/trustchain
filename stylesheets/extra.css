@@ -1,0 +1,29 @@
+:root {
+    --md-primary-fg-color:        #E08945;
+    --md-primary-fg-color--light: #E08945;
+    --md-primary-fg-color--dark:  #E08945;
+    --md-accent-fg-color:         #00003B;
+  }
+.md-grid {
+    max-width: 80%;
+}
+.md-header__button.md-logo {
+    margin: 0;
+    /* padding: 0; */
+}
+.md-header__button.md-logo img, .md-header__button.md-logo svg {
+    height: 1.52rem;
+    width: 1.52rem;
+}
+.center-table {
+    text-align: center;
+  }
+  .md-typeset .center-table :is(td,th):not([align]) {
+    text-align: initial; /* Reset alignment for table cells */
+}
+.check {
+    color: #5D9E52;
+}
+.xmark {
+    color: #CCCCCC;
+}
